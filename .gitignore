@@ -41,3 +41,4 @@ dist/
 *.sqlite3
 
 .env
+.looping-louie/
