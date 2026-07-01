@@ -1,3 +1,11 @@
+# RULES
+
+- Looping Louie only runs against a clean committed Git state.
+  Commit or stash your changes before running.
+
+
+# LOGIC
+
 main.py
   recibe HTTP /run
     ↓
