@@ -37,7 +37,9 @@ Do not return a git patch.
 """.strip()
 
         for iteration in range(1, req.max_iterations + 1):
+            print("Calling generator...")
             gen = await call_together(req.generator_model, current_prompt)
+            print("Generator done")
 
             try:
                 operations = parse_file_operations(gen["text"])
@@ -64,12 +66,14 @@ Changed files:
 {changed_file_contents}
 """.strip()
 
+                print("Calling reviewer...")
                 review = await review_with_openai(
                     model=req.reviewer_model,
                     original_prompt=req.prompt,
                     candidate_output=review_input,
                     skill=req.skill,
                 )
+                print("Reviewer done")
 
             except Exception as exc:
                 review = {
