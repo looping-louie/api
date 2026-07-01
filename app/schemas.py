@@ -45,6 +45,7 @@ class IterationTrace(BaseModel):
 
 
 class RunResponse(BaseModel):
+    run_id: str
     final_output: str
     approved: bool
     run_metrics: RunMetrics

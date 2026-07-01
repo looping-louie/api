@@ -10,6 +10,7 @@ from app.prompt_builder import (
     build_reviewer_input,
 )
 from app.repository import build_snapshot, format_snapshot_for_prompt, read_changed_file_contents
+from app.run_store import write_json, write_text
 from app.schemas import ModelMetrics, ReviewerMetrics, RunMetrics, RunRequest, RunResponse
 from app.workspace import create_workspace
 
@@ -27,6 +28,8 @@ def _build_repo_context(worktree_path: str) -> str:
 async def run_harness(req: RunRequest) -> RunResponse:
     start = time.time()
     workspace = create_workspace(req.repo_path)
+
+    write_json(workspace.run_path, "request.json", req.model_dump())
 
     trace = []
     total_input_tokens = 0
@@ -56,7 +59,19 @@ async def run_harness(req: RunRequest) -> RunResponse:
                     reviewer_feedback=reviewer_feedback,
                 )
 
+            write_text(
+                workspace.run_path,
+                f"generator/iteration-{iteration}-prompt.txt",
+                current_prompt,
+            )
+
             gen = await call_together(req.generator_model, current_prompt)
+
+            write_json(
+                workspace.run_path,
+                f"generator/iteration-{iteration}-response.json",
+                gen,
+            )
 
             generator_metrics = ModelMetrics(
                 model=req.generator_model,
@@ -74,6 +89,13 @@ async def run_harness(req: RunRequest) -> RunResponse:
 
             try:
                 operations = parse_file_operations(gen["text"])
+
+                write_json(
+                    workspace.run_path,
+                    f"generator/iteration-{iteration}-operations.json",
+                    {"operations": operations},
+                )
+
                 apply_file_operations(str(workspace.worktree_path), operations)
 
                 final_diff = get_git_diff(str(workspace.worktree_path))
@@ -83,10 +105,22 @@ async def run_harness(req: RunRequest) -> RunResponse:
                     changed_files,
                 )
 
+                write_text(
+                    workspace.run_path,
+                    f"diffs/iteration-{iteration}.diff",
+                    final_diff,
+                )
+
                 review_input = build_reviewer_input(
                     user_prompt=req.prompt,
                     final_diff=final_diff,
                     changed_file_contents=changed_file_contents,
+                )
+
+                write_text(
+                    workspace.run_path,
+                    f"reviewers/{req.skill}/iteration-{iteration}-prompt.txt",
+                    review_input,
                 )
 
                 review = await review_with_openai(
@@ -106,6 +140,12 @@ async def run_harness(req: RunRequest) -> RunResponse:
                     "reasoning_tokens": 0,
                     "duration_ms": 0,
                 }
+
+            write_json(
+                workspace.run_path,
+                f"reviewers/{req.skill}/iteration-{iteration}-response.json",
+                review,
+            )
 
             reviewer_metrics = ReviewerMetrics(
                 skill=req.skill,
@@ -154,10 +194,13 @@ async def run_harness(req: RunRequest) -> RunResponse:
             if not applied:
                 raise RuntimeError(f"Could not apply final diff to original repo: {error}")
 
+            write_text(workspace.run_path, "final.diff", final_diff)
+
         duration_ms = int((time.time() - start) * 1000)
         total_tokens = total_input_tokens + total_output_tokens
 
-        return RunResponse(
+        response = RunResponse(
+            run_id=workspace.run_id,
             final_output=final_diff,
             approved=approved,
             execution_trace=trace,
@@ -172,6 +215,12 @@ async def run_harness(req: RunRequest) -> RunResponse:
                 estimated_cost_eur=0.0,
             ),
         )
+
+        write_json(workspace.run_path, "response.json", response.model_dump())
+        write_json(workspace.run_path, "trace.json", [item for item in response.execution_trace])
+        write_json(workspace.run_path, "metrics.json", response.run_metrics.model_dump())
+
+        return response
 
     finally:
         workspace.cleanup()

@@ -8,6 +8,7 @@ from pathlib import Path
 class Workspace:
     run_id: str
     repo_path: Path
+    run_path: Path
     worktree_path: Path
 
     def cleanup(self) -> None:
@@ -79,10 +80,10 @@ def create_workspace(repo_path: str) -> Workspace:
 
     run_id = uuid.uuid4().hex[:12]
 
-    runs_dir = repo / ".looping-louie" / "runs"
-    runs_dir.mkdir(parents=True, exist_ok=True)
+    run_path = repo / ".looping-louie" / "runs" / run_id
+    worktree_path = run_path / "worktree"
 
-    worktree_path = runs_dir / run_id
+    run_path.mkdir(parents=True, exist_ok=True)
 
     result = subprocess.run(
         [
@@ -105,5 +106,6 @@ def create_workspace(repo_path: str) -> Workspace:
     return Workspace(
         run_id=run_id,
         repo_path=repo,
+        run_path=run_path,
         worktree_path=worktree_path,
     )
