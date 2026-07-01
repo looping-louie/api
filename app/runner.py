@@ -217,7 +217,7 @@ async def run_harness(req: RunRequest) -> RunResponse:
         )
 
         write_json(workspace.run_path, "response.json", response.model_dump())
-        write_json(workspace.run_path, "trace.json", [item for item in response.execution_trace])
+        write_json(workspace.run_path, "trace.json", [item.model_dump() for item in response.execution_trace])
         write_json(workspace.run_path, "metrics.json", response.run_metrics.model_dump())
 
         return response
