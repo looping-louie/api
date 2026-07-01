@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 from app.file_ops import apply_file_operations, parse_file_operations
@@ -11,7 +12,14 @@ from app.prompt_builder import (
 )
 from app.repository import build_snapshot, format_snapshot_for_prompt, read_changed_file_contents
 from app.run_store import write_json, write_text
-from app.schemas import ModelMetrics, ReviewerMetrics, RunMetrics, RunRequest, RunResponse
+from app.schemas import (
+    ModelMetrics,
+    ReviewerMetrics,
+    ReviewerResult,
+    RunMetrics,
+    RunRequest,
+    RunResponse,
+)
 from app.workspace import create_workspace
 
 
@@ -23,6 +31,63 @@ def _tokens_per_second(input_tokens: int, output_tokens: int, duration_ms: int) 
 def _build_repo_context(worktree_path: str) -> str:
     snapshot = build_snapshot(worktree_path)
     return format_snapshot_for_prompt(snapshot)
+
+
+def _build_reviewer_metrics(skill: str, model: str, review: dict) -> ReviewerMetrics:
+    return ReviewerMetrics(
+        skill=skill,
+        model=model,
+        input_tokens=review["input_tokens"],
+        output_tokens=review["output_tokens"],
+        cached_input_tokens=review.get("cached_input_tokens", 0),
+        reasoning_tokens=review.get("reasoning_tokens", 0),
+        duration_ms=review["duration_ms"],
+        tokens_per_second=_tokens_per_second(
+            review["input_tokens"],
+            review["output_tokens"],
+            review["duration_ms"],
+        ),
+    )
+
+
+async def _run_single_reviewer(
+    req: RunRequest,
+    skill: str,
+    review_input: str,
+    iteration: int,
+    run_path,
+) -> ReviewerResult:
+    write_text(
+        run_path,
+        f"reviewers/{skill}/iteration-{iteration}-prompt.txt",
+        review_input,
+    )
+
+    review = await review_with_openai(
+        model=req.reviewer_model,
+        original_prompt=req.prompt,
+        candidate_output=review_input,
+        skill=skill,
+    )
+
+    write_json(
+        run_path,
+        f"reviewers/{skill}/iteration-{iteration}-response.json",
+        review,
+    )
+
+    metrics = _build_reviewer_metrics(
+        skill=skill,
+        model=req.reviewer_model,
+        review=review,
+    )
+
+    return ReviewerResult(
+        skill=skill,
+        approved=review["approved"],
+        feedback=review["feedback"],
+        metrics=metrics,
+    )
 
 
 async def run_harness(req: RunRequest) -> RunResponse:
@@ -117,73 +182,84 @@ async def run_harness(req: RunRequest) -> RunResponse:
                     changed_file_contents=changed_file_contents,
                 )
 
-                write_text(
-                    workspace.run_path,
-                    f"reviewers/{req.skill}/iteration-{iteration}-prompt.txt",
-                    review_input,
-                )
-
-                review = await review_with_openai(
-                    model=req.reviewer_model,
-                    original_prompt=req.prompt,
-                    candidate_output=review_input,
-                    skill=req.skill,
+                reviewer_results = await asyncio.gather(
+                    *[
+                        _run_single_reviewer(
+                            req=req,
+                            skill=skill,
+                            review_input=review_input,
+                            iteration=iteration,
+                            run_path=workspace.run_path,
+                        )
+                        for skill in req.skills
+                    ]
                 )
 
             except Exception as exc:
-                review = {
-                    "approved": False,
-                    "feedback": f"File operations failed: {exc}",
-                    "input_tokens": 0,
-                    "output_tokens": 0,
-                    "cached_input_tokens": 0,
-                    "reasoning_tokens": 0,
-                    "duration_ms": 0,
-                }
+                system_review_metrics = ReviewerMetrics(
+                    skill="system",
+                    model="system",
+                    input_tokens=0,
+                    output_tokens=0,
+                    duration_ms=0,
+                    tokens_per_second=0,
+                )
 
-            write_json(
-                workspace.run_path,
-                f"reviewers/{req.skill}/iteration-{iteration}-response.json",
-                review,
+                reviewer_results = [
+                    ReviewerResult(
+                        skill="system",
+                        approved=False,
+                        feedback=f"File operations failed: {exc}",
+                        metrics=system_review_metrics,
+                    )
+                ]
+
+            reviewers_metrics = [result.metrics for result in reviewer_results]
+            iteration_approved = all(result.approved for result in reviewer_results)
+
+            failed_feedback = [
+                f"[{result.skill}] {result.feedback}"
+                for result in reviewer_results
+                if not result.approved
+            ]
+
+            reviewer_feedback = (
+                "\n\n".join(failed_feedback)
+                if failed_feedback
+                else "\n\n".join(
+                    f"[{result.skill}] {result.feedback}"
+                    for result in reviewer_results
+                )
             )
 
-            reviewer_metrics = ReviewerMetrics(
-                skill=req.skill,
-                model=req.reviewer_model,
-                input_tokens=review["input_tokens"],
-                output_tokens=review["output_tokens"],
-                cached_input_tokens=review.get("cached_input_tokens", 0),
-                reasoning_tokens=review.get("reasoning_tokens", 0),
-                duration_ms=review["duration_ms"],
-                tokens_per_second=_tokens_per_second(
-                    review["input_tokens"],
-                    review["output_tokens"],
-                    review["duration_ms"],
-                ),
-            )
+            total_input_tokens += generator_metrics.input_tokens
+            total_output_tokens += generator_metrics.output_tokens
+            total_cached_input_tokens += generator_metrics.cached_input_tokens
+            total_reasoning_tokens += generator_metrics.reasoning_tokens
 
-            total_input_tokens += generator_metrics.input_tokens + reviewer_metrics.input_tokens
-            total_output_tokens += generator_metrics.output_tokens + reviewer_metrics.output_tokens
-            total_cached_input_tokens += generator_metrics.cached_input_tokens + reviewer_metrics.cached_input_tokens
-            total_reasoning_tokens += generator_metrics.reasoning_tokens + reviewer_metrics.reasoning_tokens
+            for metrics in reviewers_metrics:
+                total_input_tokens += metrics.input_tokens
+                total_output_tokens += metrics.output_tokens
+                total_cached_input_tokens += metrics.cached_input_tokens
+                total_reasoning_tokens += metrics.reasoning_tokens
 
             trace.append(
                 {
                     "iteration": iteration,
                     "generator_output": gen["text"],
-                    "reviewer_feedback": review["feedback"],
-                    "approved": review["approved"],
+                    "reviewer_feedback": reviewer_feedback,
+                    "approved": iteration_approved,
                     "generator_metrics": generator_metrics,
-                    "reviewers_metrics": [reviewer_metrics],
+                    "reviewers": reviewer_results,
+                    "reviewers_metrics": reviewers_metrics,
                 }
             )
 
-            if review["approved"]:
+            if iteration_approved:
                 approved = True
                 break
 
             previous_generator_output = gen["text"]
-            reviewer_feedback = review["feedback"]
 
         if approved and final_diff:
             valid, error = validate_patch(req.repo_path, final_diff)
@@ -217,7 +293,11 @@ async def run_harness(req: RunRequest) -> RunResponse:
         )
 
         write_json(workspace.run_path, "response.json", response.model_dump())
-        write_json(workspace.run_path, "trace.json", [item.model_dump() for item in response.execution_trace])
+        write_json(
+            workspace.run_path,
+            "trace.json",
+            [item.model_dump() for item in response.execution_trace],
+        )
         write_json(workspace.run_path, "metrics.json", response.run_metrics.model_dump())
 
         return response

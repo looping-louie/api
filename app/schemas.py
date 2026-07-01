@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RunRequest(BaseModel):
@@ -7,7 +7,7 @@ class RunRequest(BaseModel):
     max_iterations: int = 3
     generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
     reviewer_model: str = "gpt-4.1-mini"
-    skill: str = "web_foundations"
+    skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
 
 
 class ModelMetrics(BaseModel):
@@ -22,6 +22,13 @@ class ModelMetrics(BaseModel):
 
 class ReviewerMetrics(ModelMetrics):
     skill: str
+
+
+class ReviewerResult(BaseModel):
+    skill: str
+    approved: bool
+    feedback: str
+    metrics: ReviewerMetrics
 
 
 class RunMetrics(BaseModel):
@@ -41,6 +48,7 @@ class IterationTrace(BaseModel):
     reviewer_feedback: str
     approved: bool
     generator_metrics: ModelMetrics
+    reviewers: list[ReviewerResult]
     reviewers_metrics: list[ReviewerMetrics]
 
 
