@@ -1,0 +1,27 @@
+###############################################################################
+#
+# Taken from koine v0.1.0
+#
+###############################################################################
+
+# top-most EditorConfig file
+root = true
+
+# common rules for all files
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+# python files rules
+[*.py]
+charset = utf-8
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+# bash files rules
+[*.sh]
+charset = utf-8
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
