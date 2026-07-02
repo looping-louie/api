@@ -1,11 +1,40 @@
+"""
+File operation parser and executor.
+
+Generator models do not modify repositories directly. Instead they return
+a JSON document describing a sequence of file operations.
+
+This module is responsible for:
+
+- parsing generator output;
+- validating every requested operation;
+- protecting against invalid or unsafe paths;
+- applying the operations inside the current worktree.
+
+Only validated operations are allowed to reach the filesystem.
+"""
+
 import json
 from pathlib import Path
 
 
+# TODO:
+# Consider supporting additional operations such as:
+# - rename
+# - move
+# - mkdir
+# if they prove beneficial without making prompts significantly harder.
 ALLOWED_OPERATIONS = {"create", "replace", "delete"}
 
 
 def parse_file_operations(raw: str) -> list[dict]:
+    """
+    Parse and validate generator output.
+
+    The generator may wrap the JSON in Markdown fences or include additional
+    text. This function extracts the JSON object, validates its schema and
+    returns the list of file operations.
+    """
     cleaned = _extract_json_object(raw)
 
     try:
@@ -23,8 +52,17 @@ def parse_file_operations(raw: str) -> list[dict]:
 
     return operations
 
-
+# TODO:
+# Replace the current heuristic with a proper JSON extractor capable of
+# recovering the first valid JSON object from arbitrary model output.
 def _extract_json_object(raw: str) -> str:
+    """
+    Extract the first JSON object from a generator response.
+
+    This provides a small amount of robustness against models that ignore the
+    requested output format by wrapping the JSON in Markdown fences or adding
+    extra text.
+    """
     text = raw.strip()
 
     if text.startswith("```"):
@@ -44,7 +82,17 @@ def _extract_json_object(raw: str) -> str:
     return text[start : end + 1]
 
 
+# TODO:
+# Execute operations atomically.
+# If one operation fails, previously applied operations should be rolled
+# back instead of leaving the worktree partially modified.
 def apply_file_operations(repo_path: str, operations: list[dict]) -> None:
+    """
+    Apply validated file operations to a repository.
+
+    Operations are executed sequentially inside the current worktree.
+    The original repository is never modified directly.
+    """
     root = Path(repo_path).resolve()
 
     for operation in operations:
@@ -75,6 +123,12 @@ def apply_file_operations(repo_path: str, operations: list[dict]) -> None:
 
 
 def _validate_operation(operation: dict) -> None:
+    """
+    Validate one file operation.
+
+    Ensures the requested operation follows the supported schema before any
+    filesystem access is attempted.
+    """
     if not isinstance(operation, dict):
         raise ValueError("Each operation must be an object")
 
@@ -103,6 +157,12 @@ def _validate_operation(operation: dict) -> None:
 
 
 def _safe_path(root: Path, relative_path: str) -> Path:
+    """
+    Resolve a repository-relative path safely.
+
+    Prevents path traversal attacks by ensuring the resolved path remains
+    inside the repository root.
+    """
     target = (root / relative_path).resolve()
 
     if not str(target).startswith(str(root)):
