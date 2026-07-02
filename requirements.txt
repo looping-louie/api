@@ -1,5 +1,6 @@
 fastapi==0.138.*
 httpx==0.28.*
+openai==2.*
 python-dotenv==1.*
 together==2.*
-openai==2.*
+uvicorn==0.49.*
