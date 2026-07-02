@@ -298,11 +298,8 @@ skills/
 code_review/
     small_patch_quality.md
 
-nuxt/
-    nuxt_code_review.md
-
-ui/
-    preserve_existing_ui.md
+release/
+    accessibility.md
 ```
 
 ---
