@@ -12,7 +12,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+# TODO:
+# Introduce a retention policy to automatically remove old run folders
+# after a configurable number of days or executions.
 
+# TODO:
+# Support serialising Pydantic models transparently instead of requiring
+# callers to convert them to dictionaries beforehand.
 def write_json(run_path: Path, filename: str, data: Any) -> None:
     """
     Serialize an object as formatted JSON inside the current run directory.
@@ -22,7 +28,6 @@ def write_json(run_path: Path, filename: str, data: Any) -> None:
 
     with path.open("w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
-
 
 def write_text(run_path: Path, filename: str, content: str) -> None:
     """
