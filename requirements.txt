@@ -1,5 +1,5 @@
-fastapi==0.138.2
-httpx==0.28.1
-python-dotenv==1.2.2
-together==2.21.0
-openai==2.44.0
+fastapi==0.138.*
+httpx==0.28.*
+python-dotenv==1.*
+together==2.*
+openai==2.*
