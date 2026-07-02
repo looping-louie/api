@@ -1,3 +1,13 @@
+"""
+Together generator client.
+
+This module calls Together.ai chat completions for the generator model.
+
+The generator is expected to return JSON file operations, not prose and
+not git patches. The rest of the runtime applies those operations to an
+isolated worktree and lets Git produce the real diff.
+"""
+
 import os
 import time
 
@@ -6,12 +16,26 @@ from together import Together
 
 load_dotenv()
 
+# TODO:
+# Lazily initialise the Together client, like llm_openai.py does, so the
+# API can start even when the SDK or API key is missing.
 client = Together(api_key=os.getenv("TOGETHER_API_KEY"))
 
-
+# TODO:
+# Add retry/backoff for transient provider failures such as 429 rate limits.
 async def call_together(model: str, prompt: str):
+    """
+    Call a Together-hosted generator model.
+
+    The returned dictionary is provider-normalised so the runner can consume
+    text, token counts and duration without depending on Together-specific
+    response objects.
+    """
     start = time.time()
 
+    # TODO:
+    # Move the generator contract prompt to prompt_builder.py or a dedicated
+    # provider-agnostic prompt template.
     response = client.chat.completions.create(
         model=model,
         messages=[
