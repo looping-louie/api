@@ -1,27 +1,29 @@
-# USE
+# Looping Louie
 
-## Repo
+## Installation
 
 To get the repo up and running, follow the steps:
 
 1. Run `make install` to create the virtualenv, install requirements and initialize the .env file.
-2. Manually add the required API keys in your new .env file.
-3. Run `make run` to start the uvicorn.
+
+## Configuration
+
+1. Manually add the required API keys in your new .env file.
+
+## Execution
+
+1. Run `make run` to start the uvicorn.
 
 ## API
 
 Check the API specific documentation [here][1]
 
-***
-
-# RULES
+## Caveat
 
 - Looping Louie only runs against a clean committed Git state.
   Commit or stash your changes before running.
 
-***
-
-# LOGIC
+## Logic
 
 /run
 → runner.py
