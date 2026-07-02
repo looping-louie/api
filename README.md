@@ -81,7 +81,7 @@ Looping Louie currently exposes two endpoints.
 
 See the complete API documentation:
 
-- [`docs/API.md`](docs/API.md)
+- [`docs/API.md`](doc/API.md)
 
 ---
 
