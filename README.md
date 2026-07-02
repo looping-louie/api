@@ -8,22 +8,9 @@ To get the repo up and running, follow the steps:
 2. Manually add the required API keys in your new .env file.
 3. Run `make run` to start the uvicorn.
 
-## Api
+## API
 
-The API currently has a single endpoint /run. You can call it like this:
-
-```
-curl -X POST http://127.0.0.1:8000/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
-    "prompt": "Fix the Nuxt layout warning. Ensure the default layout is actually used by app.vue. Do not redesign the homepage. Keep changes minimal.",
-    "max_iterations": 2,
-    "generator_model": "zai-org/GLM-5.2",
-    "reviewer_model": "gpt-4.1-mini",
-    "skills": ["small_patch_quality", "nuxt_code_review"]
-  }'
-```
+Check the API specific documentation [here][1]
 
 ***
 
@@ -46,3 +33,7 @@ curl -X POST http://127.0.0.1:8000/run \
 → llm_openai.py revisa diff + changed files
 → si aprueba: patcher.py aplica final_diff en repo original
 → workspace.py borra worktree
+
+## References
+
+[1]: <./doc/API.md>
