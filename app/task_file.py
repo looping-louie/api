@@ -1,12 +1,37 @@
+"""
+Task file management.
+
+Tasks define long-running development work that is executed sequentially
+by the harness.
+
+Each task represents one logical change to the repository and is
+committed independently after successful review.
+
+The task file is intentionally external to Git so it acts as an execution
+plan rather than part of the project's source code.
+"""
+
 import json
 from pathlib import Path
 from typing import Any
 
 
+# TODO:
+# Extend the task schema with optional execution settings such as:
+# - max_iterations
+# - skills
+# - generator_model
+# - reviewer_model
+# allowing each task to override the defaults.
 VALID_STATUSES = {"pending", "done"}
 
 
 def load_tasks(tasks_path: str) -> list[dict[str, Any]]:
+    """
+    Load and validate a tasks.json file.
+
+    Returns the complete list of tasks preserving their original order.
+    """
     path = Path(tasks_path)
 
     if not path.exists():
@@ -24,6 +49,12 @@ def load_tasks(tasks_path: str) -> list[dict[str, Any]]:
 
 
 def save_tasks(tasks_path: str, tasks: list[dict[str, Any]]) -> None:
+    """
+    Persist the current task list to disk.
+
+    Formatting is kept deterministic to minimise diffs while the file is
+    being updated during execution.
+    """
     path = Path(tasks_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -33,6 +64,11 @@ def save_tasks(tasks_path: str, tasks: list[dict[str, Any]]) -> None:
 
 
 def get_next_pending_task(tasks: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """
+    Return the first pending task.
+
+    Tasks are always executed sequentially in file order.
+    """
     for task in tasks:
         if task["status"] == "pending":
             return task
@@ -44,6 +80,9 @@ def mark_task_done(
     task_id: str,
     run_id: str,
 ) -> None:
+    """
+    Mark a task as completed and record the harness run that produced it.
+    """
     for task in tasks:
         if task["id"] == task_id:
             task["status"] = "done"
@@ -53,7 +92,15 @@ def mark_task_done(
     raise RuntimeError(f"Task not found: {task_id}")
 
 
+# TODO:
+# Replace manual validation with a dedicated Pydantic Task model so
+# task parsing is consistent with the rest of the API.
 def validate_task(task: dict[str, Any]) -> None:
+    """
+    Validate one task definition.
+
+    Raises RuntimeError if the task does not satisfy the expected schema.
+    """
     required = {"id", "status", "prompt", "run_id", "commit_message"}
     missing = required - set(task.keys())
 
