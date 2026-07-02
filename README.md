@@ -1,41 +1,176 @@
 # Looping Louie
 
-## Installation
+Looping Louie is a Harness-as-a-Service runtime for iterative LLM software development.
 
-To get the repo up and running, follow the steps:
+Instead of relying on a single model, Looping Louie orchestrates a development loop where:
 
-1. Run `make install` to create the virtualenv, install requirements and initialize the .env file.
+1. a generator proposes code changes;
+2. one or more specialised reviewer skills validate those changes;
+3. the generator iterates until every reviewer approves or a maximum number of iterations is reached.
 
-## Configuration
+The runtime is provider-independent and designed to be reproducible, observable and enterprise deployable.
 
-1. Manually add the required API keys in your new .env file.
+---
 
-## Execution
+# Features
 
-1. Run `make run` to start the uvicorn.
+- Iterative generator/reviewer workflow
+- Multiple independent review skills
+- Git worktree isolation
+- Automatic Git diff generation
+- JSON-based file operations
+- Automatic task execution from `tasks.json`
+- One commit per approved task
+- Complete execution traces
+- Token and latency metrics
+- Provider-independent architecture
 
-## API
+---
 
-Check the API specific documentation [here][1]
+# Installation
 
-## Caveat
+Clone the repository and install the project:
 
-- Looping Louie only runs against a clean committed Git state.
-  Commit or stash your changes before running.
+```sh
+make install
+```
 
-## Logic
+This command will:
 
-/run
-→ runner.py
-→ workspace.py crea worktree
-→ repository.py genera snapshot
-→ llm_together.py genera patch
-→ patcher.py valida/aplica en worktree
-→ patcher.py saca diff real
-→ llm_openai.py revisa diff + changed files
-→ si aprueba: patcher.py aplica final_diff en repo original
-→ workspace.py borra worktree
+- create the Python virtual environment;
+- install all dependencies;
+- create a `.env` file if it does not already exist.
 
-## References
+---
 
-[1]: <./doc/API.md>
+# Configuration
+
+Populate the generated `.env` file:
+
+```text
+TOGETHER_API_KEY=
+OPENAI_API_KEY=
+```
+
+---
+
+# Running the API
+
+Start the development server:
+
+```sh
+make run
+```
+
+The API will be available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+---
+
+# Usage
+
+Looping Louie currently exposes two endpoints.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/run` | Execute a single harness run. |
+| `/run-tasks` | Execute an entire `tasks.json` backlog. |
+
+See the complete API documentation:
+
+- [`docs/API.md`](docs/API.md)
+
+---
+
+# Repository Requirements
+
+Before running Looping Louie:
+
+- the target directory must be a Git repository;
+- the repository must have no uncommitted changes.
+
+Looping Louie refuses to execute against a dirty repository to guarantee deterministic results.
+
+---
+
+# Documentation
+
+Project documentation is organised under `docs/`.
+
+| Document | Purpose |
+|----------|---------|
+| `architecture.md` | Runtime architecture and execution lifecycle. |
+| `philosophy.md` | Design principles and engineering philosophy. |
+| `roadmap.md` | Planned architectural evolution. |
+| `API.md` | HTTP API reference. |
+| `development-log.md` | Engineering logbook and execution notes. |
+
+---
+
+# High-Level Execution Flow
+
+```
+tasks.json
+      │
+      ▼
+/run-tasks
+      │
+      ▼
+run_harness()
+      │
+      ▼
+Create Git worktree
+      │
+      ▼
+Build repository snapshot
+      │
+      ▼
+Generator model
+      │
+      ▼
+JSON file operations
+      │
+      ▼
+Apply operations
+      │
+      ▼
+Git diff
+      │
+      ▼
+Reviewer skills
+      │
+      ▼
+Approved?
+ │           │
+ │ No        │ Yes
+ ▼           ▼
+Retry    Apply diff
+          Commit
+```
+
+---
+
+# Current Status
+
+Looping Louie is currently an MVP focused on validating the execution runtime.
+
+The current implementation already supports:
+
+- isolated Git worktrees;
+- multi-skill review;
+- task backlogs (`tasks.json`);
+- automatic commits;
+- execution traces;
+- run persistence;
+- reusable review skills.
+
+Future work is tracked in `docs/roadmap.md`.
+
+---
+
+# License
+
+_Not yet defined._
