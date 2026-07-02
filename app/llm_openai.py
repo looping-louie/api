@@ -3,7 +3,6 @@ import os
 import time
 
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from app.skill_loader import load_skill
 
@@ -11,18 +10,20 @@ load_dotenv()
 
 client = None
 
+
 def get_client():
     global client
 
     if client is None:
         from openai import OpenAI
+
         client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
             timeout=60,
-            max_retries=1
+            max_retries=1,
         )
-    return client
 
+    return client
 
 
 async def review_with_openai(
@@ -43,11 +44,20 @@ async def review_with_openai(
         messages=[
             {
                 "role": "system",
-                "content": skill_prompt,
+                "content": f"""
+{skill_prompt}
+
+You must return valid JSON only.
+The JSON object must include:
+- approved: boolean
+- feedback: string
+""".strip(),
             },
             {
                 "role": "user",
                 "content": f"""
+Return valid JSON only.
+
 Original user prompt:
 
 {original_prompt}
@@ -62,14 +72,20 @@ Candidate diff and changed files:
         response_format={"type": "json_object"},
     )
 
-    raw = response.choices[0].message.content
-    data = json.loads(raw)
-
+    raw = response.choices[0].message.content or ""
     usage = response.usage
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        data = {
+            "approved": False,
+            "feedback": f"Reviewer returned invalid JSON: {raw}",
+        }
 
     return {
         "approved": bool(data.get("approved", False)),
-        "feedback": data.get("feedback") or data.get("summary") or raw,
+        "feedback": str(data.get("feedback") or data.get("summary") or raw),
         "input_tokens": getattr(usage, "prompt_tokens", 0) if usage else 0,
         "output_tokens": getattr(usage, "completion_tokens", 0) if usage else 0,
         "duration_ms": int((time.time() - start) * 1000),

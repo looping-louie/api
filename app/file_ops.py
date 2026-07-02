@@ -6,8 +6,10 @@ ALLOWED_OPERATIONS = {"create", "replace", "delete"}
 
 
 def parse_file_operations(raw: str) -> list[dict]:
+    cleaned = _extract_json_object(raw)
+
     try:
-        data = json.loads(raw)
+        data = json.loads(cleaned)
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON from generator: {exc}") from exc
 
@@ -20,6 +22,26 @@ def parse_file_operations(raw: str) -> list[dict]:
         _validate_operation(operation)
 
     return operations
+
+
+def _extract_json_object(raw: str) -> str:
+    text = raw.strip()
+
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("Generator output does not contain a JSON object")
+
+    return text[start : end + 1]
 
 
 def apply_file_operations(repo_path: str, operations: list[dict]) -> None:
