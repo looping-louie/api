@@ -18,7 +18,7 @@ import time
 
 from dotenv import load_dotenv
 
-from app.skill_loader import load_skill
+from src.app.skill_loader import load_skill
 
 load_dotenv()
 

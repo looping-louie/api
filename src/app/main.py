@@ -18,9 +18,9 @@ Business logic lives in runner.py and task_runner.py.
 
 from fastapi import FastAPI
 
-from app.runner import run_harness
-from app.schemas import RunRequest, RunResponse
-from app.task_runner import RunTasksRequest, run_tasks
+from src.app.runner import run_harness
+from src.app.schemas import RunRequest, RunResponse
+from src.app.task_runner import RunTasksRequest, run_tasks
 
 app = FastAPI(
     title="Looping Louie",

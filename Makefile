@@ -13,6 +13,6 @@ install: env
 	. env/bin/activate && python3 -m pip install -r requirements.txt
 
 dev:
-	uvicorn app.main:app --reload
+	uvicorn src.app.main:app --reload
 
 run: dev

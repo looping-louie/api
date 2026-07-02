@@ -15,10 +15,10 @@ repository never progresses beyond a failed step.
 
 from pydantic import BaseModel, Field
 
-from app.git_ops import commit_all, has_changes
-from app.runner import run_harness
-from app.schemas import RunRequest
-from app.task_file import (
+from src.app.git_ops import commit_all, has_changes
+from src.app.runner import run_harness
+from src.app.schemas import RunRequest
+from src.app.task_file import (
     get_next_pending_task,
     load_tasks,
     mark_task_done,
