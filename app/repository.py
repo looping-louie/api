@@ -1,3 +1,17 @@
+"""
+Repository context builder.
+
+Builds the repository snapshot that is sent to the generator model.
+
+The snapshot contains:
+- a filtered repository tree
+- selected text files
+- prioritised source files
+
+The goal is to give the model enough context to make safe changes without
+sending irrelevant or huge files such as lockfiles, build output or dependencies.
+"""
+
 from pathlib import Path
 
 IGNORED_DIRS = {
@@ -46,6 +60,11 @@ PRIORITY_PATHS = (
 )
 
 def _snapshot_priority(path: Path):
+    """
+    Sort repository paths so the most relevant source files are included first.
+
+    This matters because the snapshot has a global character budget.
+    """
     s = str(path)
 
     for i, prefix in enumerate(PRIORITY_PATHS):
@@ -57,8 +76,18 @@ def _snapshot_priority(path: Path):
 MAX_FILE_CHARS = 20_000
 MAX_TOTAL_CHARS = 80_000
 
-
+# TODO:
+# Replace the global snapshot with task-aware context selection.
+# The current strategy sends a broad repository snapshot; future versions
+# should select files based on the task, changed paths and references.
 def build_snapshot(repo_path: str) -> dict:
+    """
+    Build a bounded text snapshot of a repository.
+
+    Ignored directories and files are skipped.
+    Only supported text extensions are included.
+    Large files and the total snapshot size are capped.
+    """
     root = Path(repo_path).resolve()
     tree_lines = []
     files = []
@@ -101,6 +130,9 @@ def build_snapshot(repo_path: str) -> dict:
 
 
 def format_snapshot_for_prompt(snapshot: dict) -> str:
+    """
+    Convert a repository snapshot into prompt-ready text for the generator.
+    """
     blocks = []
     for file in snapshot["files"]:
         blocks.append(
@@ -121,6 +153,12 @@ Repository files:
 
 
 def read_changed_file_contents(repo_path: str, changed_files: list[str]) -> str:
+    """
+    Read the full contents of files changed by the current iteration.
+
+    Reviewers receive both the git diff and the full changed files so they can
+    understand context around the modified lines.
+    """
     root = Path(repo_path)
     blocks = []
 
