@@ -1,3 +1,22 @@
+"""
+Core harness runner.
+
+This module orchestrates one Looping Louie run:
+
+1. Create an isolated git worktree.
+2. Build repository context.
+3. Ask the generator model for JSON file operations.
+4. Apply operations inside the worktree.
+5. Generate a real git diff.
+6. Run all reviewer skills in parallel.
+7. Retry until reviewers approve or max_iterations is reached.
+8. If approved, apply the final diff to the original repository.
+9. Persist request, prompts, responses, diffs, metrics and trace.
+
+The runner should not know provider-specific details.
+Model calls live in llm_together.py and llm_openai.py.
+"""
+
 import asyncio
 import time
 
@@ -24,16 +43,19 @@ from app.workspace import create_workspace
 
 
 def _tokens_per_second(input_tokens: int, output_tokens: int, duration_ms: int) -> float:
+    """Compute throughput for a model call."""
     total_tokens = input_tokens + output_tokens
     return round(total_tokens / max(duration_ms / 1000, 0.001), 2)
 
 
 def _build_repo_context(worktree_path: str) -> str:
+    """Build the prompt-ready repository snapshot for the current worktree state."""
     snapshot = build_snapshot(worktree_path)
     return format_snapshot_for_prompt(snapshot)
 
 
 def _build_reviewer_metrics(skill: str, model: str, review: dict) -> ReviewerMetrics:
+    """Convert a raw reviewer response into structured metrics."""
     return ReviewerMetrics(
         skill=skill,
         model=model,
@@ -57,6 +79,12 @@ async def _run_single_reviewer(
     iteration: int,
     run_path,
 ) -> ReviewerResult:
+    """
+    Run one reviewer skill against the candidate diff.
+
+    The prompt and response are persisted under the run folder so executions
+    can be inspected after the API call finishes.
+    """
     write_text(
         run_path,
         f"reviewers/{skill}/iteration-{iteration}-prompt.txt",
@@ -91,6 +119,16 @@ async def _run_single_reviewer(
 
 
 async def run_harness(req: RunRequest) -> RunResponse:
+    """
+    Execute a single harness run.
+
+    The original repository is never mutated during iteration. All generator
+    operations are applied to an isolated worktree. Only when every reviewer
+    approves is the final diff applied back to the original repository.
+
+    Returns a RunResponse containing approval state, final diff, execution trace
+    and aggregated metrics.
+    """
     start = time.time()
     workspace = create_workspace(req.repo_path)
 
@@ -195,6 +233,10 @@ async def run_harness(req: RunRequest) -> RunResponse:
                     ]
                 )
 
+            # TODO: Split system errors from reviewer results.
+            # File operation failures are currently represented as a synthetic "system"
+            # reviewer so the loop can continue, but the response model should eventually
+            # expose explicit system_errors.
             except Exception as exc:
                 system_review_metrics = ReviewerMetrics(
                     skill="system",
