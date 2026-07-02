@@ -1,3 +1,18 @@
+"""
+Task runner.
+
+This is the highest-level orchestration entry point in Looping Louie.
+
+Executes an entire development backlog defined in a tasks.json file.
+
+Each pending task is processed sequentially by invoking the standard
+single-task harness. Successfully reviewed changes are committed before
+moving on to the next task.
+
+Execution stops immediately when a task cannot be approved, ensuring the
+repository never progresses beyond a failed step.
+"""
+
 from pydantic import BaseModel, Field
 
 from app.git_ops import commit_all, has_changes
@@ -11,7 +26,17 @@ from app.task_file import (
 )
 
 
+# TODO:
+# Allow individual tasks to override execution settings such as
+# models, skills and max_iterations.
 class RunTasksRequest(BaseModel):
+    """
+    Request model for the /run-tasks endpoint.
+
+    Defines the repository, task file and default execution parameters that
+    will be used for every pending task unless future task-level overrides
+    are introduced.
+    """
     repo_path: str
     tasks_path: str
     max_iterations: int = 3
@@ -21,8 +46,30 @@ class RunTasksRequest(BaseModel):
 
 
 async def run_tasks(req: RunTasksRequest) -> dict:
+    """
+    Execute every pending task from a tasks.json file.
+
+    Workflow:
+
+    1. Load the task list.
+    2. Pick the first pending task.
+    3. Execute the standard harness.
+    4. If approved:
+      - commit repository changes
+      - mark the task as done
+      - continue with the next task
+    5. If rejected:
+      - stop immediately
+      - return the failing task and run identifier.
+
+    Returns a summary of every completed task during this execution.
+    """
     completed = []
 
+    # TODO:
+    # Resume interrupted executions automatically.
+    # Since completed tasks are persisted, execution can continue from the
+    # first pending task after a crash or restart.
     while True:
         tasks = load_tasks(req.tasks_path)
         task = get_next_pending_task(tasks)
@@ -67,6 +114,10 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "completed": completed,
             }
 
+        # TODO:
+        # Support configurable commit strategies.
+        # Future options may include squash commits, signed commits,
+        # conventional commits or disabling automatic commits entirely.
         commit_sha = commit_all(
             repo_path=req.repo_path,
             message=task["commit_message"],
