@@ -1,9 +1,22 @@
+"""
+Run persistence helpers.
+
+Every harness execution produces prompts, responses, diffs, metrics and
+other debugging artefacts.
+
+This module provides small utilities to persist those artefacts inside
+the run directory under .looping-louie/runs/<run_id>/.
+"""
+
 import json
 from pathlib import Path
 from typing import Any
 
 
 def write_json(run_path: Path, filename: str, data: Any) -> None:
+    """
+    Serialize an object as formatted JSON inside the current run directory.
+    """
     path = run_path / filename
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -12,6 +25,9 @@ def write_json(run_path: Path, filename: str, data: Any) -> None:
 
 
 def write_text(run_path: Path, filename: str, content: str) -> None:
+    """
+    Persist plain text content inside the current run directory.
+    """
     path = run_path / filename
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
