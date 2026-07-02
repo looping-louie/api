@@ -1,3 +1,17 @@
+"""
+OpenAI reviewer client.
+
+This module executes reviewer skills using the OpenAI Chat Completions API.
+
+Each reviewer receives:
+- one review skill;
+- the original user request;
+- the candidate git diff and changed files.
+
+The model must return a structured JSON verdict that can be aggregated
+with the results from other reviewers.
+"""
+
 import json
 import os
 import time
@@ -8,10 +22,16 @@ from app.skill_loader import load_skill
 
 load_dotenv()
 
+# Lazily initialised OpenAI client shared by every reviewer invocation.
 client = None
 
-
 def get_client():
+    """
+    Return the shared OpenAI client.
+
+    The client is created lazily so importing the module does not require a
+    valid API key or initialise network resources.
+    """
     global client
 
     if client is None:
@@ -26,12 +46,26 @@ def get_client():
     return client
 
 
+# TODO:
+# Make this provider-agnostic.
+# The runner should depend on a generic reviewer interface rather than
+# directly on an OpenAI implementation.
 async def review_with_openai(
     model: str,
     original_prompt: str,
     candidate_output: str,
     skill: str,
 ):
+    """
+    Execute one review skill using an OpenAI model.
+
+    The skill Markdown document becomes the system prompt, while the user
+    message contains the original task together with the generated diff and
+    changed files.
+
+    Returns a provider-normalised review result containing approval state,
+    feedback and execution metrics.
+    """
     start = time.time()
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -39,6 +73,9 @@ async def review_with_openai(
 
     skill_prompt = load_skill(skill)
 
+    # TODO:
+    # Move the reviewer response contract into prompt_builder.py so every
+    # provider shares exactly the same prompt structure.
     response = get_client().chat.completions.create(
         model=model,
         messages=[
@@ -75,6 +112,9 @@ Candidate diff and changed files:
     raw = response.choices[0].message.content or ""
     usage = response.usage
 
+    # TODO:
+    # Replace this fallback with a shared JSON parser used by every provider.
+    # Together and OpenAI currently duplicate JSON parsing behaviour.
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
