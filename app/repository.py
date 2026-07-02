@@ -12,10 +12,19 @@ IGNORED_DIRS = {
     "build",
 }
 
+IGNORED_FILES = {
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    ".DS_Store",
+}
+
 INCLUDED_EXTENSIONS = {
     ".html",
     ".css",
     ".js",
+    ".ts",
+    ".vue",
     ".py",
     ".md",
     ".json",
@@ -24,6 +33,26 @@ INCLUDED_EXTENSIONS = {
     ".yml",
     ".yaml",
 }
+
+PRIORITY_PATHS = (
+    "app.vue",
+    "layouts/",
+    "pages/",
+    "components/",
+    "composables/",
+    "plugins/",
+    "nuxt.config.ts",
+    "package.json",
+)
+
+def _snapshot_priority(path: Path):
+    s = str(path)
+
+    for i, prefix in enumerate(PRIORITY_PATHS):
+        if s.startswith(prefix) or s == prefix:
+            return (0, i, s)
+
+    return (1, 999, s)
 
 MAX_FILE_CHARS = 20_000
 MAX_TOTAL_CHARS = 80_000
@@ -35,10 +64,14 @@ def build_snapshot(repo_path: str) -> dict:
     files = []
     total_chars = 0
 
-    for path in sorted(root.rglob("*")):
+    paths = sorted(root.rglob("*"), key=_snapshot_priority)
+    for path in paths:
         relative = path.relative_to(root)
 
         if any(part in IGNORED_DIRS for part in relative.parts):
+            continue
+
+        if path.name in IGNORED_FILES:
             continue
 
         if path.is_dir():
