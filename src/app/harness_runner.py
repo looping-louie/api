@@ -40,7 +40,7 @@ from src.app.schemas import (
     ReviewerResult,
     RunMetrics,
     RunHarnessRequest,
-    RunResponse,
+    RunHarnessResponse,
 )
 from src.app.services.workspace import create_workspace
 
@@ -121,7 +121,7 @@ async def _run_single_reviewer(
     )
 
 
-async def run_harness(req: RunHarnessRequest) -> RunResponse:
+async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
     """
     Execute a single harness run.
 
@@ -129,8 +129,8 @@ async def run_harness(req: RunHarnessRequest) -> RunResponse:
     operations are applied to an isolated worktree. Only when every reviewer
     approves is the final diff applied back to the original repository.
 
-    Returns a RunResponse containing approval state, final diff, execution trace
-    and aggregated metrics.
+    Returns a RunHarnessResponse containing approval state, final diff,
+    execution trace and aggregated metrics.
     """
     start = time.time()
     workspace = create_workspace(req.repo_path)
@@ -320,7 +320,7 @@ async def run_harness(req: RunHarnessRequest) -> RunResponse:
         duration_ms = int((time.time() - start) * 1000)
         total_tokens = total_input_tokens + total_output_tokens
 
-        response = RunResponse(
+        response = RunHarnessResponse(
             run_id=workspace.run_id,
             final_output=final_diff,
             approved=approved,

@@ -120,9 +120,9 @@ class IterationTrace(BaseModel):
     reviewers_metrics: list[ReviewerMetrics]
 
 
-class RunResponse(BaseModel):
+class RunHarnessResponse(BaseModel):
     """
-    Final response returned by the /run endpoint.
+    Final response returned by the /run-harness endpoint.
 
     Contains the final diff, approval status, execution trace
     and aggregated execution metrics.
