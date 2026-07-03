@@ -2,7 +2,7 @@
 
 Looping Louie currently exposes two HTTP endpoints.
 
-- `/run` executes a single harness run.
+- `/run-harness` executes a single harness run.
 - `/run-tasks` executes an entire `tasks.json` backlog.
 
 ---
@@ -27,7 +27,7 @@ The repository is modified **only if every reviewer approves** before `max_itera
 ## Example
 
 ```sh
-curl -X POST http://127.0.0.1:8000/run \
+curl -X POST http://127.0.0.1:8000/run-harness \
   -H "Content-Type: application/json" \
   -d '{
     "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
@@ -93,7 +93,7 @@ curl -X POST http://127.0.0.1:8000/run-tasks \
 
 # Choosing an endpoint
 
-Use **`/run`** when:
+Use **`/run-harness`** when:
 
 - experimenting with prompts;
 - testing a new skill;

@@ -39,7 +39,7 @@ from src.app.schemas import (
     ReviewerMetrics,
     ReviewerResult,
     RunMetrics,
-    RunRequest,
+    RunHarnessRequest,
     RunResponse,
 )
 from src.app.services.workspace import create_workspace
@@ -76,7 +76,7 @@ def _build_reviewer_metrics(skill: str, model: str, review: dict) -> ReviewerMet
 
 
 async def _run_single_reviewer(
-    req: RunRequest,
+    req: RunHarnessRequest,
     skill: str,
     review_input: str,
     iteration: int,
@@ -121,7 +121,7 @@ async def _run_single_reviewer(
     )
 
 
-async def run_harness(req: RunRequest) -> RunResponse:
+async def run_harness(req: RunHarnessRequest) -> RunResponse:
     """
     Execute a single harness run.
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from src.app.runner import run_harness
-from src.app.schemas import RunRequest, RunResponse
+from src.app.schemas import RunHarnessRequest, RunResponse
+from src.app.harness_runner import run_harness
 from src.app.task_runner import RunTasksRequest, run_tasks
 
 
@@ -8,8 +8,8 @@ from src.app.task_runner import RunTasksRequest, run_tasks
 router = APIRouter()
 
 
-@router.post("/run", response_model=RunResponse)
-async def run(req: RunRequest):
+@router.post("/run-harness", response_model=RunResponse)
+async def run_harness_endpoint(req: RunHarnessRequest):
     """
     Execute a single harness run.
 

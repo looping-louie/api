@@ -14,8 +14,8 @@ repository never progresses beyond a failed step.
 """
 
 from src.app.services.git_ops import commit_all, has_changes
-from src.app.runner import run_harness
-from src.app.schemas import RunRequest, RunTasksRequest
+from src.app.harness_runner import run_harness
+from src.app.schemas import RunHarnessRequest, RunTasksRequest
 from src.app.task_file import (
     get_next_pending_task,
     load_tasks,
@@ -61,7 +61,7 @@ async def run_tasks(req: RunTasksRequest) -> dict:
             }
 
         run_response = await run_harness(
-            RunRequest(
+            RunHarnessRequest(
                 repo_path=req.repo_path,
                 prompt=task["prompt"],
                 max_iterations=req.max_iterations,

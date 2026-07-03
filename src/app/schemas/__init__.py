@@ -17,7 +17,7 @@ The hierarchy is intentionally split into:
 from pydantic import BaseModel, Field
 
 
-class RunRequest(BaseModel):
+class RunHarnessRequest(BaseModel):
     """
     Input for a single harness execution.
     """

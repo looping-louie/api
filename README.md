@@ -76,7 +76,7 @@ Looping Louie currently exposes two endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/run` | Execute a single harness run. |
+| `/run-harness` | Execute a single harness run. |
 | `/run-tasks` | Execute an entire `tasks.json` backlog. |
 
 See the complete API documentation:
@@ -167,7 +167,7 @@ The current implementation already supports:
 - run persistence;
 - reusable review skills.
 
-Future work is tracked in `docs/roadmap.md`.
+Future work is tracked in `doc/roadmap.md`.
 
 ---
 

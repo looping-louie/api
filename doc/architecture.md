@@ -17,7 +17,7 @@ The runtime is intentionally independent from any specific programming language,
              Task Runner (/run-tasks)
                      │
                      ▼
-              Harness Runner (/run)
+              Harness Runner (/run-harness)
                      │
           ┌──────────┴──────────┐
           │                     │
