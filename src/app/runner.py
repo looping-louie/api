@@ -19,7 +19,6 @@ Model calls live in llm_together.py and llm_openai.py.
 
 import asyncio
 import time
-
 from src.app.services.file_ops import apply_file_operations, parse_file_operations
 from src.app.llm_openai import review_with_openai
 from src.app.llm_together import call_together
@@ -29,7 +28,11 @@ from src.app.prompt_builder import (
     build_retry_generator_prompt,
     build_reviewer_input,
 )
-from src.app.repository import build_snapshot, format_snapshot_for_prompt, read_changed_file_contents
+from src.app.services.repository import (
+    build_snapshot,
+    format_snapshot_for_prompt,
+    read_changed_file_contents,
+)
 from src.app.utils.io import write_json, write_text
 from src.app.schemas import (
     ModelMetrics,
@@ -39,7 +42,7 @@ from src.app.schemas import (
     RunRequest,
     RunResponse,
 )
-from src.app.workspace import create_workspace
+from src.app.services.workspace import create_workspace
 
 
 def _tokens_per_second(input_tokens: int, output_tokens: int, duration_ms: int) -> float:
