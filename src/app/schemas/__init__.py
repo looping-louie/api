@@ -29,6 +29,25 @@ class RunRequest(BaseModel):
     skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
 
 
+# TODO:
+# Allow individual tasks to override execution settings such as
+# models, skills and max_iterations.
+class RunTasksRequest(BaseModel):
+    """
+    Request model for the /run-tasks endpoint.
+
+    Defines the repository, task file and default execution parameters that
+    will be used for every pending task unless future task-level overrides
+    are introduced.
+    """
+    repo_path: str
+    tasks_path: str
+    max_iterations: int = 3
+    generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
+    reviewer_model: str = "gpt-4.1-mini"
+    skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
+
+
 class ModelMetrics(BaseModel):
     """
     Performance metrics collected from one LLM invocation.

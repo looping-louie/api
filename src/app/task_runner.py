@@ -13,36 +13,15 @@ Execution stops immediately when a task cannot be approved, ensuring the
 repository never progresses beyond a failed step.
 """
 
-from pydantic import BaseModel, Field
-
 from src.app.services.git_ops import commit_all, has_changes
 from src.app.runner import run_harness
-from src.app.schemas import RunRequest
+from src.app.schemas import RunRequest, RunTasksRequest
 from src.app.task_file import (
     get_next_pending_task,
     load_tasks,
     mark_task_done,
     save_tasks,
 )
-
-
-# TODO:
-# Allow individual tasks to override execution settings such as
-# models, skills and max_iterations.
-class RunTasksRequest(BaseModel):
-    """
-    Request model for the /run-tasks endpoint.
-
-    Defines the repository, task file and default execution parameters that
-    will be used for every pending task unless future task-level overrides
-    are introduced.
-    """
-    repo_path: str
-    tasks_path: str
-    max_iterations: int = 3
-    generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
-    reviewer_model: str = "gpt-4.1-mini"
-    skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
 
 
 async def run_tasks(req: RunTasksRequest) -> dict:
