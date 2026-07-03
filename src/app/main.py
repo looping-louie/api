@@ -17,7 +17,7 @@ Business logic lives in runner.py and task_runner.py.
 """
 
 from fastapi import FastAPI
-from app.routers import router
+from src.app.routers import router
 
 
 app = FastAPI(

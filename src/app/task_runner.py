@@ -15,7 +15,7 @@ repository never progresses beyond a failed step.
 
 from pydantic import BaseModel, Field
 
-from app.services.git_ops import commit_all, has_changes
+from src.app.services.git_ops import commit_all, has_changes
 from src.app.runner import run_harness
 from src.app.schemas import RunRequest
 from src.app.task_file import (
