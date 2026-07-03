@@ -30,7 +30,7 @@ from src.app.prompt_builder import (
     build_reviewer_input,
 )
 from src.app.repository import build_snapshot, format_snapshot_for_prompt, read_changed_file_contents
-from src.app.run_store import write_json, write_text
+from src.app.utils.io import write_json, write_text
 from src.app.schemas import (
     ModelMetrics,
     ReviewerMetrics,
