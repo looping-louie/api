@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from src.app.schemas import RunHarnessRequest, RunHarnessResponse
-from src.app.harness_runner import run_harness
-from src.app.task_runner import RunTasksRequest, run_tasks
+from src.app.controllers.harness_runner import run_harness
+from src.app.controllers.task_runner import RunTasksRequest, run_tasks
 
 
 # Create the router instance
