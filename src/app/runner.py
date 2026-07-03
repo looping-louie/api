@@ -20,7 +20,7 @@ Model calls live in llm_together.py and llm_openai.py.
 import asyncio
 import time
 
-from app.services.file_ops import apply_file_operations, parse_file_operations
+from src.app.services.file_ops import apply_file_operations, parse_file_operations
 from src.app.llm_openai import review_with_openai
 from src.app.llm_together import call_together
 from src.app.patcher import apply_patch, get_changed_files, get_git_diff, validate_patch
