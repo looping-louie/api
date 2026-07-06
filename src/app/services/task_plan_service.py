@@ -52,6 +52,11 @@ def load_tasks(tasks_path: str) -> list[dict[str, Any]]:
     if not isinstance(data, list):
         raise RuntimeError("tasks.json must be a JSON array")
 
+    # Detecta IDs duplicados.
+    task_ids = [task["id"] for task in data]
+    if len(task_ids) != len(set(task_ids)):
+        raise RuntimeError("tasks.json contains duplicate task ids")
+
     for task in data:
         validate_task(task)
 
@@ -113,6 +118,7 @@ def validate_task(task: dict[str, Any]) -> None:
     """
     required = {"id", "status", "prompt", "run_id", "commit_message"}
     missing = required - set(task.keys())
+    run_id = task["run_id"]
 
     if missing:
         raise RuntimeError(f"Task is missing fields: {', '.join(sorted(missing))}")
@@ -128,3 +134,13 @@ def validate_task(task: dict[str, Any]) -> None:
 
     if not isinstance(task["commit_message"], str) or not task["commit_message"]:
         raise RuntimeError(f"Task {task['id']} commit_message must be non-empty")
+
+    if run_id is not None and not isinstance(run_id, str):
+        raise RuntimeError(
+            f"Task {task['id']} run_id must be a string or null"
+        )
+
+    if task["status"] == "done" and not run_id:
+        raise RuntimeError(
+            f"Completed task {task['id']} must contain a run_id"
+        )
