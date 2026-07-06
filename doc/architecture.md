@@ -227,10 +227,10 @@ task_runner.py
 workspace.py
     Git worktree lifecycle
 
-ModelContextService.py
+model_context_service.py
     Prompt construction and Repository snapshot builder
 
-FileChangeService.py
+file_change_service.py
     JSON file operations
 
 git_service.py

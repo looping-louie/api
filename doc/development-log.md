@@ -26,5 +26,5 @@
 ```
 - Se ejecuta en 23847 ms, consume 27347 it y 1444 ot.
 - La nueva página solicitada funciona perfectamente como se pidió, pero el diseño se va a la mierda. Además en el proceso de hacerla se cepilla por completo todo el diseño y contenido que tenía index.vue.
-- El error venía de `repository.py` (ahora en ModelContextService.py) que no estaba enviando archivos .vue ni .ts en el snapshot del repo. Una vez corregido la funcionalidad sale bien.
+- El error venía de `repository.py` (ahora en model_context_service.py) que no estaba enviando archivos .vue ni .ts en el snapshot del repo. Una vez corregido la funcionalidad sale bien.
 
