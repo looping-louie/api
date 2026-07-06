@@ -22,7 +22,7 @@ import time
 from src.app.services.FileChangeService import apply_file_operations, parse_file_operations
 from src.app.llm_openai import review_with_openai
 from src.app.llm_together import call_together
-from src.app.services.GitService import apply_patch, get_changed_files, get_git_diff, validate_patch
+from src.app.services.git_service import apply_patch, get_changed_files, get_git_diff, validate_patch
 from src.app.services.ModelContextService import (
     build_initial_generator_prompt,
     build_retry_generator_prompt,
@@ -40,7 +40,7 @@ from src.app.schemas import (
     RunHarnessRequest,
     RunHarnessResponse,
 )
-from src.app.services.workspace import create_workspace
+from src.app.services.workspace_service import create_workspace
 
 
 def _tokens_per_second(input_tokens: int, output_tokens: int, duration_ms: int) -> float:
