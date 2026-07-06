@@ -16,7 +16,7 @@ repository never progresses beyond a failed step.
 from src.app.services.git_ops import commit_all, has_changes
 from src.app.controllers.harness_runner import run_harness
 from src.app.schemas import RunHarnessRequest, RunTasksRequest
-from src.app.task_file import (
+from src.app.services.TaskPlanService import (
     get_next_pending_task,
     load_tasks,
     mark_task_done,
