@@ -1,12 +1,9 @@
 """
 Select the minimum useful reviewer set for one task.
 """
-
-import json
 from typing import Any
-
 from src.app.schemas import ReviewerAssignment, SkillPlan
-from src.app.services.llm_service import plan_skills_with_openai
+from src.app.services.llm_service.openai import plan_skills_with_openai
 from src.app.skills import load_skill_registry
 
 
