@@ -1,15 +1,25 @@
 """
-Task file management.
+Task plan service.
 
-Tasks define long-running development work that is executed sequentially
+Loads, validates, updates and persists the ordered development plan executed
 by the harness.
 
-Each task represents one logical change to the repository and is
-committed independently after successful review.
+Each task represents one logical repository change and is processed
+sequentially. Successfully reviewed tasks are associated with the harness run
+that produced them and marked as completed.
 
-The task file is intentionally external to Git so it acts as an execution
-plan rather than part of the project's source code.
+Responsibilities include:
+
+- loading task plans from persistent storage;
+- validating task definitions and status transitions;
+- selecting the next pending task;
+- recording successful task completion;
+- persisting the updated execution plan deterministically.
+
+The current implementation uses a JSON file as storage, while exposing
+task-plan behaviour independently from the orchestration layer.
 """
+
 
 import json
 from pathlib import Path

@@ -1,275 +1,230 @@
 """
-Repository context builder.
+Model file-change service.
 
-Builds the repository snapshot that is sent to the generator model.
+Converts untrusted generator output into validated filesystem mutations.
 
-The snapshot contains:
-- a filtered repository tree
-- selected text files
-- prioritised source files
+Generator models never modify repositories directly. They return a structured
+JSON document describing file operations such as create, replace and delete.
 
-The goal is to give the model enough context to make safe changes without
-sending irrelevant or huge files such as lockfiles, build output or dependencies.
+Responsibilities include:
+
+- extracting structured JSON from model responses;
+- validating the file-operation schema;
+- rejecting unsupported operations and protected paths;
+- preventing path traversal outside the execution workspace;
+- applying validated changes to the temporary worktree.
+
+This service forms the security boundary between arbitrary model output and
+the local filesystem. It does not execute Git commands or apply changes to the
+original user repository.
 """
 
+import json
 from pathlib import Path
 
-IGNORED_DIRS = {
+
+# TODO:
+# Consider supporting additional operations such as:
+# - rename
+# - move
+# - mkdir
+# if they prove beneficial without making prompts significantly harder.
+ALLOWED_OPERATIONS = {"create", "replace", "delete"}
+
+PROTECTED_PATH_PARTS = {
     ".git",
     ".looping-louie",
-    "__pycache__",
-    "env",
-    "venv",
-    ".venv",
-    "node_modules",
-    "dist",
-    "build",
 }
 
-IGNORED_FILES = {
-    "package-lock.json",
-    "pnpm-lock.yaml",
-    "yarn.lock",
-    ".DS_Store",
-}
 
-INCLUDED_EXTENSIONS = {
-    ".html",
-    ".css",
-    ".js",
-    ".ts",
-    ".vue",
-    ".py",
-    ".md",
-    ".json",
-    ".txt",
-    ".toml",
-    ".yml",
-    ".yaml",
-}
-
-PRIORITY_PATHS = (
-    "app.vue",
-    "layouts/",
-    "pages/",
-    "components/",
-    "composables/",
-    "plugins/",
-    "nuxt.config.ts",
-    "package.json",
-)
-
-def _snapshot_priority(path: Path):
+def parse_file_operations(raw: str) -> list[dict]:
     """
-    Sort repository paths so the most relevant source files are included first.
+    Parse and validate generator output.
 
-    This matters because the snapshot has a global character budget.
+    The generator may wrap the JSON in Markdown fences or include additional
+    text. This function extracts the JSON object, validates its schema and
+    returns the list of file operations.
     """
-    s = str(path)
+    cleaned = _extract_json_object(raw)
 
-    for i, prefix in enumerate(PRIORITY_PATHS):
-        if s.startswith(prefix) or s == prefix:
-            return (0, i, s)
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON from generator: {exc}") from exc
 
-    return (1, 999, s)
+    if not isinstance(data, dict):
+        raise ValueError("Generator JSON must be an object")
 
-MAX_FILE_CHARS = 20_000
-MAX_TOTAL_CHARS = 80_000
+    operations = data.get("operations")
+
+    if not isinstance(operations, list):
+        raise ValueError("Generator JSON must contain an operations list")
+
+    for operation in operations:
+        _validate_operation(operation)
+
+    return operations
+
 
 # TODO:
-# Replace the global snapshot with task-aware context selection.
-# The current strategy sends a broad repository snapshot; future versions
-# should select files based on the task, changed paths and references.
-def build_snapshot(repo_path: str) -> dict:
+# Replace the current heuristic with a proper JSON extractor capable of
+# recovering the first valid JSON object from arbitrary model output.
+def _extract_json_object(raw: str) -> str:
     """
-    Build a bounded text snapshot of a repository.
+    Extract the first JSON object from a generator response.
 
-    Ignored directories and files are skipped.
-    Only supported text extensions are included.
-    Large files and the total snapshot size are capped.
+    This provides a small amount of robustness against models that ignore the
+    requested output format by wrapping the JSON in Markdown fences or adding
+    extra text.
+    """
+    text = raw.strip()
+
+    if text.startswith("```"):
+        lines = text.splitlines()
+
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+
+        text = "\n".join(lines).strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("Generator output does not contain a JSON object")
+
+    return text[start : end + 1]
+
+
+# TODO:
+# Execute operations atomically.
+# If one operation fails, previously applied operations should be rolled
+# back instead of leaving the worktree partially modified.
+def apply_file_operations(
+    repo_path: str,
+    operations: list[dict],
+) -> None:
+    """
+    Apply validated file operations to a repository.
+
+    Operations are validated again at the filesystem boundary and then
+    executed sequentially inside the current worktree.
+
+    The original repository is never modified directly.
     """
     root = Path(repo_path).resolve()
-    tree_lines = []
-    files = []
-    total_chars = 0
 
-    paths = sorted(root.rglob("*"), key=_snapshot_priority)
-    for path in paths:
-        relative = path.relative_to(root)
+    for operation in operations:
+        _validate_operation(operation)
 
-        if any(part in IGNORED_DIRS for part in relative.parts):
-            continue
+        op = operation["operation"]
+        relative_path = operation["path"]
+        target = _safe_path(root, relative_path)
 
-        if path.name in IGNORED_FILES:
-            continue
+        if op == "create":
+            if target.exists():
+                raise ValueError(
+                    f"Cannot create existing file: {relative_path}"
+                )
 
-        if path.is_dir():
-            tree_lines.append(f"{relative}/")
-            continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(
+                operation["content"],
+                encoding="utf-8",
+            )
 
-        tree_lines.append(str(relative))
+        elif op == "replace":
+            if not target.exists():
+                raise ValueError(
+                    f"Cannot replace missing file: {relative_path}"
+                )
 
-        if path.suffix not in INCLUDED_EXTENSIONS:
-            continue
+            if not target.is_file():
+                raise ValueError(
+                    f"Cannot replace non-file path: {relative_path}"
+                )
 
-        try:
-            content = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
+            target.write_text(
+                operation["content"],
+                encoding="utf-8",
+            )
 
-        if len(content) > MAX_FILE_CHARS:
-            content = content[:MAX_FILE_CHARS] + "\n\n[TRUNCATED]"
+        elif op == "delete":
+            if not target.exists():
+                raise ValueError(
+                    f"Cannot delete missing file: {relative_path}"
+                )
 
-        if total_chars + len(content) > MAX_TOTAL_CHARS:
-            continue
+            if target.is_dir():
+                raise ValueError(
+                    f"Cannot delete directory: {relative_path}"
+                )
 
-        files.append({"path": str(relative), "content": content})
-        total_chars += len(content)
-
-    return {"root": str(root), "tree": "\n".join(tree_lines), "files": files}
+            target.unlink()
 
 
-def format_snapshot_for_prompt(snapshot: dict) -> str:
+def _validate_operation(operation: dict) -> None:
     """
-    Convert a repository snapshot into prompt-ready text for the generator.
+    Validate one file operation.
+
+    Ensures the requested operation follows the supported schema and does not
+    target protected repository paths before any filesystem access occurs.
     """
-    blocks = []
-    for file in snapshot["files"]:
-        blocks.append(
-            f"""--- FILE: {file["path"]} ---
-{file["content"]}
---- END FILE ---"""
+    if not isinstance(operation, dict):
+        raise ValueError("Each operation must be an object")
+
+    op = operation.get("operation")
+    path = operation.get("path")
+
+    if op not in ALLOWED_OPERATIONS:
+        raise ValueError(f"Invalid operation: {op}")
+
+    if not path or not isinstance(path, str):
+        raise ValueError("Operation path must be a non-empty string")
+
+    operation_path = Path(path)
+
+    if operation_path.is_absolute():
+        raise ValueError(f"Absolute paths are not allowed: {path}")
+
+    path_parts = operation_path.parts
+
+    if ".." in path_parts:
+        raise ValueError(
+            f"Parent path traversal is not allowed: {path}"
         )
 
-    return f"""
-Repository tree:
-
-{snapshot["tree"]}
-
-Repository files:
-
-{chr(10).join(blocks)}
-""".strip()
-
-
-def read_changed_file_contents(repo_path: str, changed_files: list[str]) -> str:
-    """
-    Read the full contents of files changed by the current iteration.
-
-    Reviewers receive both the git diff and the full changed files so they can
-    understand context around the modified lines.
-    """
-    root = Path(repo_path)
-    blocks = []
-
-    for file_path in changed_files:
-        path = root / file_path
-        if not path.exists() or not path.is_file():
-            continue
-
-        try:
-            content = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-
-        blocks.append(
-            f"""--- CHANGED FILE: {file_path} ---
-{content}
---- END CHANGED FILE ---"""
+    if any(part in PROTECTED_PATH_PARTS for part in path_parts):
+        raise ValueError(
+            f"Protected path cannot be modified: {path}"
         )
 
-    return "\n\n".join(blocks)
+    if op in {"create", "replace"}:
+        content = operation.get("content")
+
+        if not isinstance(content, str):
+            raise ValueError(
+                f"{op} operation requires string content"
+            )
+
+    if op == "delete" and "content" in operation:
+        raise ValueError(
+            "delete operation must not include content"
+        )
 
 
-# TODO:
-# Split prompts into stable and dynamic sections so providers supporting
-# prompt caching can reuse the repository context across iterations.
-def build_initial_generator_prompt(
-    repo_context: str,
-    user_prompt: str,
-) -> str:
+def _safe_path(root: Path, relative_path: str) -> Path:
     """
-    Build the generator prompt for the first iteration.
-
-    The prompt contains the repository snapshot and the user's requested task.
+    Resolve a repository-relative path and ensure it remains inside the root.
     """
-    return f"""
-Repository context:
+    target = (root / relative_path).resolve()
 
-{repo_context}
+    if not target.is_relative_to(root):
+        raise ValueError(
+            f"Path escapes repository: {relative_path}"
+        )
 
-User task:
-
-{user_prompt}
-
-Return ONLY JSON file operations.
-Do not return a git patch.
-""".strip()
-
-
-def build_retry_generator_prompt(
-    repo_context: str,
-    user_prompt: str,
-    previous_generator_output: str,
-    reviewer_feedback: str,
-) -> str:
-    """
-    Build the generator prompt for retry iterations.
-
-    In addition to the repository snapshot and user task, retry prompts include
-    the previous generator output and reviewer feedback so the model can refine
-    its proposal.
-    """
-    return f"""
-Repository context:
-
-{repo_context}
-
-User task:
-
-{user_prompt}
-
-Previous generator output:
-
-{previous_generator_output}
-
-Reviewer or system feedback:
-
-{reviewer_feedback}
-
-Return corrected JSON file operations only.
-""".strip()
-
-
-# TODO:
-# Support multimodal reviewer inputs (screenshots, diagrams and other
-# artefacts) in addition to text-based diffs.
-def build_reviewer_input(
-    user_prompt: str,
-    final_diff: str,
-    changed_file_contents: str,
-) -> str:
-    """
-    Build the reviewer input.
-
-    Reviewers receive:
-    - the original user request;
-    - the git diff produced by the generator;
-    - the full contents of every changed file.
-
-    This allows skills to review both the change itself and its surrounding
-    context.
-    """
-    return f"""
-Original user prompt:
-
-{user_prompt}
-
-Git diff:
-
-{final_diff}
-
-Changed files:
-
-{changed_file_contents}
-""".strip()
+    return target
