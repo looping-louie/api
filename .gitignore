@@ -1,3 +1,7 @@
+# Runtime folders
+.looping-louie/
+runtime/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -39,6 +43,3 @@ dist/
 # Local SQLite (if ever used)
 *.db
 *.sqlite3
-
-.env
-.looping-louie/
