@@ -236,11 +236,8 @@ file_change_service.py
 git_service.py
     Git commit helpers and Git diff generation
 
-llm_together.py
-    Generator provider
-
-llm_openai.py
-    Reviewer provider
+llm_service.py
+    Manages calls to generator and reviewer/s provider/s
 
 skill_loader.py
     Skill loading
