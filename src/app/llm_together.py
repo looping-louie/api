@@ -34,7 +34,7 @@ async def call_together(model: str, prompt: str):
     start = time.time()
 
     # TODO:
-    # Move the generator contract prompt to prompt_builder.py or a dedicated
+    # Move the generator contract prompt to ModelContextService.py or a dedicated
     # provider-agnostic prompt template.
     response = client.chat.completions.create(
         model=model,
