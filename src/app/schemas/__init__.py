@@ -14,7 +14,38 @@ The hierarchy is intentionally split into:
 - run response
 """
 
+from typing import Literal
 from pydantic import BaseModel, Field
+
+
+ProjectPhase = Literal["prototype", "mvp", "production"]
+
+
+class ReviewerAssignment(BaseModel):
+    """
+    One reviewer selected by the skill planner.
+    """
+    skill: str
+    strictness: int = Field(ge=0, le=100)
+    focus: str
+
+
+class SkillPlan(BaseModel):
+    """
+    Review strategy selected for one development task.
+    """
+    phase: ProjectPhase
+    reasoning: str
+    reviewers: list[ReviewerAssignment]
+
+
+class ReviewerIssue(BaseModel):
+    """
+    One concrete issue found by a reviewer.
+    """
+    title: str
+    description: str
+    file: str | None = None
 
 
 class RunHarnessRequest(BaseModel):
@@ -27,7 +58,8 @@ class RunHarnessRequest(BaseModel):
     generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
     reviewer_model: str = "gpt-4.1-mini"
     skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
-
+    skill_plan: SkillPlan | None = None
+    constitution: str = ""
 
 # TODO:
 # Allow individual tasks to override execution settings such as
@@ -45,7 +77,8 @@ class RunTasksRequest(BaseModel):
     max_iterations: int = 3
     generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
     reviewer_model: str = "gpt-4.1-mini"
-    skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
+    planner_model: str = "gpt-4.1-mini"
+    skills: list[str] = Field(default_factory=list)
 
 
 class ModelMetrics(BaseModel):
@@ -74,16 +107,6 @@ class ReviewerMetrics(ModelMetrics):
     skill: str
 
 
-class ReviewerResult(BaseModel):
-    """
-    Result returned by one reviewer skill.
-    """
-    skill: str
-    approved: bool
-    feedback: str
-    metrics: ReviewerMetrics
-
-
 class RunMetrics(BaseModel):
     """
     Aggregated metrics for the complete harness execution.
@@ -98,6 +121,27 @@ class RunMetrics(BaseModel):
     duration_ms: int
     tokens_per_second: float
     estimated_cost_eur: float = 0
+
+
+class ReviewerResult(BaseModel):
+    """
+    Normalised reviewer result enriched by the harness.
+
+    Execution metadata is generated locally and never trusted to the model.
+    """
+    skill: str
+    model: str
+    run_id: str
+    iteration: int
+    phase: ProjectPhase
+    strictness: int
+
+    score: int = Field(ge=0, le=100)
+    blocking_issues: list[ReviewerIssue]
+    feedback: str
+    approved: bool
+
+    metrics: ReviewerMetrics
 
 
 # TODO:

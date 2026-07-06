@@ -35,11 +35,13 @@ from src.app.schemas import (
     ModelMetrics,
     ReviewerMetrics,
     ReviewerResult,
+    ReviewerAssignment,
     RunMetrics,
     RunHarnessRequest,
     RunHarnessResponse,
+    SkillPlan
 )
-from src.app.services.workspace_service import create_workspace
+from src.app.services.workspace_service import create_workspace, cleanup_workspace
 
 
 def _tokens_per_second(input_tokens: int, output_tokens: int, duration_ms: int) -> float:
@@ -74,17 +76,15 @@ def _build_reviewer_metrics(skill: str, model: str, review: dict) -> ReviewerMet
 
 async def _run_single_reviewer(
     req: RunHarnessRequest,
-    skill: str,
+    assignment: ReviewerAssignment,
+    phase: str,
     review_input: str,
     iteration: int,
+    run_id: str,
     run_path,
 ) -> ReviewerResult:
-    """
-    Run one reviewer skill against the candidate diff.
+    skill = assignment.skill
 
-    The prompt and response are persisted under the run folder so executions
-    can be inspected after the API call finishes.
-    """
     write_text(
         run_path,
         f"reviewers/{skill}/iteration-{iteration}-prompt.txt",
@@ -96,12 +96,32 @@ async def _run_single_reviewer(
         original_prompt=req.prompt,
         candidate_output=review_input,
         skill=skill,
+        phase=phase,
+        strictness=assignment.strictness,
+        focus=assignment.focus,
+        constitution=req.constitution,
     )
+
+    approved = (
+        review["score"] >= assignment.strictness
+        and not review["blocking_issues"]
+    )
+
+    persisted_review = {
+        "run_id": run_id,
+        "iteration": iteration,
+        "skill": skill,
+        "model": req.reviewer_model,
+        "phase": phase,
+        "strictness": assignment.strictness,
+        "approved": approved,
+        **review,
+    }
 
     write_json(
         run_path,
         f"reviewers/{skill}/iteration-{iteration}-response.json",
-        review,
+        persisted_review,
     )
 
     metrics = _build_reviewer_metrics(
@@ -112,8 +132,15 @@ async def _run_single_reviewer(
 
     return ReviewerResult(
         skill=skill,
-        approved=review["approved"],
+        model=req.reviewer_model,
+        run_id=run_id,
+        iteration=iteration,
+        phase=phase,
+        strictness=assignment.strictness,
+        score=review["score"],
+        blocking_issues=review["blocking_issues"],
         feedback=review["feedback"],
+        approved=approved,
         metrics=metrics,
     )
 
@@ -130,6 +157,20 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
     execution trace and aggregated metrics.
     """
     start = time.time()
+
+    skill_plan = req.skill_plan or SkillPlan(
+        phase="mvp",
+        reasoning="Static reviewer configuration.",
+        reviewers=[
+            ReviewerAssignment(
+                skill=skill,
+                strictness=55,
+                focus="Review the requested change.",
+            )
+            for skill in req.skills
+        ],
+    )
+
     workspace = create_workspace(req.repo_path)
 
     write_json(workspace.run_path, "request.json", req.model_dump())
@@ -224,12 +265,14 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
                     *[
                         _run_single_reviewer(
                             req=req,
-                            skill=skill,
+                            assignment=assignment,
+                            phase=skill_plan.phase,
                             review_input=review_input,
                             iteration=iteration,
+                            run_id=workspace.run_id,
                             run_path=workspace.run_path,
                         )
-                        for skill in req.skills
+                        for assignment in skill_plan.reviewers
                     ]
                 )
 
@@ -250,8 +293,21 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
                 reviewer_results = [
                     ReviewerResult(
                         skill="system",
-                        approved=False,
+                        model="system",
+                        run_id=workspace.run_id,
+                        iteration=iteration,
+                        phase=skill_plan.phase,
+                        strictness=100,
+                        score=0,
+                        blocking_issues=[
+                            {
+                                "title": "File operation failure",
+                                "description": str(exc),
+                                "file": None,
+                            }
+                        ],
                         feedback=f"File operations failed: {exc}",
+                        approved=False,
                         metrics=system_review_metrics,
                     )
                 ]
@@ -259,20 +315,21 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
             reviewers_metrics = [result.metrics for result in reviewer_results]
             iteration_approved = all(result.approved for result in reviewer_results)
 
-            failed_feedback = [
-                f"[{result.skill}] {result.feedback}"
-                for result in reviewer_results
-                if not result.approved
-            ]
-
-            reviewer_feedback = (
-                "\n\n".join(failed_feedback)
-                if failed_feedback
-                else "\n\n".join(
-                    f"[{result.skill}] {result.feedback}"
-                    for result in reviewer_results
+            failed_feedback = []
+            for result in reviewer_results:
+                if result.approved:
+                    continue
+                issue_text = "\n".join(
+                    f"- {issue.title}: {issue.description}"
+                    for issue in result.blocking_issues
                 )
-            )
+                failed_feedback.append(
+                    f"[{result.skill}] "
+                    f"score={result.score}, "
+                    f"required={result.strictness}\n"
+                    f"{issue_text}\n"
+                    f"{result.feedback}"
+                )
 
             total_input_tokens += generator_metrics.input_tokens
             total_output_tokens += generator_metrics.output_tokens
@@ -334,7 +391,18 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
             ),
         )
 
-        write_json(workspace.run_path, "response.json", response.model_dump())
+        write_json(
+            workspace.run_path,
+            "response.json",
+            response.model_dump()
+        )
+
+        write_json(
+            workspace.run_path,
+            "skill-plan.json",
+            skill_plan.model_dump(),
+        )
+
         write_json(
             workspace.run_path,
             "trace.json",
@@ -345,4 +413,4 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
         return response
 
     finally:
-        workspace.cleanup()
+        cleanup_workspace(workspace)

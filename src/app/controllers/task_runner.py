@@ -13,6 +13,9 @@ Execution stops immediately when a task cannot be approved, ensuring the
 repository never progresses beyond a failed step.
 """
 
+from src.app.services.project_config_service import load_constitution
+from src.app.services.project_profile_service import build_project_profile
+from src.app.services.skill_planner_service import create_skill_plan
 from src.app.services.git_service import commit_all, has_changes
 from src.app.controllers.harness_runner import run_harness
 from src.app.schemas import RunHarnessRequest, RunTasksRequest
@@ -45,6 +48,9 @@ async def run_tasks(req: RunTasksRequest) -> dict:
     """
     completed = []
 
+    constitution = load_constitution(req.repo_path)
+    project_profile = build_project_profile(req.repo_path)
+
     # TODO:
     # Resume interrupted executions automatically.
     # Since completed tasks are persisted, execution can continue from the
@@ -60,6 +66,14 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "completed": completed,
             }
 
+        skill_plan = await create_skill_plan(
+            model=req.planner_model,
+            task_prompt=task["prompt"],
+            project_profile=project_profile,
+            constitution=constitution,
+            required_skills=req.skills,
+        )
+
         run_response = await run_harness(
             RunHarnessRequest(
                 repo_path=req.repo_path,
@@ -67,7 +81,9 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 max_iterations=req.max_iterations,
                 generator_model=req.generator_model,
                 reviewer_model=req.reviewer_model,
-                skills=req.skills,
+                skills=[],
+                skill_plan=skill_plan,
+                constitution=constitution,
             )
         )
 
@@ -112,5 +128,10 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "run_id": run_response.run_id,
                 "commit_sha": commit_sha,
                 "commit_message": task["commit_message"],
+                "phase": skill_plan.phase,
+                "reviewers": [
+                    reviewer.model_dump()
+                    for reviewer in skill_plan.reviewers
+                ],
             }
         )
