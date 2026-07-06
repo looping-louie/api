@@ -1,14 +1,19 @@
 # Looping Louie Architecture
 
-Looping Louie is a Harness-as-a-Service runtime for iterative LLM software development.
+Looping Louie is a Harness-as-a-Service runtime for iterative LLM software
+development.
 
-Rather than trusting a single model to generate production-ready code, Looping Louie orchestrates a structured workflow in which a generator proposes changes, multiple specialised reviewers evaluate those changes, and the process repeats until a configurable quality bar is reached.
+Rather than trusting a single model to generate production-ready code, Looping
+Louie orchestrates a structured workflow in which a generator proposes changes,
+multiple specialised reviewers evaluate those changes, and the process repeats
+until a configurable quality bar is reached.
 
-The runtime is intentionally independent from any specific programming language, framework or LLM provider.
+The runtime is intentionally independent from any specific programming
+language, framework or LLM provider.
 
 ---
 
-# High-Level Architecture
+## High-Level Architecture
 
 ```text
                 tasks.json
@@ -62,11 +67,11 @@ The runtime is intentionally independent from any specific programming language,
 
 ---
 
-# Execution Lifecycle
+## Execution Lifecycle
 
 A single harness execution follows these steps.
 
-## 1. Create a workspace
+### 1. Create a workspace
 
 A temporary Git worktree is created from the repository HEAD.
 
@@ -80,7 +85,7 @@ Every run receives its own directory under:
 
 ---
 
-## 2. Build repository context
+### 2. Build repository context
 
 The repository is scanned.
 
@@ -92,7 +97,7 @@ The resulting snapshot becomes part of the generator prompt.
 
 ---
 
-## 3. Build prompts
+### 3. Build prompts
 
 The Prompt Builder creates:
 
@@ -104,7 +109,7 @@ Prompt construction is centralised so orchestration code never builds prompts di
 
 ---
 
-## 4. Generator execution
+### 4. Generator execution
 
 The configured generator model receives:
 
@@ -130,7 +135,7 @@ Example:
 
 ---
 
-## 5. Apply file operations
+### 5. Apply file operations
 
 The runtime validates every operation.
 
@@ -140,7 +145,7 @@ The original repository is still untouched.
 
 ---
 
-## 6. Produce the Git diff
+### 6. Produce the Git diff
 
 Git computes the real diff.
 
@@ -150,7 +155,7 @@ Git is considered the single source of truth.
 
 ---
 
-## 7. Reviewer execution
+### 7. Reviewer execution
 
 Each configured skill becomes one independent reviewer.
 
@@ -165,7 +170,7 @@ Reviewers never receive the entire repository snapshot.
 
 ---
 
-## 8. Aggregate review results
+### 8. Aggregate review results
 
 Every reviewer returns:
 
@@ -179,7 +184,7 @@ Otherwise the feedback is merged and returned to the generator.
 
 ---
 
-## 9. Retry
+### 9. Retry
 
 If approval fails:
 
@@ -194,7 +199,7 @@ The loop continues until:
 
 ---
 
-## 10. Finalisation
+### 10. Finalisation
 
 If the run succeeds:
 
@@ -208,7 +213,7 @@ If running through `/run-tasks`:
 
 ---
 
-# Repository Structure
+## Repository Structure
 
 Current modules:
 
@@ -251,11 +256,11 @@ schemas.py
 
 ---
 
-# Prompt Lifecycle
+## Prompt Lifecycle
 
 Three prompt types currently exist.
 
-## Generator
+### Generator
 
 Contains:
 
@@ -266,7 +271,7 @@ Retry prompts additionally include reviewer feedback.
 
 ---
 
-## Reviewer
+### Reviewer
 
 Contains:
 
@@ -277,7 +282,7 @@ Contains:
 
 ---
 
-## Skills
+### Skill Files
 
 Skills are Markdown documents with YAML front matter.
 
@@ -295,7 +300,7 @@ release/
 
 ---
 
-# Workspace Lifecycle
+## Workspace Lifecycle
 
 Each harness execution owns one workspace.
 
@@ -325,7 +330,7 @@ The worktree isolates every execution from the original repository.
 
 ---
 
-# Task Lifecycle
+## Task Lifecycle
 
 The `/run` endpoint executes one task.
 
@@ -365,7 +370,7 @@ Execution stops immediately after the first rejected task.
 
 ---
 
-# Skills
+## Skills
 
 A skill is a reusable review policy.
 
@@ -384,7 +389,7 @@ Skills remain project independent.
 
 ---
 
-# Providers
+## Providers
 
 Current providers:
 
@@ -404,7 +409,7 @@ The runner should not contain provider-specific logic.
 
 ---
 
-# Run Artefacts
+## Run Artefacts
 
 Every execution persists enough information for complete inspection.
 
@@ -422,7 +427,7 @@ This makes every run reproducible and debuggable.
 
 ---
 
-# Metrics
+## Metrics
 
 Metrics are collected for:
 
@@ -443,7 +448,7 @@ Future versions will additionally expose execution cost and historical trends.
 
 ---
 
-# Design Principles
+## Design Principles
 
 Looping Louie follows a small number of architectural principles.
 
@@ -462,7 +467,7 @@ Looping Louie follows a small number of architectural principles.
 
 ---
 
-# Current Limitations
+## Current Limitations
 
 The current MVP intentionally keeps the architecture simple.
 

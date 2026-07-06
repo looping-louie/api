@@ -4,13 +4,14 @@ Looping Louie is not an agent builder.
 
 It is a runtime for executing reproducible, review-driven LLM development workflows.
 
-The project deliberately optimises for simplicity, reproducibility and software engineering principles over autonomous behaviour.
+The project deliberately optimises for simplicity, reproducibility and
+software engineering principles over autonomous behaviour.
 
 ---
 
-# Core Principles
+## Core Principles
 
-## Git is the source of truth
+### Git is the source of truth
 
 The repository is always the canonical representation of the project.
 
@@ -20,17 +21,18 @@ Every modification ultimately becomes a Git diff.
 
 ---
 
-## Never modify the original repository during execution
+### Never modify the original repository during execution
 
 Every harness execution happens inside an isolated Git worktree.
 
-The original repository is modified only after every reviewer has approved the final result.
+The original repository is modified only after every reviewer has approved the
+final result.
 
 Rejected iterations must leave the repository untouched.
 
 ---
 
-## Git generates the diff
+### Git generates the diff
 
 Generator models never generate git patches.
 
@@ -44,7 +46,7 @@ Git is significantly more reliable than asking an LLM to produce patches directl
 
 ---
 
-## Small iterations
+### Small iterations
 
 Each iteration should perform one logical improvement.
 
@@ -59,7 +61,7 @@ Whenever possible, evolve the repository incrementally.
 
 ---
 
-## One reviewer, one responsibility
+### One reviewer, one responsibility
 
 Each reviewer should evaluate one concern only.
 
@@ -79,7 +81,7 @@ Many focused reviewers produce better feedback than one general reviewer.
 
 ---
 
-## Skills are reusable
+### Skills are reusable
 
 A skill is a reusable review policy.
 
@@ -91,7 +93,7 @@ Skills should never contain project-specific knowledge.
 
 ---
 
-## The generator is disposable
+### The generator is disposable
 
 The generator is simply the component that proposes changes.
 
@@ -103,7 +105,7 @@ The model is just one implementation detail.
 
 ---
 
-## Cheap generation, expensive validation
+### Cheap generation, expensive validation
 
 Generation should ideally be performed by inexpensive models.
 
@@ -113,7 +115,7 @@ Improving validation is usually a better investment than improving generation.
 
 ---
 
-## Prompt engineering belongs to the runtime
+### Prompt engineering belongs to the runtime
 
 Business logic should never build prompts directly.
 
@@ -128,15 +130,16 @@ This keeps prompts:
 
 ---
 
-## Providers are interchangeable
+### Providers are interchangeable
 
-Together, OpenAI, Anthropic, Gemini or future providers should expose the same logical interface.
+Together, OpenAI, Anthropic, Gemini or future providers should expose the same
+logical interface.
 
 The runtime should depend on capabilities, not vendors.
 
 ---
 
-## Reviews operate on diffs
+### Reviews operate on diffs
 
 Reviewers should receive only the information necessary to evaluate a change.
 
@@ -151,9 +154,10 @@ Entire repository snapshots are for generators, not reviewers.
 
 ---
 
-## Preserve existing work
+### Preserve existing work
 
-Unless explicitly requested, generated changes should extend existing implementations rather than replacing them.
+Unless explicitly requested, generated changes should extend existing
+implementations rather than replacing them.
 
 Large rewrites increase risk.
 
@@ -161,7 +165,7 @@ Incremental evolution is preferred.
 
 ---
 
-## Fail safely
+### Fail safely
 
 If something cannot be validated, it should not be merged.
 
@@ -175,7 +179,7 @@ Never guess.
 
 ---
 
-## Deterministic execution
+### Deterministic execution
 
 Every run should be reproducible.
 
@@ -191,7 +195,7 @@ This allows every execution to be inspected after completion.
 
 ---
 
-## Observability first
+### Observability first
 
 Runs are first-class artefacts.
 
@@ -206,7 +210,7 @@ Every execution should leave enough information to answer questions such as:
 
 ---
 
-## Architecture before optimisation
+### Architecture before optimisation
 
 The simplest working architecture is preferred.
 
@@ -216,7 +220,7 @@ Avoid premature abstractions.
 
 ---
 
-## Prefer boring technology
+### Prefer boring technology
 
 Use technologies that are:
 
@@ -229,7 +233,7 @@ Complexity should exist only when it creates measurable value.
 
 ---
 
-## Small commits
+### Small commits
 
 Every approved task should become one commit.
 
@@ -239,7 +243,7 @@ Large commits make review, rollback and debugging harder.
 
 ---
 
-## Runtime over framework
+### Runtime over framework
 
 Looping Louie is not tied to any language, framework or frontend stack.
 
@@ -257,9 +261,10 @@ The runtime should remain framework agnostic.
 
 ---
 
-# Long-Term Vision
+## Long-Term Vision
 
-Looping Louie aims to become the execution runtime for production-grade LLM software development.
+Looping Louie aims to become the execution runtime for production-grade LLM
+software development.
 
 The value is not generating code.
 

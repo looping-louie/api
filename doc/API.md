@@ -7,16 +7,17 @@ Looping Louie currently exposes two HTTP endpoints.
 
 ---
 
-# POST /run
+## POST /run-harness
 
 Executes a single task against a repository.
 
-The repository is modified **only if every reviewer approves** before `max_iterations` is reached.
+The repository is modified **only if every reviewer approves** before
+`max_iterations` is reached.
 
-## Request
+### Run Harness Request
 
 | Field | Description |
-|------|-------------|
+| ----- | ----------- |
 | `repo_path` | Path to the Git repository. |
 | `prompt` | Task to execute. |
 | `max_iterations` | Maximum generator/reviewer loops. |
@@ -24,7 +25,7 @@ The repository is modified **only if every reviewer approves** before `max_itera
 | `reviewer_model` | Model used for every reviewer skill. |
 | `skills` | List of review skills to execute. |
 
-## Example
+### Run Harness Example
 
 ```sh
 curl -X POST http://127.0.0.1:8000/run-harness \
@@ -44,7 +45,7 @@ curl -X POST http://127.0.0.1:8000/run-harness \
 
 ---
 
-# POST /run-tasks
+## POST /run-tasks
 
 Executes every pending task from a `tasks.json` file.
 
@@ -57,12 +58,13 @@ For each approved task, Looping Louie:
 3. Marks the task as `done`.
 4. Continues with the next pending task.
 
-Execution stops immediately when a task cannot be approved within the configured iteration limit.
+Execution stops immediately when a task cannot be approved within the
+configured iteration limit.
 
-## Request
+### Run Tasks Request
 
 | Field | Description |
-|------|-------------|
+| ----- | ----------- |
 | `repo_path` | Path to the Git repository. |
 | `tasks_path` | Path to `tasks.json`. |
 | `max_iterations` | Maximum iterations per task. |
@@ -70,7 +72,7 @@ Execution stops immediately when a task cannot be approved within the configured
 | `reviewer_model` | Model used for every reviewer skill. |
 | `skills` | List of review skills executed for every task. |
 
-## Example
+### Run Tasks Example
 
 ```sh
 curl -X POST http://127.0.0.1:8000/run-tasks \
@@ -91,7 +93,7 @@ curl -X POST http://127.0.0.1:8000/run-tasks \
 
 ---
 
-# Choosing an endpoint
+## Choosing an endpoint
 
 Use **`/run-harness`** when:
 
@@ -105,4 +107,6 @@ Use **`/run-tasks`** when:
 - evolving a project incrementally;
 - generating one commit per logical task.
 
-`/run-tasks` is expected to become the primary production entry point, while `/run` serves as the reusable building block used internally by higher-level workflows.
+`/run-tasks` is expected to become the primary production entry point, while
+`/run-harness` serves as the reusable building block used internally by
+higher-level workflows.
