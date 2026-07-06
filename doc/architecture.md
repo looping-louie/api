@@ -227,20 +227,14 @@ task_runner.py
 workspace.py
     Git worktree lifecycle
 
-repository.py
-    Repository snapshot builder
-
-prompt_builder.py
-    Prompt construction
+ModelContextService.py
+    Prompt construction and Repository snapshot builder
 
 FileChangeService.py
     JSON file operations
 
-patcher.py
-    Git diff generation
-
-git_ops.py
-    Git commit helpers
+GitService.py
+    Git commit helpers and Git diff generation
 
 llm_together.py
     Generator provider

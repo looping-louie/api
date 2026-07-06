@@ -22,13 +22,11 @@ import time
 from src.app.services.FileChangeService import apply_file_operations, parse_file_operations
 from src.app.llm_openai import review_with_openai
 from src.app.llm_together import call_together
-from src.app.patcher import apply_patch, get_changed_files, get_git_diff, validate_patch
-from src.app.prompt_builder import (
+from src.app.services.GitService import apply_patch, get_changed_files, get_git_diff, validate_patch
+from src.app.services.ModelContextService import (
     build_initial_generator_prompt,
     build_retry_generator_prompt,
     build_reviewer_input,
-)
-from src.app.services.repository import (
     build_snapshot,
     format_snapshot_for_prompt,
     read_changed_file_contents,
