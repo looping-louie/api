@@ -233,7 +233,7 @@ ModelContextService.py
 FileChangeService.py
     JSON file operations
 
-GitService.py
+git_service.py
     Git commit helpers and Git diff generation
 
 llm_together.py
