@@ -35,6 +35,34 @@ from src.app.skills import load_skill
 
 load_dotenv()
 
+SKILL_PLANNER_OUTPUT_INSTRUCTIONS = """
+Return valid JSON only.
+
+The JSON object must have this exact shape:
+
+{
+  "phase": "prototype|mvp|production",
+  "reasoning": "Brief explanation",
+  "reviewers": [
+    {
+      "skill": "skill id from the registry",
+      "strictness": 0,
+      "focus": "Task-specific review focus"
+    }
+  ]
+}
+
+Rules:
+- Select only skills present in the registry.
+- Select the minimum reviewer set required for this task.
+- Never select more than the stated maximum.
+- Include all explicitly required skills.
+- Judge repository maturity from structural evidence.
+- Do not demand production completeness from an early prototype.
+- strictness must be an integer from 0 to 100.
+- Do not include Markdown or additional prose.
+""".strip()
+
 
 GENERATOR_SYSTEM_PROMPT = """
 You are a senior software engineer.
@@ -67,20 +95,36 @@ Rules:
 
 
 REVIEWER_OUTPUT_INSTRUCTIONS = """
-You must return valid JSON only.
+Return valid JSON only.
 
 The JSON object must have this exact shape:
 
 {
-  "approved": true,
-  "feedback": "Review feedback"
+  "score": 82,
+  "blocking_issues": [
+    {
+      "title": "Concise issue title",
+      "description": "Concrete explanation",
+      "file": "optional/relative/path"
+    }
+  ],
+  "feedback": "Concise actionable review feedback"
 }
 
+Scoring:
+- 0 means unusable or fundamentally incorrect.
+- 100 means fully appropriate for the stated task, project phase and strictness.
+- Judge only the requested change.
+- Do not penalise missing work that the task did not request.
+- A blocking issue must be a concrete defect that prevents approval.
+- Preferences, optional improvements and future hardening are not blocking.
+- Do not output approved; the harness computes it.
+
 Rules:
-- approved must be a JSON boolean.
-- feedback must be a JSON string.
-- Do not include Markdown fences.
-- Do not include prose before or after the JSON.
+- score must be an integer from 0 to 100.
+- blocking_issues must be a JSON array.
+- feedback must be a non-empty JSON string.
+- Do not include Markdown or additional prose.
 """.strip()
 
 
@@ -206,6 +250,10 @@ async def review_with_openai(
     original_prompt: str,
     candidate_output: str,
     skill: str,
+    phase: str,
+    strictness: int,
+    focus: str,
+    constitution: str,
 ) -> dict[str, Any]:
     """
     Execute one review skill using an OpenAI model.
@@ -246,10 +294,18 @@ async def review_with_openai(
     skill_prompt = load_skill(skill)
 
     system_prompt = f"""
-{skill_prompt}
+        {skill_prompt}
 
-{REVIEWER_OUTPUT_INSTRUCTIONS}
-""".strip()
+        Project phase: {phase}
+        Reviewer strictness threshold: {strictness}/100
+        Task-specific focus: {focus}
+
+        Project constitution:
+
+        {constitution}
+
+        {REVIEWER_OUTPUT_INSTRUCTIONS}
+    """.strip()
 
     user_prompt = f"""
 Original user prompt:
@@ -286,7 +342,8 @@ Candidate diff and changed files:
     usage = getattr(response, "usage", None)
 
     return {
-        "approved": verdict["approved"],
+        "score": verdict["score"],
+        "blocking_issues": verdict["blocking_issues"],
         "feedback": verdict["feedback"],
         **_normalise_usage(usage),
         "duration_ms": _elapsed_milliseconds(start),
@@ -295,56 +352,103 @@ Candidate diff and changed files:
 
 def _parse_reviewer_verdict(raw: str) -> dict[str, Any]:
     """
-    Parse and validate a structured reviewer response.
-
-    Invalid or malformed reviewer responses are converted into explicit
-    rejections so they can never approve a candidate accidentally.
+    Parse reviewer output fail-closed.
     """
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        return {
-            "approved": False,
-            "feedback": f"Reviewer returned invalid JSON: {raw}",
-        }
+        return _invalid_reviewer_verdict(
+            f"Reviewer returned invalid JSON: {raw}"
+        )
 
     if not isinstance(data, dict):
-        return {
-            "approved": False,
-            "feedback": (
-                "Reviewer response must be a JSON object. "
-                f"Received: {raw}"
-            ),
-        }
+        return _invalid_reviewer_verdict(
+            "Reviewer response must be a JSON object"
+        )
 
-    approved = data.get("approved")
+    score = data.get("score")
 
-    if not isinstance(approved, bool):
-        return {
-            "approved": False,
-            "feedback": (
-                "Reviewer response must contain an 'approved' boolean. "
-                f"Received: {raw}"
-            ),
-        }
+    if (
+        isinstance(score, bool)
+        or not isinstance(score, int)
+        or not 0 <= score <= 100
+    ):
+        return _invalid_reviewer_verdict(
+            "Reviewer response must contain score between 0 and 100"
+        )
+
+    blocking_issues = data.get("blocking_issues")
+
+    if not isinstance(blocking_issues, list):
+        return _invalid_reviewer_verdict(
+            "blocking_issues must be an array"
+        )
+
+    normalised_issues = []
+
+    for issue in blocking_issues:
+        if not isinstance(issue, dict):
+            return _invalid_reviewer_verdict(
+                "Every blocking issue must be an object"
+            )
+
+        title = issue.get("title")
+        description = issue.get("description")
+        file_path = issue.get("file")
+
+        if not isinstance(title, str) or not title.strip():
+            return _invalid_reviewer_verdict(
+                "Every blocking issue requires a title"
+            )
+
+        if (
+            not isinstance(description, str)
+            or not description.strip()
+        ):
+            return _invalid_reviewer_verdict(
+                "Every blocking issue requires a description"
+            )
+
+        if file_path is not None and not isinstance(file_path, str):
+            return _invalid_reviewer_verdict(
+                "Blocking issue file must be a string or null"
+            )
+
+        normalised_issues.append(
+            {
+                "title": title.strip(),
+                "description": description.strip(),
+                "file": file_path.strip()
+                if isinstance(file_path, str) and file_path.strip()
+                else None,
+            }
+        )
 
     feedback = data.get("feedback")
 
-    if feedback is None:
-        feedback = data.get("summary")
-
     if not isinstance(feedback, str) or not feedback.strip():
-        return {
-            "approved": False,
-            "feedback": (
-                "Reviewer response must contain a non-empty 'feedback' "
-                f"string. Received: {raw}"
-            ),
-        }
+        return _invalid_reviewer_verdict(
+            "Reviewer response requires non-empty feedback"
+        )
 
     return {
-        "approved": approved,
+        "score": score,
+        "blocking_issues": normalised_issues,
         "feedback": feedback.strip(),
+    }
+
+
+def _invalid_reviewer_verdict(message: str) -> dict[str, Any]:
+    return {
+        "score": 0,
+        "blocking_issues": [
+            {
+                "title": "Invalid reviewer response",
+                "description": message,
+                "file": None,
+            }
+        ],
+        "feedback": message,
     }
 
 
@@ -497,3 +601,92 @@ def _elapsed_milliseconds(start: float) -> int:
     Return elapsed monotonic time in milliseconds.
     """
     return int((time.perf_counter() - start) * 1000)
+
+
+async def plan_skills_with_openai(
+    *,
+    model: str,
+    task_prompt: str,
+    project_profile: dict[str, Any],
+    constitution: str,
+    registry: list[dict[str, Any]],
+    required_skills: list[str],
+    max_reviewers: int,
+) -> dict[str, Any]:
+    """
+    Select the review phase and minimum useful reviewer set.
+    """
+    client = _get_openai_client()
+
+    # Only expose registry metadata, never complete Markdown skill bodies.
+    compact_registry = [
+        {
+            "id": item["id"],
+            "description": item["description"],
+            "applies_when": item["applies_when"],
+            "default_strictness": item["default_strictness"],
+        }
+        for item in registry
+    ]
+
+    user_prompt = f"""
+Task:
+
+{task_prompt}
+
+Repository profile:
+
+{json.dumps(project_profile, ensure_ascii=False)}
+
+Project constitution:
+
+{constitution}
+
+Available skill registry:
+
+{json.dumps(compact_registry, ensure_ascii=False)}
+
+Explicitly required skills:
+
+{json.dumps(required_skills)}
+
+Maximum selected reviewers:
+
+{max_reviewers}
+""".strip()
+
+    response = await asyncio.to_thread(
+        client.chat.completions.create,
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": SKILL_PLANNER_OUTPUT_INSTRUCTIONS,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ],
+        temperature=0,
+        response_format={"type": "json_object"},
+    )
+
+    raw = _extract_response_text(
+        response=response,
+        provider_name="OpenAI",
+    )
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"Skill planner returned invalid JSON: {raw}"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            "Skill planner response must be a JSON object"
+        )
+
+    return data
