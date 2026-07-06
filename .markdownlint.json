@@ -1,0 +1,11 @@
+{
+    "MD007": { 
+        "indent": 4
+    },
+    "MD013": {
+        "code_blocks": false
+    },
+    "MD031": {
+        "list_items": false
+    }
+}
