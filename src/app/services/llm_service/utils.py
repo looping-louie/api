@@ -48,7 +48,7 @@ def _integer_attribute(
     return 0
 
 
-def _require_api_key(
+def require_api_key(
     variable_name: str,
     provider_name: str,
 ) -> str:
@@ -69,7 +69,7 @@ def _require_api_key(
     return api_key.strip()
 
 
-def _parse_reviewer_verdict(raw: str) -> dict[str, Any]:
+def parse_reviewer_verdict(raw: str) -> dict[str, Any]:
     """
     Parse reviewer output fail-closed.
     """
@@ -157,14 +157,14 @@ def _parse_reviewer_verdict(raw: str) -> dict[str, Any]:
     }
 
 
-def _elapsed_milliseconds(start: float) -> int:
+def elapsed_milliseconds(start: float) -> int:
     """
     Return elapsed monotonic time in milliseconds.
     """
     return int((time.perf_counter() - start) * 1000)
 
 
-def _normalise_usage(usage: Any) -> dict[str, int]:
+def normalise_usage(usage: Any) -> dict[str, int]:
     """
     Convert provider-specific token usage into the common metrics format.
 
@@ -225,7 +225,7 @@ def _normalise_usage(usage: Any) -> dict[str, int]:
     }
 
 
-def _extract_response_text(
+def extract_response_text(
     response: Any,
     provider_name: str,
 ) -> str:

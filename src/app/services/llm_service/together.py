@@ -2,10 +2,10 @@ import asyncio
 import time
 from typing import Any
 from .utils import (
-    _require_api_key,
-    _extract_response_text,
-    _normalise_usage,
-    _elapsed_milliseconds,
+    require_api_key,
+    extract_response_text,
+    normalise_usage,
+    elapsed_milliseconds,
 )
 from .instructions import GENERATOR_SYSTEM_PROMPT
 
@@ -23,7 +23,7 @@ def _get_together_client():
     global _together_client
 
     if _together_client is None:
-        api_key = _require_api_key(
+        api_key = require_api_key(
             variable_name="TOGETHER_API_KEY",
             provider_name="Together",
         )
@@ -87,7 +87,7 @@ async def call_together(
         reasoning={"enabled": False},
     )
 
-    raw = _extract_response_text(
+    raw = extract_response_text(
         response=response,
         provider_name="Together",
     )
@@ -95,6 +95,6 @@ async def call_together(
 
     return {
         "text": raw.strip(),
-        **_normalise_usage(usage),
-        "duration_ms": _elapsed_milliseconds(start),
+        **normalise_usage(usage),
+        "duration_ms": elapsed_milliseconds(start),
     }

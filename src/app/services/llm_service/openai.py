@@ -4,11 +4,11 @@ import time
 from typing import Any
 from src.app.skills import load_skill
 from .utils import (
-    _require_api_key,
-    _extract_response_text,
-    _parse_reviewer_verdict,
-    _normalise_usage,
-    _elapsed_milliseconds,
+    require_api_key,
+    extract_response_text,
+    parse_reviewer_verdict,
+    normalise_usage,
+    elapsed_milliseconds,
 )
 from .instructions import (
     REVIEWER_OUTPUT_INSTRUCTIONS,
@@ -29,7 +29,7 @@ def _get_openai_client():
     global _openai_client
 
     if _openai_client is None:
-        api_key = _require_api_key(
+        api_key = require_api_key(
             variable_name="OPENAI_API_KEY",
             provider_name="OpenAI",
         )
@@ -134,19 +134,19 @@ Candidate diff and changed files:
         response_format={"type": "json_object"},
     )
 
-    raw = _extract_response_text(
+    raw = extract_response_text(
         response=response,
         provider_name="OpenAI",
     )
-    verdict = _parse_reviewer_verdict(raw)
+    verdict = parse_reviewer_verdict(raw)
     usage = getattr(response, "usage", None)
 
     return {
         "score": verdict["score"],
         "blocking_issues": verdict["blocking_issues"],
         "feedback": verdict["feedback"],
-        **_normalise_usage(usage),
-        "duration_ms": _elapsed_milliseconds(start),
+        **normalise_usage(usage),
+        "duration_ms": elapsed_milliseconds(start),
     }
 
 
@@ -219,7 +219,7 @@ Maximum selected reviewers:
         response_format={"type": "json_object"},
     )
 
-    raw = _extract_response_text(
+    raw = extract_response_text(
         response=response,
         provider_name="OpenAI",
     )
