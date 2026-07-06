@@ -19,8 +19,8 @@ directory and its execution artefacts for inspection and auditing.
 import uuid
 from pathlib import Path
 
-from app.models.workspace import Workspace
-from app.services import git_service
+from src.app.models.workspace import Workspace
+from src.app.services import git_service
 
 
 def create_workspace(repo_path: str | Path) -> Workspace:
