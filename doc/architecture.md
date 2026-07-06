@@ -233,7 +233,7 @@ repository.py
 prompt_builder.py
     Prompt construction
 
-file_ops.py
+FileChangeService.py
     JSON file operations
 
 patcher.py
