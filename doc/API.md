@@ -186,7 +186,6 @@ trace, and aggregated model metrics.
 
 ---
 
-
 ## POST /run-meeting — Plan Implementation
 
 Executes a structured multi-persona meeting that transforms an approved
@@ -224,7 +223,7 @@ Each generated task:
 ```sh
 jq -Rs '{
   meeting_type: "plan_implementation",
-  prompt: .,
+  prompt: (the content of idea.md, for instance),
   max_iterations: 3,
   participant_model: "zai-org/GLM-5.2",
   challenger_model: "gpt-4.1-mini",

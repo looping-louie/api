@@ -335,6 +335,73 @@ async def _call_model(
     return await call_together(model, prompt)
 
 
+def _parse_json_object(raw_text: str) -> dict[str, Any]:
+    """
+    Parse one model response as a JSON object.
+
+    Args:
+        raw_text:
+            Raw text returned by the model.
+
+    Returns:
+        The parsed JSON object.
+
+    Raises:
+        ValueError:
+            If the response is not valid JSON or its root is not an object.
+    """
+    cleaned_text = _strip_code_fence(raw_text)
+
+    try:
+        parsed = json.loads(cleaned_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(str(exc)) from exc
+
+    if not isinstance(parsed, dict):
+        raise ValueError("Model response must be a JSON object")
+
+    return parsed
+
+
+def _build_json_repair_prompt(
+    *,
+    invalid_output: str,
+    parsing_error: str,
+) -> str:
+    """
+    Build a prompt that repairs malformed JSON without changing its meaning.
+
+    Args:
+        invalid_output:
+            Malformed model response.
+
+        parsing_error:
+            Error returned by the local JSON parser.
+
+    Returns:
+        A strict JSON-repair prompt.
+    """
+    return f"""
+Repair the malformed JSON below.
+
+Return only one valid JSON object.
+
+Rules:
+- Preserve the original meaning and values.
+- Do not add or remove fields.
+- Escape line breaks and quotation marks inside string values.
+- Do not include Markdown fences or explanatory prose.
+
+Parser error:
+
+{parsing_error}
+
+Malformed JSON:
+
+{invalid_output}
+""".strip()
+
+
 async def _call_json_model(
     *,
     model: str,
@@ -342,23 +409,87 @@ async def _call_json_model(
     user_prompt: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
-    Execute a model call that must return one JSON object.
+    Execute a model call that must return one valid JSON object.
+
+    The response is parsed locally. When the first response contains malformed
+    JSON, one repair call is attempted before the execution fails.
+
+    Args:
+        model:
+            Model identifier routed through the configured provider.
+
+        system_instructions:
+            Stable instructions and JSON output contract.
+
+        user_prompt:
+            Dynamic meeting context supplied to the model.
+
+    Returns:
+        The parsed JSON object and combined provider usage metadata.
+
+    Raises:
+        RuntimeError:
+            If both the original response and repair response are invalid.
     """
-    prompt = f"{system_instructions}\n\n# Input\n\n{user_prompt}"
-    response = await _call_model(model=model, prompt=prompt)
-    raw_text = _strip_code_fence(str(response.get("text", "")))
+    prompt = (
+        f"{system_instructions}\n\n"
+        "# Input\n\n"
+        f"{user_prompt}"
+    )
+    response = await _call_model(
+        model=model,
+        prompt=prompt,
+    )
+    raw_text = str(response.get("text", ""))
 
     try:
-        parsed = json.loads(raw_text)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"Model returned invalid JSON: {raw_text}"
-        ) from exc
+        return _parse_json_object(raw_text), response
+    except ValueError as first_error:
+        repair_prompt = _build_json_repair_prompt(
+            invalid_output=raw_text,
+            parsing_error=str(first_error),
+        )
+        repair_response = await _call_model(
+            model=model,
+            prompt=repair_prompt,
+        )
+        repaired_text = str(repair_response.get("text", ""))
 
-    if not isinstance(parsed, dict):
-        raise RuntimeError("Model response must be a JSON object")
+        try:
+            parsed = _parse_json_object(repaired_text)
+        except ValueError as second_error:
+            raise RuntimeError(
+                "Model returned invalid JSON and repair failed. "
+                f"Initial error: {first_error}. "
+                f"Repair error: {second_error}. "
+                f"Repaired output: {repaired_text}"
+            ) from second_error
 
-    return parsed, response
+        combined_response = {
+            **repair_response,
+            "input_tokens": (
+                int(response.get("input_tokens", 0))
+                + int(repair_response.get("input_tokens", 0))
+            ),
+            "output_tokens": (
+                int(response.get("output_tokens", 0))
+                + int(repair_response.get("output_tokens", 0))
+            ),
+            "cached_input_tokens": (
+                int(response.get("cached_input_tokens", 0))
+                + int(repair_response.get("cached_input_tokens", 0))
+            ),
+            "reasoning_tokens": (
+                int(response.get("reasoning_tokens", 0))
+                + int(repair_response.get("reasoning_tokens", 0))
+            ),
+            "duration_ms": (
+                int(response.get("duration_ms", 0))
+                + int(repair_response.get("duration_ms", 0))
+            ),
+        }
+
+        return parsed, combined_response
 
 
 def _strip_code_fence(value: str) -> str:
