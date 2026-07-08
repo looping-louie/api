@@ -55,6 +55,8 @@ Composition rules:
 - strictness must be an integer from 0 to 100.
 - Keep focus concrete and specific to the task.
 - Do not include Markdown or additional prose.
+- Assign at most 1 skill to the generator.
+- Assign at most 3 skills to each reviewer.
 """.strip()
 
 

@@ -62,6 +62,8 @@ from src.app.skills import load_skill
 from src.app.utils.io import write_json, write_text
 
 
+MAX_GENERATOR_SKILLS = 1
+
 def _tokens_per_second(
     input_tokens: int,
     output_tokens: int,
@@ -94,10 +96,15 @@ def _build_assignment_instructions(
     Loaders own filesystem lookup and registry validation. The harness only
     combines their content for the model call.
     """
+    effective_skill_ids = (
+        skill_ids[:MAX_GENERATOR_SKILLS]
+        if role == "generator"
+        else skill_ids
+    )
     persona_content = load_persona(persona_id).strip()
     skill_contents = [
         load_skill(skill_id).strip()
-        for skill_id in skill_ids
+        for skill_id in effective_skill_ids
     ]
 
     sections = [
