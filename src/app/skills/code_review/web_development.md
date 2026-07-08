@@ -1,575 +1,624 @@
 ---
-
 id: web_development
-name: Web Development Review
-category: code_review
+name: Web Development
+category: web_review
 description: >
-Reviews web changes for functional correctness, platform foundations, SEO,
-accessibility, security, performance, privacy, resilience,
-internationalisation, and agent readiness.
+  Provides platform-agnostic web development review knowledge for functional
+  correctness, HTML foundations, accessibility, security, privacy, SEO,
+  performance, resilience, internationalisation, and machine readability.
 phase: code_review
 artifacts:
-
-* git_diff
-* changed_files
-  output: json
-
+    - git_diff
+    - changed_files
+output: json
 ---
 
-# Web Development Review
-
-## Role
-
-Review the candidate change as a production-minded, platform-agnostic web
-engineer.
-
-Judge whether the patch:
-
-* fulfils the original user request;
-* preserves project contracts and existing behaviour;
-* uses the web platform correctly;
-* avoids material regressions in accessibility, security, privacy, SEO,
-  performance, resilience, internationalisation, and machine readability.
-
-Judge outcomes, not framework preference.
-
-## Inputs
-
-Use:
-
-* the original user request;
-* the candidate Git diff;
-* the changed-file contents;
-* any supplied review focus and strictness.
-
-Do not claim to have verified runtime behaviour, generated HTML, HTTP headers,
-browser compatibility, deployment configuration, or external services unless the
-artifacts provide evidence.
-
-## Precedence
-
-Apply requirements in this order:
-
-1. original user request and explicit acceptance criteria;
-2. project constitution;
-3. established project architecture and conventions;
-4. this skill.
-
-## Review boundaries
-
-### Review the patch, not an imaginary greenfield rebuild
-
-Concentrate on defects introduced by the change and on existing code that the
-change directly depends on or worsens.
-
-Do not reject a focused patch because unrelated legacy code fails the full
-website checklist.
-
-### Apply only relevant checks
-
-A check is applicable when the patch creates, changes, or depends on that
-surface.
-
-Examples:
-
-* Review metadata when pages, routes, layouts, head configuration, or rendering
-  strategy change.
-* Review HTTP headers when server, middleware, hosting, proxy, or deployment
-  configuration changes.
-* Review consent when the patch introduces analytics, tracking, advertising,
-  non-essential storage, or third-party embeds.
-* Review localisation rules when the product supports multiple locales.
-* Review PWA, offline, agent-discovery, identity-provider, or specialised
-  `/.well-known/` features only when the product or task needs them.
-
-When a relevant property cannot be verified, report a verification gap as a
-warning. Do not invent a failure.
-
-### Status meanings
-
-* **Required**: fundamental contract; a material violation may block.
-* **Recommended**: expected when applicable; usually a deduction or warning.
-* **Optional**: context-dependent; never penalise unless explicitly requested.
-* **Avoid**: harmful, obsolete, misleading, or superseded.
-
-### Evidence rules
-
-Every blocking issue must name the file and nearest line or code location,
-describe the concrete failure and impact, and state the smallest practical fix.
-
-Do not double-count one root cause across several categories.
-
-## Strictness
-
-Use the planner-provided strictness. Default to `medium`.
-
-### `low`
-
-* Review the changed surface only.
-* Block functional regressions, exploitable security issues, privacy violations,
-  serious accessibility regressions, and applicable Required failures.
-* Treat most Recommended items as warnings.
-
-### `medium`
-
-* Review the changed surface and its immediate contracts.
-* Enforce applicable Required and Avoid rules.
-* Deduct for Recommended omissions with meaningful user, crawler, operational,
-  or maintenance impact.
-
-### `high`
-
-* Review for production or launch readiness using all relevant project evidence.
-* Enforce Required and Avoid rules strictly.
-* Important Recommended rules may block when the stated product, audience,
-  deployment, constitution, or acceptance criteria depend on them.
-* Still do not penalise irrelevant Optional capabilities.
-
-A supplied focus changes emphasis, not safety. Always report critical
-cross-cutting defects.
-
-## Review procedure
-
-1. Determine what the requested change must accomplish.
-2. Identify affected routes, components, documents, assets, APIs, configuration,
-   and user flows.
-3. Select the applicable checklist sections.
-4. Inspect the diff and changed-file context for evidenced defects.
-5. Separate blockers, warnings, and unverifiable concerns.
-6. Score the patch from 0 to 100.
-7. Return only the required JSON.
-
-# Checklist
-
-## 1. Functional correctness and integration — Required
-
-* The requested behaviour and acceptance criteria are implemented.
-* Imports, exports, routes, selectors, events, component contracts, API payloads,
-  and configuration names remain consistent.
-* Relevant loading, empty, success, validation, and failure states work.
-* User actions use the correct semantic control and trigger the intended action.
-* No accidental mocks, placeholders, debug code, dead branches, secrets,
-  credentials, or machine-specific values are committed.
-* No obvious duplicate requests, races, stale state, hydration mismatch,
-  destructive retry, data corruption, or unbounded work is introduced.
-* Existing testing or verification conventions are updated when applicable.
-
-## 2. Foundations and HTML
-
-### Required
-
-* Standalone documents use the HTML doctype and declare UTF-8 early.
-* The root `html` element has the correct valid language.
-* Mobile pages declare a viewport without disabling zoom.
-* Every document has exactly one meaningful non-empty title.
-* The page has a coherent landmark structure and one primary `main`.
-* Elements match their purpose: anchors navigate, buttons act, headings structure
-  content, lists represent lists, and tables represent tabular data.
-* Heading levels form a coherent outline.
-* Published URLs remain stable unless the task includes a migration.
-
-### Recommended when applicable
-
-* Indexable pages have distinct descriptions and correct canonicals.
-* Shareable pages provide coherent Open Graph metadata.
-* Favicons, application icons, theme colour, and colour-scheme metadata match the
-  implemented product.
-* Feeds are discoverable and use stable item identifiers.
-* Native popovers, dialogs, container queries, balanced wrapping, anchor
-  positioning, and declarative invokers are preferred when they simplify the
-  solution and meet support requirements.
-
-### Avoid
-
-* Clickable generic elements when native controls fit.
-* Manual line breaks used only to force responsive wrapping.
-* Custom JavaScript focus or positioning machinery when a reliable native
-  primitive already solves the problem.
-
-## 3. SEO and public discoverability
-
-Apply primarily to public indexable content, not private or authenticated routes.
-
-### Required when applicable
-
-* Redirect status matches permanence and avoids loops or needless chains.
-* Missing content returns a real 404, not a soft 404.
-* Indexing policy deliberately distinguishes public, private, staging, duplicate,
-  and thin content.
-* Public primary content and metadata are present in the initial crawlable HTML
-  when client-only rendering would prevent discovery.
-* Heading structure communicates the page topic.
-* Changed public URLs have appropriate redirects.
-
-### Recommended when applicable
-
-* `robots.txt` accurately represents crawl policy.
-* Sitemaps contain canonical indexable URLs; large sites use sitemap indexes.
-* URLs are lowercase, descriptive, shallow, and consistently hyphenated.
-* Internal links use crawlable anchors and useful link text.
-* Structured data is valid, relevant, and consistent with visible content.
-* Breadcrumbs match the actual hierarchy.
-* Image/video sitemap extensions and indexing notification protocols are used
-  only when operationally justified.
-
-### Avoid
-
-* Soft 404s, wrong canonicals, duplicated metadata, broken internal links, and
-  public primary content that depends on fragile client-side execution.
-
-## 4. Accessibility
-
-### Required
-
-* Text and meaningful UI have sufficient contrast in all supported states.
-* Every image has an appropriate `alt`: descriptive when informative, empty when
-  decorative.
-* Every form control has a programmatically associated label.
-* All interactions work by keyboard in a logical order without traps.
-* Focus is visibly indicated.
-* Repeated navigation can be bypassed with a working skip link where applicable.
-* Semantic HTML and landmarks expose structure.
-* Links describe their destination or purpose.
-* Every button and link has an accessible name, including icon-only controls.
-* Form errors are textual, associated with the field, and announced when needed.
-* Document and inline language are marked correctly.
-* Motion respects `prefers-reduced-motion`.
-* Audio/video provide required captions, transcripts, or descriptions.
-* Data tables use real table structure, accessible naming, and header
-  relationships.
-* Pointer targets meet the applicable WCAG 2.2 minimum or have enough spacing.
-* Background content becomes inert while a blocking modal is open.
-
-### Recommended when applicable
-
-* Prefer native `button`, `a`, `details`, `summary`, `dialog`, form, and popover
-  behaviour.
-* Add ARIA only when native semantics are insufficient.
-* Authentication supports password managers and paste and avoids cognitive
-  puzzles as the only route.
-* Previously supplied information is not requested again unnecessarily.
-* Mobile fields use suitable `type`, `autocomplete`, `inputmode`, and
-  `enterkeyhint`.
-* Collapsible content remains findable.
-* Forced-colours mode preserves meaning and operability.
-
-### Avoid
-
-* Accessibility overlay widgets as a substitute for accessible code.
-* Placeholder-only labels.
-* Removed focus outlines without replacement.
-* Positive `tabindex` used to repair DOM order.
-* Empty controls or contradictory ARIA roles.
-
-## 5. Security
-
-Apply infrastructure checks only when relevant configuration is visible.
-
-### Required when applicable
-
-* Production is HTTPS-only with modern TLS.
-* HSTS is enabled deliberately after HTTPS is valid for the relevant hosts.
-* Responses prevent MIME sniffing and untrusted framing.
-* Cookies use `Secure`, explicit `SameSite`, and `HttpOnly` whenever JavaScript
-  access is unnecessary; session scope and prefixes are appropriately restricted.
-* User-controlled values are validated or escaped for their HTML, script, style,
-  URL, SQL, command, and DOM contexts.
-* Authentication and authorisation are enforced at a trusted boundary, not only
-  by client-side UI.
-* Secrets and privileged credentials are neither committed nor shipped to the
-  browser.
-* Uploads, downloads, redirects, and external navigation validate untrusted
-  values.
-* Mixed active content is not introduced.
-
-### Recommended when applicable
-
-* CSP restricts scripts, styles, images, frames, connections, and embedding
-  without exceptions that effectively disable it.
-* Security-policy reports avoid sensitive infrastructure details.
-* `Referrer-Policy` limits cross-origin URL leakage.
-* `Permissions-Policy` disables unused powerful capabilities.
-* Cross-origin isolation is enabled only when compatible.
-* Mutable third-party assets use Subresource Integrity.
-* Trusted Types protect material client-side DOM injection surfaces.
-* `/.well-known/security.txt` provides a disclosure route.
-* Logout clears sensitive local state where required.
-* DNS CAA and DNSSEC are considered at the infrastructure level.
-
-### Avoid
-
-* Unsafe DOM injection with untrusted strings.
-* Broad CSP wildcards, routine `unsafe-eval`, or unnecessary `unsafe-inline`.
-* Security enforced only by hiding UI.
-* Long-lived secrets in public runtime configuration.
-* Disabling browser protections merely to satisfy an integration.
-
-## 6. Well-known resources
-
-These are contextual, not universal requirements.
-
-### Recommended when applicable
-
-* Standard metadata uses registered `/.well-known/` locations.
-* Account-based sites expose a change-password redirect.
-* Identity providers publish valid OpenID discovery metadata.
-* Hosts with several APIs expose a machine-readable catalogue when useful.
-* Apple/Android association files contain the exact intended apps, domains,
-  paths, and signing identities.
-* Federated products expose the discovery resources required by their protocol.
-
-### Optional
-
-* Related-origin WebAuthn metadata, NodeInfo, traffic advice, and other
-  specialised protocol files.
-
-Do not penalise an ordinary website for omitting unrelated resources.
-
-## 7. Agent readiness
-
-Apply to public information, documentation, catalogues, APIs, and products that
-target agent discovery.
-
-### Required when applicable
-
-* Public URLs remain stable.
-* Crawler rules do not contradict intended public/private access.
-
-### Recommended when applicable
-
-* Semantic HTML and structured data expose entities and relationships.
-* Important content has suitable JSON, RSS, or Markdown alternatives.
-* `/llms.txt` or an equivalent curated index points to authoritative content when
-  useful.
-* Per-page source representations use predictable discovery.
-* AI crawler policy is explicit.
-* HTTP `Link` headers advertise feeds, sitemaps, machine-readable alternatives,
-  or tool endpoints where useful.
-* Skill/API discovery metadata accurately describes callable capabilities.
-
-### Optional
-
-* Full-content bundles, bot authentication, MCP, A2A, WebMCP, agent cards,
-  DNS-based discovery, AI catalogues, or conversational endpoints.
-
-Emerging conventions do not reduce the score unless requested.
-
-## 8. Performance
-
-Do not claim Core Web Vitals were measured from a static diff.
-
-### Required when applicable
-
-* The implementation does not create a credible regression against LCP ≤ 2.5 s,
-  INP ≤ 200 ms, and CLS ≤ 0.1 at the 75th percentile.
-* Images use suitable dimensions and efficient formats and reserve layout space.
-* The likely LCP resource is not lazy-loaded.
-* Fingerprinted assets use long immutable caching; HTML and personalised
-  responses use appropriate revalidation.
-* Text resources are compressed by the delivery layer.
-* No obvious layout shift, excessive main-thread work, request waterfall,
-  unbounded rendering, or disproportionate bundle growth is introduced.
-
-### Recommended when applicable
-
-* Off-screen images, frames, and media are lazy-loaded.
-* Critical preloads and preconnects are selective.
-* Cacheable responses support validators and conditional requests.
-* Fonts use efficient formats, appropriate subsetting and `font-display`, without
-  excessive preloading.
-* Render-blocking CSS and scripts are reduced safely.
-* Scripts use `module`, `defer`, or `async` according to dependency and order.
-* Back/forward-cache eligibility is preserved.
-* Expensive off-screen rendering uses containment or visibility primitives when
-  beneficial.
-* Mobile full-height layouts use appropriate viewport units.
-* Scrollbar changes do not create avoidable layout shift.
-* Server timing reveals no sensitive details.
-
-### Avoid
-
-* Lazy-loading the LCP element.
-* Domain sharding or image sprites retained for HTTP/1.1 request limits.
-* Blanket preload/prefetch.
-* Unnecessary synchronous third-party scripts in the head.
-* Scroll/resize listeners where CSS or observation APIs safely fit.
-* Performance claims unsupported by the project's measurement workflow.
-
-## 9. Privacy
-
-### Required when applicable
-
-* Privacy disclosures match personal-data collection, purpose, legal basis,
-  sharing, retention, and user rights.
-* Non-essential cookies or storage wait for valid consent where opt-in is
-  required.
-* Rejecting consent is not materially harder than accepting it.
-* Consent state is respected by scripts, embeds, tags, and later navigation.
-* Personal or sensitive data does not leak through logs, URLs, analytics,
-  bundles, errors, or public storage.
-* The feature collects only the data it needs.
-
-### Recommended when applicable
-
-* Global Privacy Control and other legally relevant preference signals are
-  honoured.
-* Third-party scripts are justified, minimised, isolated, and consent-aware.
-* Analytics are aggregate or privacy-preserving where sufficient.
-* Retention and deletion match the stated policy.
-* Cross-site embeds request storage access only after meaningful user action.
-
-### Avoid
-
-* Pre-consent tracking where consent is required.
-* Consent dark patterns.
-* Unnecessary third-party transmission.
-* Collecting fields without a defined purpose.
-* Sensitive data in public URLs.
-
-## 10. Resilience
-
-### Required when applicable
-
-* Error pages return the correct status, explain the problem plainly, avoid
-  leaking internals, and offer a next step.
-* Network, API, and validation failures do not leave the UI stuck, destructive,
-  or misleading.
-* Partial failure does not corrupt valid state or duplicate a non-idempotent
-  action.
-* User-entered data is preserved when practical.
-
-### Recommended when applicable
-
-* Planned downtime returns 503 with a useful retry indication.
-* Core content and primary navigation survive failure of non-essential
-  JavaScript.
-* Installable apps provide a valid manifest.
-* Products promising offline use provide an intentional fallback and safe
-  service-worker update strategy.
-* Production-critical services use external monitoring and a separately hosted
+# Web Development
+
+## Scope
+
+This skill covers platform-agnostic correctness and quality for web
+applications and websites.
+
+It applies to changes involving:
+
+- HTML documents and semantic structure;
+- navigation, controls, forms, media, and tables;
+- public routes, metadata, indexing, and discoverability;
+- accessibility and keyboard interaction;
+- client-side and server-side security boundaries;
+- personal data, consent, storage, and third-party services;
+- loading performance, rendering stability, and asset delivery;
+- error handling, failure recovery, and progressive enhancement;
+- localisation, language, direction, and locale-sensitive formatting;
+- machine-readable content, structured data, and agent discovery.
+
+Use repository configuration, product requirements, browser support targets,
+deployment architecture, and established project conventions as the source of
+truth.
+
+Apply only the sections relevant to the changed surface. Do not require
+specialised capabilities such as offline support, identity discovery,
+internationalisation, or agent protocols unless the product or task uses them.
+
+## Technical checks
+
+### 1. Functional correctness and integration
+
+Check that:
+
+- the requested behaviour and acceptance criteria are implemented;
+- imports, exports, routes, selectors, events, component contracts, API payloads,
+  and configuration names remain consistent;
+- loading, empty, success, validation, unauthenticated, forbidden, not-found, and
+  failure states are handled where relevant;
+- user actions use the correct semantic control and trigger the intended action;
+- state transitions do not introduce duplicate requests, races, stale state,
+  destructive retries, data corruption, hydration mismatches, or unbounded work;
+- mocks, placeholders, debug code, temporary bypasses, secrets, credentials, and
+  machine-specific values are not committed accidentally;
+- changed contracts are reflected in the repository's existing tests and
+  verification mechanisms.
+
+### 2. HTML foundations and semantics
+
+#### Documents
+
+Check that standalone HTML documents:
+
+- use the HTML doctype;
+- declare UTF-8 early;
+- set a valid language on the root `html` element;
+- include a mobile viewport that does not disable zoom;
+- contain exactly one meaningful, non-empty document title;
+- expose one primary `main` landmark;
+- use coherent landmark and heading structure.
+
+#### Elements
+
+Check that:
+
+- anchors navigate;
+- buttons perform actions;
+- headings represent section hierarchy;
+- lists represent actual collections;
+- tables represent tabular data;
+- form controls use the correct native element and input type;
+- interactive elements are not nested illegally;
+- IDs are unique;
+- labels, descriptions, headings, and relationships use valid references;
+- published URLs remain stable unless the change includes a migration.
+
+Prefer native HTML primitives such as `button`, `a`, `details`, `summary`,
+`dialog`, forms, popovers, and declarative controls when they meet the
+requirements and browser support policy.
+
+Avoid:
+
+- clickable generic elements when a native control fits;
+- manual line breaks used only to force responsive wrapping;
+- custom focus, positioning, or disclosure logic when a reliable native
+  primitive already provides the required behaviour;
+- heading levels chosen only for visual appearance.
+
+### 3. Public metadata and discoverability
+
+Apply this section to public, indexable routes.
+
+Check that:
+
+- each indexable page has a meaningful title;
+- descriptions and canonical URLs reflect the actual page where used;
+- Open Graph and social metadata are coherent for shareable content;
+- metadata does not remain stale after client-side navigation;
+- redirects use a status that matches their permanence;
+- redirect chains and redirect loops are not introduced;
+- missing content returns a real 404 rather than a soft 404;
+- public, private, staging, duplicate, error, and thin content have deliberate
+  indexing policies;
+- primary public content and metadata are available in crawlable output when
+  client-only rendering would prevent discovery;
+- changed public URLs receive appropriate redirects;
+- internal links use crawlable anchors and useful link text;
+- structured data is valid, relevant, and consistent with visible content;
+- breadcrumbs match the actual hierarchy;
+- canonical URLs and sitemap entries identify the same preferred URLs.
+
+Where applicable, check that:
+
+- `robots.txt` reflects the intended crawl policy;
+- sitemaps contain canonical, indexable URLs;
+- large sitemap sets use sitemap indexes;
+- URLs are descriptive, stable, consistently cased, and consistently separated;
+- favicons, application icons, theme metadata, and colour-scheme metadata match
+  the product;
+- feeds expose stable item identifiers and are discoverable.
+
+Avoid:
+
+- soft 404s;
+- conflicting canonicals;
+- duplicated titles or descriptions;
+- public content that depends on fragile client-side execution;
+- structured data that describes content not visible to users;
+- blanket crawler blocking that conflicts with intended public access.
+
+### 4. Accessibility
+
+#### Structure and names
+
+Check that:
+
+- semantic HTML and landmarks expose the page structure;
+- heading levels form a coherent outline;
+- every interactive control has an accessible name;
+- icon-only controls have an explicit accessible name;
+- links describe their destination or purpose;
+- informative images have useful alternative text;
+- decorative images use empty alternative text;
+- form controls have programmatically associated labels;
+- groups of controls have appropriate group labels;
+- inline and document language changes are marked correctly.
+
+#### Keyboard and focus
+
+Check that:
+
+- all interactions work with a keyboard;
+- keyboard order follows the visual and logical order;
+- focus remains visible in all supported states;
+- focus is moved intentionally when dialogs, menus, route changes, or dynamic
+  workflows require it;
+- blocking modals trap focus appropriately and make background content inert;
+- closing a transient surface restores focus to a sensible location;
+- repeated navigation can be bypassed with a working skip link where applicable;
+- no interaction creates a keyboard trap.
+
+Avoid positive `tabindex` as a repair for incorrect DOM order.
+
+#### Forms and validation
+
+Check that:
+
+- validation errors are textual;
+- errors are associated with their controls;
+- dynamically introduced errors are announced when required;
+- instructions do not depend only on colour, position, shape, or sound;
+- required fields are identified programmatically;
+- authentication supports password managers and paste;
+- mobile inputs use suitable `type`, `autocomplete`, `inputmode`, and
+  `enterkeyhint`;
+- previously supplied information is not requested again unnecessarily;
+- recoverable failures preserve entered data where practical.
+
+#### Visual presentation and motion
+
+Check that:
+
+- text and meaningful interface elements have sufficient contrast;
+- focus, hover, active, disabled, selected, invalid, and success states remain
+  distinguishable;
+- information is not conveyed by colour alone;
+- zoom and text resizing do not break essential content or controls;
+- reflow does not require two-dimensional scrolling except for inherently
+  two-dimensional content;
+- motion respects `prefers-reduced-motion`;
+- forced-colours mode preserves meaning and operation;
+- pointer targets meet the applicable WCAG target-size requirement or provide
+  sufficient spacing.
+
+#### Media and data
+
+Check that:
+
+- prerecorded media includes required captions, transcripts, or audio
+  descriptions;
+- autoplay and sound behaviour remain controllable;
+- data tables use real table markup;
+- tables have an accessible name where needed;
+- header cells and data cells have correct relationships;
+- complex visualisations expose an equivalent textual or tabular representation
+  where required.
+
+Avoid:
+
+- accessibility overlays as a substitute for accessible implementation;
+- placeholder-only labels;
+- removed focus outlines without replacement;
+- empty controls;
+- contradictory ARIA roles or states;
+- ARIA used where native semantics already provide the required behaviour.
+
+### 5. Security
+
+Apply infrastructure checks only when the relevant server, hosting, proxy,
+middleware, or deployment configuration is visible.
+
+#### Transport and browser protections
+
+Check that:
+
+- production traffic uses HTTPS;
+- mixed active content is not introduced;
+- HSTS is enabled only after HTTPS is valid for the intended hosts;
+- responses prevent MIME sniffing;
+- untrusted framing is prevented;
+- referrer policy limits unnecessary cross-origin URL leakage;
+- permissions policy disables unused powerful capabilities;
+- cross-origin isolation is enabled only when compatible with required
+  integrations.
+
+#### Input and output handling
+
+Check that untrusted values are handled correctly for their destination:
+
+- HTML and DOM;
+- JavaScript;
+- CSS;
+- URLs and redirects;
+- SQL and database filters;
+- templates;
+- shell commands;
+- filenames and filesystem paths;
+- headers and logs.
+
+Avoid unsafe DOM injection with untrusted strings.
+
+Check that:
+
+- external navigation validates untrusted destinations;
+- redirects cannot become open redirects;
+- uploads validate type, size, filename, and storage destination;
+- downloads cannot expose arbitrary files;
+- dynamically fetched URLs cannot produce SSRF;
+- path input cannot escape an intended directory;
+- error messages do not disclose stack traces, credentials, infrastructure, SQL,
+  or internal paths.
+
+#### Authentication, authorisation, and secrets
+
+Check that:
+
+- authentication and authorisation are enforced at a trusted boundary;
+- client-side visibility is not treated as access control;
+- ownership, tenant, role, and field-level permissions are enforced independently
+  of client input;
+- secrets and privileged credentials are not committed;
+- secrets are not shipped to the browser;
+- public runtime configuration does not contain long-lived credentials;
+- logout clears sensitive local state where required;
+- session changes invalidate stale privileged state.
+
+#### Cookies and sessions
+
+Check that security-sensitive cookies use suitable:
+
+- `Secure`;
+- `HttpOnly` when JavaScript access is unnecessary;
+- explicit `SameSite`;
+- path and domain scope;
+- expiry;
+- secure cookie prefixes where appropriate.
+
+Cookie-authenticated mutations must address CSRF according to the application's
+origin and `SameSite` model.
+
+#### Content Security Policy
+
+Where a CSP exists or is introduced, check that:
+
+- script, style, image, frame, font, media, worker, and connection sources are
+  constrained deliberately;
+- framing policy matches product requirements;
+- nonces or hashes are used correctly;
+- broad wildcards do not defeat the policy;
+- `unsafe-eval` and `unsafe-inline` are not added without a demonstrated
+  requirement;
+- violation reports do not expose sensitive infrastructure data.
+
+Where applicable, consider:
+
+- Subresource Integrity for mutable third-party assets;
+- Trusted Types for material DOM injection surfaces;
+- `/.well-known/security.txt` for vulnerability disclosure.
+
+### 6. Privacy and consent
+
+Apply this section when the feature collects, stores, processes, transmits, or
+reveals personal data.
+
+Check that:
+
+- collected fields have a defined product purpose;
+- the feature collects only the data it needs;
+- privacy disclosures match the actual collection, purpose, legal basis,
+  sharing, retention, and user rights;
+- personal or sensitive data does not leak through URLs, logs, analytics,
+  bundles, errors, caches, or public storage;
+- third-party transmission is justified and minimised;
+- retention and deletion behaviour match the stated policy;
+- analytics identifiers and events do not contain unnecessary personal data.
+
+When opt-in consent is required, check that:
+
+- non-essential cookies and storage wait for valid consent;
+- scripts, tags, embeds, and SDKs remain inactive before consent;
+- rejecting consent is not materially harder than accepting it;
+- consent state persists and is respected across navigation;
+- withdrawing consent stops later processing where required;
+- third-party embeds do not bypass the consent state.
+
+Where legally and technically applicable, honour Global Privacy Control or other
+recognised preference signals.
+
+Avoid:
+
+- pre-consent tracking where consent is required;
+- consent dark patterns;
+- sensitive data in public URLs;
+- collecting fields without a defined purpose;
+- transmitting complete user records when aggregate or reduced data is
+  sufficient.
+
+### 7. Performance and delivery
+
+A static code review can identify credible risks but cannot establish measured
+Core Web Vitals.
+
+#### Rendering and layout
+
+Check that:
+
+- images and media reserve layout space;
+- likely LCP content is not lazy-loaded;
+- content insertion does not create avoidable layout shift;
+- fonts and interface state changes do not produce unstable geometry;
+- mobile full-height layouts use appropriate viewport units;
+- scrollbar changes do not shift the layout unnecessarily;
+- large off-screen sections use containment or visibility primitives only when
+  beneficial and compatible.
+
+#### Assets
+
+Check that:
+
+- images use suitable dimensions and efficient formats;
+- responsive images provide appropriate candidates where needed;
+- off-screen media is lazy-loaded;
+- fonts use efficient formats and appropriate subsetting;
+- `font-display` matches the product's rendering requirements;
+- font, script, style, image, and connection preloads are selective;
+- fingerprinted assets use long immutable caching;
+- HTML and personalised responses use appropriate cache and revalidation rules;
+- text assets are compressed by the delivery layer.
+
+#### JavaScript and CSS
+
+Check that:
+
+- scripts use `module`, `defer`, or `async` according to dependency and execution
+  order;
+- synchronous third-party scripts do not block initial rendering unnecessarily;
+- global bundles do not absorb large feature-specific dependencies;
+- unused code and styles are not shipped across unrelated routes;
+- event listeners, observers, timers, and polling are bounded and cleaned up;
+- expensive input, scroll, resize, and pointer work does not overload the main
+  thread;
+- CSS or observation APIs replace continuous event handling where suitable;
+- critical CSS is not delayed behind unnecessary requests;
+- render-blocking resources are reduced without breaking order or behaviour.
+
+#### Data and network
+
+Check that:
+
+- independent requests do not form avoidable waterfalls;
+- duplicate requests are not introduced;
+- large responses do not include unused fields;
+- cacheable responses support validators or conditional requests where useful;
+- retries are bounded;
+- destructive requests are not retried without idempotency protection;
+- speculative prefetching does not fetch private, expensive, or unlikely
+  resources;
+- back-forward cache eligibility is not broken without need.
+
+Avoid:
+
+- lazy-loading the LCP element;
+- blanket preload or prefetch;
+- domain sharding retained for obsolete HTTP/1.1 constraints;
+- image sprites retained only to reduce request count;
+- unsupported claims that performance improved without measurement evidence.
+
+### 8. Resilience and failure recovery
+
+Check that:
+
+- error pages return the correct status;
+- failures are explained in plain language;
+- internal details are not exposed;
+- error surfaces provide a useful next step;
+- network, API, and validation failures do not leave the UI stuck or misleading;
+- partial failure does not corrupt valid state;
+- repeated submission does not duplicate non-idempotent actions;
+- user-entered data is preserved where practical;
+- retries are bounded and appropriate to the operation;
+- offline or intermittent connectivity does not silently report success;
+- loading indicators correspond to real pending work;
+- cancellation and stale responses do not overwrite newer state;
+- non-essential JavaScript failure does not unnecessarily destroy core content
+  or primary navigation.
+
+Where applicable, check that:
+
+- planned downtime returns `503`;
+- retry guidance is meaningful;
+- service workers have an intentional cache policy;
+- authenticated and fast-changing data is not cached indiscriminately;
+- service-worker updates cannot strand users on incompatible asset versions;
+- installable applications provide a valid manifest;
+- products promising offline use provide a deliberate offline fallback;
+- production-critical services have external monitoring and a separately hosted
   status surface.
 
-### Avoid
+Avoid:
 
-* Returning 200 for error content.
-* Raw stack traces or infrastructure details.
-* Infinite retry loops or unsafe retries without idempotency control.
-* Indiscriminate service-worker caching of authenticated or fast-changing data.
+- returning `200` for error content;
+- raw stack traces;
+- infinite retry loops;
+- fire-and-forget destructive actions without confirmation or idempotency;
+- service-worker caching rules that expose user-specific responses.
 
-## 11. Internationalisation
+### 9. Internationalisation
 
-Apply when multiple languages, regions, directions, or locales are supported.
+Apply this section when the product supports multiple languages, locales,
+regions, writing directions, or formatting conventions.
 
-### Required when applicable
+Check that:
 
-* Document, inline language, and text direction match rendered content.
-* Strings are not concatenated in ways that prevent translation or reordering.
-* Dates, numbers, currencies, units, and plural forms are not hard-coded to one
-  locale.
+- document language matches rendered content;
+- inline language changes are marked;
+- text direction matches the language and content;
+- strings are not concatenated in ways that prevent translation or reordering;
+- dates, numbers, currencies, units, lists, and plural forms use locale-aware
+  formatting;
+- singular and plural logic does not assume English grammar;
+- non-translatable brands, code, and identifiers remain stable;
+- translated content includes translated metadata and alternative text;
+- CSS uses logical properties where physical directions would break RTL or
+  alternative writing modes;
+- locale switching is explicit and preserves the equivalent destination;
+- language names are displayed in their own language;
+- flags are not used as language identifiers.
 
-### Recommended when applicable
+For multilingual public sites, check that:
 
-* One consistent multilingual URL strategy is used.
-* `hreflang` alternates are valid, reciprocal, canonical, and correctly coded.
-* Titles, descriptions, social metadata, structured data, and alt text are
-  localised with the body.
-* Locale switching is explicit and preserves the equivalent destination.
-* Language names appear in their own language; flags do not stand for languages.
-* CSS logical properties support RTL and alternative writing directions.
-* Locale-aware APIs format dates, numbers, currency, units, lists, and plurals.
-* Non-translatable brands, code, and identifiers remain unchanged.
+- one consistent URL strategy is used;
+- locale URLs are canonicalised deliberately;
+- `hreflang` alternates are valid, reciprocal, canonical, and correctly coded;
+- automatic locale detection does not trap users or crawlers;
+- IP-based redirects do not prevent access to another locale.
 
-### Avoid
+### 10. Well-known resources and protocol discovery
 
-* Automatic IP-based locale redirects that trap users or crawlers.
-* English-only singular/plural assumptions.
-* Hard-coded physical left/right throughout multilingual UI.
-* Translated body content with metadata left in another language.
+These checks apply only when the product uses the corresponding protocol or
+capability.
 
-# Scoring
+Check that:
 
-Start at 100. Deduct only for evidenced and applicable findings.
+- standard metadata uses registered `/.well-known/` locations;
+- account-based sites expose a change-password redirect where required;
+- identity providers publish valid discovery metadata;
+- Apple and Android association files contain the exact intended apps, domains,
+  paths, and signing identities;
+- federated products expose the discovery resources required by their protocol;
+- machine-readable API catalogues accurately describe available services;
+- related-origin WebAuthn, NodeInfo, traffic advice, and similar resources match
+  their protocol requirements.
 
-Suggested deductions:
+Do not require unrelated well-known resources for an ordinary website.
 
-* **Critical: 30–60** — exploitable security flaw, secret or personal-data
-  exposure, authorisation bypass, destructive corruption, or fundamentally
-  non-working change.
-* **Major: 12–29** — broken primary flow, inaccessible core interaction, serious
-  indexing/privacy failure, significant regression, or material Required
-  violation.
-* **Moderate: 4–11** — meaningful but limited defect.
-* **Minor: 1–3** — small concrete issue.
-* **Optional improvement: 0** — mention only when genuinely useful.
+### 11. Machine readability and agent discovery
 
-Score caps:
+Apply this section to public information, documentation, catalogues, APIs, or
+products intended for machine and agent discovery.
 
-* Critical security flaw, secret exposure, authorisation bypass, or serious
-  personal-data leak: maximum 25.
-* Broken primary flow, inaccessible primary interaction, or major
-  production/indexing/privacy failure: maximum 49.
-* Any unresolved blocking issue: maximum 69.
-* No blockers and only minor warnings: normally 90 or above.
+Check that:
 
-Interpretation:
+- public URLs are stable;
+- crawler policy matches intended public and private access;
+- semantic HTML exposes meaningful entities and relationships;
+- structured data matches visible content;
+- important content has suitable machine-readable alternatives such as JSON,
+  RSS, Atom, or Markdown where useful;
+- machine-readable representations are discoverable from canonical pages;
+- HTTP `Link` headers advertise feeds, sitemaps, alternate representations, or
+  tool endpoints where useful;
+- `/llms.txt` or an equivalent curated index points to authoritative content when
+  the product uses it;
+- AI crawler policy is explicit when differentiated access is intended;
+- skill, API, or tool metadata describes real callable capabilities;
+- discovery metadata does not expose private endpoints or credentials.
 
-* **90–100**: production-quality for the requested scope.
-* **75–89**: sound, with meaningful non-blocking improvements.
-* **50–74**: substantial issues or at least one blocker.
-* **25–49**: major failure or unsafe implementation.
-* **0–24**: critically broken, dangerous, or unrelated.
+Emerging mechanisms such as MCP, A2A, WebMCP, agent cards, conversational
+endpoints, bot authentication, and DNS-based discovery are contextual rather
+than universal requirements.
 
-Do not reduce the score for irrelevant features. Do not inflate it because the
-patch is small.
+### 12. Progressive enhancement and browser compatibility
 
-## Blocking threshold
+Check that:
 
-A finding blocks when the patch should not be accepted before correction,
-including:
+- essential content remains available when non-essential JavaScript fails;
+- native navigation and form submission are preserved where the architecture
+  allows;
+- browser-only APIs are feature-detected where support is not guaranteed;
+- required polyfills match the browser support policy;
+- new CSS and HTML features have acceptable fallbacks;
+- unsupported features fail without making core workflows inaccessible;
+- JavaScript does not prevent default browser behaviour without providing a
+  complete replacement;
+- deep links, refreshes, history navigation, and direct URL entry work in the
+  deployed routing model;
+- custom elements and enhanced controls expose a usable pre-upgrade state where
+  relevant.
 
-* requested behaviour that does not work;
-* a material applicable Required violation;
-* an Avoid pattern causing real harm;
-* a security, privacy, accessibility, integrity, or destructive regression;
-* unintended deindexing or exposure of private content;
-* broken project contracts, buildability, or runtime integration.
+Avoid:
 
-Recommended items are normally non-blocking. Under `high` strictness they may
-block when the task, constitution, production context, or acceptance criteria
-depend on them.
+- replacing resilient browser behaviour with JavaScript without product benefit;
+- relying on experimental features outside the declared support policy;
+- hiding core content until hydration when server or static content is
+  available.
 
-# Output
+## High-risk web patterns
 
-Return JSON only, without Markdown and without additional keys:
+Pay particular attention to:
 
-{
-"score": 0,
-"blocking_issues": [
-"path/to/file.ext:line — [category] Concrete issue, impact, and required fix."
-],
-"warnings": [
-"path/to/file.ext:line — [category] Concrete concern or verification gap and suggested improvement."
-],
-"rationale": "Brief explanation of the score, applicable areas reviewed, and strongest evidence."
-}
+- actions implemented with inaccessible generic elements;
+- controls without accessible names;
+- inaccessible primary workflows;
+- client-side-only authorisation;
+- secrets or personal data exposed in browser bundles, logs, URLs, or public
+  configuration;
+- untrusted values reaching HTML, DOM, script, URL, SQL, shell, filesystem, or
+  redirect contexts unsafely;
+- consent interfaces that load trackers before consent;
+- soft 404s and accidental deindexing of public content;
+- indexing of private or authenticated content;
+- client-only rendering that hides required public content from crawlers;
+- lazy-loaded LCP content;
+- layout shifts caused by images, fonts, or dynamic insertion;
+- retries that duplicate destructive actions;
+- service workers caching authenticated responses;
+- localisation implemented through string concatenation or hard-coded locale
+  formatting;
+- state changes that leave stale permissions, personal data, or consent choices
+  active.
 
-Rules:
+## Common false positives
 
-* `score` is an integer from 0 to 100.
-* `blocking_issues` and `warnings` are always arrays.
-* Use repository-relative paths and line numbers when available.
-* Make every finding self-contained and actionable.
-* Do not include praise, generic advice, or optional wishlists as findings.
-* Use an empty `blocking_issues` array when nothing blocks.
-* Report insufficient evidence as a warning, not as an asserted failure.
+Do not treat these as defects without concrete product requirements or evidence:
 
-# Attribution
+- absence of Open Graph metadata on private pages;
+- absence of a sitemap on a small non-indexable application;
+- absence of PWA or offline support;
+- absence of `/.well-known/` files unrelated to the product;
+- absence of `/llms.txt` or emerging agent protocols;
+- use of client-side rendering for a private application;
+- absence of structured data where no supported vocabulary fits;
+- absence of Subresource Integrity for immutable self-hosted assets;
+- absence of multilingual handling in a single-locale product;
+- use of a custom control when a native control cannot satisfy the interaction
+  and accessibility requirements;
+- lack of performance claims or Core Web Vitals evidence in a static diff.
 
-Adapted, condensed, paraphrased, and reorganised for diff-based automated review
-from **The Website Specification** checklist by Joost de Valk and contributors.
+## Attribution
 
-* Source: https://specification.website/checklist/
-* Project: https://github.com/jdevalk/specification.website
-* Source content licence: CC BY 4.0
-* Changes: grouped and paraphrased checklist items; added applicability,
-  strictness, evidence, blocking, and scoring rules for Looping Louie.
+Adapted, condensed, paraphrased, and reorganised from **The Website
+Specification** checklist by Joost de Valk and contributors.
+
+- Source: https://specification.website/checklist/
+- Project: https://github.com/jdevalk/specification.website
+- Source content licence: CC BY 4.0
+- Changes: reorganised the checklist as platform-agnostic technical knowledge for
+  automated review; removed reviewer persona, process, strictness, scoring, and
+  output instructions.
