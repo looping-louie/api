@@ -11,6 +11,7 @@ import json
 import time
 from typing import Any
 
+from .prompts import render_prompt
 from .instructions import (
     EXECUTION_PLANNER_OUTPUT_INSTRUCTIONS,
     REVIEWER_OUTPUT_INSTRUCTIONS,
@@ -132,33 +133,21 @@ async def review_with_openai(
     start = time.perf_counter()
     client = _get_openai_client()
 
-    system_prompt = f"""
-{reviewer_instructions}
+    system_prompt = render_prompt(
+        "reviewer_system.md",
+        reviewer_instructions=reviewer_instructions,
+        phase=phase,
+        strictness=strictness,
+        focus=focus,
+        constitution=constitution,
+        reviewer_output_instructions=REVIEWER_OUTPUT_INSTRUCTIONS,
+    )
 
-# Review context
-
-Project phase: {phase}
-Reviewer strictness threshold: {strictness}/100
-Task-specific focus: {focus}
-
-Project constitution:
-
-{constitution}
-
-# Output contract
-
-{REVIEWER_OUTPUT_INSTRUCTIONS}
-""".strip()
-
-    user_prompt = f"""
-Original user prompt:
-
-{original_prompt}
-
-Candidate diff and changed files:
-
-{candidate_output}
-""".strip()
+    user_prompt = render_prompt(
+        "reviewer_user.md",
+        original_prompt=original_prompt,
+        candidate_output=candidate_output
+    )
 
     response = await asyncio.to_thread(
         client.chat.completions.create,
@@ -240,47 +229,19 @@ async def plan_execution_with_openai(
         for item in persona_registry
     ]
 
-    user_prompt = f"""
-Task:
-
-{task_prompt}
-
-Repository profile:
-
-{json.dumps(project_profile, ensure_ascii=False)}
-
-Project constitution:
-
-{constitution}
-
-Available skill registry:
-
-{json.dumps(compact_skill_registry, ensure_ascii=False)}
-
-Available persona registry:
-
-{json.dumps(compact_persona_registry, ensure_ascii=False)}
-
-Explicitly required reviewer skills:
-
-{json.dumps(required_skills, ensure_ascii=False)}
-
-Fixed generator persona:
-
-{json.dumps(generator_persona, ensure_ascii=False)}
-
-Maximum selected reviewers:
-
-{max_reviewers}
-
-Maximum generator skills:
-
-{max_generator_skills}
-
-Maximum skills per reviewer:
-
-{max_skills_per_reviewer}
-""".strip()
+    user_prompt = render_prompt(
+        "execution_user.md",
+        task_prompt=task_prompt,
+        project_profile_json=json.dumps(project_profile, ensure_ascii=False),
+        constitution=constitution,
+        compact_skill_registry_json=json.dumps(compact_skill_registry, ensure_ascii=False),
+        compact_persona_registry_json=json.dumps(compact_persona_registry, ensure_ascii=False),
+        required_skills_json=json.dumps(required_skills, ensure_ascii=False),
+        generator_persona_json=json.dumps(generator_persona, ensure_ascii=False),
+        max_reviewers=max_reviewers,
+        max_generator_skills=max_generator_skills,
+        max_skills_per_reviewer=max_skills_per_reviewer
+    )
 
     response = await asyncio.to_thread(
         client.chat.completions.create,

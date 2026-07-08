@@ -20,6 +20,8 @@ execute Git commands.
 
 from pathlib import Path
 
+from .llm_service.prompts import render_prompt
+
 IGNORED_DIRS = {
     ".git",
     ".looping-louie",
@@ -193,23 +195,22 @@ def format_snapshot_for_prompt(snapshot: dict) -> str:
     blocks = []
 
     for file in snapshot["files"]:
-        blocks.append(
-            f"""--- FILE: {file["path"]} ---
-{file["content"]}
---- END FILE ---"""
+        file_prompt = render_prompt(
+            "snapshot_file.md",
+            file_path=file["path"],
+            file_content=file["content"]
         )
+        blocks.append(file_prompt)
 
     formatted_files = "\n\n".join(blocks)
 
-    return f"""
-Repository tree:
+    repository_prompt = render_prompt(
+        "snapshot_repository.md",
+        snapshot_tree=snapshot["tree"],
+        formatted_files=formatted_files
+    )
 
-{snapshot["tree"]}
-
-Repository files:
-
-{formatted_files}
-""".strip()
+    return repository_prompt
 
 
 def read_changed_file_contents(
@@ -259,11 +260,13 @@ def read_changed_file_contents(
         except (UnicodeDecodeError, OSError):
             continue
 
-        blocks.append(
-            f"""--- CHANGED FILE: {file_path} ---
-{content}
---- END CHANGED FILE ---"""
+        changes_prompt = render_prompt(
+            "snapshot_changes.md",
+            file_path=file_path,
+            file_content=content
         )
+
+        blocks.append(changes_prompt)
 
     return "\n\n".join(blocks)
 
@@ -281,15 +284,12 @@ def build_initial_generator_prompt(
     The provider-level system prompt defines the required output format. This
     prompt supplies the repository context and the requested development task.
     """
-    return f"""
-Repository context:
-
-{repo_context}
-
-User task:
-
-{user_prompt}
-""".strip()
+    init_prompt = render_prompt(
+        "generator_input.md",
+        repo_context=repo_context,
+        user_prompt=user_prompt
+    )
+    return init_prompt
 
 
 def build_retry_generator_prompt(
@@ -304,25 +304,14 @@ def build_retry_generator_prompt(
     Includes the original repository context, the requested task, the previous
     generator response and the feedback that caused the iteration to fail.
     """
-    return f"""
-Repository context:
-
-{repo_context}
-
-User task:
-
-{user_prompt}
-
-Previous generator output:
-
-{previous_generator_output}
-
-Reviewer or system feedback:
-
-{reviewer_feedback}
-
-Produce a corrected solution that addresses all feedback.
-""".strip()
+    retry_prompt = render_prompt(
+        "generator_retry.md",
+        repo_context=repo_context,
+        user_prompt=user_prompt,
+        previous_generator_output=previous_generator_output,
+        reviewer_feedback=reviewer_feedback
+    )
+    return retry_prompt
 
 
 # TODO:
@@ -352,16 +341,10 @@ def build_reviewer_input(
     Returns:
         Complete reviewer input.
     """
-    return f"""
-Original user prompt:
-
-{user_prompt}
-
-Git diff:
-
-{final_diff}
-
-Changed files:
-
-{changed_file_contents}
-""".strip()
+    input_prompt = render_prompt(
+        "reviewer_input.md",
+        user_prompt=user_prompt,
+        final_diff=final_diff,
+        changed_file_contents=changed_file_contents
+    )
+    return input_prompt
