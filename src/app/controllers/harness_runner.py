@@ -426,6 +426,16 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
             )
 
             try:
+
+                if gen.get("reached_output_limit"):
+                    finish_reason = gen.get("finish_reason") or "unknown"
+
+                    raise ValueError(
+                        "Generator output reached its maximum output length. "
+                        f"finish_reason={finish_reason}; "
+                        f"max_output_tokens={gen.get('max_output_tokens')}"
+                    )
+
                 operations = parse_file_operations(gen["text"])
 
                 write_json(

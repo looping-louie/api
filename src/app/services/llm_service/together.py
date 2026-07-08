@@ -12,6 +12,36 @@ from .instructions import GENERATOR_SYSTEM_PROMPT
 
 _together_client = None
 
+MAX_OUTPUT_TOKENS = 12_000
+
+TRUNCATED_FINISH_REASONS = {
+    "length",
+    "max_tokens",
+}
+
+def _extract_finish_reason(response: Any) -> str | None:
+    """
+    Extract the completion finish reason from a Together response.
+
+    Supports both SDK model objects and dictionary-shaped responses.
+    """
+    choices = getattr(response, "choices", None)
+
+    if not choices:
+        return None
+
+    first_choice = choices[0]
+
+    if isinstance(first_choice, dict):
+        finish_reason = first_choice.get("finish_reason")
+    else:
+        finish_reason = getattr(first_choice, "finish_reason", None)
+
+    if isinstance(finish_reason, str):
+        return finish_reason
+
+    return None
+
 
 def _get_together_client():
     """
@@ -82,7 +112,7 @@ async def call_together(
             },
         ],
         stream=False,
-        max_tokens=12_000,
+        max_tokens=MAX_OUTPUT_TOKENS,
         temperature=0.2,
         reasoning={"enabled": False},
     )
@@ -92,9 +122,23 @@ async def call_together(
         provider_name="Together",
     )
     usage = getattr(response, "usage", None)
+    usage_data = normalise_usage(usage)
+    finish_reason = _extract_finish_reason(response)
+
+    reached_output_limit = (
+        finish_reason in TRUNCATED_FINISH_REASONS
+        or (
+            finish_reason is None
+            and usage_data.get("output_tokens", 0)
+            >= MAX_OUTPUT_TOKENS
+        )
+    )
 
     return {
         "text": raw.strip(),
-        **normalise_usage(usage),
+        **usage_data,
+        "finish_reason": finish_reason,
+        "max_output_tokens": MAX_OUTPUT_TOKENS,
+        "reached_output_limit": reached_output_limit,
         "duration_ms": elapsed_milliseconds(start),
     }
