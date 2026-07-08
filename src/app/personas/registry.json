@@ -1,0 +1,237 @@
+[
+  {
+    "id": "product_manager",
+    "description": "Frames work around user problems, product outcomes, scope, requirements, trade-offs, prioritisation, and acceptance criteria.",
+    "applies_when": [
+      "product",
+      "requirements",
+      "scope",
+      "roadmap",
+      "prioritisation",
+      "user_flows",
+      "mvp"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "web_development",
+      "accessibility",
+      "privacy",
+      "resilience"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "founder",
+    "description": "Evaluates strategic fit, speed, differentiation, customer value, business risk, and whether the work advances the company.",
+    "applies_when": [
+      "strategy",
+      "business",
+      "mvp",
+      "positioning",
+      "trade_offs",
+      "company_priorities"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "web_development",
+      "privacy",
+      "security",
+      "resilience"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "ux_designer",
+    "description": "Focuses on user goals, interaction clarity, information architecture, accessibility, usability, consistency, and friction.",
+    "applies_when": [
+      "ux",
+      "ui",
+      "frontend",
+      "interaction",
+      "usability",
+      "accessibility",
+      "user_flows"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "web_development",
+      "accessibility",
+      "internationalisation"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "tech_lead",
+    "description": "Optimises for correct implementation, maintainable code, sensible scope, framework conventions, testability, and safe delivery.",
+    "applies_when": [
+      "code",
+      "implementation",
+      "frontend",
+      "backend",
+      "refactor",
+      "testing",
+      "architecture"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "nuxt",
+      "web_development",
+      "security",
+      "performance",
+      "resilience"
+    ],
+    "default_for": [
+      "generator"
+    ]
+  },
+  {
+    "id": "enterprise_customer",
+    "description": "Assesses whether the result is trustworthy, governable, supportable, auditable, secure, and suitable for enterprise adoption.",
+    "applies_when": [
+      "enterprise",
+      "governance",
+      "procurement",
+      "compliance",
+      "security",
+      "privacy",
+      "reliability"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "security",
+      "privacy",
+      "resilience",
+      "accessibility"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "growth",
+    "description": "Looks for acquisition, activation, conversion, retention, discoverability, measurement, and scalable distribution opportunities.",
+    "applies_when": [
+      "growth",
+      "seo",
+      "conversion",
+      "activation",
+      "retention",
+      "analytics",
+      "acquisition"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "seo",
+      "performance",
+      "web_development",
+      "agent_readiness"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "devils_advocate",
+    "description": "Challenges assumptions, searches for failure modes, tests edge cases, and identifies reasons the proposed solution may not work.",
+    "applies_when": [
+      "risk",
+      "assumptions",
+      "edge_cases",
+      "failure_modes",
+      "challenge",
+      "validation"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "security",
+      "privacy",
+      "resilience",
+      "web_development"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "finance",
+    "description": "Evaluates cost, pricing, margin, resource use, financial exposure, commercial viability, and measurable return.",
+    "applies_when": [
+      "finance",
+      "pricing",
+      "cost",
+      "margin",
+      "billing",
+      "revenue",
+      "roi"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "privacy",
+      "security",
+      "resilience"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "platform_architect",
+    "description": "Focuses on system boundaries, deployment portability, scalability, reliability, observability, integration contracts, and operational risk.",
+    "applies_when": [
+      "architecture",
+      "platform",
+      "infrastructure",
+      "deployment",
+      "scalability",
+      "integration",
+      "observability"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "security",
+      "performance",
+      "resilience",
+      "privacy",
+      "web_development"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "editor",
+    "description": "Improves clarity, structure, consistency, precision, readability, tone, and suitability for the intended audience.",
+    "applies_when": [
+      "content",
+      "copy",
+      "documentation",
+      "messaging",
+      "clarity",
+      "localisation"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "preferred_skills": [
+      "seo",
+      "accessibility",
+      "internationalisation",
+      "agent_readiness"
+    ],
+    "default_for": []
+  }
+]

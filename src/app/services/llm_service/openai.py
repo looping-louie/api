@@ -1,18 +1,26 @@
+"""
+OpenAI model client.
+
+This module executes reviewer assignments and creates execution plans using
+OpenAI chat completions. Provider responses are normalised before returning
+to the orchestration layer.
+"""
+
 import asyncio
 import json
 import time
 from typing import Any
-from src.app.skills import load_skill
-from .utils import (
-    require_api_key,
-    extract_response_text,
-    parse_reviewer_verdict,
-    normalise_usage,
-    elapsed_milliseconds,
-)
+
 from .instructions import (
+    EXECUTION_PLANNER_OUTPUT_INSTRUCTIONS,
     REVIEWER_OUTPUT_INSTRUCTIONS,
-    SKILL_PLANNER_OUTPUT_INSTRUCTIONS,
+)
+from .utils import (
+    elapsed_milliseconds,
+    extract_response_text,
+    normalise_usage,
+    parse_reviewer_verdict,
+    require_api_key,
 )
 
 
@@ -46,66 +54,46 @@ def _get_openai_client():
 
 
 async def review_with_openai(
+    *,
     model: str,
     original_prompt: str,
     candidate_output: str,
-    skill: str,
+    reviewer_instructions: str,
     phase: str,
     strictness: int,
     focus: str,
     constitution: str,
 ) -> dict[str, Any]:
     """
-    Execute one review skill using an OpenAI model.
+    Execute one persona-plus-skills reviewer assignment.
 
-    The selected skill becomes part of the system prompt. The user message
-    contains the original task and the candidate diff together with the full
-    changed-file contents.
+    The caller provides already assembled reviewer instructions containing the
+    selected persona and all assigned skills. This service only adds execution
+    metadata, the project constitution, and the output contract.
 
     The synchronous provider SDK is executed in a worker thread so it does not
     block the application's asynchronous event loop.
-
-    Args:
-        model:
-            OpenAI model identifier.
-
-        original_prompt:
-            Original user task being reviewed.
-
-        candidate_output:
-            Candidate Git diff and changed-file contents.
-
-        skill:
-            Name of the review skill to load.
-
-    Returns:
-        A provider-normalised dictionary containing:
-
-        - approved;
-        - feedback;
-        - input_tokens;
-        - output_tokens;
-        - cached_input_tokens;
-        - reasoning_tokens;
-        - duration_ms.
     """
     start = time.perf_counter()
     client = _get_openai_client()
-    skill_prompt = load_skill(skill)
 
     system_prompt = f"""
-        {skill_prompt}
+{reviewer_instructions}
 
-        Project phase: {phase}
-        Reviewer strictness threshold: {strictness}/100
-        Task-specific focus: {focus}
+# Review context
 
-        Project constitution:
+Project phase: {phase}
+Reviewer strictness threshold: {strictness}/100
+Task-specific focus: {focus}
 
-        {constitution}
+Project constitution:
 
-        {REVIEWER_OUTPUT_INSTRUCTIONS}
-    """.strip()
+{constitution}
+
+# Output contract
+
+{REVIEWER_OUTPUT_INSTRUCTIONS}
+""".strip()
 
     user_prompt = f"""
 Original user prompt:
@@ -150,30 +138,51 @@ Candidate diff and changed files:
     }
 
 
-async def plan_skills_with_openai(
+async def plan_execution_with_openai(
     *,
     model: str,
     task_prompt: str,
     project_profile: dict[str, Any],
     constitution: str,
-    registry: list[dict[str, Any]],
+    skill_registry: list[dict[str, Any]],
+    persona_registry: list[dict[str, Any]],
     required_skills: list[str],
+    generator_persona: str | None,
     max_reviewers: int,
+    max_generator_skills: int,
+    max_skills_per_reviewer: int,
 ) -> dict[str, Any]:
     """
-    Select the review phase and minimum useful reviewer set.
+    Select the project phase, generator assignment, and reviewer team.
+
+    Only compact registry metadata is exposed to the planner. Complete persona
+    and skill Markdown bodies are loaded later when the harness assembles each
+    model prompt.
     """
     client = _get_openai_client()
 
-    # Only expose registry metadata, never complete Markdown skill bodies.
-    compact_registry = [
+    compact_skill_registry = [
         {
             "id": item["id"],
             "description": item["description"],
             "applies_when": item["applies_when"],
-            "default_strictness": item["default_strictness"],
+            "applies_to": item["applies_to"],
+            "reviewer_default_strictness": (
+                item["reviewer_default_strictness"]
+            ),
         }
-        for item in registry
+        for item in skill_registry
+    ]
+    compact_persona_registry = [
+        {
+            "id": item["id"],
+            "description": item["description"],
+            "applies_when": item["applies_when"],
+            "applies_to": item["applies_to"],
+            "preferred_skills": item["preferred_skills"],
+            "default_for": item["default_for"],
+        }
+        for item in persona_registry
     ]
 
     user_prompt = f"""
@@ -191,15 +200,31 @@ Project constitution:
 
 Available skill registry:
 
-{json.dumps(compact_registry, ensure_ascii=False)}
+{json.dumps(compact_skill_registry, ensure_ascii=False)}
 
-Explicitly required skills:
+Available persona registry:
 
-{json.dumps(required_skills)}
+{json.dumps(compact_persona_registry, ensure_ascii=False)}
+
+Explicitly required reviewer skills:
+
+{json.dumps(required_skills, ensure_ascii=False)}
+
+Fixed generator persona:
+
+{json.dumps(generator_persona, ensure_ascii=False)}
 
 Maximum selected reviewers:
 
 {max_reviewers}
+
+Maximum generator skills:
+
+{max_generator_skills}
+
+Maximum skills per reviewer:
+
+{max_skills_per_reviewer}
 """.strip()
 
     response = await asyncio.to_thread(
@@ -208,7 +233,7 @@ Maximum selected reviewers:
         messages=[
             {
                 "role": "system",
-                "content": SKILL_PLANNER_OUTPUT_INSTRUCTIONS,
+                "content": EXECUTION_PLANNER_OUTPUT_INSTRUCTIONS,
             },
             {
                 "role": "user",
@@ -228,12 +253,12 @@ Maximum selected reviewers:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            f"Skill planner returned invalid JSON: {raw}"
+            f"Execution planner returned invalid JSON: {raw}"
         ) from exc
 
     if not isinstance(data, dict):
         raise RuntimeError(
-            "Skill planner response must be a JSON object"
+            "Execution planner response must be a JSON object"
         )
 
     return data

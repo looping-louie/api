@@ -15,27 +15,47 @@ The hierarchy is intentionally split into:
 """
 
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 ProjectPhase = Literal["prototype", "mvp", "production"]
 
 
+class GeneratorAssignment(BaseModel):
+    """
+    Generator configuration selected for one task.
+
+    The persona determines how the generator approaches the work. Skills add
+    task-specific technical knowledge, and focus narrows the assignment.
+    """
+
+    persona: str
+    skills: list[str]
+    focus: str
+
+
 class ReviewerAssignment(BaseModel):
     """
-    One reviewer selected by the skill planner.
+    Reviewer configuration selected for one task.
+
+    One reviewer combines a persona with one or more technical skills.
     """
-    skill: str
+
+    persona: str
+    skills: list[str]
     strictness: int = Field(ge=0, le=100)
     focus: str
 
 
-class SkillPlan(BaseModel):
+class ExecutionPlan(BaseModel):
     """
-    Review strategy selected for one development task.
+    Complete generator and reviewer strategy for one development task.
     """
+
     phase: ProjectPhase
     reasoning: str
+    generator: GeneratorAssignment
     reviewers: list[ReviewerAssignment]
 
 
@@ -43,6 +63,7 @@ class ReviewerIssue(BaseModel):
     """
     One concrete issue found by a reviewer.
     """
+
     title: str
     description: str
     file: str | None = None
@@ -51,15 +72,28 @@ class ReviewerIssue(BaseModel):
 class RunHarnessRequest(BaseModel):
     """
     Input for a single harness execution.
+
+    An execution plan is normally supplied by the execution planner. The
+    static persona and skill fields remain available for direct calls to the
+    harness when no planner is used.
     """
+
     prompt: str
     repo_path: str
     max_iterations: int = 3
     generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
     reviewer_model: str = "gpt-4.1-mini"
-    skills: list[str] = Field(default_factory=lambda: ["small_patch_quality"])
-    skill_plan: SkillPlan | None = None
+
+    generator_persona: str = "tech_lead"
+    generator_skills: list[str] = Field(default_factory=list)
+    reviewer_persona: str = "tech_lead"
+    reviewer_skills: list[str] = Field(
+        default_factory=lambda: ["small_patch_quality"]
+    )
+
+    execution_plan: ExecutionPlan | None = None
     constitution: str = ""
+
 
 # TODO:
 # Allow individual tasks to override execution settings such as
@@ -68,17 +102,19 @@ class RunTasksRequest(BaseModel):
     """
     Request model for the /run-tasks endpoint.
 
-    Defines the repository, task file and default execution parameters that
-    will be used for every pending task unless future task-level overrides
-    are introduced.
+    The execution planner selects the complete team for every task. Callers may
+    force reviewer skills and may optionally fix the generator persona while
+    leaving reviewer personas under planner control.
     """
+
     repo_path: str
     tasks_path: str
     max_iterations: int = 3
     generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
     reviewer_model: str = "gpt-4.1-mini"
     planner_model: str = "gpt-4.1-mini"
-    skills: list[str] = Field(default_factory=list)
+    required_reviewer_skills: list[str] = Field(default_factory=list)
+    generator_persona: str | None = None
 
 
 class ModelMetrics(BaseModel):
@@ -88,6 +124,7 @@ class ModelMetrics(BaseModel):
     These metrics are provider-agnostic so they can represent Together,
     OpenAI, Anthropic or future providers uniformly.
     """
+
     model: str
     input_tokens: int = 0
     output_tokens: int = 0
@@ -101,10 +138,11 @@ class ReviewerMetrics(ModelMetrics):
     """
     Metrics for one reviewer invocation.
 
-    Extends ModelMetrics by recording which review skill produced
-    the measurements.
+    Records the persona and skills that produced the measurements.
     """
-    skill: str
+
+    persona: str
+    skills: list[str]
 
 
 class RunMetrics(BaseModel):
@@ -113,6 +151,7 @@ class RunMetrics(BaseModel):
 
     Includes generator and every reviewer across every iteration.
     """
+
     iterations: int
     input_tokens: int
     output_tokens: int
@@ -129,7 +168,10 @@ class ReviewerResult(BaseModel):
 
     Execution metadata is generated locally and never trusted to the model.
     """
-    skill: str
+
+    persona: str
+    skills: list[str]
+    focus: str
     model: str
     run_id: str
     iteration: int
@@ -155,6 +197,7 @@ class IterationTrace(BaseModel):
     Stores generator output, reviewer feedback, approval state
     and all metrics required to replay or inspect the iteration.
     """
+
     iteration: int
     generator_output: str
     reviewer_feedback: str
@@ -171,6 +214,7 @@ class RunHarnessResponse(BaseModel):
     Contains the final diff, approval status, execution trace
     and aggregated execution metrics.
     """
+
     run_id: str
     final_output: str
     approved: bool

@@ -1,9 +1,19 @@
 [
   {
     "id": "web_development",
-    "description": "Reviews general web development quality, accessibility, SEO, security, performance, privacy, resilience, and standards compliance.",
-    "applies_when": ["web", "html", "css", "javascript", "frontend"],
-    "default_strictness": {
+    "description": "Provides platform-agnostic web development knowledge covering functional correctness, accessibility, SEO, security, performance, privacy, resilience, and standards compliance.",
+    "applies_when": [
+      "web",
+      "html",
+      "css",
+      "javascript",
+      "frontend"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
       "prototype": 30,
       "mvp": 55,
       "production": 85
@@ -12,8 +22,16 @@
   {
     "id": "nuxt",
     "description": "Reviews Nuxt frontend code, routing, composables, SSR/SPA issues.",
-    "applies_when": ["nuxt", "vue", "frontend"],
-    "default_strictness": {
+    "applies_when": [
+      "nuxt",
+      "vue",
+      "frontend"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
       "prototype": 30,
       "mvp": 55,
       "production": 85

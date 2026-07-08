@@ -13,12 +13,12 @@ Execution stops immediately when a task cannot be approved, ensuring the
 repository never progresses beyond a failed step.
 """
 
-from src.app.services.project_config_service import load_constitution
-from src.app.services.project_profile_service import build_project_profile
-from src.app.services.skill_planner_service import create_skill_plan
-from src.app.services.git_service import commit_all, has_changes
 from src.app.controllers.harness_runner import run_harness
 from src.app.schemas import RunHarnessRequest, RunTasksRequest
+from src.app.services.execution_planner_service import create_execution_plan
+from src.app.services.git_service import commit_all, has_changes
+from src.app.services.project_config_service import load_constitution
+from src.app.services.project_profile_service import build_project_profile
 from src.app.services.task_plan_service import (
     get_next_pending_task,
     load_tasks,
@@ -35,12 +35,13 @@ async def run_tasks(req: RunTasksRequest) -> dict:
 
     1. Load the task list.
     2. Pick the first pending task.
-    3. Execute the standard harness.
-    4. If approved:
+    3. Build a task-specific execution plan.
+    4. Execute the standard harness.
+    5. If approved:
       - commit repository changes
       - mark the task as done
       - continue with the next task
-    5. If rejected:
+    6. If rejected:
       - stop immediately
       - return the failing task and run identifier.
 
@@ -66,12 +67,13 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "completed": completed,
             }
 
-        skill_plan = await create_skill_plan(
+        execution_plan = await create_execution_plan(
             model=req.planner_model,
             task_prompt=task["prompt"],
             project_profile=project_profile,
             constitution=constitution,
-            required_skills=req.skills,
+            required_skills=req.required_reviewer_skills,
+            generator_persona=req.generator_persona,
         )
 
         run_response = await run_harness(
@@ -81,8 +83,7 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 max_iterations=req.max_iterations,
                 generator_model=req.generator_model,
                 reviewer_model=req.reviewer_model,
-                skills=[],
-                skill_plan=skill_plan,
+                execution_plan=execution_plan,
                 constitution=constitution,
             )
         )
@@ -94,7 +95,10 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "task_id": task["id"],
                 "run_id": run_response.run_id,
                 "approved": False,
-                "message": "Stopped because reviewers did not approve within max_iterations.",
+                "message": (
+                    "Stopped because reviewers did not approve within "
+                    "max_iterations."
+                ),
                 "completed": completed,
             }
 
@@ -105,7 +109,10 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "task_id": task["id"],
                 "run_id": run_response.run_id,
                 "approved": True,
-                "message": "Run approved but no repository changes were found to commit.",
+                "message": (
+                    "Run approved but no repository changes were found "
+                    "to commit."
+                ),
                 "completed": completed,
             }
 
@@ -128,10 +135,12 @@ async def run_tasks(req: RunTasksRequest) -> dict:
                 "run_id": run_response.run_id,
                 "commit_sha": commit_sha,
                 "commit_message": task["commit_message"],
-                "phase": skill_plan.phase,
+                "phase": execution_plan.phase,
+                "reasoning": execution_plan.reasoning,
+                "generator": execution_plan.generator.model_dump(),
                 "reviewers": [
                     reviewer.model_dump()
-                    for reviewer in skill_plan.reviewers
+                    for reviewer in execution_plan.reviewers
                 ],
             }
         )

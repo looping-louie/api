@@ -1,34 +1,65 @@
-SKILL_PLANNER_OUTPUT_INSTRUCTIONS = """
+"""
+Provider-independent model instructions.
+
+These prompts define output contracts only. Personas and skills are assembled
+separately so execution behaviour can be composed without mixing role identity
+with technical knowledge.
+"""
+
+
+EXECUTION_PLANNER_OUTPUT_INSTRUCTIONS = """
 Return valid JSON only.
 
 The JSON object must have this exact shape:
 
 {
   "phase": "prototype|mvp|production",
-  "reasoning": "Brief explanation",
+  "reasoning": "Brief explanation of the selected composition",
+  "generator": {
+    "persona": "persona id from the persona registry",
+    "skills": [
+      "skill id from the skill registry"
+    ],
+    "focus": "Task-specific implementation focus"
+  },
   "reviewers": [
     {
-      "skill": "skill id from the registry",
+      "persona": "persona id from the persona registry",
+      "skills": [
+        "skill id from the skill registry"
+      ],
       "strictness": 0,
       "focus": "Task-specific review focus"
     }
   ]
 }
 
-Rules:
-- Select only skills present in the registry.
-- Select the minimum reviewer set required for this task.
-- Never select more than the stated maximum.
-- Include all explicitly required skills.
+Composition rules:
+- A persona defines perspective, priorities, and decision style.
+- A skill provides domain-specific knowledge and checks.
+- Select only persona and skill ids present in their registries.
+- The generator persona must support the generator role.
+- Every reviewer persona must support the reviewer role.
+- Every assigned skill must support the role receiving it.
+- When a fixed generator persona is provided, use exactly that persona.
+- The generator may have zero skills when persona and repository context are
+  sufficient.
+- Every reviewer must have at least one skill.
+- Include every explicitly required reviewer skill in at least one reviewer.
+- Do not assign the same skill to multiple reviewers.
+- Select the minimum useful reviewer set for the task.
+- Never exceed the stated reviewer or skill limits.
+- Use preferred_skills as guidance, not as a mandatory restriction.
 - Judge repository maturity from structural evidence.
 - Do not demand production completeness from an early prototype.
 - strictness must be an integer from 0 to 100.
+- Keep focus concrete and specific to the task.
 - Do not include Markdown or additional prose.
 """.strip()
 
 
 GENERATOR_SYSTEM_PROMPT = """
-You are a senior software engineer.
+Execute the supplied software task.
 
 Return ONLY valid JSON.
 
@@ -45,6 +76,7 @@ The JSON must have this exact shape:
 }
 
 Rules:
+- Follow the supplied persona, skills, focus, repository context, and task.
 - No Markdown fences.
 - No prose before or after the JSON.
 - Use relative paths only.
@@ -77,10 +109,11 @@ The JSON object must have this exact shape:
 Scoring:
 - 0 means unusable or fundamentally incorrect.
 - 100 means fully appropriate for the stated task, project phase and strictness.
-- Judge only the requested change.
+- Apply the supplied persona, skills, focus, and project constitution.
+- Judge only the requested change and its directly affected contracts.
 - Do not penalise missing work that the task did not request.
 - A blocking issue must be a concrete defect that prevents approval.
-- Preferences, optional improvements and future hardening are not blocking.
+- Preferences, optional improvements, and future hardening are not blocking.
 - Do not output approved; the harness computes it.
 
 Rules:
