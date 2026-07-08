@@ -7,6 +7,7 @@ from typing import Any
 
 from src.app.personas import load_persona_registry
 from src.app.schemas import RunMeetingRequest
+from src.app.services.llm_service.prompts import render_prompt
 from src.app.services.llm_service.instructions import MEETING_PLANNER_INSTRUCTIONS
 from src.app.services.meeting_artifact_service import get_artifact_contract
 from src.app.services.meeting_runtime_service import UsageTotals, call_json_model
@@ -109,40 +110,19 @@ def _build_planner_input(
         SKILL_PLANNER_FIELDS,
     )
 
-    return f"""
-Meeting type:
+    planner_prompt = render_prompt(
+        "meeting_planner.md",
+        meeting_type=req.meeting_type,
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        constitution=req.constitution,
+        required_personas_json=json.dumps(required_personas, ensure_ascii=False),
+        required_skills_json=json.dumps(required_skills, ensure_ascii=False),
+        max_participants=MAX_PARTICIPANTS,
+        max_challengers=MAX_CHALLENGERS,
+        max_skills_per_member=MAX_SKILLS_PER_MEMBER,
+        personas_json=json.dumps(personas, ensure_ascii=False),
+        skills_json=json.dumps(skills, ensure_ascii=False)
+    )
 
-{req.meeting_type}
-
-Initial prompt or source artifact:
-
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Project constitution:
-
-{req.constitution}
-
-Required personas:
-
-{json.dumps(required_personas, ensure_ascii=False)}
-
-Required skills:
-
-{json.dumps(required_skills, ensure_ascii=False)}
-
-Maximum participants: {MAX_PARTICIPANTS}
-Maximum challengers: {MAX_CHALLENGERS}
-Maximum skills per member: {MAX_SKILLS_PER_MEMBER}
-
-Persona registry:
-
-{json.dumps(personas, ensure_ascii=False)}
-
-Skill registry:
-
-{json.dumps(skills, ensure_ascii=False)}
-""".strip()
+    return planner_prompt

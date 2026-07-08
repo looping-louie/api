@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from src.app.schemas import RunMeetingRequest
+from src.app.services.llm_service.prompts import render_prompt
 from src.app.services.llm_service.instructions import (
     CHALLENGER_INSTRUCTIONS,
     FACILITATOR_AGGREGATION_INSTRUCTIONS,
@@ -49,34 +50,16 @@ async def _facilitate_round(
     """
     Ask the facilitator to define the current contribution round.
     """
-    facilitator_input = f"""
-Original prompt:
-
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Round number: {round_number}
-
-Current artifact:
-
-{current_artifact or "No artifact exists yet."}
-
-Previous challenge and validation feedback:
-
-{previous_feedback or "No previous feedback."}
-
-Known disagreements:
-
-{json.dumps(disagreements, ensure_ascii=False)}
-
-Facilitator assignment:
-
-{build_member_instructions(member=plan.facilitator, role="facilitator")}
-""".strip()
-
+    facilitator_input = render_prompt(
+        "facilitator_input.md",
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        round_number=round_number,
+        current_artifact=current_artifact or "No artifact exists yet.",
+        previous_feedback=previous_feedback or "No previous feedback.",
+        disagreements_json=json.dumps(disagreements, ensure_ascii=False),
+        member_instructions=build_member_instructions(member=plan.facilitator, role="facilitator")
+    )
     path = f"rounds/{round_number}/facilitator-brief"
     write_text(run_path, f"{path}-prompt.txt", facilitator_input)
     brief, response = await call_json_model(
@@ -102,28 +85,14 @@ async def _run_participant(
     """
     Execute one participant contribution for the current round.
     """
-    participant_input = f"""
-Original prompt:
-
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Current artifact:
-
-{current_artifact or "No artifact exists yet."}
-
-Facilitator brief:
-
-{json.dumps(brief, ensure_ascii=False)}
-
-Participant assignment:
-
-{build_member_instructions(member=member, role="participant")}
-""".strip()
-
+    participant_input = render_prompt(
+        "participant_input.md",
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        current_artifact=current_artifact or "No artifact exists yet.",
+        brief_json=json.dumps(brief, ensure_ascii=False),
+        member_instructions=build_member_instructions(member=member, role="participant")
+    )
     member_key = f"participant-{member_index:02d}-{member.persona}"
     path = f"rounds/{round_number}/{member_key}"
     write_text(run_path, f"{path}-prompt.txt", participant_input)
@@ -190,38 +159,22 @@ async def _aggregate_round(
     """
     Consolidate participant contributions and identify disagreements.
     """
-    aggregation_input = f"""
-Original prompt:
-
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Current artifact:
-
-{current_artifact or "No artifact exists yet."}
-
-Facilitator brief:
-
-{json.dumps(brief, ensure_ascii=False)}
-
-Participant contributions:
-
-{json.dumps(contributions, ensure_ascii=False)}
-
-Facilitator assignment:
-
-{build_member_instructions(member=plan.facilitator, role="facilitator")}
-""".strip()
+    aggregator_input = render_prompt(
+        "aggregator_input.md",
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        current_artifact=current_artifact or "No artifact exists yet.",
+        brief_json=json.dumps(brief, ensure_ascii=False),
+        contributions_json=json.dumps(contributions, ensure_ascii=False),
+        member_instructions=build_member_instructions(member=plan.facilitator, role="facilitator")
+    )
 
     path = f"rounds/{round_number}/facilitator-aggregation"
-    write_text(run_path, f"{path}-prompt.txt", aggregation_input)
+    write_text(run_path, f"{path}-prompt.txt", aggregator_input)
     aggregation, response = await call_json_model(
         model=req.planner_model,
         system_instructions=FACILITATOR_AGGREGATION_INSTRUCTIONS,
-        user_prompt=aggregation_input,
+        user_prompt=aggregator_input,
     )
     usage.add(response)
     write_json(run_path, f"{path}.json", aggregation)
@@ -242,35 +195,15 @@ async def _synthesize_artifact(
     """
     Ask the synthesizer to produce the complete artifact for this round.
     """
-    synthesizer_input = f"""
-Write the complete artifact now.
-
-Original prompt or source artifact:
-
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Current artifact:
-
-{current_artifact or "No artifact exists yet."}
-
-Facilitator aggregation:
-
-{json.dumps(aggregation, ensure_ascii=False)}
-
-Previous challenge and validation feedback:
-
-{previous_feedback or "No previous feedback."}
-
-Synthesizer assignment:
-
-{build_member_instructions(member=plan.synthesizer, role="synthesizer")}
-
-Return the artifact only. Do not include commentary or code fences.
-""".strip()
+    synthesizer_input = render_prompt(
+        "synthesizer_input.md",
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        current_artifact=current_artifact or "No artifact exists yet.",
+        facilitator_aggregation_json=json.dumps(aggregation, ensure_ascii=False),
+        previous_feedback=previous_feedback or "No previous feedback.",
+        member_instructions=build_member_instructions(member=plan.synthesizer, role="synthesizer")
+    )
 
     path = f"rounds/{round_number}/synthesizer"
     write_text(run_path, f"{path}-prompt.txt", synthesizer_input)
@@ -302,27 +235,15 @@ async def _run_challenger(
     """
     Execute one challenger review against the current artifact.
     """
-    challenger_input = f"""
-Original prompt:
 
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Candidate artifact:
-
-{artifact}
-
-Challenger assignment:
-
-{build_member_instructions(member=member, role="challenger")}
-
-Project constitution:
-
-{req.constitution}
-""".strip()
+    challenger_input = render_prompt(
+        "challenger_input.md",
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        artifact=artifact,
+        member_instructions=build_member_instructions(member=member, role="challenger"),
+        constitution=req.constitution
+    )
 
     member_key = f"challenger-{member_index:02d}-{member.persona}"
     path = f"rounds/{round_number}/{member_key}"
@@ -406,27 +327,15 @@ async def _validate_artifact(
         meeting_type=req.meeting_type,
         artifact=artifact,
     )
-    validator_input = f"""
-Original prompt:
 
-{req.prompt}
-
-Artifact contract:
-
-{get_artifact_contract(req.meeting_type)}
-
-Candidate artifact:
-
-{artifact}
-
-Deterministic validation issues:
-
-{json.dumps(local_issues, ensure_ascii=False)}
-
-Validator assignment:
-
-{build_member_instructions(member=plan.validator, role="validator")}
-""".strip()
+    validator_input = render_prompt(
+        "validator_input.md",
+        prompt=req.prompt,
+        artifact_contract=get_artifact_contract(req.meeting_type),
+        artifact=artifact,
+        issues_json=json.dumps(local_issues, ensure_ascii=False),
+        member_instructions=build_member_instructions(member=plan.validator, role="validator")
+    )
 
     path = f"rounds/{round_number}/validator"
     write_text(run_path, f"{path}-prompt.txt", validator_input)

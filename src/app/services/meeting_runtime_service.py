@@ -10,6 +10,7 @@ from uuid import uuid4
 from src.app.schemas import RunMeetingRequest, RunMeetingResponse, RunMetrics
 from src.app.services.llm_service.openai import call_openai
 from src.app.services.llm_service.together import call_together
+from src.app.services.llm_service.prompts import render_prompt
 from src.app.utils.io import write_json, write_text
 
 
@@ -97,25 +98,12 @@ def _build_json_repair_prompt(
     parsing_error: str,
 ) -> str:
     """Build a prompt that repairs malformed JSON without changing meaning."""
-    return f"""
-Repair the malformed JSON below.
-
-Return only one valid JSON object.
-
-Rules:
-- Preserve the original meaning and values.
-- Do not add or remove fields.
-- Escape line breaks and quotation marks inside string values.
-- Do not include Markdown fences or explanatory prose.
-
-Parser error:
-
-{parsing_error}
-
-Malformed JSON:
-
-{invalid_output}
-""".strip()
+    repair_prompt = render_prompt(
+        "json_repair.md",
+        parsing_error=parsing_error,
+        invalid_output=invalid_output
+    )
+    return repair_prompt
 
 
 async def call_json_model(
