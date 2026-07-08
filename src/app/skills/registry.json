@@ -21,11 +21,14 @@
   },
   {
     "id": "nuxt",
-    "description": "Reviews Nuxt frontend code, routing, composables, SSR/SPA issues.",
+    "description": "Provides Nuxt-specific knowledge covering application structure, Vue integration, routing, rendering, hydration, data fetching, state, Nitro APIs, deployment, type safety, and testing.",
     "applies_when": [
       "nuxt",
       "vue",
-      "frontend"
+      "frontend",
+      "nitro",
+      "h3",
+      "ssr"
     ],
     "applies_to": [
       "generator",
@@ -34,6 +37,145 @@
     "reviewer_default_strictness": {
       "prototype": 30,
       "mvp": 55,
+      "production": 85
+    }
+  },
+  {
+    "id": "idea_shaping",
+    "description": "Provides structured methods for turning an ambiguous idea into a bounded, testable, decision-ready product concept with explicit scope, appetite, risks, validation needs, and success criteria.",
+    "applies_when": [
+      "idea",
+      "product",
+      "feature",
+      "concept",
+      "scope",
+      "appetite",
+      "shaping",
+      "mvp"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 30,
+      "mvp": 55,
+      "production": 80
+    }
+  },
+  {
+    "id": "customer_problem",
+    "description": "Provides methods for identifying, testing, and expressing customer problems, affected users, current alternatives, context, severity, frequency, and supporting evidence.",
+    "applies_when": [
+      "customer",
+      "user",
+      "problem",
+      "discovery",
+      "research",
+      "workflow",
+      "pain_point",
+      "desired_outcome"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 30,
+      "mvp": 55,
+      "production": 80
+    }
+  },
+  {
+    "id": "risk_analysis",
+    "description": "Provides structured identification, classification, prioritisation, and treatment of product, technical, operational, commercial, legal, security, privacy, delivery, and adoption risks.",
+    "applies_when": [
+      "risk",
+      "assumptions",
+      "dependencies",
+      "feasibility",
+      "security",
+      "privacy",
+      "delivery",
+      "compliance"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 35,
+      "mvp": 60,
+      "production": 85
+    }
+  },
+  {
+    "id": "resilience",
+    "description": "Provides cross-cutting resilience knowledge covering failure handling, retries, idempotency, degradation, recovery, observability, rollback, dependency failure, and state integrity.",
+    "applies_when": [
+      "resilience",
+      "reliability",
+      "failure",
+      "retries",
+      "idempotency",
+      "recovery",
+      "rollback",
+      "observability",
+      "operations"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 30,
+      "mvp": 60,
+      "production": 90
+    }
+  },
+  {
+    "id": "task_decomposition",
+    "description": "Provides methods for converting an approved idea or specification into small, ordered, independently reviewable implementation tasks with explicit dependencies, context, and commit outcomes.",
+    "applies_when": [
+      "tasks",
+      "planning",
+      "implementation",
+      "backlog",
+      "decomposition",
+      "dependencies",
+      "tasks_json",
+      "commits"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 30,
+      "mvp": 55,
+      "production": 80
+    }
+  },
+  {
+    "id": "acceptance_criteria",
+    "description": "Provides methods for writing and validating concrete, observable, testable acceptance criteria covering successful behaviour, boundaries, failure states, and completion.",
+    "applies_when": [
+      "acceptance_criteria",
+      "requirements",
+      "specification",
+      "validation",
+      "testing",
+      "completion",
+      "contract",
+      "definition_of_done"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 35,
+      "mvp": 60,
       "production": 85
     }
   }
