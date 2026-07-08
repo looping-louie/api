@@ -41,6 +41,169 @@
     }
   },
   {
+    "id": "accessibility",
+    "description": "Provides accessibility knowledge covering semantic structure, keyboard interaction, focus management, forms, visual presentation, motion, media, tables, and assistive-technology compatibility.",
+    "applies_when": [
+      "accessibility",
+      "a11y",
+      "keyboard",
+      "focus",
+      "forms",
+      "aria",
+      "wcag",
+      "frontend"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 35,
+      "mvp": 60,
+      "production": 85
+    }
+  },
+  {
+    "id": "privacy",
+    "description": "Provides privacy knowledge covering data minimisation, consent, transparency, retention, deletion, user rights, logging, analytics, storage, and third-party sharing.",
+    "applies_when": [
+      "privacy",
+      "personal_data",
+      "consent",
+      "cookies",
+      "analytics",
+      "retention",
+      "deletion",
+      "gdpr"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 35,
+      "mvp": 65,
+      "production": 90
+    }
+  },
+  {
+    "id": "security",
+    "description": "Provides application-security knowledge covering authentication, authorisation, validation, injection, secrets, sessions, tenant isolation, abuse resistance, dependencies, and secure deployment.",
+    "applies_when": [
+      "security",
+      "authentication",
+      "authorisation",
+      "api",
+      "secrets",
+      "sessions",
+      "tenancy",
+      "uploads",
+      "webhooks"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 40,
+      "mvp": 70,
+      "production": 95
+    }
+  },
+  {
+    "id": "internationalisation",
+    "description": "Provides internationalisation knowledge covering language, locale, translation, pluralisation, formatting, multilingual routing, metadata, right-to-left layouts, and locale-sensitive user experience.",
+    "applies_when": [
+      "internationalisation",
+      "i18n",
+      "localisation",
+      "l10n",
+      "locale",
+      "translation",
+      "rtl",
+      "multilingual"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 25,
+      "mvp": 55,
+      "production": 80
+    }
+  },
+  {
+    "id": "performance",
+    "description": "Provides performance knowledge covering rendering, Core Web Vitals, JavaScript, CSS, images, fonts, network requests, caching, payload size, server latency, and measurement-driven optimisation.",
+    "applies_when": [
+      "performance",
+      "core_web_vitals",
+      "bundle",
+      "latency",
+      "caching",
+      "images",
+      "fonts",
+      "frontend",
+      "backend"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 25,
+      "mvp": 55,
+      "production": 85
+    }
+  },
+  {
+    "id": "seo",
+    "description": "Provides search-engine optimisation knowledge covering crawlability, indexability, rendering, metadata, canonicals, redirects, structured data, internal linking, sitemaps, and robots directives.",
+    "applies_when": [
+      "seo",
+      "search",
+      "metadata",
+      "canonical",
+      "structured_data",
+      "sitemap",
+      "robots",
+      "public_content"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 25,
+      "mvp": 55,
+      "production": 80
+    }
+  },
+  {
+    "id": "agent_readiness",
+    "description": "Provides agent-readiness knowledge covering semantic content, stable URLs, machine-readable representations, discovery metadata, API and tool contracts, crawler policy, provenance, and safe automation.",
+    "applies_when": [
+      "agents",
+      "agent_readiness",
+      "machine_readable",
+      "api",
+      "tools",
+      "discovery",
+      "llms_txt",
+      "automation"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "reviewer_default_strictness": {
+      "prototype": 20,
+      "mvp": 50,
+      "production": 75
+    }
+  },
+  {
     "id": "idea_shaping",
     "description": "Provides structured methods for turning an ambiguous idea into a bounded, testable, decision-ready product concept with explicit scope, appetite, risks, validation needs, and success criteria.",
     "applies_when": [
