@@ -24,7 +24,7 @@ from pathlib import Path
 # - move
 # - mkdir
 # if they prove beneficial without making prompts significantly harder.
-ALLOWED_OPERATIONS = {"create", "replace", "delete"}
+ALLOWED_OPERATIONS = {"create", "replace", "replace_text", "delete"}
 
 
 def parse_file_operations(raw: str) -> list[dict]:
@@ -82,44 +82,125 @@ def _extract_json_object(raw: str) -> str:
     return text[start : end + 1]
 
 
+def _read_pending_content(
+    *,
+    target: Path,
+    pending: dict[Path, str | None],
+) -> str | None:
+    """
+    Return the latest simulated content for one path.
+
+    Pending changes take precedence over the current filesystem state.
+    """
+    if target in pending:
+        return pending[target]
+
+    if not target.exists():
+        return None
+
+    if not target.is_file():
+        raise ValueError(f"Path is not a file: {target}")
+
+    return target.read_text(encoding="utf-8")
+
+
+def _commit_pending_changes(
+    pending: dict[Path, str | None],
+) -> None:
+    """
+    Persist validated simulated changes to the filesystem.
+    """
+    for target, content in pending.items():
+        if content is None:
+            target.unlink()
+            continue
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+
+
 # TODO:
 # Execute operations atomically.
 # If one operation fails, previously applied operations should be rolled
 # back instead of leaving the worktree partially modified.
-def apply_file_operations(repo_path: str, operations: list[dict]) -> None:
+def apply_file_operations(
+    repo_path: str,
+    operations: list[dict],
+) -> None:
     """
-    Apply validated file operations to a repository.
+    Validate and apply file operations atomically.
 
-    Operations are executed sequentially inside the current worktree.
-    The original repository is never modified directly.
+    All operations are simulated in memory in their declared order. Filesystem
+    writes occur only after every operation has succeeded.
     """
     root = Path(repo_path).resolve()
+    pending: dict[Path, str | None] = {}
 
     for operation in operations:
+        _validate_operation(operation)
+
         op = operation["operation"]
-        target = _safe_path(root, operation["path"])
+        relative_path = operation["path"]
+        target = _safe_path(root, relative_path)
+
+        current_content = _read_pending_content(
+            target=target,
+            pending=pending,
+        )
 
         if op == "create":
-            if target.exists():
-                raise ValueError(f"Cannot create existing file: {operation['path']}")
+            if current_content is not None:
+                raise ValueError(
+                    f"Cannot create existing file: {relative_path}"
+                )
 
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(operation["content"], encoding="utf-8")
+            pending[target] = operation["content"]
 
         elif op == "replace":
-            if not target.exists():
-                raise ValueError(f"Cannot replace missing file: {operation['path']}")
+            if current_content is None:
+                raise ValueError(
+                    f"Cannot replace missing file: {relative_path}"
+                )
 
-            target.write_text(operation["content"], encoding="utf-8")
+            pending[target] = operation["content"]
+
+        elif op == "replace_text":
+            if current_content is None:
+                raise ValueError(
+                    f"Cannot modify missing file: {relative_path}"
+                )
+
+            old_content = operation["old_content"]
+            matches = current_content.count(old_content)
+
+            if matches == 0:
+                raise ValueError(
+                    "replace_text old_content was not found in "
+                    f"{relative_path}"
+                )
+
+            if matches > 1:
+                raise ValueError(
+                    "replace_text old_content appears more than once in "
+                    f"{relative_path}"
+                )
+
+            pending[target] = current_content.replace(
+                old_content,
+                operation["new_content"],
+                1,
+            )
 
         elif op == "delete":
-            if not target.exists():
-                raise ValueError(f"Cannot delete missing file: {operation['path']}")
+            if current_content is None:
+                raise ValueError(
+                    f"Cannot delete missing file: {relative_path}"
+                )
 
-            if target.is_dir():
-                raise ValueError(f"Cannot delete directory: {operation['path']}")
+            pending[target] = None
 
-            target.unlink()
+    _commit_pending_changes(pending)
+
 
 
 def _validate_operation(operation: dict) -> None:
@@ -152,8 +233,32 @@ def _validate_operation(operation: dict) -> None:
         if not isinstance(content, str):
             raise ValueError(f"{op} operation requires string content")
 
-    if op == "delete" and "content" in operation:
-        raise ValueError("delete operation must not include content")
+    if op == "delete" and any(
+        key in operation
+        for key in ("content", "old_content", "new_content")
+    ):
+        raise ValueError(
+            "delete operation must not include file content"
+        )
+
+    if op == "replace_text":
+        old_content = operation.get("old_content")
+        new_content = operation.get("new_content")
+
+        if not isinstance(old_content, str) or not old_content:
+            raise ValueError(
+                "replace_text operation requires non-empty old_content"
+            )
+
+        if not isinstance(new_content, str):
+            raise ValueError(
+                "replace_text operation requires string new_content"
+            )
+
+        if "content" in operation:
+            raise ValueError(
+                "replace_text operation must not include content"
+            )
 
 
 def _safe_path(root: Path, relative_path: str) -> Path:
