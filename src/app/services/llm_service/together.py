@@ -65,15 +65,42 @@ def _get_together_client():
     return _together_client
 
 
+def _build_messages(
+    *,
+    prompt: str,
+    system_prompt: str | None,
+) -> list[dict[str, str]]:
+    """Build provider messages with an optional system instruction."""
+    messages = []
+
+    if system_prompt:
+        messages.append(
+            {
+                "role": "system",
+                "content": system_prompt,
+            }
+        )
+
+    messages.append(
+        {
+            "role": "user",
+            "content": prompt,
+        }
+    )
+    return messages
+
+
 async def call_together(
     model: str,
     prompt: str,
+    *,
+    system_prompt: str | None = GENERATOR_SYSTEM_PROMPT,
 ) -> dict[str, Any]:
     """
-    Execute a generator model through Together.ai.
+    Execute one model call through Together.ai.
 
-    The generator receives a system-level file-operation contract and the
-    prompt constructed by ModelContextService.
+    Generator calls keep the file-operation contract by default. Other
+    workflows may explicitly omit or replace that system instruction.
 
     The synchronous provider SDK is executed in a worker thread so it does not
     block the application's asynchronous event loop.
@@ -83,7 +110,11 @@ async def call_together(
             Together model identifier.
 
         prompt:
-            Complete generator prompt.
+            Complete prompt.
+
+        system_prompt:
+            Optional provider-level instruction. Existing generator calls use
+            the file-operation contract by default; meetings pass ``None``.
 
     Returns:
         A provider-normalised dictionary containing:
@@ -101,16 +132,10 @@ async def call_together(
     response = await asyncio.to_thread(
         client.chat.completions.create,
         model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": GENERATOR_SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
+        messages=_build_messages(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        ),
         stream=False,
         max_tokens=MAX_OUTPUT_TOKENS,
         temperature=0.2,
