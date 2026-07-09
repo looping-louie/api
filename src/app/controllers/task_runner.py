@@ -17,8 +17,8 @@ from src.app.controllers.harness_runner import run_harness
 from src.app.schemas import RunHarnessRequest, RunTasksRequest
 from src.app.services.execution_planner_service import create_execution_plan
 from src.app.services.git_service import commit_all, has_changes
-from src.app.services.project_config_service import load_constitution
-from src.app.services.project_profile_service import build_project_profile
+from src.app.services.project.project_config_service import load_constitution
+from src.app.services.project.project_profile_service import build_project_profile
 from src.app.services.task_plan_service import (
     get_next_pending_task,
     load_tasks,
