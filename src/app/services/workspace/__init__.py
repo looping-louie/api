@@ -20,7 +20,13 @@ import uuid
 from pathlib import Path
 
 from src.app.models.workspace import Workspace
-from src.app.services import git_service
+from src.app.services.git import (
+    assert_git_repo,
+    assert_clean_repo,
+    create_worktree,
+    get_head_sha,
+    prune_worktrees,
+    remove_worktree)
 
 
 def create_workspace(repo_path: str | Path) -> Workspace:
@@ -48,11 +54,11 @@ def create_workspace(repo_path: str | Path) -> Workspace:
     """
     repo = _resolve_repository_path(repo_path)
 
-    git_service.assert_git_repo(repo)
-    git_service.prune_worktrees(repo)
-    git_service.assert_clean_repo(repo)
+    assert_git_repo(repo)
+    prune_worktrees(repo)
+    assert_clean_repo(repo)
 
-    source_commit_sha = git_service.get_head_sha(repo)
+    source_commit_sha = get_head_sha(repo)
     run_id = uuid.uuid4().hex[:12]
 
     run_path = repo / ".looping-louie" / "runs" / run_id
@@ -61,7 +67,7 @@ def create_workspace(repo_path: str | Path) -> Workspace:
     run_path.mkdir(parents=True, exist_ok=False)
 
     try:
-        git_service.create_worktree(
+        create_worktree(
             repo_path=repo,
             worktree_path=worktree_path,
             source_ref=source_commit_sha,
@@ -100,7 +106,7 @@ def cleanup_workspace(workspace: Workspace) -> None:
         RuntimeError:
             If Git cannot remove the worktree.
     """
-    git_service.remove_worktree(
+    remove_worktree(
         repo_path=workspace.repo_path,
         worktree_path=workspace.worktree_path,
         force=True,

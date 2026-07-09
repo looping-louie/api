@@ -34,11 +34,11 @@ from src.app.schemas import (
     RunHarnessResponse,
     RunMetrics,
 )
-from src.app.services.file_change_service import (
+from src.app.services.file_change import (
     apply_file_operations,
     parse_file_operations,
 )
-from src.app.services.git_service import (
+from src.app.services.git import (
     apply_patch,
     get_changed_files,
     get_git_diff,
@@ -46,7 +46,7 @@ from src.app.services.git_service import (
 )
 from src.app.services.llm_service.openai import review_with_openai
 from src.app.services.llm_service.together import call_together
-from src.app.services.model_context_service import (
+from src.app.services.model_context import (
     build_initial_generator_prompt,
     build_retry_generator_prompt,
     build_reviewer_input,
@@ -54,7 +54,7 @@ from src.app.services.model_context_service import (
     format_snapshot_for_prompt,
     read_changed_file_contents,
 )
-from src.app.services.workspace_service import (
+from src.app.services.workspace import (
     cleanup_workspace,
     create_workspace,
 )

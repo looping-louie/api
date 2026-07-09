@@ -20,7 +20,7 @@ execute Git commands.
 
 from pathlib import Path
 
-from .llm_service.prompts import render_prompt
+from src.app.services.llm_service.prompts import render_prompt
 
 IGNORED_DIRS = {
     ".git",
