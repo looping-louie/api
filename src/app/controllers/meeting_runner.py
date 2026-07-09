@@ -4,9 +4,9 @@ import time
 from typing import Any
 
 from src.app.schemas import RunMeetingRequest, RunMeetingResponse
-from src.app.services.meeting_planner_service import create_meeting_plan
-from src.app.services.meeting_round_service import execute_meeting_round
-from src.app.services.meeting_runtime_service import (
+from src.app.services.meeting.meeting_planner_service import create_meeting_plan
+from src.app.services.meeting.meeting_round_service import execute_meeting_round
+from src.app.services.meeting.meeting_runtime_service import (
     UsageTotals,
     build_meeting_response,
     create_meeting_run,

@@ -9,9 +9,9 @@ from src.app.personas import load_persona_registry
 from src.app.schemas import RunMeetingRequest
 from src.app.services.llm_service.prompts import render_prompt
 from src.app.services.llm_service.instructions import MEETING_PLANNER_INSTRUCTIONS
-from src.app.services.meeting_artifact_service import get_artifact_contract
-from src.app.services.meeting_runtime_service import UsageTotals, call_json_model
-from src.app.services.meeting_team_service import (
+from src.app.services.meeting.meeting_artifact_service import get_artifact_contract
+from src.app.services.meeting.meeting_runtime_service import UsageTotals, call_json_model
+from src.app.services.meeting.meeting_team_service import (
     MAX_CHALLENGERS,
     MAX_PARTICIPANTS,
     MAX_SKILLS_PER_MEMBER,
