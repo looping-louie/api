@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 from src.app.schemas import (
     GetTaskResponse,
     RunMeetingRequest,
@@ -10,6 +10,21 @@ from src.app.schemas import (
 )
 from src.app.controllers.meeting import run_meeting
 from src.app.controllers.task import continue_task, get_task, start_task
+
+from src.app.schemas.providers import (
+    ProviderEnabledRequest,
+    ProviderResponse,
+    ProviderSetRequest,
+    ProviderTestResponse
+)
+
+from src.app.controllers.providers import (
+    list_providers,
+    set_provider,
+    set_provider_enabled,
+    test_provider,
+    unset_provider,
+)
 
 
 # Create the router instance
@@ -49,3 +64,38 @@ async def task_continue_endpoint(req: TaskContinueRequest) -> TaskContinueRespon
 async def task_get_endpoint(run_id: str) -> GetTaskResponse:
     """Return latest checkpoint state for one task run identifier."""
     return await get_task(run_id)
+@router.get("/providers", response_model=list[ProviderResponse])
+async def list_providers_endpoint() -> list[ProviderResponse]:
+    """Return all model providers and their current configuration state."""
+    return await list_providers()
+
+
+@router.put("/providers/{provider}", response_model=ProviderResponse)
+async def set_provider_endpoint(
+    provider: str,
+    request: ProviderSetRequest,
+) -> ProviderResponse:
+    """Create or replace the configuration for a model provider."""
+    return await set_provider(provider=provider, request=request)
+
+
+@router.patch("/providers/{provider}/enabled", response_model=ProviderResponse)
+async def set_provider_enabled_endpoint(
+    provider: str,
+    request: ProviderEnabledRequest,
+) -> ProviderResponse:
+    """Enable or disable a configured model provider."""
+    return await set_provider_enabled(provider=provider, request=request)
+
+
+@router.delete("/providers/{provider}/credential", status_code=status.HTTP_204_NO_CONTENT)
+async def unset_provider_endpoint(provider: str) -> Response:
+    """Delete the stored credential for a model provider."""
+    await unset_provider(provider=provider)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/providers/{provider}/test", response_model=ProviderTestResponse)
+async def test_provider_endpoint(provider: str) -> ProviderTestResponse:
+    """Test the stored configuration by connecting to the provider."""
+    return await test_provider(provider=provider)
