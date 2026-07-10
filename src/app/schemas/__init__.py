@@ -16,7 +16,7 @@ The hierarchy is intentionally split into:
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 ProjectPhase = Literal['prototype', 'mvp', 'production']
@@ -33,40 +33,6 @@ class GeneratorAssignment(BaseModel):
     persona: str
     skills: list[str]
     focus: str
-
-
-class ReviewerAssignment(BaseModel):
-    """
-    Reviewer configuration selected for one task.
-
-    One reviewer combines a persona with one or more technical skills.
-    """
-
-    persona: str
-    skills: list[str]
-    strictness: int = Field(ge=0, le=100)
-    focus: str
-
-
-class ExecutionPlan(BaseModel):
-    """
-    Complete generator and reviewer strategy for one development task.
-    """
-
-    phase: ProjectPhase
-    reasoning: str
-    generator: GeneratorAssignment
-    reviewers: list[ReviewerAssignment]
-
-
-class ReviewerIssue(BaseModel):
-    """
-    One concrete issue found by a reviewer.
-    """
-
-    title: str
-    description: str
-    file: str | None = None
 
 
 class ModelMetrics(BaseModel):
@@ -86,17 +52,6 @@ class ModelMetrics(BaseModel):
     tokens_per_second: float = 0
 
 
-class ReviewerMetrics(ModelMetrics):
-    """
-    Metrics for one reviewer invocation.
-
-    Records the persona and skills that produced the measurements.
-    """
-
-    persona: str
-    skills: list[str]
-
-
 class RunMetrics(BaseModel):
     """
     Aggregated metrics for the complete harness execution.
@@ -114,28 +69,27 @@ class RunMetrics(BaseModel):
     estimated_cost_eur: float = 0
 
 
-class ReviewerResult(BaseModel):
-    """
-    Normalised reviewer result enriched by the harness.
+# NOTE:
+# Reviewer schemas are imported here (instead of the top of the file) because
+# they depend on ModelMetrics and ProjectPhase defined above.
+# pylint: disable=wrong-import-position
+from src.app.schemas.reviewer import (
+    ReviewerAssignment,
+    ReviewerIssue,
+    ReviewerMetrics,
+    ReviewerResult,
+)
 
-    Execution metadata is generated locally and never trusted to the model.
+
+class ExecutionPlan(BaseModel):
+    """
+    Complete generator and reviewer strategy for one development task.
     """
 
-    persona: str
-    skills: list[str]
-    focus: str
-    model: str
-    run_id: str
-    iteration: int
     phase: ProjectPhase
-    strictness: int
-
-    score: int = Field(ge=0, le=100)
-    blocking_issues: list[ReviewerIssue]
-    feedback: str
-    approved: bool
-
-    metrics: ReviewerMetrics
+    reasoning: str
+    generator: GeneratorAssignment
+    reviewers: list[ReviewerAssignment]
 
 
 # TODO:
