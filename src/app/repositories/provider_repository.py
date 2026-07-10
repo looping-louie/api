@@ -1,13 +1,12 @@
 """SQLite persistence for encrypted provider credentials."""
 
-import asyncio
-import aiosqlite
-
 from datetime import datetime
-from pathlib import Path
 from typing import Protocol
 
+import aiosqlite
+
 from src.app.models.providers import ProviderCredential
+from src.app.repositories.sqlite_database import SqliteDatabase
 
 
 class ProviderRepository(Protocol):
@@ -53,32 +52,32 @@ class ProviderRepository(Protocol):
 
 
 class SqliteProviderRepository:
-    """aiosqlite implementation of ProviderRepository."""
+    """SQLite implementation of ProviderRepository."""
 
-    _CREATE_TABLE = """
-    CREATE TABLE IF NOT EXISTS provider_credentials (
-        id TEXT PRIMARY KEY,
-        org_id TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        enabled INTEGER NOT NULL DEFAULT 0,
-        enabled_by TEXT,
-        enabled_on TEXT,
-        key_trimmed TEXT,
-        key_ciphertext TEXT,
-        key_version INTEGER NOT NULL DEFAULT 1,
-        base_url TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        UNIQUE(org_id, provider)
-    );
-    """
+    _SCHEMA = (
+        """
+        CREATE TABLE IF NOT EXISTS provider_credentials (
+            id TEXT PRIMARY KEY,
+            org_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 0,
+            enabled_by TEXT,
+            enabled_on TEXT,
+            key_trimmed TEXT,
+            key_ciphertext TEXT,
+            key_version INTEGER NOT NULL DEFAULT 1,
+            base_url TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(org_id, provider)
+        )
+        """,
+    )
 
-    def __init__(self, database_path: Path) -> None:
-        """Store the database path and initialise schema state."""
+    def __init__(self, database: SqliteDatabase) -> None:
+        """Store the shared database dependency."""
 
-        self._database_path = database_path
-        self._schema_ready = False
-        self._schema_lock = asyncio.Lock()
+        self._database = database
 
     async def list_for_org(
         self,
@@ -88,8 +87,7 @@ class SqliteProviderRepository:
 
         await self._ensure_schema()
 
-        async with self._connect() as connection:
-            connection.row_factory = aiosqlite.Row
+        async with self._database.connect() as connection:
             cursor = await connection.execute(
                 """
                 SELECT *
@@ -112,8 +110,7 @@ class SqliteProviderRepository:
 
         await self._ensure_schema()
 
-        async with self._connect() as connection:
-            connection.row_factory = aiosqlite.Row
+        async with self._database.connect() as connection:
             cursor = await connection.execute(
                 """
                 SELECT *
@@ -124,10 +121,7 @@ class SqliteProviderRepository:
             )
             row = await cursor.fetchone()
 
-        if row is None:
-            return None
-
-        return self._row_to_credential(row)
+        return self._row_to_credential(row) if row is not None else None
 
     async def upsert(
         self,
@@ -137,7 +131,7 @@ class SqliteProviderRepository:
 
         await self._ensure_schema()
 
-        async with self._connect() as connection:
+        async with self._database.connect() as connection:
             await connection.execute(
                 """
                 INSERT INTO provider_credentials (
@@ -170,8 +164,8 @@ class SqliteProviderRepository:
             await connection.commit()
 
         stored = await self.get(
-            org_id=credential.org_id,
-            provider=credential.provider,
+            credential.org_id,
+            credential.provider,
         )
 
         if stored is None:
@@ -192,7 +186,7 @@ class SqliteProviderRepository:
 
         await self._ensure_schema()
 
-        async with self._connect() as connection:
+        async with self._database.connect() as connection:
             cursor = await connection.execute(
                 """
                 UPDATE provider_credentials
@@ -206,7 +200,7 @@ class SqliteProviderRepository:
                     int(enabled),
                     enabled_by,
                     self._format_datetime(enabled_on),
-                    self._format_datetime(updated_at),
+                    updated_at.isoformat(),
                     org_id,
                     provider,
                 ),
@@ -218,10 +212,7 @@ class SqliteProviderRepository:
                 f"Provider '{provider}' is not configured."
             )
 
-        stored = await self.get(
-            org_id=org_id,
-            provider=provider,
-        )
+        stored = await self.get(org_id, provider)
 
         if stored is None:
             raise RuntimeError("Provider state could not be reloaded.")
@@ -239,7 +230,7 @@ class SqliteProviderRepository:
         del updated_at
         await self._ensure_schema()
 
-        async with self._connect() as connection:
+        async with self._database.connect() as connection:
             await connection.execute(
                 """
                 DELETE FROM provider_credentials
@@ -250,34 +241,12 @@ class SqliteProviderRepository:
             await connection.commit()
 
     async def _ensure_schema(self) -> None:
-        """Create the local database and table once."""
+        """Create the provider schema when first used."""
 
-        if self._schema_ready:
-            return
-
-        async with self._schema_lock:
-            if self._schema_ready:
-                return
-
-            self._database_path.parent.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-
-            async with aiosqlite.connect(
-                self._database_path
-            ) as connection:
-                await connection.execute("PRAGMA foreign_keys = ON")
-                await connection.execute("PRAGMA journal_mode = WAL")
-                await connection.execute(self._CREATE_TABLE)
-                await connection.commit()
-
-            self._schema_ready = True
-
-    def _connect(self) -> aiosqlite.Connection:
-        """Return a configured SQLite connection context manager."""
-
-        return aiosqlite.connect(self._database_path)
+        await self._database.ensure_schema(
+            schema_name="provider_credentials",
+            statements=self._SCHEMA,
+        )
 
     @staticmethod
     def _credential_values(
@@ -306,7 +275,7 @@ class SqliteProviderRepository:
     def _row_to_credential(
         row: aiosqlite.Row,
     ) -> ProviderCredential:
-        """Convert a SQLite row into a domain model."""
+        """Convert a SQLite row into a provider credential."""
 
         return ProviderCredential(
             id=row["id"],
@@ -327,12 +296,12 @@ class SqliteProviderRepository:
 
     @staticmethod
     def _format_datetime(value: datetime | None) -> str | None:
-        """Serialise an optional datetime for SQLite."""
+        """Serialise an optional datetime."""
 
         return value.isoformat() if value is not None else None
 
     @staticmethod
     def _parse_datetime(value: str | None) -> datetime | None:
-        """Parse an optional SQLite datetime."""
+        """Parse an optional datetime."""
 
         return datetime.fromisoformat(value) if value else None

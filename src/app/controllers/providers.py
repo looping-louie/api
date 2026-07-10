@@ -4,61 +4,24 @@ from typing import NoReturn
 
 from fastapi import HTTPException, status
 
-from src.app.repositories.provider_repository import (
-    SqliteProviderRepository,
-)
 from src.app.schemas.providers import (
     ProviderEnabledRequest,
     ProviderResponse,
     ProviderSetRequest,
     ProviderTestResponse,
 )
-from src.app.services.providers.model_registry_service import (
-    StaticModelRegistryService,
-)
 from src.app.services.providers.provider_connection_service import (
-    HttpProviderConnectionService,
     ProviderConnectionError,
 )
 from src.app.services.providers.provider_service import (
     ProviderConfigurationError,
     ProviderNotConfiguredError,
-    ProviderService,
     UnknownProviderError,
 )
-from src.app.services.providers.provider_settings_service import (
-    get_provider_settings,
-)
-from src.app.services.providers.request_context_service import (
-    EnvironmentRequestContextService,
-)
-from src.app.services.providers.secret_service import FernetSecretService
+from src.app.services.service_factory import get_provider_service
 
 
-def build_provider_service() -> ProviderService:
-    """Build ProviderService with concrete infrastructure dependencies."""
-
-    settings = get_provider_settings()
-
-    return ProviderService(
-        repository=SqliteProviderRepository(
-            database_path=settings.database_path
-        ),
-        secret_service=FernetSecretService(
-            encryption_key=settings.encryption_key
-        ),
-        connection_service=HttpProviderConnectionService(),
-        model_registry=StaticModelRegistryService(
-            counts=settings.model_counts
-        ),
-        request_context=EnvironmentRequestContextService(
-            org_id=settings.org_id,
-            user_id=settings.user_id,
-        ),
-    )
-
-
-_provider_service = build_provider_service()
+_provider_service = get_provider_service()
 
 
 async def list_providers() -> list[ProviderResponse]:
