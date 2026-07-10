@@ -9,6 +9,26 @@ Looping Louie currently exposes two HTTP endpoints.
 
 ---
 
+## Choosing an endpoint
+
+Use **`/run-harness`** when:
+
+- experimenting with prompts;
+- testing a new skill;
+- implementing one isolated change.
+
+Use **`/run-tasks`** when:
+
+- executing a development backlog;
+- evolving a project incrementally;
+- generating one commit per logical task.
+
+`/run-tasks` is expected to become the primary production entry point, while
+`/run-harness` serves as the reusable building block used internally by
+higher-level workflows.
+
+---
+
 ## POST /run-harness
 
 Executes a single task against a repository.
@@ -92,27 +112,6 @@ curl -X POST http://127.0.0.1:8000/run-tasks \
     ]
   }'
 ```
-
----
-
-## Choosing an endpoint
-
-Use **`/run-harness`** when:
-
-- experimenting with prompts;
-- testing a new skill;
-- implementing one isolated change.
-
-Use **`/run-tasks`** when:
-
-- executing a development backlog;
-- evolving a project incrementally;
-- generating one commit per logical task.
-
-`/run-tasks` is expected to become the primary production entry point, while
-`/run-harness` serves as the reusable building block used internally by
-higher-level workflows.
-
 
 ---
 

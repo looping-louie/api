@@ -13,6 +13,70 @@ language, framework or LLM provider.
 
 ---
 
+## Repository Structure
+
+Top-level packages and modules:
+
+```text
+app/
+
+main.py
+    HTTP API
+
+routers/
+    Endpoint composition
+
+controllers/
+    HTTP-level request orchestration
+
+services/harness/
+    Harness orchestration
+
+services/workspace/
+    Workspace lifecycle management
+
+services/model_context/
+    Repository snapshot and prompt context construction
+
+services/file_change/
+    File operation parsing and application
+
+services/git/
+    Git diff, patch and repository helpers
+
+services/llm_service/
+    Provider-specific model integrations
+
+services/execution_planner/
+    Planner strategy for task execution
+
+services/task_plan/
+    Task list loading, selection and persistence
+
+services/meeting/
+    Multi-persona meeting orchestration
+
+services/project/
+    Project profile and constitution loading
+
+personas/
+    Persona library and registry
+
+skills/
+    Skill library and registry
+
+schemas/
+    API contracts and shared models
+
+models/
+    Internal domain entities
+
+utils/
+    Shared IO and helper utilities
+```
+
+---
+
 ## High-Level Architecture
 
 ```text
@@ -210,49 +274,6 @@ If running through `/run-tasks`:
 - repository changes are committed
 - task is marked as completed
 - next task begins
-
----
-
-## Repository Structure
-
-Current modules:
-
-```text
-app/
-
-main.py
-    HTTP API
-
-runner.py
-    Harness orchestration
-
-task_runner.py
-    Multi-task execution
-
-workspace.py
-    Git worktree lifecycle
-
-model_context_service.py
-    Prompt construction and Repository snapshot builder
-
-file_change_service.py
-    JSON file operations
-
-git_service.py
-    Git commit helpers and Git diff generation
-
-llm_service.py
-    Manages calls to generator and reviewer/s provider/s
-
-skill_loader.py
-    Skill loading
-
-run_store.py
-    Execution persistence
-
-schemas.py
-    API models
-```
 
 ---
 

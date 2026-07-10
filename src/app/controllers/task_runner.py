@@ -13,10 +13,10 @@ Execution stops immediately when a task cannot be approved, ensuring the
 repository never progresses beyond a failed step.
 """
 
-from src.app.controllers.harness_runner import run_harness
 from src.app.schemas import RunHarnessRequest, RunTasksRequest
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.git import commit_all, has_changes
+from src.app.services.harness import run_harness
 from src.app.services.project.project_config_service import load_constitution
 from src.app.services.project.project_profile_service import build_project_profile
 from src.app.services.task_plan import (
