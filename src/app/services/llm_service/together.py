@@ -60,7 +60,8 @@ def _get_together_client():
 
         from together import Together
 
-        _together_client = Together(api_key=api_key)
+        # Together was timing out with the default timeout.
+        _together_client = Together(api_key=api_key, timeout=500.0, max_retries=2)
 
     return _together_client
 
