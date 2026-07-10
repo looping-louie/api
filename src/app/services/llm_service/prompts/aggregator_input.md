@@ -14,6 +14,10 @@ Facilitator brief:
 
 $brief_json
 
-Participant assignment:
+Participant contributions:
+
+$contributions_json
+
+Facilitator assignment:
 
 $member_instructions
