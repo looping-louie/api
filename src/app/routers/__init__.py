@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Query, Response, status
 from src.app.schemas import (
     GetTaskResponse,
     RunMeetingRequest,
@@ -24,6 +24,20 @@ from src.app.controllers.providers import (
     set_provider_enabled,
     test_provider,
     unset_provider,
+)
+from src.app.controllers.skills import (
+    create_skill,
+    delete_skill,
+    get_skill,
+    list_skills,
+    restore_skill,
+    update_skill,
+)
+from src.app.schemas.skills import (
+    SkillCreateRequest,
+    SkillResponse,
+    SkillSummaryResponse,
+    SkillUpdateRequest,
 )
 
 
@@ -99,3 +113,78 @@ async def unset_provider_endpoint(provider: str) -> Response:
 async def test_provider_endpoint(provider: str) -> ProviderTestResponse:
     """Test the stored configuration by connecting to the provider."""
     return await test_provider(provider=provider)
+
+
+@router.get(
+    "/skills",
+    response_model=list[SkillSummaryResponse],
+)
+async def list_skills_endpoint(
+    include_deleted: bool = Query(default=False),
+) -> list[SkillSummaryResponse]:
+    """Return built-in, overridden and custom skills."""
+
+    return await list_skills(
+        include_deleted=include_deleted
+    )
+
+
+@router.get(
+    "/skills/{skill_id}",
+    response_model=SkillResponse,
+)
+async def get_skill_endpoint(skill_id: str) -> SkillResponse:
+    """Return one active skill by id."""
+
+    return await get_skill(skill_id=skill_id)
+
+
+@router.post(
+    "/skills",
+    response_model=SkillResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_skill_endpoint(
+    request: SkillCreateRequest,
+) -> SkillResponse:
+    """Create an organisation-owned custom skill."""
+
+    return await create_skill(request=request)
+
+
+@router.put(
+    "/skills/{skill_id}",
+    response_model=SkillResponse,
+)
+async def update_skill_endpoint(
+    skill_id: str,
+    request: SkillUpdateRequest,
+) -> SkillResponse:
+    """Edit a custom skill or override a built-in skill."""
+
+    return await update_skill(
+        skill_id=skill_id,
+        request=request,
+    )
+
+
+@router.delete(
+    "/skills/{skill_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_skill_endpoint(skill_id: str) -> Response:
+    """Hide a built-in skill or soft-delete a custom skill."""
+
+    await delete_skill(skill_id=skill_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/skills/{skill_id}/restore",
+    response_model=SkillResponse,
+)
+async def restore_skill_endpoint(skill_id: str) -> SkillResponse:
+    """Restore a custom skill or revert to the built-in version."""
+
+    return await restore_skill(skill_id=skill_id)
