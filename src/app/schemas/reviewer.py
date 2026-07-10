@@ -1,8 +1,13 @@
 """Reviewer-related schemas."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
-from src.app.schemas import ModelMetrics, ProjectPhase
+from src.app.schemas.metrics import ModelMetrics
+
+
+ProjectPhase = Literal['prototype', 'mvp', 'production']
 
 
 class ReviewerAssignment(BaseModel):
