@@ -1,18 +1,60 @@
-.PHONY: install dev run
+.PHONY: install venv config reset-config dev run
 
-env:
-	@if [ -f .env ]; then \
-		echo ".env already exists"; \
+PYTHON ?= python3
+VENV := env
+VENV_PYTHON := $(VENV)/bin/python
+ENV_FILE := .env.local
+
+install: venv config
+	@echo "Looping Louie is ready."
+	@echo "Run 'make dev' to start the API."
+
+venv:
+	@if [ ! -x "$(VENV_PYTHON)" ]; then \
+		echo "Creating virtual environment..."; \
+		$(PYTHON) -m venv "$(VENV)"; \
+	fi
+	@"$(VENV_PYTHON)" -m pip install --upgrade pip
+	@"$(VENV_PYTHON)" -m pip install -r requirements.txt
+
+config: venv
+	@if [ -f "$(ENV_FILE)" ]; then \
+		echo "$(ENV_FILE) already exists; keeping its encryption key."; \
 	else \
-		printf "TOGETHER_API_KEY=\nOPENAI_API_KEY=\n" > .env; \
-		echo "Created .env"; \
+		echo "Creating $(ENV_FILE)..."; \
+		ENCRYPTION_KEY="$$("$(VENV_PYTHON)" -c \
+			'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"; \
+		printf '%s\n' \
+			'TOGETHER_API_KEY=' \
+			'OPENAI_API_KEY=' \
+			"LOUIE_ENCRYPTION_KEY=$$ENCRYPTION_KEY" \
+			'LOUIE_DB_PATH=.looping-louie/data/looping-louie.db' \
+			'LOUIE_ORG_ID=local-org' \
+			'LOUIE_USER_ID=local-user' \
+			'LOUIE_PROVIDER_MODEL_COUNTS='"'"'{"anthropic":0,"nvidia":0,"ollama":0,"openai":0,"together":0}'"'" \
+			> "$(ENV_FILE)"; \
+		chmod 600 "$(ENV_FILE)"; \
+		echo "Created $(ENV_FILE) with a generated encryption key."; \
 	fi
 
-install: env
-	python3 -m venv env
-	. env/bin/activate && python3 -m pip install -r requirements.txt
+reset-config: venv
+	@echo "Replacing $(ENV_FILE) and its encryption key..."
+	@rm -f "$(ENV_FILE)"
+	@$(MAKE) --no-print-directory config
+	@echo "Existing encrypted provider credentials can no longer be decrypted."
 
 dev:
-	uvicorn src.app.main:app --reload
+	@if [ ! -x "$(VENV_PYTHON)" ]; then \
+		echo "Virtual environment not found. Run 'make install' first."; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "$(ENV_FILE) not found. Run 'make config' first."; \
+		exit 1; \
+	fi
+	@set -a; \
+	. "./$(ENV_FILE)"; \
+	set +a; \
+	exec "$(VENV_PYTHON)" -m uvicorn src.app.main:app --reload
 
 run: dev
