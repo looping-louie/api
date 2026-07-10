@@ -72,12 +72,13 @@ http://127.0.0.1:8000
 
 # Usage
 
-Looping Louie currently exposes two endpoints.
+Looping Louie currently exposes three endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/run-harness` | Execute a single harness run. |
-| `/run-tasks` | Execute an entire `tasks.json` backlog. |
+| `/harness/run` | Execute a single harness run. |
+| `/tasks/run` | Execute an entire `tasks.json` backlog. |
+| `/meeting/run` | Run a structured multi-persona meeting. |
 
 See the complete API documentation:
 
@@ -116,10 +117,10 @@ Project documentation is organised under `docs/`.
 tasks.json
       │
       ▼
-/run-tasks
+/tasks/run
       │
       ▼
-run_harness()
+/harness/run
       │
       ▼
 Create Git worktree

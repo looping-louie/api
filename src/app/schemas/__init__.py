@@ -101,7 +101,7 @@ class RunHarnessRequest(BaseModel):
 # models, skills and max_iterations.
 class RunTasksRequest(BaseModel):
     """
-    Request model for the /run-tasks endpoint.
+    Request model for the /tasks/run endpoint.
 
     The execution planner selects the complete team for every task. Callers may
     force reviewer skills and may optionally fix the generator persona while
@@ -210,7 +210,7 @@ class IterationTrace(BaseModel):
 
 class RunHarnessResponse(BaseModel):
     """
-    Final response returned by the /run-harness endpoint.
+    Final response returned by the /harness/run endpoint.
 
     Contains the final diff, approval status, execution trace
     and aggregated execution metrics.

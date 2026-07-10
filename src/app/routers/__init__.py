@@ -6,17 +6,17 @@ from src.app.schemas import (
   RunMeetingRequest,
   RunMeetingResponse
 )
-from src.app.controllers.harness_runner import run_harness
-from src.app.controllers.tasks_runner import run_tasks
-from src.app.controllers.meeting_runner import run_meeting
+from src.app.controllers.harness import run_harness
+from src.app.controllers.tasks import run_tasks
+from src.app.controllers.meeting import run_meeting
 
 
 # Create the router instance
 router = APIRouter()
 
 
-@router.post("/run-harness", response_model=RunHarnessResponse)
-async def run_harness_endpoint(req: RunHarnessRequest):
+@router.post("/harness/run", response_model=RunHarnessResponse)
+async def harness_run_endpoint(req: RunHarnessRequest):
     """
     Execute a single harness run.
 
@@ -27,8 +27,8 @@ async def run_harness_endpoint(req: RunHarnessRequest):
     return await run_harness(req)
 
 
-@router.post("/run-tasks")
-async def run_tasks_endpoint(req: RunTasksRequest):
+@router.post("/tasks/run")
+async def tasks_run_endpoint(req: RunTasksRequest):
     """
     Execute every pending task from a tasks.json file.
 
@@ -39,8 +39,8 @@ async def run_tasks_endpoint(req: RunTasksRequest):
     return await run_tasks(req)
 
 
-@router.post("/run-meeting", response_model=RunMeetingResponse)
-async def run_meeting_endpoint(
+@router.post("/meeting/run", response_model=RunMeetingResponse)
+async def meeting_run_endpoint(
     req: RunMeetingRequest,
 ) -> RunMeetingResponse:
     """

@@ -1,35 +1,35 @@
 # API
 
-Looping Louie currently exposes two HTTP endpoints.
+Looping Louie currently exposes three HTTP endpoints.
 
-- `/run-harness` executes a single harness run.
-- `/run-tasks` executes an entire `tasks.json` backlog.
-- `/run-meeting` runs a discussion between several personas to produce shape an
+- `/harness/run` executes a single harness run.
+- `/tasks/run` executes an entire `tasks.json` backlog.
+- `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
 
 ---
 
 ## Choosing an endpoint
 
-Use **`/run-harness`** when:
+Use **`/harness/run`** when:
 
 - experimenting with prompts;
 - testing a new skill;
 - implementing one isolated change.
 
-Use **`/run-tasks`** when:
+Use **`/tasks/run`** when:
 
 - executing a development backlog;
 - evolving a project incrementally;
 - generating one commit per logical task.
 
-`/run-tasks` is expected to become the primary production entry point, while
-`/run-harness` serves as the reusable building block used internally by
+`/tasks/run` is expected to become the primary production entry point, while
+`/harness/run` serves as the reusable building block used internally by
 higher-level workflows.
 
 ---
 
-## POST /run-harness
+## POST /harness/run
 
 Executes a single task against a repository.
 
@@ -50,7 +50,7 @@ The repository is modified **only if every reviewer approves** before
 ### Run Harness Example
 
 ```sh
-curl -X POST http://127.0.0.1:8000/run-harness \
+curl -X POST http://127.0.0.1:8000/harness/run \
   -H "Content-Type: application/json" \
   -d '{
     "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
@@ -67,7 +67,7 @@ curl -X POST http://127.0.0.1:8000/run-harness \
 
 ---
 
-## POST /run-tasks
+## POST /tasks/run
 
 Executes every pending task from a `tasks.json` file.
 
@@ -97,7 +97,7 @@ configured iteration limit.
 ### Run Tasks Example
 
 ```sh
-curl -X POST http://127.0.0.1:8000/run-tasks \
+curl -X POST http://127.0.0.1:8000/tasks/run \
   -H "Content-Type: application/json" \
   -d '{
     "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
@@ -115,7 +115,7 @@ curl -X POST http://127.0.0.1:8000/run-tasks \
 
 ---
 
-## POST /run-meeting — Shape Idea
+## POST /meeting/run — Shape Idea
 
 Executes a structured multi-persona meeting that transforms an initial idea into
 a concise and decision-ready `idea.md` document.
@@ -154,7 +154,7 @@ The resulting document follows the standard idea structure and is limited to
 ### Shape Idea Example
 
 ```sh
-curl -s -X POST http://127.0.0.1:8000/run-meeting \
+curl -s -X POST http://127.0.0.1:8000/meeting/run \
   -H "Content-Type: application/json" \
   -d '{
     "meeting_type": "shape_idea",
@@ -185,7 +185,7 @@ trace, and aggregated model metrics.
 
 ---
 
-## POST /run-meeting — Plan Implementation
+## POST /meeting/run — Plan Implementation
 
 Executes a structured multi-persona meeting that transforms an approved
 `idea.md` document into an ordered `tasks.json` implementation backlog.
@@ -242,7 +242,7 @@ jq -Rs '{
   ],
   constitution: ""
 }' idea.md |
-curl -s -X POST http://127.0.0.1:8000/run-meeting \
+curl -s -X POST http://127.0.0.1:8000/meeting/run \
   -H "Content-Type: application/json" \
   --data-binary @- |
 jq -r '.final_output' > tasks.json

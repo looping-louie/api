@@ -1,6 +1,6 @@
 import asyncio
 
-from src.app.controllers import harness_runner, tasks_runner
+from src.app.controllers import harness, tasks
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
@@ -19,7 +19,7 @@ def test_harness_controller_delegates_to_service(monkeypatch):
         return expected_response
 
     monkeypatch.setattr(
-        harness_runner,
+        harness,
         'run_harness_service',
         fake_run_harness_service,
     )
@@ -29,13 +29,13 @@ def test_harness_controller_delegates_to_service(monkeypatch):
         repo_path='/tmp/repo',
     )
 
-    result = asyncio.run(harness_runner.run_harness(request))
+    result = asyncio.run(harness.run_harness(request))
 
     assert result == expected_response
     assert captured['req'] is request
 
 
-def test_tasks_runner_uses_harness_service_path(monkeypatch):
+def test_tasks_controller_uses_harness_service_path(monkeypatch):
     pending_task = {
         'id': 'task-001',
         'status': 'pending',
@@ -104,35 +104,35 @@ def test_tasks_runner_uses_harness_service_path(monkeypatch):
     def fake_save_tasks(_tasks_path, _tasks):
         return None
 
-    monkeypatch.setattr(tasks_runner, 'load_constitution', fake_load_constitution)
+    monkeypatch.setattr(tasks, 'load_constitution', fake_load_constitution)
     monkeypatch.setattr(
-        tasks_runner,
+        tasks,
         'build_project_profile',
         fake_build_project_profile,
     )
-    monkeypatch.setattr(tasks_runner, 'load_tasks', fake_load_tasks)
+    monkeypatch.setattr(tasks, 'load_tasks', fake_load_tasks)
     monkeypatch.setattr(
-        tasks_runner,
+        tasks,
         'get_next_pending_task',
         fake_get_next_pending_task,
     )
     monkeypatch.setattr(
-        tasks_runner,
+        tasks,
         'create_execution_plan',
         fake_create_execution_plan,
     )
-    monkeypatch.setattr(tasks_runner, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(tasks_runner, 'has_changes', fake_has_changes)
-    monkeypatch.setattr(tasks_runner, 'commit_all', fake_commit_all)
-    monkeypatch.setattr(tasks_runner, 'mark_task_done', fake_mark_task_done)
-    monkeypatch.setattr(tasks_runner, 'save_tasks', fake_save_tasks)
+    monkeypatch.setattr(tasks, 'run_harness', fake_run_harness)
+    monkeypatch.setattr(tasks, 'has_changes', fake_has_changes)
+    monkeypatch.setattr(tasks, 'commit_all', fake_commit_all)
+    monkeypatch.setattr(tasks, 'mark_task_done', fake_mark_task_done)
+    monkeypatch.setattr(tasks, 'save_tasks', fake_save_tasks)
 
     request = RunTasksRequest(
         repo_path='/tmp/repo',
         tasks_path='/tmp/tasks.json',
     )
 
-    result = asyncio.run(tasks_runner.run_tasks(request))
+    result = asyncio.run(tasks.run_tasks(request))
 
     assert result['ok'] is True
     assert result['status'] == 'completed'

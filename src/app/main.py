@@ -5,15 +5,15 @@ This module exposes the public FastAPI endpoints.
 
 Endpoints
 ---------
-POST /run
+POST /harness/run
     Executes a single harness run against a repository.
 
-POST /run-tasks
+POST /tasks/run
     Executes a sequence of tasks defined in a tasks.json file.
     Each approved task is committed before the next one starts.
 
 The API layer is intentionally thin.
-Business logic lives in runner.py and tasks_runner.py.
+Business logic lives in services and concise controller modules.
 """
 
 from fastapi import FastAPI
