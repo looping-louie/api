@@ -19,8 +19,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-ProjectPhase = Literal["prototype", "mvp", "production"]
-MeetingType = Literal["shape_idea", "plan_implementation"]
+ProjectPhase = Literal['prototype', 'mvp', 'production']
 
 
 class GeneratorAssignment(BaseModel):
@@ -68,54 +67,6 @@ class ReviewerIssue(BaseModel):
     title: str
     description: str
     file: str | None = None
-
-
-class RunHarnessRequest(BaseModel):
-    """
-    Input for a single harness execution.
-
-    An execution plan is normally supplied by the execution planner. The
-    static persona and skill fields remain available for direct calls to the
-    harness when no planner is used.
-    """
-
-    prompt: str
-    repo_path: str
-    max_iterations: int = 3
-    generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
-    reviewer_model: str = "gpt-4.1-mini"
-
-    generator_persona: str = "tech_lead"
-    generator_skills: list[str] = Field(default_factory=list)
-    reviewer_persona: str = "tech_lead"
-    reviewer_skills: list[str] = Field(
-        default_factory=lambda: ["small_patch_quality"]
-    )
-
-    execution_plan: ExecutionPlan | None = None
-    constitution: str = ""
-
-
-# TODO:
-# Allow individual tasks to override execution settings such as
-# models, skills and max_iterations.
-class RunTasksRequest(BaseModel):
-    """
-    Request model for the /tasks/run endpoint.
-
-    The execution planner selects the complete team for every task. Callers may
-    force reviewer skills and may optionally fix the generator persona while
-    leaving reviewer personas under planner control.
-    """
-
-    repo_path: str
-    tasks_path: str
-    max_iterations: int = 3
-    generator_model: str = "deepseek-ai/DeepSeek-V4-Pro"
-    reviewer_model: str = "gpt-4.1-mini"
-    planner_model: str = "gpt-4.1-mini"
-    required_reviewer_skills: list[str] = Field(default_factory=list)
-    generator_persona: str | None = None
 
 
 class ModelMetrics(BaseModel):
@@ -208,54 +159,39 @@ class IterationTrace(BaseModel):
     reviewers_metrics: list[ReviewerMetrics]
 
 
-class RunHarnessResponse(BaseModel):
-    """
-    Final response returned by the /harness/run endpoint.
-
-    Contains the final diff, approval status, execution trace
-    and aggregated execution metrics.
-    """
-
-    run_id: str
-    final_output: str
-    approved: bool
-    run_metrics: RunMetrics
-    execution_trace: list[IterationTrace]
-
-
-class RunMeetingRequest(BaseModel):
-    """
-    Input for one structured multi-persona meeting.
-
-    The meeting planner selects participants, challengers, personas, and skills
-    unless explicit constraints are supplied by the caller.
-    """
-
-    prompt: str
-    meeting_type: MeetingType
-    max_iterations: int = Field(default=3, ge=1, le=10)
-
-    participant_model: str = "deepseek-ai/DeepSeek-V4-Pro"
-    challenger_model: str = "gpt-4.1-mini"
-    synthesizer_model: str = "gpt-4.1-mini"
-    planner_model: str = "gpt-4.1-mini"
-
-    required_personas: list[str] = Field(default_factory=list)
-    required_skills: list[str] = Field(default_factory=list)
-    constitution: str = ""
+# NOTE:
+# These imports are intentionally placed at the bottom to avoid circular
+# imports. Module-level request/response schemas depend on shared classes
+# defined above (ExecutionPlan, IterationTrace, RunMetrics), so importing them
+# earlier would initialize src.app.schemas before those classes exist.
+# pylint: disable=wrong-import-position
+from src.app.schemas.harness import (
+    RunRequest as RunHarnessRequest,
+    RunResponse as RunHarnessResponse,
+)
+from src.app.schemas.meeting import (
+    MeetingType,
+    RunRequest as RunMeetingRequest,
+    RunResponse as RunMeetingResponse,
+)
+from src.app.schemas.tasks import RunRequest as RunTasksRequest
 
 
-class RunMeetingResponse(BaseModel):
-    """
-    Final response returned by the structured meeting endpoint.
-
-    Contains the final generated artifact, approval state, complete meeting
-    trace, and aggregated execution metrics.
-    """
-
-    run_id: str
-    meeting_type: MeetingType
-    final_output: str
-    approved: bool
-    run_metrics: RunMetrics
-    execution_trace: list[dict]
+__all__ = [
+    'ExecutionPlan',
+    'GeneratorAssignment',
+    'IterationTrace',
+    'MeetingType',
+    'ModelMetrics',
+    'ProjectPhase',
+    'ReviewerAssignment',
+    'ReviewerIssue',
+    'ReviewerMetrics',
+    'ReviewerResult',
+    'RunHarnessRequest',
+    'RunHarnessResponse',
+    'RunMeetingRequest',
+    'RunMeetingResponse',
+    'RunMetrics',
+    'RunTasksRequest',
+]
