@@ -7,7 +7,7 @@ from src.app.schemas import (
   RunMeetingResponse
 )
 from src.app.controllers.harness_runner import run_harness
-from src.app.controllers.task_runner import run_tasks
+from src.app.controllers.tasks_runner import run_tasks
 from src.app.controllers.meeting_runner import run_meeting
 
 

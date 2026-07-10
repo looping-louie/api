@@ -13,7 +13,7 @@ POST /run-tasks
     Each approved task is committed before the next one starts.
 
 The API layer is intentionally thin.
-Business logic lives in runner.py and task_runner.py.
+Business logic lives in runner.py and tasks_runner.py.
 """
 
 from fastapi import FastAPI

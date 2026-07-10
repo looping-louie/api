@@ -1,5 +1,5 @@
 """
-Task runner.
+Tasks runner.
 
 This is the highest-level orchestration entry point in Looping Louie.
 

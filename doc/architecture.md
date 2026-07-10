@@ -83,7 +83,7 @@ utils/
                 tasks.json
                      │
                      ▼
-             Task Runner (/run-tasks)
+             Tasks Runner (/run-tasks)
                      │
                      ▼
               Harness Runner (/run-harness)
