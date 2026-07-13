@@ -8,7 +8,7 @@ from datetime import datetime
 class RequestActor:
     """Organisation and user associated with the current request."""
 
-    org_id: str
+    workspace_id: str
     user_id: str
 
 
@@ -29,7 +29,7 @@ class ProviderCredential:
     """Encrypted provider configuration persisted by the repository."""
 
     id: str
-    org_id: str
+    workspace_id: str
     provider: str
     enabled: bool
     enabled_by: str | None
