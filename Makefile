@@ -1,4 +1,4 @@
-.PHONY: install venv config reset-config dev run
+.PHONY: install venv config reset-config dev run test tests smoke
 
 PYTHON ?= python3
 VENV := env
@@ -58,3 +58,9 @@ dev:
 	exec "$(VENV_PYTHON)" -m uvicorn src.app.main:app --reload
 
 run: dev
+
+test tests: venv
+	@"$(VENV_PYTHON)" -m pytest -q
+
+smoke: venv config
+	@ENV_FILE="$(ENV_FILE)" ./scripts/smoke_api.sh
