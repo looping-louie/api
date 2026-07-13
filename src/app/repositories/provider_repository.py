@@ -1,5 +1,7 @@
 """SQLite persistence for encrypted provider credentials."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Protocol
 
@@ -12,131 +14,71 @@ from src.app.repositories.sqlite_database import SqliteDatabase
 class ProviderRepository(Protocol):
     """Persistence operations required by ProviderService."""
 
-    async def list_for_org(
+    async def list_for_workspace(
         self,
-        org_id: str,
+        workspace_id: str,
     ) -> list[ProviderCredential]:
-        """Return all provider configurations for one organisation."""
+        """Return all provider configurations for one workspace."""
+        ...
 
     async def get(
         self,
-        org_id: str,
+        workspace_id: str,
         provider: str,
     ) -> ProviderCredential | None:
         """Return one provider configuration."""
+        ...
 
     async def upsert(
         self,
         credential: ProviderCredential,
     ) -> ProviderCredential:
         """Create or replace one provider configuration."""
+        ...
 
     async def set_enabled(
         self,
-        org_id: str,
+        workspace_id: str,
         provider: str,
         enabled: bool,
-        enabled_by: str,
+        enabled_by: str | None,
         enabled_on: datetime | None,
         updated_at: datetime,
     ) -> ProviderCredential:
         """Enable or disable one provider."""
+        ...
 
     async def unset(
         self,
-        org_id: str,
+        workspace_id: str,
         provider: str,
         updated_at: datetime,
     ) -> None:
         """Delete one stored provider configuration."""
+        ...
 
 
 class SqliteProviderRepository:
     """SQLite implementation of ProviderRepository."""
 
-    _SCHEMA = (
-        """
-        CREATE TABLE IF NOT EXISTS provider_credentials (
-            id TEXT PRIMARY KEY,
-            org_id TEXT NOT NULL,
-            provider TEXT NOT NULL,
-            enabled INTEGER NOT NULL DEFAULT 0,
-            enabled_by TEXT,
-            enabled_on TEXT,
-            key_trimmed TEXT,
-            key_ciphertext TEXT,
-            key_version INTEGER NOT NULL DEFAULT 1,
-            base_url TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE(org_id, provider)
-        )
-        """,
-    )
-
-    def __init__(self, database: SqliteDatabase) -> None:
-        """Store the shared database dependency."""
-
+    def __init__(
+        self,
+        database: SqliteDatabase,
+    ) -> None:
         self._database = database
 
-    async def list_for_org(
+    async def list_for_workspace(
         self,
-        org_id: str,
+        workspace_id: str,
     ) -> list[ProviderCredential]:
-        """Return all provider configurations for one organisation."""
-
-        await self._ensure_schema()
+        """Return all provider configurations for one workspace."""
 
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 """
-                SELECT *
-                FROM provider_credentials
-                WHERE org_id = ?
-                ORDER BY provider
-                """,
-                (org_id,),
-            )
-            rows = await cursor.fetchall()
-
-        return [self._row_to_credential(row) for row in rows]
-
-    async def get(
-        self,
-        org_id: str,
-        provider: str,
-    ) -> ProviderCredential | None:
-        """Return one provider configuration."""
-
-        await self._ensure_schema()
-
-        async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                """
-                SELECT *
-                FROM provider_credentials
-                WHERE org_id = ? AND provider = ?
-                """,
-                (org_id, provider),
-            )
-            row = await cursor.fetchone()
-
-        return self._row_to_credential(row) if row is not None else None
-
-    async def upsert(
-        self,
-        credential: ProviderCredential,
-    ) -> ProviderCredential:
-        """Create or replace one provider configuration."""
-
-        await self._ensure_schema()
-
-        async with self._database.connect() as connection:
-            await connection.execute(
-                """
-                INSERT INTO provider_credentials (
+                SELECT
                     id,
-                    org_id,
+                    workspace_id,
                     provider,
                     enabled,
                     enabled_by,
@@ -147,128 +89,264 @@ class SqliteProviderRepository:
                     base_url,
                     created_at,
                     updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(org_id, provider) DO UPDATE SET
-                    enabled = excluded.enabled,
-                    enabled_by = excluded.enabled_by,
-                    enabled_on = excluded.enabled_on,
-                    key_trimmed = excluded.key_trimmed,
-                    key_ciphertext = excluded.key_ciphertext,
-                    key_version = excluded.key_version,
-                    base_url = excluded.base_url,
-                    updated_at = excluded.updated_at
+                FROM provider_credentials
+                WHERE workspace_id = ?
+                ORDER BY provider ASC
                 """,
-                self._credential_values(credential),
+                (workspace_id,),
             )
-            await connection.commit()
+
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+
+        return [
+            self._row_to_credential(row)
+            for row in rows
+        ]
+
+    async def get(
+        self,
+        workspace_id: str,
+        provider: str,
+    ) -> ProviderCredential | None:
+        """Return one provider configuration."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                """
+                SELECT
+                    id,
+                    workspace_id,
+                    provider,
+                    enabled,
+                    enabled_by,
+                    enabled_on,
+                    key_trimmed,
+                    key_ciphertext,
+                    key_version,
+                    base_url,
+                    created_at,
+                    updated_at
+                FROM provider_credentials
+                WHERE workspace_id = ?
+                  AND provider = ?
+                LIMIT 1
+                """,
+                (
+                    workspace_id,
+                    provider,
+                ),
+            )
+
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+
+        if row is None:
+            return None
+
+        return self._row_to_credential(row)
+
+    async def upsert(
+        self,
+        credential: ProviderCredential,
+    ) -> ProviderCredential:
+        """Create or replace one provider configuration."""
+
+        async with self._database.connect() as connection:
+            try:
+                await connection.execute(
+                    "BEGIN IMMEDIATE"
+                )
+                await connection.execute(
+                    """
+                    INSERT INTO provider_credentials (
+                        id,
+                        workspace_id,
+                        provider,
+                        enabled,
+                        enabled_by,
+                        enabled_on,
+                        key_trimmed,
+                        key_ciphertext,
+                        key_version,
+                        base_url,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(workspace_id, provider) DO UPDATE SET
+                        enabled = excluded.enabled,
+                        enabled_by = excluded.enabled_by,
+                        enabled_on = excluded.enabled_on,
+                        key_trimmed = excluded.key_trimmed,
+                        key_ciphertext = excluded.key_ciphertext,
+                        key_version = excluded.key_version,
+                        base_url = excluded.base_url,
+                        updated_at = excluded.updated_at
+                    """,
+                    self._credential_values(credential),
+                )
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
 
         stored = await self.get(
-            credential.org_id,
+            credential.workspace_id,
             credential.provider,
         )
 
         if stored is None:
-            raise RuntimeError("Provider credential was not persisted.")
+            raise RuntimeError(
+                "Provider credential was not persisted."
+            )
 
         return stored
 
     async def set_enabled(
         self,
-        org_id: str,
+        workspace_id: str,
         provider: str,
         enabled: bool,
-        enabled_by: str,
+        enabled_by: str | None,
         enabled_on: datetime | None,
         updated_at: datetime,
     ) -> ProviderCredential:
         """Enable or disable one provider."""
 
-        await self._ensure_schema()
-
         async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                """
-                UPDATE provider_credentials
-                SET enabled = ?,
-                    enabled_by = ?,
-                    enabled_on = ?,
-                    updated_at = ?
-                WHERE org_id = ? AND provider = ?
-                """,
-                (
-                    int(enabled),
-                    enabled_by,
-                    self._format_datetime(enabled_on),
-                    updated_at.isoformat(),
-                    org_id,
-                    provider,
-                ),
-            )
-            await connection.commit()
+            try:
+                await connection.execute(
+                    "BEGIN IMMEDIATE"
+                )
+                cursor = await connection.execute(
+                    """
+                    UPDATE provider_credentials
+                    SET
+                        enabled = ?,
+                        enabled_by = ?,
+                        enabled_on = ?,
+                        updated_at = ?
+                    WHERE workspace_id = ?
+                      AND provider = ?
+                    """,
+                    (
+                        int(enabled),
+                        enabled_by,
+                        self._format_datetime(enabled_on),
+                        self._format_datetime(updated_at),
+                        workspace_id,
+                        provider,
+                    ),
+                )
 
-        if cursor.rowcount == 0:
-            raise KeyError(
-                f"Provider '{provider}' is not configured."
-            )
+                try:
+                    updated = cursor.rowcount == 1
+                finally:
+                    await cursor.close()
 
-        stored = await self.get(org_id, provider)
+                if not updated:
+                    await connection.rollback()
+
+                    raise KeyError(
+                        f"Provider '{provider}' is not configured "
+                        f"for workspace '{workspace_id}'."
+                    )
+
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+
+        stored = await self.get(
+            workspace_id,
+            provider,
+        )
 
         if stored is None:
-            raise RuntimeError("Provider state could not be reloaded.")
+            raise RuntimeError(
+                "Provider state could not be reloaded."
+            )
 
         return stored
 
     async def unset(
         self,
-        org_id: str,
+        workspace_id: str,
         provider: str,
         updated_at: datetime,
     ) -> None:
         """Delete one stored provider configuration."""
 
         del updated_at
-        await self._ensure_schema()
 
         async with self._database.connect() as connection:
-            await connection.execute(
-                """
-                DELETE FROM provider_credentials
-                WHERE org_id = ? AND provider = ?
-                """,
-                (org_id, provider),
-            )
-            await connection.commit()
+            try:
+                await connection.execute(
+                    "BEGIN IMMEDIATE"
+                )
+                cursor = await connection.execute(
+                    """
+                    DELETE FROM provider_credentials
+                    WHERE workspace_id = ?
+                      AND provider = ?
+                    """,
+                    (
+                        workspace_id,
+                        provider,
+                    ),
+                )
 
-    async def _ensure_schema(self) -> None:
-        """Create the provider schema when first used."""
-
-        await self._database.ensure_schema(
-            schema_name="provider_credentials",
-            statements=self._SCHEMA,
-        )
+                try:
+                    await cursor.close()
+                finally:
+                    await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
 
     @staticmethod
     def _credential_values(
         credential: ProviderCredential,
-    ) -> tuple:
+    ) -> tuple[
+        str,
+        str,
+        str,
+        int,
+        str | None,
+        str | None,
+        str | None,
+        str | None,
+        int,
+        str | None,
+        str,
+        str,
+    ]:
         """Convert a credential into SQLite values."""
 
         return (
             credential.id,
-            credential.org_id,
+            credential.workspace_id,
             credential.provider,
             int(credential.enabled),
             credential.enabled_by,
             SqliteProviderRepository._format_datetime(
-                credential.enabled_on
+                credential.enabled_on,
             ),
             credential.key_trimmed,
             credential.key_ciphertext,
             credential.key_version,
             credential.base_url,
-            credential.created_at.isoformat(),
-            credential.updated_at.isoformat(),
+            SqliteProviderRepository._format_datetime(
+                credential.created_at,
+            ),
+            SqliteProviderRepository._format_datetime(
+                credential.updated_at,
+            ),
         )
 
     @staticmethod
@@ -278,30 +356,73 @@ class SqliteProviderRepository:
         """Convert a SQLite row into a provider credential."""
 
         return ProviderCredential(
-            id=row["id"],
-            org_id=row["org_id"],
-            provider=row["provider"],
+            id=str(row["id"]),
+            workspace_id=str(row["workspace_id"]),
+            provider=str(row["provider"]),
             enabled=bool(row["enabled"]),
-            enabled_by=row["enabled_by"],
-            enabled_on=SqliteProviderRepository._parse_datetime(
-                row["enabled_on"]
+            enabled_by=(
+                str(row["enabled_by"])
+                if row["enabled_by"] is not None
+                else None
             ),
-            key_trimmed=row["key_trimmed"],
-            key_ciphertext=row["key_ciphertext"],
+            enabled_on=SqliteProviderRepository._parse_optional_datetime(
+                row["enabled_on"],
+            ),
+            key_trimmed=(
+                str(row["key_trimmed"])
+                if row["key_trimmed"] is not None
+                else None
+            ),
+            key_ciphertext=(
+                str(row["key_ciphertext"])
+                if row["key_ciphertext"] is not None
+                else None
+            ),
             key_version=int(row["key_version"]),
-            base_url=row["base_url"],
-            created_at=datetime.fromisoformat(row["created_at"]),
-            updated_at=datetime.fromisoformat(row["updated_at"]),
+            base_url=(
+                str(row["base_url"])
+                if row["base_url"] is not None
+                else None
+            ),
+            created_at=SqliteProviderRepository._parse_datetime(
+                row["created_at"],
+            ),
+            updated_at=SqliteProviderRepository._parse_datetime(
+                row["updated_at"],
+            ),
         )
 
     @staticmethod
-    def _format_datetime(value: datetime | None) -> str | None:
+    def _format_datetime(
+        value: datetime | None,
+    ) -> str | None:
         """Serialise an optional datetime."""
 
-        return value.isoformat() if value is not None else None
+        if value is None:
+            return None
+
+        return value.isoformat()
 
     @staticmethod
-    def _parse_datetime(value: str | None) -> datetime | None:
+    def _parse_datetime(
+        value: object,
+    ) -> datetime:
+        """Parse a required datetime."""
+
+        serialized = str(value)
+
+        if serialized.endswith("Z"):
+            serialized = f"{serialized[:-1]}+00:00"
+
+        return datetime.fromisoformat(serialized)
+
+    @staticmethod
+    def _parse_optional_datetime(
+        value: object | None,
+    ) -> datetime | None:
         """Parse an optional datetime."""
 
-        return datetime.fromisoformat(value) if value else None
+        if value is None:
+            return None
+
+        return SqliteProviderRepository._parse_datetime(value)
