@@ -3,6 +3,7 @@ Looping Louie HTTP API.
 
 This module exposes the public FastAPI endpoints.
 
+<<<<<<< HEAD
 Endpoints
 ---------
 POST /task/start
@@ -14,29 +15,51 @@ GET /task/{run_id}
 
 The API layer is intentionally thin.
 Business logic lives in services and concise controller modules.
+=======
+The API layer is intentionally thin.
+Business logic is assembled in bootstrap.py and delegated through controllers
+and application services.
+>>>>>>> 916a49b (feat(middleware): autentificación en dev)
 """
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from src.app.routers import router
 from fastapi.middleware.cors import CORSMiddleware
+
+from src.app.bootstrap import configure_application
+from src.app.http import register_exception_handlers
+from src.app.routers import api_v1_router
+from src.app.middleware import DevelopmentAuthMiddleware
+from src.app.services.app_settings_service import get_app_settings
+
+
+@asynccontextmanager
+async def lifespan(
+    app: FastAPI,
+) -> AsyncIterator[None]:
+    """Configure application dependencies during API startup."""
+
+    await configure_application(app)
+    yield
 
 
 app = FastAPI(
     title="Looping Louie",
     description="Harness-as-a-Service runtime for iterative LLM development.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
-# Enables UI to call the API.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+register_exception_handlers(app)
 
-app.include_router(router)
+settings = get_app_settings()
+
+if settings.dev_auth_enabled:
+    app.add_middleware(
+        DevelopmentAuthMiddleware,
+        user_id=settings.dev_user_id,
+    )
+
+app.include_router(api_v1_router)
