@@ -19,10 +19,11 @@ class AppSettings:
 
     encryption_key: str | None
     database_path: Path
-    org_id: str
     user_id: str
     model_counts: dict[str, int]
     builtin_skills_path: Path
+    dev_auth_enabled: bool
+    dev_user_id: str
 
 
 @lru_cache(maxsize=1)
@@ -39,11 +40,31 @@ def get_app_settings() -> AppSettings:
                 ".looping-louie/data/looping-louie.db",
             )
         ),
-        org_id=os.getenv("LOUIE_ORG_ID", "local-org"),
         user_id=os.getenv("LOUIE_USER_ID", "local-user"),
         model_counts=_load_provider_model_counts(),
         builtin_skills_path=_resolve_builtin_skills_path(),
+        dev_auth_enabled=_environment_flag(
+            "LOUIE_DEV_AUTH",
+        ),
+        dev_user_id=os.getenv(
+            "LOUIE_DEV_USER_ID",
+            "local-user",
+            ).strip(),
     )
+
+
+def _environment_flag(name: str) -> bool:
+    """Return whether an environment flag is enabled."""
+
+    return os.getenv(
+        name,
+        "",
+    ).strip().casefold() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _load_provider_model_counts() -> dict[str, int]:
