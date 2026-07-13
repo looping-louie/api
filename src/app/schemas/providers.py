@@ -18,12 +18,6 @@ class ProviderSetRequest(BaseModel):
     )
 
 
-class ProviderEnabledRequest(BaseModel):
-    """Request payload for enabling or disabling a provider."""
-
-    enabled: bool
-
-
 class ProviderResponse(BaseModel):
     """Safe provider configuration returned to API consumers."""
 
