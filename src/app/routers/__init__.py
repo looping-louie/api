@@ -1,13 +1,13 @@
 from fastapi import APIRouter
 from src.app.schemas import (
-  RunTasksRequest,
-  RunHarnessRequest,
-  RunHarnessResponse,
-  RunMeetingRequest,
-  RunMeetingResponse
+    RunWorkflowRequest,
+    RunHarnessRequest,
+    RunHarnessResponse,
+    RunMeetingRequest,
+    RunMeetingResponse
 )
 from src.app.controllers.harness import run_harness
-from src.app.controllers.tasks import run_tasks
+from src.app.controllers.workflow import run_workflow
 from src.app.controllers.meeting import run_meeting
 
 
@@ -27,8 +27,8 @@ async def harness_run_endpoint(req: RunHarnessRequest):
     return await run_harness(req)
 
 
-@router.post("/tasks/run")
-async def tasks_run_endpoint(req: RunTasksRequest):
+@router.post("/workflow/run")
+async def workflow_run_endpoint(req: RunWorkflowRequest):
     """
     Execute every pending task from a tasks.json file.
 
@@ -36,7 +36,7 @@ async def tasks_run_endpoint(req: RunTasksRequest):
     Each approved task is committed immediately.
     Execution stops at the first task that cannot be approved.
     """
-    return await run_tasks(req)
+    return await run_workflow(req)
 
 
 @router.post("/meeting/run", response_model=RunMeetingResponse)

@@ -1,9 +1,9 @@
 """
-Tasks controller.
+Workflow controller.
 
 This is the highest-level orchestration entry point in Looping Louie.
 
-Executes an entire development backlog defined in a tasks.json file.
+Executes an entire development workflow defined in a tasks.json file.
 
 Each pending task is processed sequentially by invoking the standard
 single-task harness. Successfully reviewed changes are committed before
@@ -13,7 +13,7 @@ Execution stops immediately when a task cannot be approved, ensuring the
 repository never progresses beyond a failed step.
 """
 
-from src.app.schemas import RunHarnessRequest, RunTasksRequest
+from src.app.schemas import RunHarnessRequest, RunWorkflowRequest
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.git import commit_all, has_changes
 from src.app.services.harness import run_harness
@@ -27,7 +27,7 @@ from src.app.services.task_plan import (
 )
 
 
-async def run_tasks(req: RunTasksRequest) -> dict:
+async def run_workflow(req: RunWorkflowRequest) -> dict:
     """
     Execute every pending task from a tasks.json file.
 

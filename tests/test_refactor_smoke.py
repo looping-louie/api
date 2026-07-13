@@ -1,12 +1,12 @@
 import asyncio
 
-from src.app.controllers import harness, tasks
+from src.app.controllers import harness, workflow
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
     ReviewerAssignment,
     RunHarnessRequest,
-    RunTasksRequest,
+    RunWorkflowRequest,
 )
 
 
@@ -35,7 +35,7 @@ def test_harness_controller_delegates_to_service(monkeypatch):
     assert captured['req'] is request
 
 
-def test_tasks_controller_uses_harness_service_path(monkeypatch):
+def test_workflow_controller_uses_harness_service_path(monkeypatch):
     pending_task = {
         'id': 'task-001',
         'status': 'pending',
@@ -104,35 +104,35 @@ def test_tasks_controller_uses_harness_service_path(monkeypatch):
     def fake_save_tasks(_tasks_path, _tasks):
         return None
 
-    monkeypatch.setattr(tasks, 'load_constitution', fake_load_constitution)
+    monkeypatch.setattr(workflow, 'load_constitution', fake_load_constitution)
     monkeypatch.setattr(
-        tasks,
+        workflow,
         'build_project_profile',
         fake_build_project_profile,
     )
-    monkeypatch.setattr(tasks, 'load_tasks', fake_load_tasks)
+    monkeypatch.setattr(workflow, 'load_tasks', fake_load_tasks)
     monkeypatch.setattr(
-        tasks,
+        workflow,
         'get_next_pending_task',
         fake_get_next_pending_task,
     )
     monkeypatch.setattr(
-        tasks,
+        workflow,
         'create_execution_plan',
         fake_create_execution_plan,
     )
-    monkeypatch.setattr(tasks, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(tasks, 'has_changes', fake_has_changes)
-    monkeypatch.setattr(tasks, 'commit_all', fake_commit_all)
-    monkeypatch.setattr(tasks, 'mark_task_done', fake_mark_task_done)
-    monkeypatch.setattr(tasks, 'save_tasks', fake_save_tasks)
+    monkeypatch.setattr(workflow, 'run_harness', fake_run_harness)
+    monkeypatch.setattr(workflow, 'has_changes', fake_has_changes)
+    monkeypatch.setattr(workflow, 'commit_all', fake_commit_all)
+    monkeypatch.setattr(workflow, 'mark_task_done', fake_mark_task_done)
+    monkeypatch.setattr(workflow, 'save_tasks', fake_save_tasks)
 
-    request = RunTasksRequest(
+    request = RunWorkflowRequest(
         repo_path='/tmp/repo',
         tasks_path='/tmp/tasks.json',
     )
 
-    result = asyncio.run(tasks.run_tasks(request))
+    result = asyncio.run(workflow.run_workflow(request))
 
     assert result['ok'] is True
     assert result['status'] == 'completed'

@@ -3,7 +3,7 @@
 Looping Louie currently exposes three HTTP endpoints.
 
 - `/harness/run` executes a single harness run.
-- `/tasks/run` executes an entire `tasks.json` backlog.
+- `/workflow/run` executes an entire `tasks.json` backlog.
 - `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
 
@@ -17,13 +17,13 @@ Use **`/harness/run`** when:
 - testing a new skill;
 - implementing one isolated change.
 
-Use **`/tasks/run`** when:
+Use **`/workflow/run`** when:
 
 - executing a development backlog;
 - evolving a project incrementally;
 - generating one commit per logical task.
 
-`/tasks/run` is expected to become the primary production entry point, while
+`/workflow/run` is expected to become the primary production entry point, while
 `/harness/run` serves as the reusable building block used internally by
 higher-level workflows.
 
@@ -67,7 +67,7 @@ curl -X POST http://127.0.0.1:8000/harness/run \
 
 ---
 
-## POST /tasks/run
+## POST /workflow/run
 
 Executes every pending task from a `tasks.json` file.
 
@@ -83,7 +83,7 @@ For each approved task, Looping Louie:
 Execution stops immediately when a task cannot be approved within the
 configured iteration limit.
 
-### Run Tasks Request
+### Run Workflow Request
 
 | Field | Description |
 | ----- | ----------- |
@@ -94,10 +94,10 @@ configured iteration limit.
 | `reviewer_model` | Model used for every reviewer skill. |
 | `skills` | List of review skills executed for every task. |
 
-### Run Tasks Example
+### Run Workflow Example
 
 ```sh
-curl -X POST http://127.0.0.1:8000/tasks/run \
+curl -X POST http://127.0.0.1:8000/workflow/run \
   -H "Content-Type: application/json" \
   -d '{
     "repo_path": "/home/jadraque/Documents/source/looping-louie/web",

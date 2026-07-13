@@ -77,7 +77,7 @@ Looping Louie currently exposes three endpoints.
 | Endpoint | Purpose |
 |----------|---------|
 | `/harness/run` | Execute a single harness run. |
-| `/tasks/run` | Execute an entire `tasks.json` backlog. |
+| `/workflow/run` | Execute an entire `tasks.json` backlog. |
 | `/meeting/run` | Run a structured multi-persona meeting. |
 
 See the complete API documentation:
@@ -117,7 +117,7 @@ Project documentation is organised under `docs/`.
 tasks.json
       │
       ▼
-/tasks/run
+/workflow/run
       │
       ▼
 /harness/run

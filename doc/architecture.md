@@ -83,7 +83,7 @@ utils/
                 tasks.json
                      │
                      ▼
-                 Tasks Controller (/tasks/run)
+                 Workflow Controller (/workflow/run)
                      │
                      ▼
                  Harness Controller (/harness/run)
@@ -269,7 +269,7 @@ If the run succeeds:
 
 - the final diff is applied to the original repository
 
-If running through `/tasks/run`:
+If running through `/workflow/run`:
 
 - repository changes are committed
 - task is marked as completed
@@ -355,7 +355,7 @@ The worktree isolates every execution from the original repository.
 
 The `/harness/run` endpoint executes one task.
 
-The `/tasks/run` endpoint executes an entire backlog.
+The `/workflow/run` endpoint executes an entire backlog.
 
 Workflow:
 

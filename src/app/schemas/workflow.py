@@ -1,4 +1,4 @@
-"""Tasks-related API schemas."""
+"""Workflow-related API schemas."""
 
 from pydantic import BaseModel, Field
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 # models, skills and max_iterations.
 class RunRequest(BaseModel):
     """
-    Request model for the /tasks/run endpoint.
+    Request model for the /workflow/run endpoint.
 
     The execution planner selects the complete team for every task. Callers may
     force reviewer skills and may optionally fix the generator persona while

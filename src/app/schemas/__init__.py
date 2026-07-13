@@ -16,12 +16,6 @@ The hierarchy is intentionally split into:
 
 from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.metrics import ModelMetrics, RunMetrics
-
-
-# NOTE:
-# Reviewer schemas are imported here (instead of the top of the file) because
-# they depend on ModelMetrics defined above.
-# pylint: disable=wrong-import-position
 from src.app.schemas.reviewer import (
     ReviewerAssignment,
     ReviewerIssue,
@@ -29,14 +23,6 @@ from src.app.schemas.reviewer import (
     ReviewerResult,
 )
 from src.app.schemas.plan import ExecutionPlan, IterationTrace, ProjectPhase
-
-
-# NOTE:
-# These imports are intentionally placed at the bottom to avoid circular
-# imports. Module-level request/response schemas depend on shared classes
-# defined above (ExecutionPlan, IterationTrace, RunMetrics), so importing them
-# earlier would initialize src.app.schemas before those classes exist.
-# pylint: disable=wrong-import-position
 from src.app.schemas.harness import (
     RunRequest as RunHarnessRequest,
     RunResponse as RunHarnessResponse,
@@ -46,7 +32,7 @@ from src.app.schemas.meeting import (
     RunRequest as RunMeetingRequest,
     RunResponse as RunMeetingResponse,
 )
-from src.app.schemas.tasks import RunRequest as RunTasksRequest
+from src.app.schemas.workflow import RunRequest as RunWorkflowRequest
 
 
 __all__ = [
@@ -65,5 +51,5 @@ __all__ = [
     'RunMeetingRequest',
     'RunMeetingResponse',
     'RunMetrics',
-    'RunTasksRequest',
+    'RunWorkflowRequest',
 ]
