@@ -8,6 +8,7 @@ from src.app.schemas import (
     TaskStartRequest,
     TaskStartResponse,
 )
+<<<<<<< HEAD
 from src.app.controllers.meeting import run_meeting
 from src.app.controllers.task import continue_task, get_task, start_task
 
@@ -39,7 +40,17 @@ from src.app.schemas.skills import (
     SkillSummaryResponse,
     SkillUpdateRequest,
 )
+=======
+from src.app.controllers.harness_runner import run_harness
+from src.app.controllers.task_runner import run_tasks
+from src.app.controllers.meeting_runner import run_meeting
+>>>>>>> 5065053 (ref(routers): se independizan últimas rutas)
 
+from .api_v1 import router as api_v1_router
+
+__all__ = [
+    "api_v1_router",
+]
 
 # Create the router instance
 router = APIRouter()
@@ -60,6 +71,7 @@ async def meeting_run_endpoint(
     trace and execution metrics.
     """
     return await run_meeting(req)
+<<<<<<< HEAD
 
 
 @router.post('/task/start', response_model=TaskStartResponse)
@@ -188,3 +200,5 @@ async def restore_skill_endpoint(skill_id: str) -> SkillResponse:
     """Restore a custom skill or revert to the built-in version."""
 
     return await restore_skill(skill_id=skill_id)
+=======
+>>>>>>> 5065053 (ref(routers): se independizan últimas rutas)
