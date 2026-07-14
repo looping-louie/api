@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.plan import ProjectPhase
@@ -21,14 +21,26 @@ class RunRequest(BaseModel):
     leaving reviewer personas under planner control.
     """
 
+    model_config = ConfigDict(extra='forbid')
+
     repo_path: str
-    tasks_path: str
+    tasks: list['Task']
     max_iterations: int = 3
     generator_model: str = 'deepseek-ai/DeepSeek-V4-Pro'
     reviewer_model: str = 'gpt-4.1-mini'
     planner_model: str = 'gpt-4.1-mini'
     required_reviewer_skills: list[str] = Field(default_factory=list)
     generator_persona: str | None = None
+
+
+class Task(BaseModel):
+    """One workflow task received from the caller."""
+
+    id: str
+    status: Literal['pending', 'done']
+    prompt: str
+    run_id: str | None = None
+    commit_message: str
 
 
 class CompletedTask(BaseModel):
@@ -57,4 +69,4 @@ class RunResponse(BaseModel):
     message: str | None = None
 
 
-__all__ = ['RunRequest', 'RunResponse']
+__all__ = ['RunRequest', 'RunResponse', 'Task']

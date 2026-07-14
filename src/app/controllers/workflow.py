@@ -25,9 +25,7 @@ from src.app.services.project.project_config_service import load_constitution
 from src.app.services.project.project_profile_service import build_project_profile
 from src.app.services.task_plan import (
     get_next_pending_task,
-    load_tasks,
     mark_task_done,
-    save_tasks,
 )
 
 
@@ -53,6 +51,8 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
     """
     completed = []
 
+    tasks = [task.model_dump() for task in req.tasks]
+
     constitution = load_constitution(req.repo_path)
     project_profile = build_project_profile(req.repo_path)
 
@@ -61,19 +61,18 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
     # Since completed tasks are persisted, execution can continue from the
     # first pending task after a crash or restart.
     while True:
-        tasks = load_tasks(req.tasks_path)
         task = get_next_pending_task(tasks)
 
         if task is None:
             return RunWorkflowResponse(
                 ok=True,
-                status="completed",
+                status='completed',
                 completed=completed,
             )
 
         execution_plan = await create_execution_plan(
             model=req.planner_model,
-            task_prompt=task["prompt"],
+            task_prompt=task['prompt'],
             project_profile=project_profile,
             constitution=constitution,
             required_skills=req.required_reviewer_skills,
@@ -83,7 +82,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
         run_response = await run_harness(
             RunHarnessRequest(
                 repo_path=req.repo_path,
-                prompt=task["prompt"],
+                prompt=task['prompt'],
                 max_iterations=req.max_iterations,
                 generator_model=req.generator_model,
                 reviewer_model=req.reviewer_model,
@@ -95,13 +94,13 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
         if not run_response.approved:
             return RunWorkflowResponse(
                 ok=False,
-                status="stopped",
-                task_id=task["id"],
+                status='stopped',
+                task_id=task['id'],
                 run_id=run_response.run_id,
                 approved=False,
                 message=(
-                    "Stopped because reviewers did not approve within "
-                    "max_iterations."
+                    'Stopped because reviewers did not approve within '
+                    'max_iterations.'
                 ),
                 completed=completed,
             )
@@ -109,13 +108,13 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
         if not has_changes(req.repo_path):
             return RunWorkflowResponse(
                 ok=False,
-                status="stopped",
-                task_id=task["id"],
+                status='stopped',
+                task_id=task['id'],
                 run_id=run_response.run_id,
                 approved=True,
                 message=(
-                    "Run approved but no repository changes were found "
-                    "to commit."
+                    'Run approved but no repository changes were found '
+                    'to commit.'
                 ),
                 completed=completed,
             )
@@ -126,23 +125,21 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
         # conventional commits or disabling automatic commits entirely.
         commit_sha = commit_all(
             repo_path=req.repo_path,
-            message=task["commit_message"],
+            message=task['commit_message'],
         )
 
-        tasks = load_tasks(req.tasks_path)
-        mark_task_done(tasks, task["id"], run_response.run_id)
-        save_tasks(req.tasks_path, tasks)
+        mark_task_done(tasks, task['id'], run_response.run_id)
 
         completed.append(
             {
-                "task_id": task["id"],
-                "run_id": run_response.run_id,
-                "commit_sha": commit_sha,
-                "commit_message": task["commit_message"],
-                "phase": execution_plan.phase,
-                "reasoning": execution_plan.reasoning,
-                "generator": execution_plan.generator.model_dump(),
-                "reviewers": [
+                'task_id': task['id'],
+                'run_id': run_response.run_id,
+                'commit_sha': commit_sha,
+                'commit_message': task['commit_message'],
+                'phase': execution_plan.phase,
+                'reasoning': execution_plan.reasoning,
+                'generator': execution_plan.generator.model_dump(),
+                'reviewers': [
                     reviewer.model_dump()
                     for reviewer in execution_plan.reviewers
                 ],

@@ -10,7 +10,9 @@ Looping Louie currently exposes two HTTP endpoints.
 
 ## POST /workflow/run
 
-Executes every pending task from a `tasks.json` file.
+Executes every pending task from a task array.
+
+Tasks must be sent directly in the `tasks` field.
 
 Tasks are processed sequentially.
 
@@ -29,7 +31,7 @@ configured iteration limit.
 | Field | Description |
 | ----- | ----------- |
 | `repo_path` | Path to the Git repository. |
-| `tasks_path` | Path to `tasks.json`. |
+| `tasks` | Ordered array of workflow tasks to execute. Required. |
 | `max_iterations` | Maximum iterations per task. |
 | `generator_model` | Model used for generation. |
 | `reviewer_model` | Model used for every reviewer skill. |
@@ -42,7 +44,15 @@ curl -X POST http://127.0.0.1:8000/workflow/run \
   -H "Content-Type: application/json" \
   -d '{
     "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
-    "tasks_path": "/home/jadraque/Documents/source/looping-louie/web/.looping-louie/tasks.json",
+    "tasks": [
+      {
+        "id": "task-001",
+        "status": "pending",
+        "prompt": "Implement the new empty state for ideas.",
+        "run_id": null,
+        "commit_message": "Add ideas empty state"
+      }
+    ],
     "max_iterations": 3,
     "generator_model": "zai-org/GLM-5.2",
     "reviewer_model": "gpt-4.1-mini",
@@ -52,6 +62,12 @@ curl -X POST http://127.0.0.1:8000/workflow/run \
       "preserve_existing_ui"
     ]
   }'
+```
+
+### Run Workflow Example From `tasks.json`
+
+```sh
+jq -n --arg repo_path "/home/jadraque/Documents/source/looping-louie/web" --argjson tasks "$(jq -c . /home/jadraque/Documents/source/looping-louie/web/.looping-louie/tasks.json)" '{repo_path:$repo_path,tasks:$tasks,max_iterations:3,generator_model:"zai-org/GLM-5.2",reviewer_model:"gpt-4.1-mini",skills:["small_patch_quality","nuxt_code_review","preserve_existing_ui"]}' | curl -X POST http://127.0.0.1:8000/workflow/run -H "Content-Type: application/json" --data-binary @-
 ```
 
 ---
