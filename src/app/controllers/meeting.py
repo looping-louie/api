@@ -5,13 +5,17 @@ from typing import Any
 
 from src.app.schemas import RunMeetingRequest, RunMeetingResponse
 from src.app.services.meeting.meeting_planner_service import create_meeting_plan
-from src.app.services.meeting.meeting_round_service import execute_meeting_round
+from src.app.services.meeting.meeting_round_service import (
+    MeetingRoundResult,
+    execute_meeting_round,
+)
 from src.app.services.meeting.meeting_runtime_service import (
     UsageTotals,
     build_meeting_response,
     create_meeting_run,
     persist_meeting_response,
 )
+from src.app.services.meeting.meeting_team_service import MeetingPlan
 
 
 async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
@@ -19,7 +23,7 @@ async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
     started_at = time.perf_counter()
     run_id, run_path = create_meeting_run(req)
     usage = UsageTotals()
-    plan = await create_meeting_plan(
+    plan: MeetingPlan = await create_meeting_plan(
         req=req,
         usage=usage,
         run_path=run_path,
@@ -32,7 +36,7 @@ async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
     approved = False
 
     for round_number in range(1, req.max_iterations + 1):
-        result = await execute_meeting_round(
+        result: MeetingRoundResult = await execute_meeting_round(
             req=req,
             plan=plan,
             round_number=round_number,
@@ -51,7 +55,7 @@ async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
         if approved:
             break
 
-    response = build_meeting_response(
+    response: RunMeetingResponse = build_meeting_response(
         req=req,
         run_id=run_id,
         final_output=current_artifact,

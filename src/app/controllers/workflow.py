@@ -15,6 +15,7 @@ repository never progresses beyond a failed step.
 
 from src.app.schemas import (
     RunHarnessRequest,
+    RunHarnessResponse,
     RunWorkflowRequest,
     RunWorkflowResponse,
 )
@@ -79,7 +80,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
             generator_persona=req.generator_persona,
         )
 
-        run_response = await run_harness(
+        run_response: RunHarnessResponse = await run_harness(
             RunHarnessRequest(
                 repo_path=req.repo_path,
                 prompt=task['prompt'],
