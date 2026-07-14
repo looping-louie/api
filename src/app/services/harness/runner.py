@@ -65,7 +65,11 @@ async def run_harness(
 
     workspace = ports.workspace.create_workspace(req.repo_path)
 
-    write_json(workspace.run_path, 'request.json', req.model_dump())
+    write_json(
+        workspace.run_path,
+        'request.json',
+        req.model_dump()
+    )
     write_json(
         workspace.run_path,
         'execution-plan.json',

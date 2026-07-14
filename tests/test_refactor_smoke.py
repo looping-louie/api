@@ -7,7 +7,9 @@ from src.app.controllers import task
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
+    PlanTaskRequest,
     ReviewerAssignment,
+    ReviewTaskRequest,
     RunTaskRequest,
     RunWorkflowRequest,
 )
@@ -299,3 +301,94 @@ def test_request_schema_rejects_invalid_project_profile():
                 }
             ],
         )
+
+
+def test_task_plan_controller_returns_execution_plan(monkeypatch):
+    execution_plan = ExecutionPlan(
+        phase='mvp',
+        reasoning='planner reasoning',
+        generator=GeneratorAssignment(
+            persona='tech_lead',
+            skills=[],
+            focus='ship the change',
+        ),
+        reviewers=[
+            ReviewerAssignment(
+                persona='tech_lead',
+                skills=['small_patch_quality'],
+                strictness=55,
+                focus='review the patch',
+            )
+        ],
+    )
+
+    async def fake_create_execution_plan(**_kwargs):
+        return execution_plan
+
+    monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
+
+    request = PlanTaskRequest(
+        task_id='task-006',
+        prompt='Implement planning-only flow',
+        constitution='Implement only the requested task.',
+        project_profile=VALID_PROJECT_PROFILE,
+    )
+
+    result = asyncio.run(task.plan_task(request))
+
+    assert result.ok is True
+    assert result.task_id == 'task-006'
+    assert result.execution_plan.phase == 'mvp'
+
+
+def test_task_review_controller_runs_assigned_reviewers(monkeypatch):
+    execution_plan = ExecutionPlan(
+        phase='mvp',
+        reasoning='planner reasoning',
+        generator=GeneratorAssignment(
+            persona='tech_lead',
+            skills=[],
+            focus='ship the change',
+        ),
+        reviewers=[
+            ReviewerAssignment(
+                persona='tech_lead',
+                skills=['small_patch_quality'],
+                strictness=55,
+                focus='review the patch',
+            )
+        ],
+    )
+
+    async def fake_review_with_openai(**_kwargs):
+        return {
+            'score': 90,
+            'blocking_issues': [],
+            'feedback': 'Looks good.',
+            'input_tokens': 100,
+            'output_tokens': 30,
+            'cached_input_tokens': 0,
+            'reasoning_tokens': 0,
+            'duration_ms': 200,
+        }
+
+    monkeypatch.setattr(task, 'review_with_openai', fake_review_with_openai)
+
+    request = ReviewTaskRequest(
+        run_id='run-900',
+        task_id='task-007',
+        iteration=1,
+        prompt='Implement review-only flow',
+        constitution='Implement only the requested task.',
+        reviewer_model='gpt-4.1-mini',
+        execution_plan=execution_plan,
+        final_diff='diff --git a/a.py b/a.py',
+        changed_file_contents='## a.py\nprint("ok")',
+    )
+
+    result = asyncio.run(task.review_task(request))
+
+    assert result.ok is True
+    assert result.approved is True
+    assert len(result.reviewers) == 1
+    assert result.reviewers[0].run_id == 'run-900'

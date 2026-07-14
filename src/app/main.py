@@ -11,6 +11,10 @@ POST /workflow/run
 POST /task/run
     Executes a single pending task.
     Uses the same planner-harness-commit flow as workflow.
+POST /task/plan
+    Builds a task execution plan without running harness.
+POST /task/review
+    Runs reviewers against a CLI-provided candidate artifact.
 
 The API layer is intentionally thin.
 Business logic lives in services and concise controller modules.
