@@ -11,8 +11,8 @@ from src.app.schemas import (
     RunHarnessResponse,
     RunMetrics,
 )
-from src.app.services.filesystem import apply_file_operations, parse_file_operations
-from src.app.services.git import apply_patch, get_changed_files, get_git_diff, validate_patch
+from src.app.services.harness.adapters import build_local_harness_execution_ports
+from src.app.services.harness.ports import HarnessExecutionPorts
 from src.app.services.harness.execution_plan import build_static_execution_plan
 from src.app.services.harness.instructions import (
     build_assignment_instructions,
@@ -29,11 +29,13 @@ from src.app.services.model_context import (
     build_reviewer_input,
     read_changed_file_contents,
 )
-from src.app.services.workspace import cleanup_workspace, create_workspace
 from src.app.utils.io import write_json, write_text
 
 
-async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
+async def run_harness(
+    req: RunHarnessRequest,
+    execution_ports: HarnessExecutionPorts | None = None,
+) -> RunHarnessResponse:
     """
     Execute a single harness run.
 
@@ -58,7 +60,9 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
         focus=execution_plan.generator.focus,
     )
 
-    workspace = create_workspace(req.repo_path)
+    ports = execution_ports or build_local_harness_execution_ports()
+
+    workspace = ports.workspace.create_workspace(req.repo_path)
 
     write_json(workspace.run_path, 'request.json', req.model_dump())
     write_json(
@@ -143,7 +147,7 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
                         f"max_output_tokens={gen.get('max_output_tokens')}"
                     )
 
-                operations = parse_file_operations(gen['text'])
+                operations = ports.filesystem.parse_file_operations(gen['text'])
 
                 write_json(
                     workspace.run_path,
@@ -151,13 +155,15 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
                     {'operations': operations},
                 )
 
-                apply_file_operations(
+                ports.filesystem.apply_file_operations(
                     str(workspace.worktree_path),
                     operations,
                 )
 
-                final_diff = get_git_diff(str(workspace.worktree_path))
-                changed_files = get_changed_files(str(workspace.worktree_path))
+                final_diff = ports.git.get_git_diff(str(workspace.worktree_path))
+                changed_files = ports.git.get_changed_files(
+                    str(workspace.worktree_path)
+                )
                 changed_file_contents = read_changed_file_contents(
                     str(workspace.worktree_path),
                     changed_files,
@@ -275,7 +281,7 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
             reviewer_feedback = iteration_feedback
 
         if approved and final_diff:
-            valid, error = validate_patch(
+            valid, error = ports.git.validate_patch(
                 req.repo_path,
                 final_diff,
             )
@@ -285,7 +291,7 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
                     f'{error}'
                 )
 
-            applied, error = apply_patch(
+            applied, error = ports.git.apply_patch(
                 req.repo_path,
                 final_diff,
             )
@@ -346,4 +352,4 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
         return response
 
     finally:
-        cleanup_workspace(workspace)
+        ports.workspace.cleanup_workspace(workspace)

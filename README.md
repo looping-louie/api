@@ -12,7 +12,7 @@ The runtime is provider-independent and designed to be reproducible, observable 
 
 ---
 
-# Features
+## Features
 
 - Iterative generator/reviewer workflow
 - Multiple independent review skills
@@ -27,7 +27,7 @@ The runtime is provider-independent and designed to be reproducible, observable 
 
 ---
 
-# Installation
+## Installation
 
 Clone the repository and install the project:
 
@@ -43,7 +43,7 @@ This command will:
 
 ---
 
-# Configuration
+## Configuration
 
 Populate the generated `.env` file:
 
@@ -54,7 +54,7 @@ OPENAI_API_KEY=
 
 ---
 
-# Running the API
+## Running the API
 
 Start the development server:
 
@@ -70,7 +70,7 @@ http://127.0.0.1:8000
 
 ---
 
-# Usage
+## Usage
 
 Looping Louie currently exposes two endpoints.
 
@@ -85,7 +85,7 @@ See the complete API documentation:
 
 ---
 
-# Repository Requirements
+## Repository Requirements
 
 Before running Looping Louie:
 
@@ -96,7 +96,7 @@ Looping Louie refuses to execute against a dirty repository to guarantee determi
 
 ---
 
-# Documentation
+## Documentation
 
 Project documentation is organised under `docs/`.
 
@@ -110,7 +110,7 @@ Project documentation is organised under `docs/`.
 
 ---
 
-# High-Level Execution Flow
+## High-Level Execution Flow
 
 ```
 tasks.json
@@ -153,7 +153,7 @@ Retry    Apply diff
 
 ---
 
-# Current Status
+## Current Status
 
 Looping Louie is currently an MVP focused on validating the execution runtime.
 
@@ -171,6 +171,6 @@ Future work is tracked in `doc/roadmap.md`.
 
 ---
 
-# License
+## License
 
 _Not yet defined._
