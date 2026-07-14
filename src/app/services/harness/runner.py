@@ -13,7 +13,6 @@ from src.app.schemas import (
 )
 from src.app.services.filesystem import apply_file_operations, parse_file_operations
 from src.app.services.git import apply_patch, get_changed_files, get_git_diff, validate_patch
-from src.app.services.harness.context import build_repo_context
 from src.app.services.harness.execution_plan import build_static_execution_plan
 from src.app.services.harness.instructions import (
     build_assignment_instructions,
@@ -24,7 +23,9 @@ from src.app.services.harness.reviewers import build_failed_feedback, run_single
 from src.app.services.llm_service.together import call_together
 from src.app.services.model_context import (
     build_initial_generator_prompt,
+    build_snapshot,
     build_retry_generator_prompt,
+    format_snapshot_for_prompt,
     build_reviewer_input,
     read_changed_file_contents,
 )
@@ -79,7 +80,9 @@ async def run_harness(req: RunHarnessRequest) -> RunHarnessResponse:
 
     try:
         for iteration in range(1, req.max_iterations + 1):
-            repo_context = build_repo_context(str(workspace.worktree_path))
+            repo_context = format_snapshot_for_prompt(
+                build_snapshot(str(workspace.worktree_path))
+            )
 
             if iteration == 1:
                 base_prompt = build_initial_generator_prompt(
