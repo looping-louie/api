@@ -91,6 +91,8 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
             )
         )
 
+        # RunHarness Outcome Evaluation
+
         if not run_response.approved:
             return RunWorkflowResponse(
                 ok=False,
@@ -105,7 +107,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                 completed=completed,
             )
 
-        if not has_changes(req.repo_path):
+        elif not has_changes(req.repo_path):
             return RunWorkflowResponse(
                 ok=False,
                 status='stopped',
@@ -119,29 +121,30 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                 completed=completed,
             )
 
-        # TODO:
-        # Support configurable commit strategies.
-        # Future options may include squash commits, signed commits,
-        # conventional commits or disabling automatic commits entirely.
-        commit_sha = commit_all(
-            repo_path=req.repo_path,
-            message=task['commit_message'],
-        )
+        else:
+            # TODO:
+            # Support configurable commit strategies.
+            # Future options may include squash commits, signed commits,
+            # conventional commits or disabling automatic commits entirely.
+            commit_sha = commit_all(
+                repo_path=req.repo_path,
+                message=task['commit_message'],
+            )
 
-        mark_task_done(tasks, task['id'], run_response.run_id)
+            mark_task_done(tasks, task['id'], run_response.run_id)
 
-        completed.append(
-            {
-                'task_id': task['id'],
-                'run_id': run_response.run_id,
-                'commit_sha': commit_sha,
-                'commit_message': task['commit_message'],
-                'phase': execution_plan.phase,
-                'reasoning': execution_plan.reasoning,
-                'generator': execution_plan.generator.model_dump(),
-                'reviewers': [
-                    reviewer.model_dump()
-                    for reviewer in execution_plan.reviewers
-                ],
-            }
-        )
+            completed.append(
+                {
+                    'task_id': task['id'],
+                    'run_id': run_response.run_id,
+                    'commit_sha': commit_sha,
+                    'commit_message': task['commit_message'],
+                    'phase': execution_plan.phase,
+                    'reasoning': execution_plan.reasoning,
+                    'generator': execution_plan.generator.model_dump(),
+                    'reviewers': [
+                        reviewer.model_dump()
+                        for reviewer in execution_plan.reviewers
+                    ],
+                }
+            )
