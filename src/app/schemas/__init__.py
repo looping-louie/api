@@ -32,7 +32,10 @@ from src.app.schemas.meeting import (
     RunRequest as RunMeetingRequest,
     RunResponse as RunMeetingResponse,
 )
-from src.app.schemas.workflow import RunRequest as RunWorkflowRequest
+from src.app.schemas.workflow import (
+    RunRequest as RunWorkflowRequest,
+    RunResponse as RunWorkflowResponse,
+)
 
 
 __all__ = [
@@ -52,4 +55,5 @@ __all__ = [
     'RunMeetingResponse',
     'RunMetrics',
     'RunWorkflowRequest',
+    'RunWorkflowResponse',
 ]

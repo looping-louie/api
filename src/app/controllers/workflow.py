@@ -13,7 +13,11 @@ Execution stops immediately when a task cannot be approved, ensuring the
 repository never progresses beyond a failed step.
 """
 
-from src.app.schemas import RunHarnessRequest, RunWorkflowRequest
+from src.app.schemas import (
+    RunHarnessRequest,
+    RunWorkflowRequest,
+    RunWorkflowResponse,
+)
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.git import commit_all, has_changes
 from src.app.services.harness import run_harness
@@ -27,7 +31,7 @@ from src.app.services.task_plan import (
 )
 
 
-async def run_workflow(req: RunWorkflowRequest) -> dict:
+async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
     """
     Execute every pending task from a tasks.json file.
 
@@ -61,11 +65,11 @@ async def run_workflow(req: RunWorkflowRequest) -> dict:
         task = get_next_pending_task(tasks)
 
         if task is None:
-            return {
-                "ok": True,
-                "status": "completed",
-                "completed": completed,
-            }
+            return RunWorkflowResponse(
+                ok=True,
+                status="completed",
+                completed=completed,
+            )
 
         execution_plan = await create_execution_plan(
             model=req.planner_model,
@@ -89,32 +93,32 @@ async def run_workflow(req: RunWorkflowRequest) -> dict:
         )
 
         if not run_response.approved:
-            return {
-                "ok": False,
-                "status": "stopped",
-                "task_id": task["id"],
-                "run_id": run_response.run_id,
-                "approved": False,
-                "message": (
+            return RunWorkflowResponse(
+                ok=False,
+                status="stopped",
+                task_id=task["id"],
+                run_id=run_response.run_id,
+                approved=False,
+                message=(
                     "Stopped because reviewers did not approve within "
                     "max_iterations."
                 ),
-                "completed": completed,
-            }
+                completed=completed,
+            )
 
         if not has_changes(req.repo_path):
-            return {
-                "ok": False,
-                "status": "stopped",
-                "task_id": task["id"],
-                "run_id": run_response.run_id,
-                "approved": True,
-                "message": (
+            return RunWorkflowResponse(
+                ok=False,
+                status="stopped",
+                task_id=task["id"],
+                run_id=run_response.run_id,
+                approved=True,
+                message=(
                     "Run approved but no repository changes were found "
                     "to commit."
                 ),
-                "completed": completed,
-            }
+                completed=completed,
+            )
 
         # TODO:
         # Support configurable commit strategies.

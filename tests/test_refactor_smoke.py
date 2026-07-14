@@ -134,8 +134,8 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch):
 
     result = asyncio.run(workflow.run_workflow(request))
 
-    assert result['ok'] is True
-    assert result['status'] == 'completed'
-    assert len(result['completed']) == 1
-    assert result['completed'][0]['run_id'] == 'run-123'
+    assert result.ok is True
+    assert result.status == 'completed'
+    assert len(result.completed) == 1
+    assert result.completed[0].run_id == 'run-123'
     assert call_state['marked_done'] is True

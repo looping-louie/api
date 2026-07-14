@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from src.app.schemas import (
     RunWorkflowRequest,
+    RunWorkflowResponse,
     RunHarnessRequest,
     RunHarnessResponse,
     RunMeetingRequest,
@@ -27,8 +28,8 @@ async def harness_run_endpoint(req: RunHarnessRequest):
     return await run_harness(req)
 
 
-@router.post("/workflow/run")
-async def workflow_run_endpoint(req: RunWorkflowRequest):
+@router.post("/workflow/run", response_model=RunWorkflowResponse)
+async def workflow_run_endpoint(req: RunWorkflowRequest) -> RunWorkflowResponse:
     """
     Execute every pending task from a tasks.json file.
 
