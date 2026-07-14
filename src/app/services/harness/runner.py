@@ -11,7 +11,7 @@ from src.app.schemas import (
     RunHarnessResponse,
     RunMetrics,
 )
-from src.app.services.file_change import apply_file_operations, parse_file_operations
+from src.app.services.filesystem import apply_file_operations, parse_file_operations
 from src.app.services.git import apply_patch, get_changed_files, get_git_diff, validate_patch
 from src.app.services.harness.context import build_repo_context
 from src.app.services.harness.execution_plan import build_static_execution_plan

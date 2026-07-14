@@ -38,7 +38,7 @@ services/workspace/
 services/model_context/
     Repository snapshot and prompt context construction
 
-services/file_change/
+services/filesystem/
     File operation parsing and application
 
 services/git/
@@ -83,10 +83,10 @@ utils/
                 tasks.json
                      │
                      ▼
-                 Workflow Controller (/workflow/run)
+        Workflow Controller (/workflow/run)
                      │
                      ▼
-                      Harness Service
+              Harness Service
                      │
           ┌──────────┴──────────┐
           │                     │
