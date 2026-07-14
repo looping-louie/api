@@ -1,4 +1,8 @@
-"""Execution plan helpers for harness service."""
+"""Static execution-plan fallback helpers.
+
+Transitional module: this fallback exists only while direct harness calls can
+arrive without an explicit execution plan.
+"""
 
 from src.app.schemas import (
     ExecutionPlan,
@@ -13,7 +17,7 @@ def build_static_execution_plan(req: RunHarnessRequest) -> ExecutionPlan:
     Build a deterministic fallback for direct harness calls.
 
     Planned task runs should supply execution_plan. This fallback preserves the
-    low-level API for callers that want to configure the harness explicitly.
+    low-level API for callers that still configure the harness explicitly.
     """
     if not req.reviewer_skills:
         raise ValueError(

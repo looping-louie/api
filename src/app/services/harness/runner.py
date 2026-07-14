@@ -18,7 +18,9 @@ from src.app.services.harness.execution import (
     execute_iteration_and_review,
 )
 from src.app.services.harness.ports import HarnessExecutionPorts
-from src.app.services.harness.execution_plan import build_static_execution_plan
+from src.app.services.execution_planner.static_plan import (
+    build_static_execution_plan,
+)
 from src.app.services.harness.instructions import (
     build_assignment_instructions,
     combine_generator_prompt,
