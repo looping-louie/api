@@ -10,8 +10,6 @@ from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.git import commit_all, has_changes
 from src.app.services.harness import run_harness
-from src.app.services.project.project_config_service import load_constitution
-from src.app.services.project.project_profile_service import build_project_profile
 
 
 async def run_task(req: RunTaskRequest) -> RunTaskResponse:
@@ -26,8 +24,8 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
             message='Task status must be pending to run.',
         )
 
-    constitution = load_constitution(req.repo_path)
-    project_profile = build_project_profile(req.repo_path)
+    constitution = req.constitution
+    project_profile = req.project_profile.model_dump()
 
     execution_plan = await create_execution_plan(
         model=req.planner_model,

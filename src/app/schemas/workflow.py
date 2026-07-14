@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.plan import ProjectPhase
+from src.app.schemas.project import ProjectProfile
 from src.app.schemas.reviewer import ReviewerAssignment
 
 
@@ -25,6 +26,8 @@ class RunRequest(BaseModel):
 
     repo_path: str
     tasks: list['Task']
+    constitution: str
+    project_profile: ProjectProfile
     max_iterations: int = 3
     generator_model: str = 'deepseek-ai/DeepSeek-V4-Pro'
     reviewer_model: str = 'gpt-4.1-mini'

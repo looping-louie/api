@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.app.schemas.project import ProjectProfile
 from src.app.schemas.workflow import CompletedTask, Task
 
 
@@ -18,6 +19,8 @@ class RunRequest(BaseModel):
 
     repo_path: str
     task: Task
+    constitution: str
+    project_profile: ProjectProfile
     max_iterations: int = 3
     generator_model: str = 'deepseek-ai/DeepSeek-V4-Pro'
     reviewer_model: str = 'gpt-4.1-mini'

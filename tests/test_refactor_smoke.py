@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 from src.app.controllers import workflow
 from src.app.controllers import task
 from src.app.schemas import (
@@ -9,6 +11,28 @@ from src.app.schemas import (
     RunTaskRequest,
     RunWorkflowRequest,
 )
+
+
+VALID_PROJECT_PROFILE = {
+    'source_file_count': 12,
+    'approximate_source_chars': 2048,
+    'extension_counts': {
+        '.py': 10,
+        '.md': 2,
+    },
+    'top_level_entries': [
+        'src/',
+        'tests/',
+        'README.md',
+    ],
+    'markers': {
+        'nuxt': False,
+        'package_json': False,
+        'fastapi': True,
+        'docker': False,
+        'tests': True,
+    },
+}
 
 
 def test_workflow_controller_uses_harness_service_path(monkeypatch):
@@ -40,12 +64,6 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch):
     async def fake_run_harness(_req):
         return FakeRunResponse()
 
-    def fake_load_constitution(_repo_path):
-        return ''
-
-    def fake_build_project_profile(_repo_path):
-        return 'profile'
-
     def fake_has_changes(_repo_path):
         return True
 
@@ -56,13 +74,13 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch):
 
     monkeypatch.setattr(workflow, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(workflow, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(workflow, 'load_constitution', fake_load_constitution)
-    monkeypatch.setattr(workflow, 'build_project_profile', fake_build_project_profile)
     monkeypatch.setattr(workflow, 'has_changes', fake_has_changes)
     monkeypatch.setattr(workflow, 'commit_all', fake_commit_all)
 
     request = RunWorkflowRequest(
         repo_path='/tmp/repo',
+        constitution='Implement only the requested task.',
+        project_profile=VALID_PROJECT_PROFILE,
         tasks=[
             {
                 'id': 'task-001',
@@ -111,12 +129,6 @@ def test_task_controller_uses_harness_service_path(monkeypatch):
     async def fake_run_harness(_req):
         return FakeRunResponse()
 
-    def fake_load_constitution(_repo_path):
-        return ''
-
-    def fake_build_project_profile(_repo_path):
-        return 'profile'
-
     def fake_has_changes(_repo_path):
         return True
 
@@ -127,13 +139,13 @@ def test_task_controller_uses_harness_service_path(monkeypatch):
 
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(task, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(task, 'load_constitution', fake_load_constitution)
-    monkeypatch.setattr(task, 'build_project_profile', fake_build_project_profile)
     monkeypatch.setattr(task, 'has_changes', fake_has_changes)
     monkeypatch.setattr(task, 'commit_all', fake_commit_all)
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
+        constitution='Implement only the requested task.',
+        project_profile=VALID_PROJECT_PROFILE,
         task={
             'id': 'task-001',
             'status': 'pending',
@@ -164,6 +176,8 @@ def test_task_controller_rejects_non_pending_task(monkeypatch):
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
+        constitution='Implement only the requested task.',
+        project_profile=VALID_PROJECT_PROFILE,
         task={
             'id': 'task-002',
             'status': 'done',
@@ -211,12 +225,6 @@ def test_task_controller_stops_when_no_changes(monkeypatch):
     async def fake_run_harness(_req):
         return FakeRunResponse()
 
-    def fake_load_constitution(_repo_path):
-        return ''
-
-    def fake_build_project_profile(_repo_path):
-        return 'profile'
-
     def fake_has_changes(_repo_path):
         return False
 
@@ -225,13 +233,13 @@ def test_task_controller_stops_when_no_changes(monkeypatch):
 
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(task, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(task, 'load_constitution', fake_load_constitution)
-    monkeypatch.setattr(task, 'build_project_profile', fake_build_project_profile)
     monkeypatch.setattr(task, 'has_changes', fake_has_changes)
     monkeypatch.setattr(task, 'commit_all', fake_commit_all)
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
+        constitution='Implement only the requested task.',
+        project_profile=VALID_PROJECT_PROFILE,
         task={
             'id': 'task-003',
             'status': 'pending',
@@ -248,3 +256,46 @@ def test_task_controller_stops_when_no_changes(monkeypatch):
     assert result.task_id == 'task-003'
     assert result.run_id == 'run-789'
     assert result.approved is True
+
+
+def test_request_schema_rejects_invalid_project_profile():
+    with pytest.raises(ValueError):
+        RunTaskRequest(
+            repo_path='/tmp/repo',
+            constitution='Implement only the requested task.',
+            project_profile={
+                'source_file_count': 12,
+                # Missing required fields:
+                # approximate_source_chars, extension_counts,
+                # top_level_entries, markers
+            },
+            task={
+                'id': 'task-004',
+                'status': 'pending',
+                'prompt': 'Implement small change',
+                'run_id': None,
+                'commit_message': 'feat: implement small change',
+            },
+        )
+
+    with pytest.raises(ValueError):
+        RunWorkflowRequest(
+            repo_path='/tmp/repo',
+            constitution='Implement only the requested task.',
+            project_profile={
+                'source_file_count': 12,
+                'approximate_source_chars': 2048,
+                'extension_counts': {'.py': 10},
+                'top_level_entries': ['src/'],
+                # Missing required markers payload
+            },
+            tasks=[
+                {
+                    'id': 'task-005',
+                    'status': 'pending',
+                    'prompt': 'Implement another change',
+                    'run_id': None,
+                    'commit_message': 'feat: implement another change',
+                }
+            ],
+        )

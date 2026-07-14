@@ -15,6 +15,7 @@ The hierarchy is intentionally split into:
 """
 
 from src.app.schemas.generator import GeneratorAssignment
+from src.app.schemas.project import ProjectProfile, ProjectProfileMarkers
 from src.app.schemas.metrics import ModelMetrics, RunMetrics
 from src.app.schemas.reviewer import (
     ReviewerAssignment,
@@ -48,6 +49,8 @@ __all__ = [
     'IterationTrace',
     'MeetingType',
     'ModelMetrics',
+    'ProjectProfile',
+    'ProjectProfileMarkers',
     'ProjectPhase',
     'ReviewerAssignment',
     'ReviewerIssue',
