@@ -15,19 +15,19 @@ from src.app.services.llm_service.instructions import (
     PARTICIPANT_INSTRUCTIONS,
     VALIDATOR_INSTRUCTIONS,
 )
-from src.app.services.meeting.meeting_artifact_service import (
+from src.app.services.meeting.artifact import (
     build_round_feedback,
     extract_disagreements,
     get_artifact_contract,
     get_local_contract_issues,
     normalise_artifact,
 )
-from src.app.services.meeting.meeting_team_service import (
+from src.app.services.meeting.team import (
     MeetingMember,
     MeetingPlan,
     build_member_instructions,
 )
-from src.app.services.meeting.meeting_runtime_service import (
+from src.app.services.meeting.runtime import (
     UsageTotals,
     call_json_model,
     call_meeting_model,

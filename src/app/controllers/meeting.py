@@ -4,18 +4,18 @@ import time
 from typing import Any
 
 from src.app.schemas import RunMeetingRequest, RunMeetingResponse
-from src.app.services.meeting.meeting_planner_service import create_meeting_plan
-from src.app.services.meeting.meeting_round_service import (
+from src.app.services.meeting.planner import create_meeting_plan
+from src.app.services.meeting.rounds import (
     MeetingRoundResult,
     execute_meeting_round,
 )
-from src.app.services.meeting.meeting_runtime_service import (
+from src.app.services.meeting.runtime import (
     UsageTotals,
     build_meeting_response,
     create_meeting_run,
     persist_meeting_response,
 )
-from src.app.services.meeting.meeting_team_service import MeetingPlan
+from src.app.services.meeting.team import MeetingPlan
 
 
 async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
