@@ -46,12 +46,10 @@ async def plan_task(req: PlanTaskRequest) -> PlanTaskResponse:
 
 async def review_task(req: ReviewTaskRequest) -> ReviewTaskResponse:
     """Review one CLI-provided candidate artifact using the planned team."""
-    changed_file_contents = _build_changed_file_contents(req)
-
     review_input = build_reviewer_input(
         user_prompt=req.prompt,
         final_diff=req.final_diff,
-        changed_file_contents=changed_file_contents,
+        changed_file_contents=req.changed_file_contents,
     )
 
     reviewer_calls = [
@@ -81,22 +79,6 @@ async def review_task(req: ReviewTaskRequest) -> ReviewTaskResponse:
         reviewers=reviewers,
         reviewers_metrics=reviewers_metrics,
     )
-
-
-def _build_changed_file_contents(req: ReviewTaskRequest) -> str:
-    """Build reviewer file-context text from structured or raw request input."""
-    if req.changed_files:
-        return '\n\n'.join(
-            [
-                f'## {changed_file.path}\n{changed_file.content}'
-                for changed_file
-                in req.changed_files
-            ]
-        )
-
-    # Transitional fallback for preformatted client payloads.
-    # Keep this while CLI migration is incomplete.
-    return req.changed_file_contents or ''
 
 
 async def _run_reviewer_decision(
@@ -161,13 +143,7 @@ async def _run_reviewer_decision(
 
 
 async def run_task(req: RunTaskRequest) -> RunTaskResponse:
-    """
-    Execute one task using the same flow used by workflow execution.
-
-    Transitional note:
-    This path keeps API-side harness execution available while CLI-side
-    execution contracts mature. If migration is aborted, this remains valid.
-    """
+    """Execute one task using the same flow used by workflow execution."""
     task = req.task.model_dump()
 
     if task['status'] != 'pending':
