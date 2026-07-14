@@ -32,3 +32,11 @@ completo todo el diseño y contenido que tenía index.vue.
 - El error venía de `repository.py` (ahora en model_context_service.py) que no
 estaba enviando archivos .vue ni .ts en el snapshot del repo. Una vez corregido
 la funcionalidad sale bien.
+
+## 2026-07-14 Tue
+
+- Migration reviewer checklist (naming contracts):
+- Confirm `*Request` and `*Response` are used only for HTTP API schemas.
+- Confirm internal service or method return models use `*Result`.
+- If a renamed model crosses package boundaries, verify all aliases in
+  `src/app/schemas/__init__.py` stay consistent.

@@ -1,4 +1,4 @@
-"""Harness request/response schemas."""
+"""Harness request/result schemas."""
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +31,7 @@ class RunRequest(BaseModel):
     constitution: str = ''
 
 
-class RunResponse(BaseModel):
+class RunResult(BaseModel):
     """
     Final response returned by one harness execution.
 
@@ -46,4 +46,4 @@ class RunResponse(BaseModel):
     execution_trace: list[IterationTrace]
 
 
-__all__ = ['RunRequest', 'RunResponse']
+__all__ = ['RunRequest', 'RunResult']

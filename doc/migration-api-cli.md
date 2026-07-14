@@ -33,6 +33,20 @@ The current API remains fully operational during migration.
 - Defer authentication and authorization design.
 - Keep code operational in API now so selected modules can later move to CLI.
 
+## Naming Convention During Migration
+
+Use schema names consistently to preserve clear boundaries:
+
+- `*Request` and `*Response`: reserved for HTTP API contract models.
+- `*Result`: reserved for internal service and method return models.
+
+Example applied now:
+
+- Harness service uses `RunHarnessRequest` + `RunHarnessResult`.
+- API endpoints keep `RunTaskRequest`/`RunTaskResponse`,
+  `RunWorkflowRequest`/`RunWorkflowResponse`, and
+  `RunMeetingRequest`/`RunMeetingResponse`.
+
 ---
 
 ## Ten-Point Implication Analysis

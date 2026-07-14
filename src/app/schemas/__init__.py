@@ -25,7 +25,7 @@ from src.app.schemas.reviewer import (
 from src.app.schemas.plan import ExecutionPlan, IterationTrace, ProjectPhase
 from src.app.schemas.harness import (
     RunRequest as RunHarnessRequest,
-    RunResponse as RunHarnessResponse,
+    RunResult as RunHarnessResult,
 )
 from src.app.schemas.meeting import (
     MeetingType,
@@ -54,7 +54,7 @@ __all__ = [
     'ReviewerMetrics',
     'ReviewerResult',
     'RunHarnessRequest',
-    'RunHarnessResponse',
+    'RunHarnessResult',
     'RunMeetingRequest',
     'RunMeetingResponse',
     'RunTaskRequest',

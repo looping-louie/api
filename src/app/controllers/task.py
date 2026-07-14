@@ -2,7 +2,7 @@
 
 from src.app.schemas import (
     RunHarnessRequest,
-    RunHarnessResponse,
+    RunHarnessResult,
 )
 from src.app.schemas.task import RunRequest as RunTaskRequest
 from src.app.schemas.task import RunResponse as RunTaskResponse
@@ -38,7 +38,7 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         generator_persona=req.generator_persona,
     )
 
-    run_harness_response: RunHarnessResponse = await run_harness(
+    run_harness_result: RunHarnessResult = await run_harness(
         RunHarnessRequest(
             repo_path=req.repo_path,
             prompt=task['prompt'],
@@ -50,12 +50,12 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         )
     )
 
-    if not run_harness_response.approved:
+    if not run_harness_result.approved:
         return RunTaskResponse(
             ok=False,
             status='stopped',
             task_id=task['id'],
-            run_id=run_harness_response.run_id,
+            run_id=run_harness_result.run_id,
             approved=False,
             message=(
                 'Stopped because reviewers did not approve within '
@@ -68,7 +68,7 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
             ok=False,
             status='stopped',
             task_id=task['id'],
-            run_id=run_harness_response.run_id,
+            run_id=run_harness_result.run_id,
             approved=True,
             message=(
                 'Run approved but no repository changes were found '
@@ -85,12 +85,12 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         ok=True,
         status='completed',
         task_id=task['id'],
-        run_id=run_harness_response.run_id,
+        run_id=run_harness_result.run_id,
         approved=True,
         message='Task completed and committed.',
         completed=CompletedTask(
             task_id=task['id'],
-            run_id=run_harness_response.run_id,
+            run_id=run_harness_result.run_id,
             commit_sha=commit_sha,
             commit_message=task['commit_message'],
             phase=execution_plan.phase,

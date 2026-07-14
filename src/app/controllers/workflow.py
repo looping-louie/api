@@ -15,7 +15,7 @@ repository never progresses beyond a failed step.
 
 from src.app.schemas import (
     RunHarnessRequest,
-    RunHarnessResponse,
+    RunHarnessResult,
     RunWorkflowRequest,
     RunWorkflowResponse,
 )
@@ -80,7 +80,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
             generator_persona=req.generator_persona,
         )
 
-        run_response: RunHarnessResponse = await run_harness(
+        run_harness_result: RunHarnessResult = await run_harness(
             RunHarnessRequest(
                 repo_path=req.repo_path,
                 prompt=task['prompt'],
@@ -94,12 +94,12 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
 
         # RunHarness Outcome Evaluation
 
-        if not run_response.approved:
+        if not run_harness_result.approved:
             return RunWorkflowResponse(
                 ok=False,
                 status='stopped',
                 task_id=task['id'],
-                run_id=run_response.run_id,
+                run_id=run_harness_result.run_id,
                 approved=False,
                 message=(
                     'Stopped because reviewers did not approve within '
@@ -113,7 +113,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                 ok=False,
                 status='stopped',
                 task_id=task['id'],
-                run_id=run_response.run_id,
+                run_id=run_harness_result.run_id,
                 approved=True,
                 message=(
                     'Run approved but no repository changes were found '
@@ -132,12 +132,12 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                 message=task['commit_message'],
             )
 
-            mark_task_done(tasks, task['id'], run_response.run_id)
+            mark_task_done(tasks, task['id'], run_harness_result.run_id)
 
             completed.append(
                 {
                     'task_id': task['id'],
-                    'run_id': run_response.run_id,
+                    'run_id': run_harness_result.run_id,
                     'commit_sha': commit_sha,
                     'commit_message': task['commit_message'],
                     'phase': execution_plan.phase,

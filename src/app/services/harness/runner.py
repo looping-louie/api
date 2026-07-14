@@ -5,7 +5,7 @@ import time
 from src.app.schemas import (
     ModelMetrics,
     RunHarnessRequest,
-    RunHarnessResponse,
+    RunHarnessResult,
     RunMetrics,
 )
 from src.app.services.harness.adapters import build_local_harness_execution_ports
@@ -36,7 +36,7 @@ from src.app.utils.io import write_json, write_text
 async def run_harness(
     req: RunHarnessRequest,
     execution_ports: HarnessExecutionPorts | None = None,
-) -> RunHarnessResponse:
+) -> RunHarnessResult:
     """
     Execute a single harness run.
 
@@ -44,7 +44,7 @@ async def run_harness(
     operations are applied to an isolated worktree. Only when every reviewer
     approves is the final diff applied back to the original repository.
 
-    Returns a RunHarnessResponse containing approval state, final diff,
+    Returns a RunHarnessResult containing approval state, final diff,
     execution trace and aggregated metrics.
     """
     start = time.time()
@@ -232,7 +232,7 @@ async def run_harness(
         duration_ms = int((time.time() - start) * 1000)
         total_tokens = total_input_tokens + total_output_tokens
 
-        response = RunHarnessResponse(
+        response = RunHarnessResult(
             run_id=workspace.run_id,
             final_output=final_diff,
             approved=approved,
