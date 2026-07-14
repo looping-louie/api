@@ -9,6 +9,10 @@
     "MD031": {
         "list_items": false
     },
-    "MD036": false
+    "MD036": false,
+    "MD060": {
+        "aligned_delimiter": true,
+        "style": "compact"
+    }
 }
 
