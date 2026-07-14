@@ -9,9 +9,7 @@ class RunRequest(BaseModel):
     """
     Input for a single harness execution.
 
-    An execution plan is normally supplied by the execution planner. The
-    static persona and skill fields remain available for direct calls to the
-    harness when no planner is used.
+    An execution plan must be supplied by the caller.
     """
 
     prompt: str
@@ -27,7 +25,7 @@ class RunRequest(BaseModel):
         default_factory=lambda: ['small_patch_quality']
     )
 
-    execution_plan: ExecutionPlan | None = None
+    execution_plan: ExecutionPlan
     constitution: str = ''
 
 

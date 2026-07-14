@@ -18,9 +18,6 @@ from src.app.services.harness.execution import (
     execute_iteration_and_review,
 )
 from src.app.services.harness.ports import HarnessExecutionPorts
-from src.app.services.execution_planner.static_plan import (
-    build_static_execution_plan,
-)
 from src.app.services.harness.instructions import (
     build_assignment_instructions,
     combine_generator_prompt,
@@ -51,11 +48,7 @@ async def run_harness(
     """
     start = time.time()
 
-    execution_plan = (
-        req.execution_plan
-        if req.execution_plan is not None
-        else build_static_execution_plan(req)
-    )
+    execution_plan = req.execution_plan
     generator_instructions = build_assignment_instructions(
         role='generator',
         persona_id=execution_plan.generator.persona,

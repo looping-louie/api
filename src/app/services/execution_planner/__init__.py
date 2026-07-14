@@ -16,9 +16,6 @@ from src.app.schemas import (
 )
 from src.app.services.llm_service.openai import plan_execution_with_openai
 from src.app.skills import load_skill_registry
-from src.app.services.execution_planner.static_plan import (
-    build_static_execution_plan,
-)
 
 
 MAX_SELECTED_REVIEWERS = 3
