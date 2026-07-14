@@ -1,17 +1,22 @@
 """Main harness orchestration workflow."""
 
-import asyncio
 import time
 
 from src.app.schemas import (
     ModelMetrics,
-    ReviewerMetrics,
-    ReviewerResult,
     RunHarnessRequest,
     RunHarnessResponse,
     RunMetrics,
 )
 from src.app.services.harness.adapters import build_local_harness_execution_ports
+from src.app.services.harness.decision import (
+    build_generator_base_prompt,
+    is_iteration_approved,
+)
+from src.app.services.harness.execution import (
+    build_system_failure_result,
+    execute_iteration_and_review,
+)
 from src.app.services.harness.ports import HarnessExecutionPorts
 from src.app.services.harness.execution_plan import build_static_execution_plan
 from src.app.services.harness.instructions import (
@@ -19,15 +24,11 @@ from src.app.services.harness.instructions import (
     combine_generator_prompt,
 )
 from src.app.services.harness.metrics import tokens_per_second
-from src.app.services.harness.reviewers import build_failed_feedback, run_single_reviewer
+from src.app.services.harness.reviewers import build_failed_feedback
 from src.app.services.llm_service.together import call_together
 from src.app.services.model_context import (
-    build_initial_generator_prompt,
     build_snapshot,
-    build_retry_generator_prompt,
     format_snapshot_for_prompt,
-    build_reviewer_input,
-    read_changed_file_contents,
 )
 from src.app.utils.io import write_json, write_text
 
@@ -88,18 +89,13 @@ async def run_harness(
                 build_snapshot(str(workspace.worktree_path))
             )
 
-            if iteration == 1:
-                base_prompt = build_initial_generator_prompt(
-                    repo_context=repo_context,
-                    user_prompt=req.prompt,
-                )
-            else:
-                base_prompt = build_retry_generator_prompt(
-                    repo_context=repo_context,
-                    user_prompt=req.prompt,
-                    previous_generator_output=previous_generator_output,
-                    reviewer_feedback=reviewer_feedback,
-                )
+            base_prompt = build_generator_base_prompt(
+                iteration=iteration,
+                repo_context=repo_context,
+                req=req,
+                previous_generator_output=previous_generator_output,
+                reviewer_feedback=reviewer_feedback,
+            )
 
             current_prompt = combine_generator_prompt(
                 assignment_instructions=generator_instructions,
@@ -146,58 +142,14 @@ async def run_harness(
                         f'finish_reason={finish_reason}; '
                         f"max_output_tokens={gen.get('max_output_tokens')}"
                     )
-
-                operations = ports.filesystem.parse_file_operations(gen['text'])
-
-                write_json(
-                    workspace.run_path,
-                    f'generator/iteration-{iteration}-operations.json',
-                    {'operations': operations},
+                final_diff, reviewer_results = await execute_iteration_and_review(
+                    req=req,
+                    execution_plan=execution_plan,
+                    ports=ports,
+                    workspace=workspace,
+                    iteration=iteration,
+                    generator_output=gen['text'],
                 )
-
-                ports.filesystem.apply_file_operations(
-                    str(workspace.worktree_path),
-                    operations,
-                )
-
-                final_diff = ports.git.get_git_diff(str(workspace.worktree_path))
-                changed_files = ports.git.get_changed_files(
-                    str(workspace.worktree_path)
-                )
-                changed_file_contents = read_changed_file_contents(
-                    str(workspace.worktree_path),
-                    changed_files,
-                )
-
-                write_text(
-                    workspace.run_path,
-                    f'diffs/iteration-{iteration}.diff',
-                    final_diff,
-                )
-
-                review_input = build_reviewer_input(
-                    user_prompt=req.prompt,
-                    final_diff=final_diff,
-                    changed_file_contents=changed_file_contents,
-                )
-
-                reviewer_calls = [
-                    run_single_reviewer(
-                        req=req,
-                        assignment=assignment,
-                        reviewer_index=reviewer_index,
-                        phase=execution_plan.phase,
-                        review_input=review_input,
-                        iteration=iteration,
-                        run_id=workspace.run_id,
-                        run_path=workspace.run_path,
-                    )
-                    for reviewer_index, assignment in enumerate(
-                        execution_plan.reviewers,
-                        start=1,
-                    )
-                ]
-                reviewer_results = await asyncio.gather(*reviewer_calls)
 
             # TODO: Split system errors from reviewer results.
             # File operation failures are currently represented as a synthetic
@@ -206,48 +158,18 @@ async def run_harness(
             # Keep the loop alive and convert operation-level failures into a
             # synthetic review result until system_errors is modeled explicitly.
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                system_review_metrics = ReviewerMetrics(
-                    persona='system',
-                    skills=[],
-                    model='system',
-                    input_tokens=0,
-                    output_tokens=0,
-                    duration_ms=0,
-                    tokens_per_second=0,
+                reviewer_results = build_system_failure_result(
+                    run_id=workspace.run_id,
+                    iteration=iteration,
+                    phase=execution_plan.phase,
+                    error=exc,
                 )
-
-                reviewer_results = [
-                    ReviewerResult(
-                        persona='system',
-                        skills=[],
-                        focus='Report harness infrastructure failures.',
-                        model='system',
-                        run_id=workspace.run_id,
-                        iteration=iteration,
-                        phase=execution_plan.phase,
-                        strictness=100,
-                        score=0,
-                        blocking_issues=[
-                            {
-                                'title': 'File operation failure',
-                                'description': str(exc),
-                                'file': None,
-                            }
-                        ],
-                        feedback=f'File operations failed: {exc}',
-                        approved=False,
-                        metrics=system_review_metrics,
-                    )
-                ]
 
             reviewers_metrics = [
                 result.metrics
                 for result in reviewer_results
             ]
-            iteration_approved = all(
-                result.approved
-                for result in reviewer_results
-            )
+            iteration_approved = is_iteration_approved(reviewer_results)
             iteration_feedback = build_failed_feedback(reviewer_results)
 
             total_input_tokens += generator_metrics.input_tokens
