@@ -86,7 +86,7 @@ utils/
                  Workflow Controller (/workflow/run)
                      │
                      ▼
-                 Harness Controller (/harness/run)
+                      Harness Service
                      │
           ┌──────────┴──────────┐
           │                     │
@@ -352,8 +352,6 @@ The worktree isolates every execution from the original repository.
 ---
 
 ## Task Lifecycle
-
-The `/harness/run` endpoint executes one task.
 
 The `/workflow/run` endpoint executes an entire backlog.
 

@@ -1,38 +1,12 @@
 import asyncio
 
-from src.app.controllers import harness, workflow
+from src.app.controllers import workflow
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
     ReviewerAssignment,
-    RunHarnessRequest,
     RunWorkflowRequest,
 )
-
-
-def test_harness_controller_delegates_to_service(monkeypatch):
-    captured = {}
-    expected_response = {'ok': True}
-
-    async def fake_run_harness_service(req):
-        captured['req'] = req
-        return expected_response
-
-    monkeypatch.setattr(
-        harness,
-        'run_harness_service',
-        fake_run_harness_service,
-    )
-
-    request = RunHarnessRequest(
-        prompt='test prompt',
-        repo_path='/tmp/repo',
-    )
-
-    result = asyncio.run(harness.run_harness(request))
-
-    assert result == expected_response
-    assert captured['req'] is request
 
 
 def test_workflow_controller_uses_harness_service_path(monkeypatch):

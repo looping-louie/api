@@ -1,69 +1,10 @@
 # API
 
-Looping Louie currently exposes three HTTP endpoints.
+Looping Louie currently exposes two HTTP endpoints.
 
-- `/harness/run` executes a single harness run.
 - `/workflow/run` executes an entire `tasks.json` backlog.
 - `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
-
----
-
-## Choosing an endpoint
-
-Use **`/harness/run`** when:
-
-- experimenting with prompts;
-- testing a new skill;
-- implementing one isolated change.
-
-Use **`/workflow/run`** when:
-
-- executing a development backlog;
-- evolving a project incrementally;
-- generating one commit per logical task.
-
-`/workflow/run` is expected to become the primary production entry point, while
-`/harness/run` serves as the reusable building block used internally by
-higher-level workflows.
-
----
-
-## POST /harness/run
-
-Executes a single task against a repository.
-
-The repository is modified **only if every reviewer approves** before
-`max_iterations` is reached.
-
-### Run Harness Request
-
-| Field | Description |
-| ----- | ----------- |
-| `repo_path` | Path to the Git repository. |
-| `prompt` | Task to execute. |
-| `max_iterations` | Maximum generator/reviewer loops. |
-| `generator_model` | Model used for generation. |
-| `reviewer_model` | Model used for every reviewer skill. |
-| `skills` | List of review skills to execute. |
-
-### Run Harness Example
-
-```sh
-curl -X POST http://127.0.0.1:8000/harness/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
-    "prompt": "Fix the Nuxt layout warning. Ensure the default layout is actually used by app.vue. Do not redesign the homepage. Keep changes minimal.",
-    "max_iterations": 2,
-    "generator_model": "zai-org/GLM-5.2",
-    "reviewer_model": "gpt-4.1-mini",
-    "skills": [
-      "small_patch_quality",
-      "nuxt_code_review"
-    ]
-  }'
-```
 
 ---
 

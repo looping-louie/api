@@ -33,7 +33,7 @@ class RunRequest(BaseModel):
 
 class RunResponse(BaseModel):
     """
-    Final response returned by the /harness/run endpoint.
+    Final response returned by one harness execution.
 
     Contains the final diff, approval status, execution trace
     and aggregated execution metrics.

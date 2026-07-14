@@ -5,9 +5,6 @@ This module exposes the public FastAPI endpoints.
 
 Endpoints
 ---------
-POST /harness/run
-    Executes a single harness run against a repository.
-
 POST /workflow/run
     Executes a sequence of tasks defined in a tasks.json file.
     Each approved task is committed before the next one starts.
