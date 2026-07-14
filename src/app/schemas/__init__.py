@@ -36,6 +36,10 @@ from src.app.schemas.workflow import (
     RunRequest as RunWorkflowRequest,
     RunResponse as RunWorkflowResponse,
 )
+from src.app.schemas.task import (
+    RunRequest as RunTaskRequest,
+    RunResponse as RunTaskResponse,
+)
 
 
 __all__ = [
@@ -53,6 +57,8 @@ __all__ = [
     'RunHarnessResponse',
     'RunMeetingRequest',
     'RunMeetingResponse',
+    'RunTaskRequest',
+    'RunTaskResponse',
     'RunMetrics',
     'RunWorkflowRequest',
     'RunWorkflowResponse',

@@ -8,6 +8,9 @@ Endpoints
 POST /workflow/run
     Executes a sequence of tasks defined in a tasks.json file.
     Each approved task is committed before the next one starts.
+POST /task/run
+    Executes a single pending task.
+    Uses the same planner-harness-commit flow as workflow.
 
 The API layer is intentionally thin.
 Business logic lives in services and concise controller modules.

@@ -4,9 +4,12 @@ from src.app.schemas import (
     RunWorkflowResponse,
     RunMeetingRequest,
     RunMeetingResponse,
+    RunTaskRequest,
+    RunTaskResponse,
 )
 from src.app.controllers.workflow import run_workflow
 from src.app.controllers.meeting import run_meeting
+from src.app.controllers.task import run_task
 
 
 # Create the router instance
@@ -40,3 +43,13 @@ async def meeting_run_endpoint(
     trace and execution metrics.
     """
     return await run_meeting(req)
+
+
+@router.post('/task/run', response_model=RunTaskResponse)
+async def task_run_endpoint(req: RunTaskRequest) -> RunTaskResponse:
+    """
+    Execute one task through planner, harness, and commit stages.
+
+    This endpoint mirrors the workflow inner loop for a single task.
+    """
+    return await run_task(req)
