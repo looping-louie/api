@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.app.schemas.plan import ExecutionPlan
 from src.app.schemas.project import ProjectProfile
@@ -15,6 +15,10 @@ class RunRequest(BaseModel):
     Request model for the /task/run endpoint.
 
     Executes one task as a single atomic API call.
+
+    Transitional note:
+    This contract is kept while harness execution still exists in API.
+    If migration is aborted, this remains the primary task contract.
     """
 
     model_config = ConfigDict(extra='forbid')
@@ -66,6 +70,15 @@ class PlanResponse(BaseModel):
     execution_plan: ExecutionPlan
 
 
+class ChangedFile(BaseModel):
+    """One changed file payload provided by CLI for review context."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    path: str
+    content: str
+
+
 class ReviewRequest(BaseModel):
     """Request model for the /task/review endpoint."""
 
@@ -79,7 +92,23 @@ class ReviewRequest(BaseModel):
     reviewer_model: str = 'gpt-4.1-mini'
     execution_plan: ExecutionPlan
     final_diff: str
-    changed_file_contents: str
+    changed_files: list[ChangedFile] = Field(default_factory=list)
+    # Transitional fallback for callers that still send preformatted context.
+    # Remove when every CLI caller sends structured changed_files.
+    changed_file_contents: str | None = None
+
+    @model_validator(mode='after')
+    def validate_changed_inputs(self):
+        """Require at least one source of changed file context."""
+        has_changed_files = len(self.changed_files) > 0
+        has_raw_contents = bool(self.changed_file_contents)
+
+        if not has_changed_files and not has_raw_contents:
+            raise ValueError(
+                'Provide changed_files or changed_file_contents for review.'
+            )
+
+        return self
 
 
 class ReviewResponse(BaseModel):
@@ -96,6 +125,7 @@ class ReviewResponse(BaseModel):
 
 
 __all__ = [
+    'ChangedFile',
     'PlanRequest',
     'PlanResponse',
     'ReviewRequest',

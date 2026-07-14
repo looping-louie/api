@@ -383,7 +383,12 @@ def test_task_review_controller_runs_assigned_reviewers(monkeypatch):
         reviewer_model='gpt-4.1-mini',
         execution_plan=execution_plan,
         final_diff='diff --git a/a.py b/a.py',
-        changed_file_contents='## a.py\nprint("ok")',
+        changed_files=[
+            {
+                'path': 'a.py',
+                'content': 'print("ok")',
+            }
+        ],
     )
 
     result = asyncio.run(task.review_task(request))
@@ -392,3 +397,35 @@ def test_task_review_controller_runs_assigned_reviewers(monkeypatch):
     assert result.approved is True
     assert len(result.reviewers) == 1
     assert result.reviewers[0].run_id == 'run-900'
+
+
+def test_task_review_request_requires_changed_context():
+    execution_plan = ExecutionPlan(
+        phase='mvp',
+        reasoning='planner reasoning',
+        generator=GeneratorAssignment(
+            persona='tech_lead',
+            skills=[],
+            focus='ship the change',
+        ),
+        reviewers=[
+            ReviewerAssignment(
+                persona='tech_lead',
+                skills=['small_patch_quality'],
+                strictness=55,
+                focus='review the patch',
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        ReviewTaskRequest(
+            run_id='run-901',
+            task_id='task-008',
+            iteration=1,
+            prompt='Implement review-only flow',
+            constitution='Implement only the requested task.',
+            reviewer_model='gpt-4.1-mini',
+            execution_plan=execution_plan,
+            final_diff='diff --git a/a.py b/a.py',
+        )

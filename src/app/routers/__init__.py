@@ -55,6 +55,9 @@ async def task_run_endpoint(req: RunTaskRequest) -> RunTaskResponse:
     Execute one task through planner, harness, and commit stages.
 
     This endpoint mirrors the workflow inner loop for a single task.
+    Transitional note:
+    Kept as the compatibility path while /task/plan and /task/review are
+    adopted by CLI-based execution.
     """
     return await run_task(req)
 
