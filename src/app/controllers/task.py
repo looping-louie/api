@@ -19,11 +19,14 @@ from src.app.schemas.task import (
 )
 from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
+from src.app.services.harness.adapters import build_local_harness_execution_ports
 from src.app.services.instructions import build_assignment_instructions
-from src.app.services.harness.runner import run_harness
+from src.app.services.harness.runner import build_execution_run_path, run_harness
 from src.app.services.harness.reviewers import build_failed_feedback
 from src.app.services.llm_service.openai import review_with_openai
 from src.app.services.model_context import build_reviewer_input
+from src.app.services.workspace import cleanup_workspace, create_workspace
+from src.app.utils.io import write_json
 from src.app.utils.metrics import tokens_per_second
 
 
@@ -168,17 +171,60 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         generator_persona=req.generator_persona,
     )
 
-    run_harness_result: RunHarnessResult = await run_harness(
-        RunHarnessRequest(
-            repo_path=req.repo_path,
-            prompt=task['prompt'],
-            max_iterations=req.max_iterations,
-            generator_model=req.generator_model,
-            reviewer_model=req.reviewer_model,
-            execution_plan=execution_plan,
-            constitution=constitution,
-        )
+    generator_instructions = build_assignment_instructions(
+        role='generator',
+        persona_id=execution_plan.generator.persona,
+        skill_ids=execution_plan.generator.skills,
+        focus=execution_plan.generator.focus,
     )
+
+    execution_ports = build_local_harness_execution_ports()
+    workspace = create_workspace(req.repo_path)
+    run_path = build_execution_run_path(workspace.run_id)
+
+    write_json(
+        run_path,
+        'request.json',
+        {
+            'repo_path': req.repo_path,
+            'prompt': task['prompt'],
+            'constitution': constitution,
+            'max_iterations': req.max_iterations,
+            'generator_model': req.generator_model,
+            'reviewer_model': req.reviewer_model,
+        },
+    )
+    write_json(
+        run_path,
+        'execution-plan.json',
+        execution_plan.model_dump(),
+    )
+
+    try:
+        run_harness_result: RunHarnessResult = await run_harness(
+            RunHarnessRequest(
+                repo_path=req.repo_path,
+                prompt=task['prompt'],
+                max_iterations=req.max_iterations,
+                generator_model=req.generator_model,
+                reviewer_model=req.reviewer_model,
+                execution_plan=execution_plan,
+                constitution=constitution,
+            ),
+            workspace=workspace,
+            run_path=run_path,
+            generator_instructions=generator_instructions,
+            execution_ports=execution_ports,
+        )
+
+        if run_harness_result.approved and run_harness_result.final_output:
+            _validate_and_apply_final_diff(
+                repo_path=req.repo_path,
+                final_diff=run_harness_result.final_output,
+                execution_ports=execution_ports,
+            )
+    finally:
+        cleanup_workspace(workspace)
 
     # RunHarness Outcome Evaluation
 
@@ -215,4 +261,32 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
                 generator=execution_plan.generator,
                 reviewers=execution_plan.reviewers,
             ),
+        )
+
+
+def _validate_and_apply_final_diff(
+    *,
+    repo_path: str,
+    final_diff: str,
+    execution_ports,
+) -> None:
+    """Apply an approved final diff to the original repository."""
+    valid, error = execution_ports.git.validate_patch(
+        repo_path,
+        final_diff,
+    )
+    if not valid:
+        raise RuntimeError(
+            'Final diff does not apply to original repo: '
+            f'{error}'
+        )
+
+    applied, error = execution_ports.git.apply_patch(
+        repo_path,
+        final_diff,
+    )
+    if not applied:
+        raise RuntimeError(
+            'Could not apply final diff to original repo: '
+            f'{error}'
         )

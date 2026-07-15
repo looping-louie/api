@@ -1,10 +1,12 @@
 import asyncio
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from src.app.controllers import workflow
 from src.app.controllers import task
-from src.app.services.harness import runner as harness_runner
+import src.app.services.harness.runner as harness_runner
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
@@ -38,7 +40,22 @@ VALID_PROJECT_PROFILE = {
 }
 
 
-def test_workflow_controller_uses_harness_service_path(monkeypatch):
+def _fake_execution_ports(run_id: str = 'run-test'):
+    workspace = SimpleNamespace(
+        create_workspace=lambda _repo_path: SimpleNamespace(
+            run_id=run_id,
+            worktree_path=Path('/tmp/worktree'),
+        ),
+        cleanup_workspace=lambda _workspace: None,
+    )
+    git = SimpleNamespace(
+        validate_patch=lambda _repo_path, _patch: (True, ''),
+        apply_patch=lambda _repo_path, _patch: (True, ''),
+    )
+    return SimpleNamespace(workspace=workspace, git=git)
+
+
+def test_workflow_controller_uses_harness_service_path(monkeypatch, tmp_path):
     execution_plan = ExecutionPlan(
         phase='mvp',
         reasoning='test plan',
@@ -60,11 +77,12 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch):
     class FakeRunResponse:
         approved = True
         run_id = 'run-123'
+        final_output = ''
 
     async def fake_create_execution_plan(**_kwargs):
         return execution_plan
 
-    async def fake_run_harness(_req):
+    async def fake_run_harness(_req, **_kwargs):
         return FakeRunResponse()
 
     def fake_has_changes(_repo_path):
@@ -77,6 +95,25 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch):
 
     monkeypatch.setattr(workflow, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(workflow, 'run_harness', fake_run_harness)
+    monkeypatch.setattr(
+        workflow,
+        'build_local_harness_execution_ports',
+        lambda: _fake_execution_ports('run-123'),
+    )
+    monkeypatch.setattr(
+        workflow,
+        'create_workspace',
+        lambda _repo_path: SimpleNamespace(
+            run_id='run-123',
+            worktree_path=Path('/tmp/worktree'),
+        ),
+    )
+    monkeypatch.setattr(workflow, 'cleanup_workspace', lambda _workspace: None)
+    monkeypatch.setattr(
+        workflow,
+        'build_execution_run_path',
+        lambda run_id: tmp_path / run_id,
+    )
     monkeypatch.setattr(workflow, 'has_changes', fake_has_changes)
     monkeypatch.setattr(workflow, 'commit_all', fake_commit_all)
 
@@ -103,7 +140,7 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch):
     assert result.completed[0].run_id == 'run-123'
 
 
-def test_task_controller_uses_harness_service_path(monkeypatch):
+def test_task_controller_uses_harness_service_path(monkeypatch, tmp_path):
     execution_plan = ExecutionPlan(
         phase='mvp',
         reasoning='test plan',
@@ -125,15 +162,35 @@ def test_task_controller_uses_harness_service_path(monkeypatch):
     class FakeRunResponse:
         approved = True
         run_id = 'run-456'
+        final_output = ''
 
     async def fake_create_execution_plan(**_kwargs):
         return execution_plan
 
-    async def fake_run_harness(_req):
+    async def fake_run_harness(_req, **_kwargs):
         return FakeRunResponse()
 
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(task, 'run_harness', fake_run_harness)
+    monkeypatch.setattr(
+        task,
+        'build_local_harness_execution_ports',
+        lambda: _fake_execution_ports('run-456'),
+    )
+    monkeypatch.setattr(
+        task,
+        'create_workspace',
+        lambda _repo_path: SimpleNamespace(
+            run_id='run-456',
+            worktree_path=Path('/tmp/worktree'),
+        ),
+    )
+    monkeypatch.setattr(task, 'cleanup_workspace', lambda _workspace: None)
+    monkeypatch.setattr(
+        task,
+        'build_execution_run_path',
+        lambda run_id: tmp_path / run_id,
+    )
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
@@ -190,7 +247,7 @@ def test_task_controller_rejects_non_pending_task(monkeypatch):
     assert result.message == 'Task status must be pending to run.'
 
 
-def test_task_controller_stops_when_not_approved(monkeypatch):
+def test_task_controller_stops_when_not_approved(monkeypatch, tmp_path):
     execution_plan = ExecutionPlan(
         phase='mvp',
         reasoning='test plan',
@@ -212,15 +269,35 @@ def test_task_controller_stops_when_not_approved(monkeypatch):
     class FakeRunResponse:
         approved = False
         run_id = 'run-789'
+        final_output = ''
 
     async def fake_create_execution_plan(**_kwargs):
         return execution_plan
 
-    async def fake_run_harness(_req):
+    async def fake_run_harness(_req, **_kwargs):
         return FakeRunResponse()
 
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(task, 'run_harness', fake_run_harness)
+    monkeypatch.setattr(
+        task,
+        'build_local_harness_execution_ports',
+        lambda: _fake_execution_ports('run-789'),
+    )
+    monkeypatch.setattr(
+        task,
+        'create_workspace',
+        lambda _repo_path: SimpleNamespace(
+            run_id='run-789',
+            worktree_path=Path('/tmp/worktree'),
+        ),
+    )
+    monkeypatch.setattr(task, 'cleanup_workspace', lambda _workspace: None)
+    monkeypatch.setattr(
+        task,
+        'build_execution_run_path',
+        lambda run_id: tmp_path / run_id,
+    )
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
