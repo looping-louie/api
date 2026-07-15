@@ -78,20 +78,28 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch, tmp_path):
         approved = True
         run_id = 'run-123'
         final_output = ''
+        execution_trace = []
+
+        class run_metrics:  # pylint: disable=too-few-public-methods,invalid-name
+            @staticmethod
+            def model_dump():
+                return {'iterations': 0}
+
+        @staticmethod
+        def model_dump():
+            return {
+                'run_id': 'run-123',
+                'approved': True,
+                'final_output': '',
+                'execution_trace': [],
+                'run_metrics': {'iterations': 0},
+            }
 
     async def fake_create_execution_plan(**_kwargs):
         return execution_plan
 
     async def fake_run_harness(_req, **_kwargs):
         return FakeRunResponse()
-
-    def fake_has_changes(_repo_path):
-        return True
-
-    def fake_commit_all(*, repo_path, message):
-        assert repo_path == '/tmp/repo'
-        assert message == 'feat: implement small change'
-        return 'sha123'
 
     monkeypatch.setattr(workflow, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(workflow, 'run_harness', fake_run_harness)
@@ -114,8 +122,6 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch, tmp_path):
         'build_execution_run_path',
         lambda run_id: tmp_path / run_id,
     )
-    monkeypatch.setattr(workflow, 'has_changes', fake_has_changes)
-    monkeypatch.setattr(workflow, 'commit_all', fake_commit_all)
 
     request = RunWorkflowRequest(
         repo_path='/tmp/repo',
@@ -136,8 +142,12 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch, tmp_path):
 
     assert result.ok is True
     assert result.status == 'completed'
+    assert result.commit_allowed is True
+    assert result.task_id == 'task-001'
+    assert result.run_id == 'run-123'
     assert len(result.completed) == 1
     assert result.completed[0].run_id == 'run-123'
+    assert result.completed[0].commit_sha == 'deprecated API response field'
 
 
 def test_task_controller_uses_harness_service_path(monkeypatch, tmp_path):
@@ -163,6 +173,22 @@ def test_task_controller_uses_harness_service_path(monkeypatch, tmp_path):
         approved = True
         run_id = 'run-456'
         final_output = ''
+        execution_trace = []
+
+        class run_metrics:  # pylint: disable=too-few-public-methods,invalid-name
+            @staticmethod
+            def model_dump():
+                return {'iterations': 0}
+
+        @staticmethod
+        def model_dump():
+            return {
+                'run_id': 'run-456',
+                'approved': True,
+                'final_output': '',
+                'execution_trace': [],
+                'run_metrics': {'iterations': 0},
+            }
 
     async def fake_create_execution_plan(**_kwargs):
         return execution_plan
@@ -270,6 +296,22 @@ def test_task_controller_stops_when_not_approved(monkeypatch, tmp_path):
         approved = False
         run_id = 'run-789'
         final_output = ''
+        execution_trace = []
+
+        class run_metrics:  # pylint: disable=too-few-public-methods,invalid-name
+            @staticmethod
+            def model_dump():
+                return {'iterations': 0}
+
+        @staticmethod
+        def model_dump():
+            return {
+                'run_id': 'run-789',
+                'approved': False,
+                'final_output': '',
+                'execution_trace': [],
+                'run_metrics': {'iterations': 0},
+            }
 
     async def fake_create_execution_plan(**_kwargs):
         return execution_plan

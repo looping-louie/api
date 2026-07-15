@@ -223,23 +223,4 @@ async def run_harness(
         ),
     )
 
-    write_json(
-        run_path,
-        'response.json',
-        response.model_dump(),
-    )
-    write_json(
-        run_path,
-        'trace.json',
-        [
-            item.model_dump()
-            for item in response.execution_trace
-        ],
-    )
-    write_json(
-        run_path,
-        'metrics.json',
-        response.run_metrics.model_dump(),
-    )
-
     return response

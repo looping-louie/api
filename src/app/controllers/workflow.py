@@ -3,14 +3,10 @@ Workflow controller.
 
 This is the highest-level orchestration entry point in Looping Louie.
 
-Executes an entire development workflow defined in a tasks.json file.
+Executes one pending workflow task per call.
 
-Each pending task is processed sequentially by invoking the standard
-single-task harness. Successfully reviewed changes are committed before
-moving on to the next task.
-
-Execution stops immediately when a task cannot be approved, ensuring the
-repository never progresses beyond a failed step.
+The endpoint returns commit handoff metadata so the CLI can perform the local
+commit operation before invoking /workflow/run again for the next pending task.
 """
 
 from src.app.schemas import (
@@ -19,8 +15,8 @@ from src.app.schemas import (
     RunWorkflowRequest,
     RunWorkflowResponse,
 )
+from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
-from src.app.services.git import commit_all, has_changes
 from src.app.services.harness.adapters import build_local_harness_execution_ports
 from src.app.services.harness.runner import build_execution_run_path, run_harness
 from src.app.services.instructions import build_assignment_instructions
@@ -34,23 +30,11 @@ from src.app.utils.io import write_json
 
 async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
     """
-    Execute every pending task from a tasks.json file.
+    Execute one pending workflow task and return commit handoff data.
 
-    Workflow:
-
-    1. Load the task list.
-    2. Pick the first pending task.
-    3. Build a task-specific execution plan.
-    4. Execute the standard harness.
-    5. If approved:
-      - commit repository changes
-      - mark the task as done
-      - continue with the next task
-    6. If rejected:
-      - stop immediately
-      - return the failing task and run identifier.
-
-    Returns a summary of every completed task during this execution.
+        Returns:
+        - approved task metadata with commit_allowed=True, or
+        - stopped state with commit_allowed=False.
     """
     completed = []
 
@@ -70,6 +54,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
             return RunWorkflowResponse(
                 ok=True,
                 status='completed',
+                commit_allowed=False,
                 completed=completed,
             )
 
@@ -128,6 +113,25 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                 execution_ports=execution_ports,
             )
 
+            write_json(
+                run_path,
+                'response.json',
+                run_harness_result.model_dump(),
+            )
+            write_json(
+                run_path,
+                'trace.json',
+                [
+                    item.model_dump()
+                    for item in run_harness_result.execution_trace
+                ],
+            )
+            write_json(
+                run_path,
+                'metrics.json',
+                run_harness_result.run_metrics.model_dump(),
+            )
+
             if run_harness_result.approved and run_harness_result.final_output:
                 _validate_and_apply_final_diff(
                     repo_path=req.repo_path,
@@ -143,6 +147,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
             return RunWorkflowResponse(
                 ok=False,
                 status='stopped',
+                commit_allowed=False,
                 task_id=task['id'],
                 run_id=run_harness_result.run_id,
                 approved=False,
@@ -153,47 +158,33 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                 completed=completed,
             )
 
-        elif not has_changes(req.repo_path):
-            return RunWorkflowResponse(
-                ok=False,
-                status='stopped',
-                task_id=task['id'],
-                run_id=run_harness_result.run_id,
-                approved=True,
-                message=(
-                    'Run approved but no repository changes were found '
-                    'to commit.'
-                ),
-                completed=completed,
-            )
+        mark_task_done(tasks, task['id'], run_harness_result.run_id)
 
-        else:
-            # TODO:
-            # Support configurable commit strategies.
-            # Future options may include squash commits, signed commits,
-            # conventional commits or disabling automatic commits entirely.
-            commit_sha = commit_all(
-                repo_path=req.repo_path,
-                message=task['commit_message'],
-            )
+        completed_task = CompletedTask(
+            task_id=task['id'],
+            run_id=run_harness_result.run_id,
+            commit_sha='deprecated API response field',
+            commit_message='deprecated API response field',
+            phase=execution_plan.phase,
+            reasoning=execution_plan.reasoning,
+            generator=execution_plan.generator,
+            reviewers=execution_plan.reviewers,
+        )
+        completed.append(completed_task)
 
-            mark_task_done(tasks, task['id'], run_harness_result.run_id)
-
-            completed.append(
-                {
-                    'task_id': task['id'],
-                    'run_id': run_harness_result.run_id,
-                    'commit_sha': commit_sha,
-                    'commit_message': task['commit_message'],
-                    'phase': execution_plan.phase,
-                    'reasoning': execution_plan.reasoning,
-                    'generator': execution_plan.generator.model_dump(),
-                    'reviewers': [
-                        reviewer.model_dump()
-                        for reviewer in execution_plan.reviewers
-                    ],
-                }
-            )
+        return RunWorkflowResponse(
+            ok=True,
+            status='completed',
+            commit_allowed=True,
+            task_id=task['id'],
+            run_id=run_harness_result.run_id,
+            approved=True,
+            message=(
+                'Task approved. Commit must be executed by CLI before '
+                'continuing workflow.'
+            ),
+            completed=completed,
+        )
 
 
 def _validate_and_apply_final_diff(

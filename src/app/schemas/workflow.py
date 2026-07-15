@@ -64,6 +64,7 @@ class RunResponse(BaseModel):
 
     ok: bool
     status: Literal['completed', 'stopped']
+    commit_allowed: bool = False
     completed: list[CompletedTask]
 
     task_id: str | None = None

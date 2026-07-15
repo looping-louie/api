@@ -217,6 +217,25 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
             execution_ports=execution_ports,
         )
 
+        write_json(
+            run_path,
+            'response.json',
+            run_harness_result.model_dump(),
+        )
+        write_json(
+            run_path,
+            'trace.json',
+            [
+                item.model_dump()
+                for item in run_harness_result.execution_trace
+            ],
+        )
+        write_json(
+            run_path,
+            'metrics.json',
+            run_harness_result.run_metrics.model_dump(),
+        )
+
         if run_harness_result.approved and run_harness_result.final_output:
             _validate_and_apply_final_diff(
                 repo_path=req.repo_path,
