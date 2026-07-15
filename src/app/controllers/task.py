@@ -19,9 +19,9 @@ from src.app.schemas.task import (
 )
 from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
-from src.app.services.git import commit_all, has_changes
+from src.app.services.git import has_changes
 from src.app.services.instructions import build_assignment_instructions
-from src.app.services.harness import run_harness
+from src.app.services.harness.runner import run_harness
 from src.app.services.harness.metrics import tokens_per_second
 from src.app.services.harness.reviewers import build_failed_feedback
 from src.app.services.llm_service.openai import review_with_openai
@@ -152,6 +152,7 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         return RunTaskResponse(
             ok=False,
             status='stopped',
+            commit_allowed=False,
             task_id=task['id'],
             message='Task status must be pending to run.',
         )
@@ -186,6 +187,7 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         return RunTaskResponse(
             ok=False,
             status='stopped',
+            commit_allowed=False,
             task_id=task['id'],
             run_id=run_harness_result.run_id,
             approved=False,
@@ -199,6 +201,7 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         return RunTaskResponse(
             ok=False,
             status='stopped',
+            commit_allowed=False,
             task_id=task['id'],
             run_id=run_harness_result.run_id,
             approved=True,
@@ -209,26 +212,22 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
         )
 
     else:
-        commit_sha = commit_all(
-            repo_path=req.repo_path,
-            message=task['commit_message'],
-        )
-
         return RunTaskResponse(
             ok=True,
             status='completed',
+            commit_allowed=True,
             task_id=task['id'],
             run_id=run_harness_result.run_id,
             approved=True,
-            message='Task completed and committed.',
+            message='Task approved. Commit must be executed by CLI.',
             completed=CompletedTask(
                 task_id=task['id'],
                 run_id=run_harness_result.run_id,
-                commit_sha=commit_sha,
-                commit_message=task['commit_message'],
+                commit_sha='deprecated API response field',
+                commit_message='deprecated API response field',
                 phase=execution_plan.phase,
                 reasoning=execution_plan.reasoning,
                 generator=execution_plan.generator,
                 reviewers=execution_plan.reviewers,
             ),
-    )
+        )

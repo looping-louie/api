@@ -36,6 +36,7 @@ class RunResponse(BaseModel):
 
     ok: bool
     status: Literal['completed', 'stopped']
+    commit_allowed: bool = False
 
     completed: CompletedTask | None = None
     task_id: str | None = None
