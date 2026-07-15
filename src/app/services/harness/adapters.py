@@ -50,8 +50,8 @@ class LocalGitAdapter:
 class LocalWorkspaceAdapter:
     """Local workspace adapter backed by the workspace service."""
 
-    def create_workspace(self, repo_path: str) -> Workspace:
-        return create_workspace(repo_path)
+    def create_workspace(self, repo_path: str, run_id: str) -> Workspace:
+        return create_workspace(repo_path, run_id)
 
     def cleanup_workspace(self, workspace: Workspace) -> None:
         cleanup_workspace(workspace)

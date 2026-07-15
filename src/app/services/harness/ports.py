@@ -47,7 +47,7 @@ class GitPort(Protocol):
 class WorkspacePort(Protocol):
     """Contract for isolated workspace lifecycle management."""
 
-    def create_workspace(self, repo_path: str) -> Workspace:
+    def create_workspace(self, repo_path: str, run_id: str) -> Workspace:
         """Create a workspace for one harness execution."""
 
     def cleanup_workspace(self, workspace: Workspace) -> None:

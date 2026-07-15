@@ -16,31 +16,22 @@ from src.app.services.model_context import build_reviewer_input, read_changed_fi
 from src.app.utils.io import write_json, write_text
 
 
-EXECUTION_RUNS_DIR = Path(__file__).resolve().parents[4] / 'runtime' / 'executions'
-
-
-def _get_execution_run_path(run_id: str) -> Path:
-    """Return the API-owned execution directory for one harness run."""
-    return EXECUTION_RUNS_DIR / run_id
-
-
 async def execute_iteration_and_review(
     *,
     req: RunHarnessRequest,
     execution_plan: ExecutionPlan,
     ports: HarnessExecutionPorts,
+    run_id: str,
     workspace: Workspace,
-    run_path: Path | None = None,
+    run_path: Path,
     iteration: int,
     generator_output: str,
 ) -> tuple[str, list[ReviewerResult]]:
     """Apply generator operations and execute all reviewers."""
-    current_run_path = run_path or _get_execution_run_path(workspace.run_id)
-
     operations = ports.filesystem.parse_file_operations(generator_output)
 
     write_json(
-        current_run_path,
+        run_path,
         f'generator/iteration-{iteration}-operations.json',
         {'operations': operations},
     )
@@ -58,7 +49,7 @@ async def execute_iteration_and_review(
     )
 
     write_text(
-        current_run_path,
+        run_path,
         f'diffs/iteration-{iteration}.diff',
         final_diff,
     )
@@ -77,8 +68,8 @@ async def execute_iteration_and_review(
             phase=execution_plan.phase,
             review_input=review_input,
             iteration=iteration,
-            run_id=workspace.run_id,
-            run_path=current_run_path,
+            run_id=run_id,
+            run_path=run_path,
         )
         for reviewer_index, assignment in enumerate(
             execution_plan.reviewers,

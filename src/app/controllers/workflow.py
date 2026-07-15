@@ -9,6 +9,8 @@ The endpoint returns commit handoff metadata so the CLI can perform the local
 commit operation before invoking /workflow/run again for the next pending task.
 """
 
+import uuid
+
 from src.app.schemas import (
     RunHarnessRequest,
     RunHarnessResult,
@@ -75,8 +77,9 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
         )
 
         execution_ports = build_local_harness_execution_ports()
-        workspace = create_workspace(req.repo_path)
-        run_path = build_execution_run_path(workspace.run_id)
+        run_id = uuid.uuid4().hex[:12]
+        workspace = create_workspace(req.repo_path, run_id)
+        run_path = build_execution_run_path(run_id)
 
         write_json(
             run_path,
@@ -107,6 +110,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
                     execution_plan=execution_plan,
                     constitution=constitution,
                 ),
+                run_id=run_id,
                 workspace=workspace,
                 run_path=run_path,
                 generator_instructions=generator_instructions,

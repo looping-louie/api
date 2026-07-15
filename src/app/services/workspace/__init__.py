@@ -16,7 +16,6 @@ Removing a workspace deletes its temporary worktree but preserves the run
 directory under the repository.
 """
 
-import uuid
 from pathlib import Path
 
 from src.app.models.workspace import Workspace
@@ -29,7 +28,7 @@ from src.app.services.git import (
     remove_worktree)
 
 
-def create_workspace(repo_path: str | Path) -> Workspace:
+def create_workspace(repo_path: str | Path, run_id: str) -> Workspace:
     """
     Create an isolated workspace for one harness execution.
 
@@ -43,6 +42,8 @@ def create_workspace(repo_path: str | Path) -> Workspace:
     Args:
         repo_path:
             Path to the original user repository.
+        run_id:
+            Stable caller-assigned run identifier used for run paths.
 
     Returns:
         The newly created Workspace.
@@ -59,7 +60,6 @@ def create_workspace(repo_path: str | Path) -> Workspace:
     assert_clean_repo(repo)
 
     source_commit_sha = get_head_sha(repo)
-    run_id = uuid.uuid4().hex[:12]
 
     run_path = repo / ".looping-louie" / "runs" / run_id
     worktree_path = run_path / "worktree"
@@ -83,7 +83,6 @@ def create_workspace(repo_path: str | Path) -> Workspace:
         raise
 
     return Workspace(
-        run_id=run_id,
         repo_path=repo,
         run_path=run_path,
         worktree_path=worktree_path,

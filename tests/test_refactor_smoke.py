@@ -111,8 +111,7 @@ def test_workflow_controller_uses_harness_service_path(monkeypatch, tmp_path):
     monkeypatch.setattr(
         workflow,
         'create_workspace',
-        lambda _repo_path: SimpleNamespace(
-            run_id='run-123',
+        lambda _repo_path, _run_id: SimpleNamespace(
             worktree_path=Path('/tmp/worktree'),
         ),
     )
@@ -206,8 +205,7 @@ def test_task_controller_uses_harness_service_path(monkeypatch, tmp_path):
     monkeypatch.setattr(
         task,
         'create_workspace',
-        lambda _repo_path: SimpleNamespace(
-            run_id='run-456',
+        lambda _repo_path, _run_id: SimpleNamespace(
             worktree_path=Path('/tmp/worktree'),
         ),
     )
@@ -329,8 +327,7 @@ def test_task_controller_stops_when_not_approved(monkeypatch, tmp_path):
     monkeypatch.setattr(
         task,
         'create_workspace',
-        lambda _repo_path: SimpleNamespace(
-            run_id='run-789',
+        lambda _repo_path, _run_id: SimpleNamespace(
             worktree_path=Path('/tmp/worktree'),
         ),
     )

@@ -19,9 +19,6 @@ class Workspace:
     Runtime workspace created for one harness execution.
 
     Attributes:
-        run_id:
-            Unique identifier assigned to the harness run.
-
         repo_path:
             Absolute path to the original user repository.
 
@@ -37,7 +34,6 @@ class Workspace:
             Commit from which the isolated worktree was created.
     """
 
-    run_id: str
     repo_path: Path
     run_path: Path
     worktree_path: Path

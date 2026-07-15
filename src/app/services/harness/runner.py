@@ -43,6 +43,7 @@ def build_execution_run_path(run_id: str) -> Path:
 async def run_harness(
     req: RunHarnessRequest,
     *,
+    run_id: str,
     workspace: Workspace,
     run_path: Path,
     generator_instructions: str,
@@ -136,6 +137,7 @@ async def run_harness(
                 req=req,
                 execution_plan=execution_plan,
                 ports=ports,
+                run_id=run_id,
                 workspace=workspace,
                 run_path=run_path,
                 iteration=iteration,
@@ -150,7 +152,7 @@ async def run_harness(
         # synthetic review result until system_errors is modeled explicitly.
         except Exception as exc:  # pylint: disable=broad-exception-caught
             reviewer_results = build_system_failure_result(
-                run_id=workspace.run_id,
+                run_id=run_id,
                 iteration=iteration,
                 phase=execution_plan.phase,
                 error=exc,
@@ -204,7 +206,7 @@ async def run_harness(
     total_tokens = total_input_tokens + total_output_tokens
 
     response = RunHarnessResult(
-        run_id=workspace.run_id,
+        run_id=run_id,
         final_output=final_diff,
         approved=approved,
         execution_trace=trace,
