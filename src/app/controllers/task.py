@@ -21,10 +21,10 @@ from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.instructions import build_assignment_instructions
 from src.app.services.harness.runner import run_harness
-from src.app.services.harness.metrics import tokens_per_second
 from src.app.services.harness.reviewers import build_failed_feedback
 from src.app.services.llm_service.openai import review_with_openai
 from src.app.services.model_context import build_reviewer_input
+from src.app.utils.metrics import tokens_per_second
 
 
 async def plan_task(req: PlanTaskRequest) -> PlanTaskResponse:

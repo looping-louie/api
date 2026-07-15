@@ -1,4 +1,4 @@
-"""Metric helpers for harness execution."""
+"""Shared metric helpers."""
 
 
 def tokens_per_second(
@@ -12,3 +12,6 @@ def tokens_per_second(
         total_tokens / max(duration_ms / 1000, 0.001),
         2,
     )
+
+
+__all__ = ['tokens_per_second']

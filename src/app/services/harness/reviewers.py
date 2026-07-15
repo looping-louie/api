@@ -6,8 +6,8 @@ from pathlib import Path
 from src.app.schemas import ReviewerAssignment, ReviewerMetrics, ReviewerResult, RunHarnessRequest
 from src.app.services.llm_service.openai import review_with_openai
 from src.app.services.instructions import build_assignment_instructions
-from src.app.services.harness.metrics import tokens_per_second
 from src.app.utils.io import write_json, write_text
+from src.app.utils.metrics import tokens_per_second
 
 
 def reviewer_key(

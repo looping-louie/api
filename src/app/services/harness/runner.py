@@ -22,7 +22,6 @@ from src.app.services.instructions import (
     build_assignment_instructions,
     combine_generator_prompt,
 )
-from src.app.services.harness.metrics import tokens_per_second
 from src.app.services.harness.reviewers import build_failed_feedback
 from src.app.services.llm_service.together import call_together
 from src.app.services.model_context import (
@@ -30,6 +29,7 @@ from src.app.services.model_context import (
     format_snapshot_for_prompt,
 )
 from src.app.utils.io import write_json, write_text
+from src.app.utils.metrics import tokens_per_second
 
 
 async def run_harness(
