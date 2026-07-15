@@ -6,8 +6,8 @@ model into a split architecture with two repositories.
 - looping-louie-api: LLM and orchestration decision engine.
 - looping-louie-cli: local execution engine against user repositories.
 
-The migration preserves backward compatibility until the CLI path is fully
-operational.
+The migration preserves functional continuity while responsibility moves from
+API-side execution to CLI-side execution.
 
 ---
 
@@ -19,19 +19,50 @@ The target architecture separates decision-making from local execution:
 - CLI executes filesystem, Git and workspace operations.
 - API and CLI run on different servers.
 
-The current API remains fully operational during migration.
+The current API remains operational during migration, but interim contracts may
+change when they improve boundary clarity.
 
 ---
 
 ## Agreed Constraints
 
-- Keep API behavior backward-compatible until CLI is ready.
+- Preserve the ability to complete the same development outcomes during
+    migration, even if request contracts evolve.
 - Keep API-CLI calls synchronous.
 - Keep traces in both systems with different scopes.
 - Keep all `.looping-louie` artifacts in CLI.
 - Start by trusting CLI execution reports.
 - Defer authentication and authorization design.
 - Keep code operational in API now so selected modules can later move to CLI.
+
+## Current State Snapshot (2026-07-14)
+
+Implemented task-related endpoints:
+
+- `POST /task/run`: API-side transitional path that still executes harness and
+    commit flow end to end.
+- `POST /task/plan`: API decision endpoint that returns a task execution plan.
+- `POST /task/review`: API decision endpoint that runs reviewers on
+    CLI-provided candidate data.
+
+Additional active endpoints:
+
+- `POST /meeting/run`.
+- `POST /workflow/run` (legacy path; currently considered lower priority).
+
+Current task contract notes:
+
+- `constitution` and `project_profile` are supplied by the caller.
+- `project_profile` is validated by a typed schema.
+- `/task/review` currently accepts `changed_file_contents`.
+
+Recent boundary refactors:
+
+- Instruction assembly helpers (`build_assignment_instructions`,
+    `combine_generator_prompt`) were moved out of `services/harness` into
+    `services/instructions`.
+- This keeps instruction composition on the API side even after harness
+    execution moves to CLI.
 
 ## Naming Convention During Migration
 
@@ -65,7 +96,8 @@ replay full runs end to end.
 ### 3. Instruction Granularity
 
 Low-level instructions create brittle contracts. High-level instructions force
-CLI duplication. A typed step protocol is required as the stable middle layer.
+CLI duplication. A typed step protocol is one possible target, but currently
+deferred in favor of simpler task-level contracts.
 
 ### 4. Idempotency and Retry Safety
 
@@ -90,10 +122,13 @@ payload size limits and a path to hash-based references.
 
 ### 8. Backward Compatibility Pressure
 
-Dual mode is required during migration:
+Dual mode may be required during migration:
 
 - local execution mode for current users;
 - remote instruction mode for CLI-based execution.
+
+In practice, the project currently prioritizes clear boundary shifts over full
+request-level backward compatibility for every interim change.
 
 ### 9. Commit Ownership Semantics
 
@@ -122,6 +157,8 @@ join traces and debug complete runs.
 ---
 
 ## Step Protocol V1
+
+Status: proposed, not currently adopted as the active migration path.
 
 Each synchronous exchange uses these envelope fields:
 
@@ -220,6 +257,10 @@ Shared trace fields:
 
 ## Immediate Next Engineering Step
 
-Introduce a typed instruction schema in API responses while preserving current
-response fields. This enables remote execution mode incrementally without
-breaking existing local behavior.
+Continue task-focused migration with clear boundaries:
+
+1. Treat `/task/run` as transitional compatibility path.
+2. Evolve `/task/plan` and `/task/review` as primary CLI-facing contracts.
+3. Keep LLM calls in API services; avoid moving model calls into controllers.
+4. Move harness execution responsibilities to CLI incrementally after decision
+    contracts are stable.

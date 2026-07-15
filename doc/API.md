@@ -1,14 +1,67 @@
 # API
 
-Looping Louie currently exposes two HTTP endpoints.
+Looping Louie currently exposes five HTTP endpoints.
 
-- `/workflow/run` executes an entire `tasks.json` backlog.
+- `/task/run` executes one task end to end (transitional API-side harness path).
+- `/task/plan` builds a task execution plan.
+- `/task/review` runs reviewer assignments on a candidate change.
+- `/workflow/run` executes an entire `tasks.json` backlog (legacy path).
 - `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
 
 ---
 
+## POST /task/plan
+
+Builds an execution plan for one task without running harness.
+
+### Task Plan Request
+
+| Field | Description |
+| ----- | ----------- |
+| `task_id` | Optional task identifier for correlation. |
+| `prompt` | Task instruction to plan. |
+| `constitution` | Project principles and constraints. |
+| `project_profile` | Typed repository profile provided by caller. |
+| `planner_model` | Model used by the execution planner. |
+| `required_reviewer_skills` | Reviewer skills that must appear in the team. |
+| `generator_persona` | Optional fixed generator persona. |
+
+---
+
+## POST /task/review
+
+Runs the planned reviewers on one CLI-provided candidate artifact.
+
+### Task Review Request
+
+| Field | Description |
+| ----- | ----------- |
+| `run_id` | Run identifier used for correlation. |
+| `task_id` | Optional task identifier. |
+| `iteration` | 1-based review attempt number. |
+| `prompt` | Original task prompt. |
+| `constitution` | Project principles and constraints. |
+| `reviewer_model` | Model used for reviewer assignments. |
+| `execution_plan` | Plan returned by `/task/plan`. |
+| `final_diff` | Candidate patch diff under review. |
+| `changed_file_contents` | Preformatted changed file contents. |
+
+---
+
+## POST /task/run
+
+Executes one task through planner, harness, and commit.
+
+This endpoint is currently a transitional compatibility path while task
+planning and review contracts are adopted by CLI-based execution.
+
+---
+
 ## POST /workflow/run
+
+Legacy path. This endpoint remains available but is currently lower priority
+than task-focused migration contracts.
 
 Executes every pending task from a task array.
 
@@ -35,7 +88,9 @@ configured iteration limit.
 | `max_iterations` | Maximum iterations per task. |
 | `generator_model` | Model used for generation. |
 | `reviewer_model` | Model used for every reviewer skill. |
-| `skills` | List of review skills executed for every task. |
+| `constitution` | Project principles and constraints. |
+| `project_profile` | Typed repository profile provided by caller. |
+| `required_reviewer_skills` | Reviewer skills that must appear in the team. |
 
 ### Run Workflow Example
 
@@ -44,6 +99,29 @@ curl -X POST http://127.0.0.1:8000/workflow/run \
   -H "Content-Type: application/json" \
   -d '{
     "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
+    "constitution": "Implement only the requested task.",
+    "project_profile": {
+      "source_file_count": 120,
+      "approximate_source_chars": 350000,
+      "extension_counts": {
+        ".ts": 60,
+        ".vue": 35,
+        ".py": 20,
+        ".md": 5
+      },
+      "top_level_entries": [
+        "src/",
+        "tests/",
+        "README.md"
+      ],
+      "markers": {
+        "nuxt": true,
+        "package_json": true,
+        "fastapi": false,
+        "docker": false,
+        "tests": true
+      }
+    },
     "tasks": [
       {
         "id": "task-001",
@@ -56,7 +134,7 @@ curl -X POST http://127.0.0.1:8000/workflow/run \
     "max_iterations": 3,
     "generator_model": "zai-org/GLM-5.2",
     "reviewer_model": "gpt-4.1-mini",
-    "skills": [
+    "required_reviewer_skills": [
       "small_patch_quality",
       "nuxt_code_review",
       "preserve_existing_ui"
@@ -67,7 +145,7 @@ curl -X POST http://127.0.0.1:8000/workflow/run \
 ### Run Workflow Example From `tasks.json`
 
 ```sh
-jq -n --arg repo_path "/home/jadraque/Documents/source/looping-louie/web" --argjson tasks "$(jq -c . /home/jadraque/Documents/source/looping-louie/web/.looping-louie/tasks.json)" '{repo_path:$repo_path,tasks:$tasks,max_iterations:3,generator_model:"zai-org/GLM-5.2",reviewer_model:"gpt-4.1-mini",skills:["small_patch_quality","nuxt_code_review","preserve_existing_ui"]}' | curl -X POST http://127.0.0.1:8000/workflow/run -H "Content-Type: application/json" --data-binary @-
+jq -n --arg repo_path "/home/jadraque/Documents/source/looping-louie/web" --argjson tasks "$(jq -c . /home/jadraque/Documents/source/looping-louie/web/.looping-louie/tasks.json)" '{repo_path:$repo_path,constitution:"Implement only the requested task.",project_profile:{source_file_count:120,approximate_source_chars:350000,extension_counts:{".ts":60,".vue":35,".py":20,".md":5},top_level_entries:["src/","tests/","README.md"],markers:{nuxt:true,package_json:true,fastapi:false,docker:false,tests:true}},tasks:$tasks,max_iterations:3,generator_model:"zai-org/GLM-5.2",reviewer_model:"gpt-4.1-mini",required_reviewer_skills:["small_patch_quality","nuxt_code_review","preserve_existing_ui"]}' | curl -X POST http://127.0.0.1:8000/workflow/run -H "Content-Type: application/json" --data-binary @-
 ```
 
 ---
