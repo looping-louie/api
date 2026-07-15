@@ -131,18 +131,8 @@ def test_task_controller_uses_harness_service_path(monkeypatch):
     async def fake_run_harness(_req):
         return FakeRunResponse()
 
-    def fake_has_changes(_repo_path):
-        return True
-
-    def fake_commit_all(*, repo_path, message):
-        assert repo_path == '/tmp/repo'
-        assert message == 'feat: implement small change'
-        return 'sha456'
-
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(task, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(task, 'has_changes', fake_has_changes)
-    monkeypatch.setattr(task, 'commit_all', fake_commit_all)
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
@@ -161,9 +151,10 @@ def test_task_controller_uses_harness_service_path(monkeypatch):
 
     assert result.ok is True
     assert result.status == 'completed'
+    assert result.commit_allowed is True
     assert result.run_id == 'run-456'
     assert result.completed is not None
-    assert result.completed.commit_sha == 'sha456'
+    assert result.completed.commit_sha == 'deprecated API response field'
 
 
 def test_task_controller_rejects_non_pending_task(monkeypatch):
@@ -198,7 +189,7 @@ def test_task_controller_rejects_non_pending_task(monkeypatch):
     assert result.message == 'Task status must be pending to run.'
 
 
-def test_task_controller_stops_when_no_changes(monkeypatch):
+def test_task_controller_stops_when_not_approved(monkeypatch):
     execution_plan = ExecutionPlan(
         phase='mvp',
         reasoning='test plan',
@@ -218,7 +209,7 @@ def test_task_controller_stops_when_no_changes(monkeypatch):
     )
 
     class FakeRunResponse:
-        approved = True
+        approved = False
         run_id = 'run-789'
 
     async def fake_create_execution_plan(**_kwargs):
@@ -227,16 +218,8 @@ def test_task_controller_stops_when_no_changes(monkeypatch):
     async def fake_run_harness(_req):
         return FakeRunResponse()
 
-    def fake_has_changes(_repo_path):
-        return False
-
-    def fake_commit_all(*, repo_path, message):
-        raise AssertionError('commit_all should not be called when no changes')
-
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
     monkeypatch.setattr(task, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(task, 'has_changes', fake_has_changes)
-    monkeypatch.setattr(task, 'commit_all', fake_commit_all)
 
     request = RunTaskRequest(
         repo_path='/tmp/repo',
@@ -255,9 +238,10 @@ def test_task_controller_stops_when_no_changes(monkeypatch):
 
     assert result.ok is False
     assert result.status == 'stopped'
+    assert result.commit_allowed is False
     assert result.task_id == 'task-003'
     assert result.run_id == 'run-789'
-    assert result.approved is True
+    assert result.approved is False
 
 
 def test_request_schema_rejects_invalid_project_profile():
