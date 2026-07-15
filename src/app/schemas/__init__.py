@@ -38,8 +38,15 @@ from src.app.schemas.workflow import (
     RunResponse as RunWorkflowResponse,
 )
 from src.app.schemas.task import (
+    CheckpointResponse as TaskCheckpointResponse,
+    ContinueActionResult as TaskContinueActionResult,
+    ContinueRequest as TaskContinueRequest,
+    ContinueResponse as TaskContinueResponse,
+    GetResponse as GetTaskResponse,
     RunRequest as RunTaskRequest,
     RunResponse as RunTaskResponse,
+    StartRequest as TaskStartRequest,
+    StartResponse as TaskStartResponse,
 )
 
 
@@ -56,12 +63,19 @@ __all__ = [
     'ReviewerIssue',
     'ReviewerMetrics',
     'ReviewerResult',
+    'GetTaskResponse',
     'RunHarnessRequest',
     'RunHarnessResult',
     'RunMeetingRequest',
     'RunMeetingResponse',
+    'TaskCheckpointResponse',
+    'TaskContinueActionResult',
+    'TaskContinueRequest',
+    'TaskContinueResponse',
     'RunTaskRequest',
     'RunTaskResponse',
+    'TaskStartRequest',
+    'TaskStartResponse',
     'RunMetrics',
     'RunWorkflowRequest',
     'RunWorkflowResponse',

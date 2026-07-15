@@ -1,15 +1,20 @@
 from fastapi import APIRouter
 from src.app.schemas import (
+    GetTaskResponse,
     RunWorkflowRequest,
     RunWorkflowResponse,
     RunMeetingRequest,
     RunMeetingResponse,
+    TaskContinueRequest,
+    TaskContinueResponse,
     RunTaskRequest,
     RunTaskResponse,
+    TaskStartRequest,
+    TaskStartResponse,
 )
 from src.app.controllers.workflow import run_workflow
 from src.app.controllers.meeting import run_meeting
-from src.app.controllers.task import run_task
+from src.app.controllers.task import continue_task, get_task, run_task, start_task
 
 
 # Create the router instance
@@ -53,3 +58,21 @@ async def task_run_endpoint(req: RunTaskRequest) -> RunTaskResponse:
     This endpoint mirrors the workflow inner loop for a single task.
     """
     return await run_task(req)
+
+
+@router.post('/task/start', response_model=TaskStartResponse)
+async def task_start_endpoint(req: TaskStartRequest) -> TaskStartResponse:
+    """Start checkpoint-based task execution and return first action."""
+    return await start_task(req)
+
+
+@router.post('/task/continue', response_model=TaskContinueResponse)
+async def task_continue_endpoint(req: TaskContinueRequest) -> TaskContinueResponse:
+    """Advance one checkpoint transition for an existing task run."""
+    return await continue_task(req)
+
+
+@router.get('/task/{run_id}', response_model=GetTaskResponse)
+async def task_get_endpoint(run_id: str) -> GetTaskResponse:
+    """Return latest checkpoint state for one task run identifier."""
+    return await get_task(run_id)

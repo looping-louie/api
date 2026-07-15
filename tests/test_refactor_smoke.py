@@ -14,6 +14,7 @@ from src.app.schemas import (
     RunTaskRequest,
     RunWorkflowRequest,
 )
+from src.app.schemas.task import ContinueRequest, StartRequest
 
 
 VALID_PROJECT_PROFILE = {
@@ -378,6 +379,152 @@ def test_request_schema_rejects_invalid_project_profile():
                 'commit_message': 'feat: implement small change',
             },
         )
+
+
+def test_task_checkpoint_start_returns_first_action():
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    request = StartRequest(
+        repo_path='/tmp/repo',
+        constitution='Implement only the requested task.',
+        project_profile=VALID_PROJECT_PROFILE,
+        task={
+            'id': 'task-checkpoint-001',
+            'status': 'pending',
+            'prompt': 'Implement checkpoint flow',
+            'run_id': None,
+            'commit_message': 'feat: checkpoint start',
+        },
+    )
+
+    result = asyncio.run(task.start_task(request))
+
+    assert result.ok is True
+    assert result.status == 'in_progress'
+    assert result.next_action == 'collect_snapshot'
+    assert result.run_id
+    assert result.continuation_token
+    assert result.token_revision == 1
+
+
+def test_task_checkpoint_continue_rejects_token_conflict():
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    start_result = asyncio.run(
+        task.start_task(
+            StartRequest(
+                repo_path='/tmp/repo',
+                constitution='Implement only the requested task.',
+                project_profile=VALID_PROJECT_PROFILE,
+                task={
+                    'id': 'task-checkpoint-002',
+                    'status': 'pending',
+                    'prompt': 'Trigger token conflict',
+                    'run_id': None,
+                    'commit_message': 'feat: token conflict',
+                },
+            )
+        )
+    )
+
+    result = asyncio.run(
+        task.continue_task(
+            ContinueRequest(
+                run_id=start_result.run_id,
+                continuation_token='wrong-token',
+                idempotency_key='idem-1',
+                action_result={
+                    'action': 'collect_snapshot',
+                    'repo_context': 'snapshot',
+                    'workspace_metadata': {
+                        'workspace_path': '/tmp/workspace',
+                        'source_commit_sha': 'abc123',
+                    },
+                },
+            )
+        )
+    )
+
+    assert result.ok is False
+    assert result.error_code == 'token_conflict'
+    assert result.recoverable is True
+
+
+def test_task_checkpoint_continue_replays_idempotent_response():
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    start_result = asyncio.run(
+        task.start_task(
+            StartRequest(
+                repo_path='/tmp/repo',
+                constitution='Implement only the requested task.',
+                project_profile=VALID_PROJECT_PROFILE,
+                task={
+                    'id': 'task-checkpoint-003',
+                    'status': 'pending',
+                    'prompt': 'Validate idempotent replay',
+                    'run_id': None,
+                    'commit_message': 'feat: idempotency',
+                },
+            )
+        )
+    )
+
+    request = ContinueRequest(
+        run_id=start_result.run_id,
+        continuation_token=start_result.continuation_token,
+        idempotency_key='idem-replay',
+        action_result={
+            'action': 'collect_snapshot',
+            'repo_context': 'snapshot',
+            'workspace_metadata': {
+                'workspace_path': '/tmp/workspace',
+                'source_commit_sha': 'abc123',
+            },
+        },
+    )
+
+    first = asyncio.run(task.continue_task(request))
+    second = asyncio.run(task.continue_task(request))
+
+    assert first.ok is True
+    assert second.ok is True
+    assert first.next_action == 'apply_operations'
+    assert second.next_action == 'apply_operations'
+    assert first.token_revision == second.token_revision
+    assert first.continuation_token == second.continuation_token
+
+
+def test_task_checkpoint_get_returns_latest_state():
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    start_result = asyncio.run(
+        task.start_task(
+            StartRequest(
+                repo_path='/tmp/repo',
+                constitution='Implement only the requested task.',
+                project_profile=VALID_PROJECT_PROFILE,
+                task={
+                    'id': 'task-checkpoint-004',
+                    'status': 'pending',
+                    'prompt': 'Read run state',
+                    'run_id': None,
+                    'commit_message': 'feat: get state',
+                },
+            )
+        )
+    )
+
+    get_result = asyncio.run(task.get_task(start_result.run_id))
+
+    assert get_result.ok is True
+    assert get_result.run_id == start_result.run_id
+    assert get_result.next_action == 'collect_snapshot'
+
+    missing_result = asyncio.run(task.get_task('missing-run-id'))
+
+    assert missing_result.ok is False
+    assert missing_result.error_code == 'run_not_found'
 
     with pytest.raises(ValueError):
         RunWorkflowRequest(
