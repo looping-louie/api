@@ -19,7 +19,6 @@ from src.app.schemas.task import (
 )
 from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
-from src.app.services.git import has_changes
 from src.app.services.instructions import build_assignment_instructions
 from src.app.services.harness.runner import run_harness
 from src.app.services.harness.metrics import tokens_per_second
@@ -194,20 +193,6 @@ async def run_task(req: RunTaskRequest) -> RunTaskResponse:
             message=(
                 'Stopped because reviewers did not approve within '
                 'max_iterations.'
-            ),
-        )
-
-    elif not has_changes(req.repo_path):
-        return RunTaskResponse(
-            ok=False,
-            status='stopped',
-            commit_allowed=False,
-            task_id=task['id'],
-            run_id=run_harness_result.run_id,
-            approved=True,
-            message=(
-                'Run approved but no repository changes were found '
-                'to commit.'
             ),
         )
 
