@@ -1,9 +1,5 @@
 from fastapi import APIRouter
 from src.app.schemas import (
-    PlanTaskRequest,
-    PlanTaskResponse,
-    ReviewTaskRequest,
-    ReviewTaskResponse,
     RunWorkflowRequest,
     RunWorkflowResponse,
     RunMeetingRequest,
@@ -13,7 +9,7 @@ from src.app.schemas import (
 )
 from src.app.controllers.workflow import run_workflow
 from src.app.controllers.meeting import run_meeting
-from src.app.controllers.task import plan_task, review_task, run_task
+from src.app.controllers.task import run_task
 
 
 # Create the router instance
@@ -57,15 +53,3 @@ async def task_run_endpoint(req: RunTaskRequest) -> RunTaskResponse:
     This endpoint mirrors the workflow inner loop for a single task.
     """
     return await run_task(req)
-
-
-@router.post('/task/plan', response_model=PlanTaskResponse)
-async def task_plan_endpoint(req: PlanTaskRequest) -> PlanTaskResponse:
-    """Build one task execution plan without running harness."""
-    return await plan_task(req)
-
-
-@router.post('/task/review', response_model=ReviewTaskResponse)
-async def task_review_endpoint(req: ReviewTaskRequest) -> ReviewTaskResponse:
-    """Run reviewers against one CLI-provided candidate artifact."""
-    return await review_task(req)

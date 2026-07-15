@@ -41,9 +41,6 @@ Implemented task-related endpoints:
 
 - `POST /task/run`: API-side transitional path that still executes harness and
     commit flow end to end.
-- `POST /task/plan`: API decision endpoint that returns a task execution plan.
-- `POST /task/review`: API decision endpoint that runs reviewers on
-    CLI-provided candidate data.
 
 Additional active endpoints:
 
@@ -54,7 +51,6 @@ Current task contract notes:
 
 - `constitution` and `project_profile` are supplied by the caller.
 - `project_profile` is validated by a typed schema.
-- `/task/review` currently accepts `changed_file_contents`.
 
 Recent boundary refactors:
 
@@ -260,7 +256,9 @@ Shared trace fields:
 Continue task-focused migration with clear boundaries:
 
 1. Treat `/task/run` as transitional compatibility path.
-2. Evolve `/task/plan` and `/task/review` as primary CLI-facing contracts.
-3. Keep LLM calls in API services; avoid moving model calls into controllers.
-4. Move harness execution responsibilities to CLI incrementally after decision
+2. Keep LLM calls in API services; avoid moving model calls into controllers.
+3. Move harness execution responsibilities to CLI incrementally after decision
     contracts are stable.
+4. Evaluate and refine the checkpoint proposal in
+    `doc/task-checkpoint-protocol-v1.md` to split monolithic task execution
+    into resumable synchronous API-CLI exchanges.

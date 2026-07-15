@@ -1,51 +1,11 @@
 # API
 
-Looping Louie currently exposes five HTTP endpoints.
+Looping Louie currently exposes three HTTP endpoints.
 
 - `/task/run` executes one task end to end (transitional API-side harness path).
-- `/task/plan` builds a task execution plan.
-- `/task/review` runs reviewer assignments on a candidate change.
 - `/workflow/run` executes an entire `tasks.json` backlog (legacy path).
 - `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
-
----
-
-## POST /task/plan
-
-Builds an execution plan for one task without running harness.
-
-### Task Plan Request
-
-| Field | Description |
-| ----- | ----------- |
-| `task_id` | Optional task identifier for correlation. |
-| `prompt` | Task instruction to plan. |
-| `constitution` | Project principles and constraints. |
-| `project_profile` | Typed repository profile provided by caller. |
-| `planner_model` | Model used by the execution planner. |
-| `required_reviewer_skills` | Reviewer skills that must appear in the team. |
-| `generator_persona` | Optional fixed generator persona. |
-
----
-
-## POST /task/review
-
-Runs the planned reviewers on one CLI-provided candidate artifact.
-
-### Task Review Request
-
-| Field | Description |
-| ----- | ----------- |
-| `run_id` | Run identifier used for correlation. |
-| `task_id` | Optional task identifier. |
-| `iteration` | 1-based review attempt number. |
-| `prompt` | Original task prompt. |
-| `constitution` | Project principles and constraints. |
-| `reviewer_model` | Model used for reviewer assignments. |
-| `execution_plan` | Plan returned by `/task/plan`. |
-| `final_diff` | Candidate patch diff under review. |
-| `changed_file_contents` | Preformatted changed file contents. |
 
 ---
 

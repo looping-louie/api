@@ -72,13 +72,11 @@ http://127.0.0.1:8000
 
 ## Usage
 
-Looping Louie currently exposes five endpoints.
+Looping Louie currently exposes three endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
 | `/task/run` | Execute one task end to end (transitional API-side harness path). |
-| `/task/plan` | Build a task execution plan. |
-| `/task/review` | Run reviewer assignments on a candidate change. |
 | `/workflow/run` | Execute an entire `tasks.json` backlog (legacy path). |
 | `/meeting/run` | Run a structured multi-persona meeting. |
 
