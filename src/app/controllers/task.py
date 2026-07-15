@@ -13,13 +13,15 @@ from src.app.schemas import (
     RunHarnessRequest,
     RunHarnessResult,
 )
-from src.app.schemas.task import RunRequest as RunTaskRequest
-from src.app.schemas.task import RunResponse as RunTaskResponse
+from src.app.schemas.task import (
+    RunRequest as RunTaskRequest,
+    RunResponse as RunTaskResponse
+)
 from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.git import commit_all, has_changes
+from src.app.services.instructions import build_assignment_instructions
 from src.app.services.harness import run_harness
-from src.app.services.harness.instructions import build_assignment_instructions
 from src.app.services.harness.metrics import tokens_per_second
 from src.app.services.harness.reviewers import build_failed_feedback
 from src.app.services.llm_service.openai import review_with_openai

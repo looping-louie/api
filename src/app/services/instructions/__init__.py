@@ -1,4 +1,8 @@
-"""Prompt assembly helpers for harness roles."""
+"""Prompt assembly helpers shared across services.
+
+Transitional location: moved out of harness so instructions can remain in API
+when harness execution migrates to CLI.
+"""
 
 from src.app.personas import load_persona
 from src.app.skills import load_skill
@@ -17,8 +21,8 @@ def build_assignment_instructions(
     """
     Build provider-agnostic instructions from one persona and its skills.
 
-    Loaders own filesystem lookup and registry validation. The harness only
-    combines their content for the model call.
+    Loaders own filesystem lookup and registry validation. Callers only
+    combine persona and skill content for the model call.
     """
     effective_skill_ids = (
         skill_ids[:MAX_GENERATOR_SKILLS]
@@ -66,3 +70,9 @@ def combine_generator_prompt(
         '# Execution instructions\n\n'
         f'{task_prompt}'
     )
+
+
+__all__ = [
+    'build_assignment_instructions',
+    'combine_generator_prompt',
+]

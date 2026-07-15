@@ -18,7 +18,7 @@ from src.app.services.harness.execution import (
     execute_iteration_and_review,
 )
 from src.app.services.harness.ports import HarnessExecutionPorts
-from src.app.services.harness.instructions import (
+from src.app.services.instructions import (
     build_assignment_instructions,
     combine_generator_prompt,
 )
