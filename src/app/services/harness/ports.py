@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from src.app.models.workspace import Workspace
+from src.app.services.workspace import Workspace
 
 
 class FileSystemPort(Protocol):

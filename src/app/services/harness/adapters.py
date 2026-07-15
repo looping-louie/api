@@ -2,11 +2,10 @@
 
 from dataclasses import dataclass
 
-from src.app.models.workspace import Workspace
 from src.app.services.filesystem import apply_file_operations, parse_file_operations
 from src.app.services.git import apply_patch, get_changed_files, get_git_diff, validate_patch
 from src.app.services.harness.ports import HarnessExecutionPorts
-from src.app.services.workspace import cleanup_workspace, create_workspace
+from src.app.services.workspace import Workspace, cleanup_workspace, create_workspace
 
 
 class LocalFileSystemAdapter:

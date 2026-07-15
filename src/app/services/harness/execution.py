@@ -3,9 +3,10 @@
 import asyncio
 from pathlib import Path
 
-from src.app.models.workspace import Workspace
 from src.app.schemas import (
     ExecutionPlan,
+    ProjectPhase,
+    ReviewerIssue,
     ReviewerMetrics,
     ReviewerResult,
     RunHarnessRequest,
@@ -13,6 +14,7 @@ from src.app.schemas import (
 from src.app.services.harness.ports import HarnessExecutionPorts
 from src.app.services.harness.reviewers import run_single_reviewer
 from src.app.services.model_context import build_reviewer_input, read_changed_file_contents
+from src.app.services.workspace import Workspace
 from src.app.utils.io import write_json, write_text
 
 
@@ -85,7 +87,7 @@ def build_system_failure_result(
     *,
     run_id: str,
     iteration: int,
-    phase: str,
+    phase: ProjectPhase,
     error: Exception,
 ) -> list[ReviewerResult]:
     """Convert harness infrastructure failures to a synthetic reviewer."""
@@ -111,11 +113,11 @@ def build_system_failure_result(
             strictness=100,
             score=0,
             blocking_issues=[
-                {
-                    'title': 'File operation failure',
-                    'description': str(error),
-                    'file': None,
-                }
+                ReviewerIssue(
+                    title='File operation failure',
+                    description=str(error),
+                    file=None,
+                )
             ],
             feedback=f'File operations failed: {error}',
             approved=False,

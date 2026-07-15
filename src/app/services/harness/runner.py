@@ -3,7 +3,6 @@
 import time
 from pathlib import Path
 
-from src.app.models.workspace import Workspace
 from src.app.schemas import (
     ModelMetrics,
     RunHarnessRequest,
@@ -26,6 +25,7 @@ from src.app.services.model_context import (
     build_snapshot,
     format_snapshot_for_prompt,
 )
+from src.app.services.workspace import Workspace
 from src.app.utils.io import write_json, write_text
 from src.app.utils.metrics import tokens_per_second
 

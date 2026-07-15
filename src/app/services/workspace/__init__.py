@@ -16,9 +16,9 @@ Removing a workspace deletes its temporary worktree but preserves the run
 directory under the repository.
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 
-from src.app.models.workspace import Workspace
 from src.app.services.git import (
     assert_git_repo,
     assert_clean_repo,
@@ -26,6 +26,33 @@ from src.app.services.git import (
     get_head_sha,
     prune_worktrees,
     remove_worktree)
+
+
+@dataclass(frozen=True)
+class Workspace:
+    """
+    Runtime workspace created for one harness execution.
+
+    Attributes:
+        repo_path:
+            Absolute path to the original user repository.
+
+        run_path:
+            Directory that contains the temporary detached worktree for this
+            run under the target repository.
+
+        worktree_path:
+            Path to the temporary Git worktree where generated changes are
+            applied and reviewed.
+
+        source_commit_sha:
+            Commit from which the isolated worktree was created.
+    """
+
+    repo_path: Path
+    run_path: Path
+    worktree_path: Path
+    source_commit_sha: str
 
 
 def create_workspace(repo_path: str | Path, run_id: str) -> Workspace:
