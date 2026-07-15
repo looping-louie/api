@@ -1,6 +1,7 @@
 """Main harness orchestration workflow."""
 
 import time
+from pathlib import Path
 
 from src.app.schemas import (
     ModelMetrics,
@@ -32,6 +33,16 @@ from src.app.utils.io import write_json, write_text
 from src.app.utils.metrics import tokens_per_second
 
 
+EXECUTION_RUNS_DIR = Path(__file__).resolve().parents[4] / 'runtime' / 'executions'
+
+
+def build_execution_run_path(run_id: str) -> Path:
+    """Resolve and create the API-owned execution directory for one run."""
+    run_path = EXECUTION_RUNS_DIR / run_id
+    run_path.mkdir(parents=True, exist_ok=False)
+    return run_path
+
+
 async def run_harness(
     req: RunHarnessRequest,
     execution_ports: HarnessExecutionPorts | None = None,
@@ -59,14 +70,15 @@ async def run_harness(
     ports = execution_ports or build_local_harness_execution_ports()
 
     workspace = ports.workspace.create_workspace(req.repo_path)
+    execution_run_path = build_execution_run_path(workspace.run_id)
 
     write_json(
-        workspace.run_path,
+        execution_run_path,
         'request.json',
         req.model_dump()
     )
     write_json(
-        workspace.run_path,
+        execution_run_path,
         'execution-plan.json',
         execution_plan.model_dump(),
     )
@@ -102,7 +114,7 @@ async def run_harness(
             )
 
             write_text(
-                workspace.run_path,
+                execution_run_path,
                 f'generator/iteration-{iteration}-prompt.txt',
                 current_prompt,
             )
@@ -113,7 +125,7 @@ async def run_harness(
             )
 
             write_json(
-                workspace.run_path,
+                execution_run_path,
                 f'generator/iteration-{iteration}-response.json',
                 gen,
             )
@@ -146,6 +158,7 @@ async def run_harness(
                     execution_plan=execution_plan,
                     ports=ports,
                     workspace=workspace,
+                    run_path=execution_run_path,
                     iteration=iteration,
                     generator_output=gen['text'],
                 )
@@ -223,7 +236,7 @@ async def run_harness(
                 )
 
             write_text(
-                workspace.run_path,
+                execution_run_path,
                 'final.diff',
                 final_diff,
             )
@@ -252,12 +265,12 @@ async def run_harness(
         )
 
         write_json(
-            workspace.run_path,
+            execution_run_path,
             'response.json',
             response.model_dump(),
         )
         write_json(
-            workspace.run_path,
+            execution_run_path,
             'trace.json',
             [
                 item.model_dump()
@@ -265,7 +278,7 @@ async def run_harness(
             ],
         )
         write_json(
-            workspace.run_path,
+            execution_run_path,
             'metrics.json',
             response.run_metrics.model_dump(),
         )

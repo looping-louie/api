@@ -5,7 +5,7 @@ Every harness execution produces prompts, responses, diffs, metrics and
 other debugging artefacts.
 
 This module provides small utilities to persist those artefacts inside
-the run directory under .looping-louie/runs/<run_id>/.
+the run directory provided by the caller.
 """
 
 import json

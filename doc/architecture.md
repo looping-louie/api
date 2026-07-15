@@ -141,10 +141,17 @@ A temporary Git worktree is created from the repository HEAD.
 
 The original repository remains untouched.
 
-Every run receives its own directory under:
+Every run receives a repository-scoped worktree directory under:
 
 ```text
 .looping-louie/runs/<run_id>/
+```
+
+Harness execution artefacts (request, prompts, responses, diff, trace,
+metrics) are persisted under the API runtime root:
+
+```text
+runtime/executions/<run_id>/
 ```
 
 ---

@@ -6,14 +6,14 @@ Creates and removes the isolated execution environments used by the harness.
 Each harness run receives:
 
 - a unique run identifier;
-- a persistent run directory for prompts, responses, diffs and metrics;
+- a run-scoped directory under the repository for worktree internals;
 - a detached Git worktree created from the current repository HEAD.
 
 This service coordinates filesystem setup and workspace lifecycle policy.
 It delegates all Git-specific operations to git_service.
 
 Removing a workspace deletes its temporary worktree but preserves the run
-directory and its execution artefacts for inspection and auditing.
+directory under the repository.
 """
 
 import uuid
@@ -74,7 +74,7 @@ def create_workspace(repo_path: str | Path) -> Workspace:
         )
     except Exception:
         # Remove the run directory only if worktree creation failed before
-        # any execution artefacts were written.
+        # the workspace could be fully initialized.
         try:
             run_path.rmdir()
         except OSError:
@@ -95,8 +95,8 @@ def cleanup_workspace(workspace: Workspace) -> None:
     """
     Remove the temporary Git worktree associated with a workspace.
 
-    The persistent run directory is deliberately preserved so prompts,
-    responses, diffs and metrics remain available after execution.
+    The run directory is deliberately preserved so repository-scoped
+    workspace data can be inspected after execution.
 
     Args:
         workspace:

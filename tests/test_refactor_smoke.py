@@ -4,6 +4,7 @@ import pytest
 
 from src.app.controllers import workflow
 from src.app.controllers import task
+from src.app.services.harness import runner as harness_runner
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
@@ -376,3 +377,17 @@ def test_task_review_controller_runs_assigned_reviewers(monkeypatch):
     assert result.approved is True
     assert len(result.reviewers) == 1
     assert result.reviewers[0].run_id == 'run-900'
+
+
+def test_harness_runner_creates_execution_run_path_under_runtime(
+    monkeypatch,
+    tmp_path,
+):
+    executions_root = tmp_path / 'runtime' / 'executions'
+    monkeypatch.setattr(harness_runner, 'EXECUTION_RUNS_DIR', executions_root)
+
+    run_path = harness_runner.build_execution_run_path('run-abc123')
+
+    assert run_path == executions_root / 'run-abc123'
+    assert run_path.exists()
+    assert run_path.is_dir()

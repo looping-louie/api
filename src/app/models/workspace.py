@@ -26,8 +26,8 @@ class Workspace:
             Absolute path to the original user repository.
 
         run_path:
-            Directory where prompts, responses, diffs, metrics and other
-            execution artefacts are persisted.
+            Directory that contains the temporary detached worktree for this
+            run under the target repository.
 
         worktree_path:
             Path to the temporary Git worktree where generated changes are
