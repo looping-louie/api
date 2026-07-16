@@ -450,8 +450,40 @@ def test_task_checkpoint_continue_rejects_token_conflict():
     assert result.recoverable is True
 
 
-def test_task_checkpoint_continue_replays_idempotent_response():
+def test_task_checkpoint_continue_replays_idempotent_response(monkeypatch):
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    execution_plan = ExecutionPlan(
+        phase='mvp',
+        reasoning='checkpoint test plan',
+        generator=GeneratorAssignment(
+            persona='tech_lead',
+            skills=[],
+            focus='ship the change',
+        ),
+        reviewers=[
+            ReviewerAssignment(
+                persona='tech_lead',
+                skills=['small_patch_quality'],
+                strictness=55,
+                focus='review the patch',
+            )
+        ],
+    )
+
+    async def fake_create_execution_plan(**_kwargs):
+        return execution_plan
+
+    async def fake_call_together(_model, _prompt):
+        return {
+            'text': '{"operations": []}',
+            'input_tokens': 10,
+            'output_tokens': 5,
+            'duration_ms': 100,
+        }
+
+    monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
+    monkeypatch.setattr(task, 'call_together', fake_call_together)
 
     start_result = asyncio.run(
         task.start_task(
@@ -493,6 +525,7 @@ def test_task_checkpoint_continue_replays_idempotent_response():
     assert second.next_action == 'apply_operations'
     assert first.token_revision == second.token_revision
     assert first.continuation_token == second.continuation_token
+
 
 
 def test_task_checkpoint_get_returns_latest_state():

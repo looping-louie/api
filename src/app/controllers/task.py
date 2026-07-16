@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass, field
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from src.app.schemas import (
+    ExecutionPlan,
     RunHarnessRequest,
     RunHarnessResult,
 )
@@ -23,7 +24,10 @@ from src.app.schemas.task import (
 from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.harness.adapters import build_local_harness_execution_ports
+from src.app.services.harness.decision import build_generator_base_prompt
 from src.app.services.instructions import build_assignment_instructions
+from src.app.services.instructions import combine_generator_prompt
+from src.app.services.llm_service.together import call_together
 from src.app.services.harness.runner import build_execution_run_path, run_harness
 from src.app.services.workspace import cleanup_workspace, create_workspace
 from src.app.utils.io import write_json
@@ -37,6 +41,13 @@ class _TaskRunState:
     task_id: str
     task_prompt: str
     task_commit_message: str
+    constitution: str
+    project_profile: dict[str, Any]
+    generator_model: str
+    reviewer_model: str
+    planner_model: str
+    required_reviewer_skills: list[str]
+    generator_persona: str | None
     max_iterations: int
     iteration: int = 1
     status: TaskStatus = 'in_progress'
@@ -51,6 +62,12 @@ class _TaskRunState:
     latest_repo_context: str | None = None
     latest_final_diff: str | None = None
     latest_changed_file_count: int = 0
+    latest_generator_output: str = ''
+    latest_reviewer_feedback: str = ''
+    latest_generator_metrics: dict[str, Any] | None = None
+    pending_operations: list[dict[str, Any]] = field(default_factory=list)
+    execution_plan: ExecutionPlan | None = None
+    generator_instructions: str | None = None
     idempotency_cache: dict[tuple[str | None, str], ContinueResponse] = field(
         default_factory=dict
     )
@@ -82,6 +99,13 @@ async def start_task(req: StartRequest) -> StartResponse:
         task_id=task['id'],
         task_prompt=task['prompt'],
         task_commit_message=task['commit_message'],
+        constitution=req.constitution,
+        project_profile=req.project_profile.model_dump(),
+        generator_model=req.generator_model,
+        reviewer_model=req.reviewer_model,
+        planner_model=req.planner_model,
+        required_reviewer_skills=list(req.required_reviewer_skills),
+        generator_persona=req.generator_persona,
         max_iterations=req.max_iterations,
         continuation_token=_new_continuation_token(),
         message='Run started. Provide workspace snapshot for iteration 1.',
@@ -151,7 +175,7 @@ async def continue_task(req: ContinueRequest) -> ContinueResponse:
         state.idempotency_cache[cache_key] = response.model_copy(deep=True)
         return response
 
-    _apply_transition(state, req.action_result)
+    await _apply_transition(state, req.action_result)
 
     response = ContinueResponse(**_checkpoint_payload(state))
     state.idempotency_cache[cache_key] = response.model_copy(deep=True)
@@ -354,15 +378,12 @@ def _checkpoint_payload(state: _TaskRunState) -> dict[str, Any]:
     if state.next_action == 'apply_operations':
         payload = {
             'apply_operations': {
-                'operations': [],
-                'generator_metrics': None,
+                'operations': state.pending_operations,
+                'generator_metrics': state.latest_generator_metrics,
             },
             'meta': {
                 'iteration': state.iteration,
-                'note': (
-                    'MVP placeholder payload. Operation generation will be '
-                    'driven by harness decision logic in a follow-up step.'
-                ),
+                'task_id': state.task_id,
             },
         }
 
@@ -383,13 +404,13 @@ def _checkpoint_payload(state: _TaskRunState) -> dict[str, Any]:
     }
 
 
-def _apply_transition(state: _TaskRunState, action_result: Any) -> None:
+async def _apply_transition(state: _TaskRunState, action_result: Any) -> None:
     """Advance one checkpoint transition after validating action alignment."""
     state.error_code = None
     state.recoverable = None
 
     if action_result.action == 'collect_snapshot':
-        _handle_collect_snapshot(state, action_result)
+        await _handle_collect_snapshot(state, action_result)
         return
 
     if action_result.action == 'apply_operations':
@@ -405,9 +426,78 @@ def _apply_transition(state: _TaskRunState, action_result: Any) -> None:
         return
 
 
-def _handle_collect_snapshot(state: _TaskRunState, action_result: Any) -> None:
+async def _handle_collect_snapshot(state: _TaskRunState, action_result: Any) -> None:
     """Handle collect_snapshot continuation and move run to apply_operations."""
     state.latest_repo_context = action_result.repo_context
+
+    try:
+        if state.execution_plan is None:
+            state.execution_plan = await create_execution_plan(
+                model=state.planner_model,
+                task_prompt=state.task_prompt,
+                project_profile=state.project_profile,
+                constitution=state.constitution,
+                required_skills=state.required_reviewer_skills,
+                generator_persona=state.generator_persona,
+            )
+            state.generator_instructions = build_assignment_instructions(
+                role='generator',
+                persona_id=state.execution_plan.generator.persona,
+                skill_ids=state.execution_plan.generator.skills,
+                focus=state.execution_plan.generator.focus,
+            )
+
+        prompt_context = build_generator_base_prompt(
+            iteration=state.iteration,
+            repo_context=state.latest_repo_context or '',
+            req=RunHarnessRequest(
+                prompt=state.task_prompt,
+                repo_path='checkpoint-run',
+                max_iterations=state.max_iterations,
+                generator_model=state.generator_model,
+                reviewer_model=state.reviewer_model,
+                execution_plan=state.execution_plan,
+                constitution=state.constitution,
+            ),
+            previous_generator_output=state.latest_generator_output,
+            reviewer_feedback=state.latest_reviewer_feedback,
+        )
+        current_prompt = combine_generator_prompt(
+            assignment_instructions=state.generator_instructions or '',
+            task_prompt=prompt_context,
+        )
+        generator_response = await call_together(
+            state.generator_model,
+            current_prompt,
+        )
+        execution_ports = build_local_harness_execution_ports()
+        operations = cast(
+            list[dict[str, Any]],
+            execution_ports.filesystem.parse_file_operations(
+                generator_response['text']
+            ),
+        )
+
+        state.pending_operations = operations
+        state.latest_generator_output = generator_response['text']
+        state.latest_generator_metrics = {
+            'model': state.generator_model,
+            'input_tokens': generator_response.get('input_tokens', 0),
+            'output_tokens': generator_response.get('output_tokens', 0),
+            'duration_ms': generator_response.get('duration_ms', 0),
+        }
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        state.pending_operations = []
+        state.latest_generator_metrics = {
+            'model': state.generator_model,
+            'input_tokens': 0,
+            'output_tokens': 0,
+            'duration_ms': 0,
+        }
+        state.message = (
+            'Generator/operations step failed, continuing with empty operations: '
+            f'{exc}'
+        )
 
     _advance_state(
         state,
