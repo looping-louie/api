@@ -28,6 +28,7 @@ from src.app.services.task_plan import (
     mark_task_done,
 )
 from src.app.utils.io import write_json
+from .utils import validate_and_apply_final_diff
 
 
 async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
@@ -137,7 +138,7 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
             )
 
             if run_harness_result.approved and run_harness_result.final_output:
-                _validate_and_apply_final_diff(
+                validate_and_apply_final_diff(
                     repo_path=req.repo_path,
                     final_diff=run_harness_result.final_output,
                     execution_ports=execution_ports,
@@ -191,29 +192,4 @@ async def run_workflow(req: RunWorkflowRequest) -> RunWorkflowResponse:
         )
 
 
-def _validate_and_apply_final_diff(
-    *,
-    repo_path: str,
-    final_diff: str,
-    execution_ports,
-) -> None:
-    """Apply an approved final diff to the original repository."""
-    valid, error = execution_ports.git.validate_patch(
-        repo_path,
-        final_diff,
-    )
-    if not valid:
-        raise RuntimeError(
-            'Final diff does not apply to original repo: '
-            f'{error}'
-        )
-
-    applied, error = execution_ports.git.apply_patch(
-        repo_path,
-        final_diff,
-    )
-    if not applied:
-        raise RuntimeError(
-            'Could not apply final diff to original repo: '
-            f'{error}'
-        )
+__all__ = ['run_workflow']

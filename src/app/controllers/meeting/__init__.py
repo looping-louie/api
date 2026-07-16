@@ -16,6 +16,7 @@ from src.app.services.meeting.runtime import (
     persist_meeting_response,
 )
 from src.app.services.meeting.team import MeetingPlan
+from .utils import execute_meeting_iterations
 
 
 async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
@@ -29,31 +30,16 @@ async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
         run_path=run_path,
     )
 
-    trace: list[dict[str, Any]] = []
-    current_artifact = ""
-    previous_feedback = ""
-    disagreements: list[str] = []
-    approved = False
-
-    for round_number in range(1, req.max_iterations + 1):
-        result: MeetingRoundResult = await execute_meeting_round(
-            req=req,
-            plan=plan,
-            round_number=round_number,
-            current_artifact=current_artifact,
-            previous_feedback=previous_feedback,
-            disagreements=disagreements,
-            usage=usage,
-            run_path=run_path,
-        )
-        current_artifact = result.artifact
-        previous_feedback = result.feedback
-        disagreements = result.disagreements
-        approved = result.approved
-        trace.append(result.trace)
-
-        if approved:
-            break
+    trace: list[dict[str, Any]]
+    current_artifact: str
+    approved: bool
+    trace, current_artifact, approved = await execute_meeting_iterations(
+        req=req,
+        plan=plan,
+        usage=usage,
+        run_path=run_path,
+        execute_meeting_round_fn=execute_meeting_round,
+    )
 
     response: RunMeetingResponse = build_meeting_response(
         req=req,
@@ -70,3 +56,6 @@ async def run_meeting(req: RunMeetingRequest) -> RunMeetingResponse:
         response=response,
     )
     return response
+
+
+__all__ = ['run_meeting']
