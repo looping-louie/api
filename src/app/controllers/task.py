@@ -35,6 +35,8 @@ class _TaskRunState:
 
     run_id: str
     task_id: str
+    task_prompt: str
+    task_commit_message: str
     max_iterations: int
     iteration: int = 1
     status: TaskStatus = 'in_progress'
@@ -46,6 +48,9 @@ class _TaskRunState:
     message: str | None = None
     recoverable: bool | None = None
     error_code: TaskErrorCode | None = None
+    latest_repo_context: str | None = None
+    latest_final_diff: str | None = None
+    latest_changed_file_count: int = 0
     idempotency_cache: dict[tuple[str | None, str], ContinueResponse] = field(
         default_factory=dict
     )
@@ -59,9 +64,24 @@ async def start_task(req: StartRequest) -> StartResponse:
     run_id = uuid.uuid4().hex[:12]
     task = req.task.model_dump()
 
+    if task['status'] != 'pending':
+        return StartResponse(
+            ok=False,
+            run_id=run_id,
+            iteration=0,
+            status='stopped',
+            next_action='none',
+            continuation_token=None,
+            token_revision=0,
+            message='Task status must be pending to start stepped execution.',
+            recoverable=False,
+        )
+
     state = _TaskRunState(
         run_id=run_id,
         task_id=task['id'],
+        task_prompt=task['prompt'],
+        task_commit_message=task['commit_message'],
         max_iterations=req.max_iterations,
         continuation_token=_new_continuation_token(),
         message='Run started. Provide workspace snapshot for iteration 1.',
@@ -329,6 +349,23 @@ def _validate_and_apply_final_diff(
 
 def _checkpoint_payload(state: _TaskRunState) -> dict[str, Any]:
     """Build checkpoint response payload from in-memory task run state."""
+    payload = None
+
+    if state.next_action == 'apply_operations':
+        payload = {
+            'apply_operations': {
+                'operations': [],
+                'generator_metrics': None,
+            },
+            'meta': {
+                'iteration': state.iteration,
+                'note': (
+                    'MVP placeholder payload. Operation generation will be '
+                    'driven by harness decision logic in a follow-up step.'
+                ),
+            },
+        }
+
     return {
         'ok': state.error_code is None,
         'run_id': state.run_id,
@@ -337,7 +374,7 @@ def _checkpoint_payload(state: _TaskRunState) -> dict[str, Any]:
         'next_action': state.next_action,
         'continuation_token': state.continuation_token,
         'token_revision': state.token_revision,
-        'payload': None,
+        'payload': payload,
         'commit_allowed': state.commit_allowed,
         'completed': state.completed,
         'error_code': state.error_code,
@@ -352,86 +389,110 @@ def _apply_transition(state: _TaskRunState, action_result: Any) -> None:
     state.recoverable = None
 
     if action_result.action == 'collect_snapshot':
-        _advance_state(
-            state,
-            next_action='apply_operations',
-            message=(
-                f'Iteration {state.iteration} snapshot received. '
-                'Apply proposed operations locally and continue.'
-            ),
-        )
+        _handle_collect_snapshot(state, action_result)
         return
 
     if action_result.action == 'apply_operations':
-        if action_result.applied:
-            _advance_state(
-                state,
-                next_action='submit_review_input',
-                message='Operations applied. Submit review input for this iteration.',
-            )
-            return
-
-        if state.iteration >= state.max_iterations:
-            _close_state(
-                state,
-                status='stopped',
-                message='Stopped because apply_operations failed at max_iterations.',
-            )
-            return
-
-        state.iteration += 1
-        _advance_state(
-            state,
-            next_action='collect_snapshot',
-            message='Operation apply failed. Proceeding to next iteration snapshot.',
-        )
+        _handle_apply_operations(state, action_result)
         return
 
     if action_result.action == 'submit_review_input':
-        approved = bool(action_result.final_diff.strip())
-
-        if approved:
-            state.commit_allowed = True
-            _advance_state(
-                state,
-                next_action='commit_if_allowed',
-                message='Review approved. Commit changes locally and continue.',
-            )
-            return
-
-        if state.iteration >= state.max_iterations:
-            _close_state(
-                state,
-                status='stopped',
-                message='Stopped because reviewers did not approve within max_iterations.',
-            )
-            return
-
-        state.iteration += 1
-        _advance_state(
-            state,
-            next_action='collect_snapshot',
-            message='Review not approved. Proceeding to next iteration snapshot.',
-        )
+        _handle_submit_review_input(state, action_result)
         return
 
     if action_result.action == 'commit_if_allowed':
-        state.commit_allowed = False
+        _handle_commit_if_allowed(state, action_result)
+        return
 
-        if action_result.committed:
-            _close_state(
-                state,
-                status='completed',
-                message='Task completed and commit acknowledged by CLI.',
-            )
-            return
 
+def _handle_collect_snapshot(state: _TaskRunState, action_result: Any) -> None:
+    """Handle collect_snapshot continuation and move run to apply_operations."""
+    state.latest_repo_context = action_result.repo_context
+
+    _advance_state(
+        state,
+        next_action='apply_operations',
+        message=(
+            f'Iteration {state.iteration} snapshot received. '
+            'Apply proposed operations locally and continue.'
+        ),
+    )
+
+
+def _handle_apply_operations(state: _TaskRunState, action_result: Any) -> None:
+    """Handle apply_operations continuation and route to review or retry."""
+    if action_result.applied:
+        _advance_state(
+            state,
+            next_action='submit_review_input',
+            message='Operations applied. Submit review input for this iteration.',
+        )
+        return
+
+    if state.iteration >= state.max_iterations:
         _close_state(
             state,
             status='stopped',
-            message='Task approved but commit was not completed by CLI.',
+            message='Stopped because apply_operations failed at max_iterations.',
         )
         return
+
+    state.iteration += 1
+    _advance_state(
+        state,
+        next_action='collect_snapshot',
+        message='Operation apply failed. Proceeding to next iteration snapshot.',
+    )
+
+
+def _handle_submit_review_input(state: _TaskRunState, action_result: Any) -> None:
+    """Handle submit_review_input continuation and route to commit or retry."""
+    state.latest_final_diff = action_result.final_diff
+    state.latest_changed_file_count = len(action_result.changed_file_contents)
+    approved = bool(action_result.final_diff.strip())
+
+    if approved:
+        state.commit_allowed = True
+        _advance_state(
+            state,
+            next_action='commit_if_allowed',
+            message='Review approved. Commit changes locally and continue.',
+        )
+        return
+
+    if state.iteration >= state.max_iterations:
+        _close_state(
+            state,
+            status='stopped',
+            message='Stopped because reviewers did not approve within max_iterations.',
+        )
+        return
+
+    state.iteration += 1
+    _advance_state(
+        state,
+        next_action='collect_snapshot',
+        message='Review not approved. Proceeding to next iteration snapshot.',
+    )
+
+
+def _handle_commit_if_allowed(state: _TaskRunState, action_result: Any) -> None:
+    """Handle commit_if_allowed continuation and close run in terminal state."""
+    state.commit_allowed = False
+
+    if action_result.committed:
+        _close_state(
+            state,
+            status='completed',
+            message='Task completed and commit acknowledged by CLI.',
+        )
+        return
+
+    _close_state(
+        state,
+        status='stopped',
+        message='Task approved but commit was not completed by CLI.',
+    )
 
 
 def _advance_state(
