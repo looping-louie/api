@@ -83,7 +83,7 @@ utils/
                 tasks.json
                      │
                      ▼
-         Task Controller (/task/run)
+            Task Checkpoint Controller
                      │
                      ▼
               Harness Service
@@ -276,7 +276,7 @@ If the run succeeds:
 
 - the final diff is applied to the original repository
 
-If running through `/task/run`:
+If running through checkpoint task flow:
 
 - repository changes are applied to the original repository
 - commit is executed by CLI when API marks commit handoff as allowed
@@ -372,7 +372,7 @@ first pending task
 
 ↓
 
-call /task/run (or stepped task flow)
+call /task/start then iterate /task/continue
 
 ↓
 

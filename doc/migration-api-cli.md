@@ -39,8 +39,9 @@ change when they improve boundary clarity.
 
 Implemented task-related endpoints:
 
-- `POST /task/run`: API-side transitional path that still executes harness and
-    commit flow end to end.
+- `POST /task/start`: starts checkpoint task execution.
+- `POST /task/continue`: advances checkpoint task execution.
+- `GET /task/{run_id}`: returns current run checkpoint state.
 
 Additional active endpoints:
 
@@ -69,7 +70,7 @@ Use schema names consistently to preserve clear boundaries:
 Example applied now:
 
 - Harness service uses `RunHarnessRequest` + `RunHarnessResult`.
-- API endpoints keep `RunTaskRequest`/`RunTaskResponse` and
+- API endpoints keep task checkpoint request/response models and
     `RunMeetingRequest`/`RunMeetingResponse`.
 
 ---
@@ -253,7 +254,7 @@ Shared trace fields:
 
 Continue task-focused migration with clear boundaries:
 
-1. Treat `/task/run` as transitional compatibility path.
+1. Keep task execution on checkpoint endpoints (`/task/start`, `/task/continue`).
 2. Keep LLM calls in API services; avoid moving model calls into controllers.
 3. Move harness execution responsibilities to CLI incrementally after decision
     contracts are stable.

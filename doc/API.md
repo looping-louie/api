@@ -1,19 +1,38 @@
 # API
 
-Looping Louie currently exposes two HTTP endpoints.
+Looping Louie currently exposes task checkpoint endpoints and meeting endpoints.
 
-- `/task/run` executes one task end to end (transitional API-side harness path).
+- `/task/start` starts one task run and returns the first checkpoint action.
+- `/task/continue` advances one checkpoint transition.
+- `/task/{run_id}` returns the latest checkpoint state for one run.
 - `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
 
 ---
 
-## POST /task/run
+## POST /task/start
 
-Executes one task through planner, harness, and commit.
+Starts checkpoint-based task execution.
 
-This endpoint is currently a transitional compatibility path while task
-planning and review contracts are adopted by CLI-based execution.
+The API returns `status=in_progress` with `next_action=collect_snapshot` and
+an opaque `continuation_token`.
+
+## POST /task/continue
+
+Advances one checkpoint transition for an existing task run.
+
+The CLI must send:
+
+- `run_id`
+- `continuation_token`
+- `idempotency_key`
+- `action_result`
+
+The API returns the next action or a terminal state.
+
+## GET /task/{run_id}
+
+Returns the latest checkpoint state for one task run identifier.
 
 ---
 

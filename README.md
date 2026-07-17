@@ -76,7 +76,9 @@ Looping Louie currently exposes two endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/task/run` | Execute one task end to end (transitional API-side harness path). |
+| `/task/start` | Start one checkpoint-based task execution. |
+| `/task/continue` | Advance one checkpoint transition. |
+| `/task/{run_id}` | Read latest checkpoint state for a task run. |
 | `/meeting/run` | Run a structured multi-persona meeting. |
 
 See the complete API documentation:
@@ -116,7 +118,13 @@ Project documentation is organised under `doc/`.
 task request
       │
       ▼
-/task/run
+/task/start
+      │
+      ▼
+CLI local action
+      │
+      ▼
+/task/continue
       │
       ▼
 Harness service

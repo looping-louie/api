@@ -2,8 +2,8 @@
 
 ## Purpose
 
-This document defines a synchronous checkpoint protocol that splits the current
-monolithic `POST /task/run` flow into resumable API-CLI exchanges.
+This document defines a synchronous checkpoint protocol that replaced the former
+monolithic `POST /task/run` flow with resumable API-CLI exchanges.
 
 The protocol keeps API as the decision engine and moves local execution to CLI.
 
@@ -257,12 +257,11 @@ Every error includes:
 
 ## Implementation Plan (Smallest Viable)
 
-1. Add `/task/start` and `/task/continue` alongside existing
-   `/task/run`.
+1. Add `/task/start` and `/task/continue` as the canonical task execution path.
 2. Implement API run-state persistence for checkpoint fields only.
 3. Implement CLI continuation loop behind a feature flag.
-4. Validate parity against existing `/task/run` behavior.
-5. Deprecate monolithic `/task/run` after parity and observability sign-off.
+4. Validate parity against historical single-call behavior.
+5. Keep checkpoint flow as the only task execution API contract.
 
 ## Non-Goals for V1
 

@@ -5,13 +5,11 @@ from src.app.schemas import (
     RunMeetingResponse,
     TaskContinueRequest,
     TaskContinueResponse,
-    RunTaskRequest,
-    RunTaskResponse,
     TaskStartRequest,
     TaskStartResponse,
 )
 from src.app.controllers.meeting import run_meeting
-from src.app.controllers.task import continue_task, get_task, run_task, start_task
+from src.app.controllers.task import continue_task, get_task, start_task
 
 
 # Create the router instance
@@ -33,14 +31,6 @@ async def meeting_run_endpoint(
     trace and execution metrics.
     """
     return await run_meeting(req)
-
-
-@router.post('/task/run', response_model=RunTaskResponse)
-async def task_run_endpoint(req: RunTaskRequest) -> RunTaskResponse:
-    """
-    Execute one task through planner, harness, and commit stages.
-    """
-    return await run_task(req)
 
 
 @router.post('/task/start', response_model=TaskStartResponse)
