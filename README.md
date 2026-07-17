@@ -72,12 +72,11 @@ http://127.0.0.1:8000
 
 ## Usage
 
-Looping Louie currently exposes three endpoints.
+Looping Louie currently exposes two endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
 | `/task/run` | Execute one task end to end (transitional API-side harness path). |
-| `/workflow/run` | Execute an entire `tasks.json` backlog (legacy path). |
 | `/meeting/run` | Run a structured multi-persona meeting. |
 
 See the complete API documentation:
@@ -114,10 +113,10 @@ Project documentation is organised under `doc/`.
 ## High-Level Execution Flow
 
 ```
-tasks.json
+task request
       │
       ▼
-/workflow/run
+/task/run
       │
       ▼
 Harness service
@@ -162,7 +161,6 @@ The current implementation already supports:
 
 - isolated Git worktrees;
 - multi-skill review;
-- task backlogs (`tasks.json`);
 - automatic commits;
 - execution traces;
 - run persistence;

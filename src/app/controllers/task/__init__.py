@@ -4,6 +4,7 @@ import uuid
 
 from src.app.schemas import RunHarnessRequest, RunHarnessResult
 from src.app.schemas.task import (
+    CompletedTask,
     ContinueRequest,
     ContinueResponse,
     GetResponse,
@@ -12,7 +13,6 @@ from src.app.schemas.task import (
     RunRequest as RunTaskRequest,
     RunResponse as RunTaskResponse,
 )
-from src.app.schemas.workflow import CompletedTask
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.harness.adapters import build_local_harness_execution_ports
 from src.app.services.harness.decision import build_generator_base_prompt

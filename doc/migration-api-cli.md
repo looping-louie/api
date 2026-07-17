@@ -45,7 +45,6 @@ Implemented task-related endpoints:
 Additional active endpoints:
 
 - `POST /meeting/run`.
-- `POST /workflow/run` (legacy path; currently considered lower priority).
 
 Current task contract notes:
 
@@ -70,9 +69,8 @@ Use schema names consistently to preserve clear boundaries:
 Example applied now:
 
 - Harness service uses `RunHarnessRequest` + `RunHarnessResult`.
-- API endpoints keep `RunTaskRequest`/`RunTaskResponse`,
-  `RunWorkflowRequest`/`RunWorkflowResponse`, and
-  `RunMeetingRequest`/`RunMeetingResponse`.
+- API endpoints keep `RunTaskRequest`/`RunTaskResponse` and
+    `RunMeetingRequest`/`RunMeetingResponse`.
 
 ---
 

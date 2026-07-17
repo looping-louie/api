@@ -33,10 +33,6 @@ from src.app.schemas.meeting import (
     RunRequest as RunMeetingRequest,
     RunResponse as RunMeetingResponse,
 )
-from src.app.schemas.workflow import (
-    RunRequest as RunWorkflowRequest,
-    RunResponse as RunWorkflowResponse,
-)
 from src.app.schemas.task import (
     CheckpointResponse as TaskCheckpointResponse,
     ContinueActionResult as TaskContinueActionResult,
@@ -77,6 +73,4 @@ __all__ = [
     'TaskStartRequest',
     'TaskStartResponse',
     'RunMetrics',
-    'RunWorkflowRequest',
-    'RunWorkflowResponse',
 ]

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.app.controllers import workflow
 from src.app.controllers import task
 import src.app.services.harness.runner as harness_runner
 from src.app.schemas import (
@@ -12,7 +11,6 @@ from src.app.schemas import (
     GeneratorAssignment,
     ReviewerAssignment,
     RunTaskRequest,
-    RunWorkflowRequest,
 )
 from src.app.schemas.task import ContinueRequest, StartRequest
 
@@ -52,100 +50,6 @@ def _fake_execution_ports(run_id: str = 'run-test'):
         apply_patch=lambda _repo_path, _patch: (True, ''),
     )
     return SimpleNamespace(workspace=workspace, git=git)
-
-
-def test_workflow_controller_uses_harness_service_path(monkeypatch, tmp_path):
-    execution_plan = ExecutionPlan(
-        phase='mvp',
-        reasoning='test plan',
-        generator=GeneratorAssignment(
-            persona='tech_lead',
-            skills=[],
-            focus='ship the change',
-        ),
-        reviewers=[
-            ReviewerAssignment(
-                persona='tech_lead',
-                skills=['small_patch_quality'],
-                strictness=55,
-                focus='review the patch',
-            )
-        ],
-    )
-
-    class FakeRunResponse:
-        approved = True
-        run_id = 'run-123'
-        final_output = ''
-        execution_trace = []
-
-        class run_metrics:  # pylint: disable=too-few-public-methods,invalid-name
-            @staticmethod
-            def model_dump():
-                return {'iterations': 0}
-
-        @staticmethod
-        def model_dump():
-            return {
-                'run_id': 'run-123',
-                'approved': True,
-                'final_output': '',
-                'execution_trace': [],
-                'run_metrics': {'iterations': 0},
-            }
-
-    async def fake_create_execution_plan(**_kwargs):
-        return execution_plan
-
-    async def fake_run_harness(_req, **_kwargs):
-        return FakeRunResponse()
-
-    monkeypatch.setattr(workflow, 'create_execution_plan', fake_create_execution_plan)
-    monkeypatch.setattr(workflow, 'run_harness', fake_run_harness)
-    monkeypatch.setattr(
-        workflow,
-        'build_local_harness_execution_ports',
-        lambda: _fake_execution_ports('run-123'),
-    )
-    monkeypatch.setattr(
-        workflow,
-        'create_workspace',
-        lambda _repo_path, _run_id: SimpleNamespace(
-            worktree_path=Path('/tmp/worktree'),
-        ),
-    )
-    monkeypatch.setattr(workflow, 'cleanup_workspace', lambda _workspace: None)
-    monkeypatch.setattr(
-        workflow,
-        'build_execution_run_path',
-        lambda run_id: tmp_path / run_id,
-    )
-
-    request = RunWorkflowRequest(
-        repo_path='/tmp/repo',
-        constitution='Implement only the requested task.',
-        project_profile=VALID_PROJECT_PROFILE,
-        tasks=[
-            {
-                'id': 'task-001',
-                'status': 'pending',
-                'prompt': 'Implement small change',
-                'run_id': None,
-                'commit_message': 'feat: implement small change',
-            }
-        ],
-    )
-
-    result = asyncio.run(workflow.run_workflow(request))
-
-    assert result.ok is True
-    assert result.status == 'completed'
-    assert result.commit_allowed is True
-    assert result.task_id == 'task-001'
-    assert result.run_id == 'run-123'
-    assert len(result.completed) == 1
-    assert result.completed[0].run_id == 'run-123'
-    assert result.completed[0].commit_sha == 'deprecated API response field'
 
 
 def test_task_controller_uses_harness_service_path(monkeypatch, tmp_path):
@@ -450,6 +354,89 @@ def test_task_checkpoint_continue_rejects_token_conflict():
     assert result.recoverable is True
 
 
+def test_task_checkpoint_continue_replays_token_conflict_with_same_idempotency_key():
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    start_result = asyncio.run(
+        task.start_task(
+            StartRequest(
+                repo_path='/tmp/repo',
+                constitution='Implement only the requested task.',
+                project_profile=VALID_PROJECT_PROFILE,
+                task={
+                    'id': 'task-checkpoint-002b',
+                    'status': 'pending',
+                    'prompt': 'Replay token conflict',
+                    'run_id': None,
+                    'commit_message': 'feat: token conflict replay',
+                },
+            )
+        )
+    )
+
+    request = ContinueRequest(
+        run_id=start_result.run_id,
+        continuation_token='wrong-token',
+        idempotency_key='idem-conflict-replay',
+        action_result={
+            'action': 'collect_snapshot',
+            'repo_context': 'snapshot',
+            'workspace_metadata': {
+                'workspace_path': '/tmp/workspace',
+                'source_commit_sha': 'abc123',
+            },
+        },
+    )
+
+    first = asyncio.run(task.continue_task(request))
+    second = asyncio.run(task.continue_task(request))
+
+    assert first.ok is False
+    assert first.error_code == 'token_conflict'
+    assert first.recoverable is True
+    assert first.model_dump() == second.model_dump()
+
+
+def test_task_checkpoint_continue_rejects_invalid_transition():
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    start_result = asyncio.run(
+        task.start_task(
+            StartRequest(
+                repo_path='/tmp/repo',
+                constitution='Implement only the requested task.',
+                project_profile=VALID_PROJECT_PROFILE,
+                task={
+                    'id': 'task-checkpoint-002c',
+                    'status': 'pending',
+                    'prompt': 'Invalid transition',
+                    'run_id': None,
+                    'commit_message': 'feat: invalid transition',
+                },
+            )
+        )
+    )
+
+    result = asyncio.run(
+        task.continue_task(
+            ContinueRequest(
+                run_id=start_result.run_id,
+                continuation_token=start_result.continuation_token,
+                idempotency_key='idem-invalid-transition',
+                action_result={
+                    'action': 'commit_if_allowed',
+                    'committed': False,
+                    'error': 'wrong action for this checkpoint',
+                },
+            )
+        )
+    )
+
+    assert result.ok is False
+    assert result.error_code == 'invalid_transition'
+    assert result.recoverable is True
+
+
 def test_task_checkpoint_continue_replays_idempotent_response(monkeypatch):
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
 
@@ -558,29 +545,6 @@ def test_task_checkpoint_get_returns_latest_state():
 
     assert missing_result.ok is False
     assert missing_result.error_code == 'run_not_found'
-
-    with pytest.raises(ValueError):
-        RunWorkflowRequest(
-            repo_path='/tmp/repo',
-            constitution='Implement only the requested task.',
-            project_profile={
-                'source_file_count': 12,
-                'approximate_source_chars': 2048,
-                'extension_counts': {'.py': 10},
-                'top_level_entries': ['src/'],
-                # Missing required markers payload
-            },
-            tasks=[
-                {
-                    'id': 'task-005',
-                    'status': 'pending',
-                    'prompt': 'Implement another change',
-                    'run_id': None,
-                    'commit_message': 'feat: implement another change',
-                }
-            ],
-        )
-
 
 def test_harness_runner_creates_execution_run_path_under_runtime(
     monkeypatch,

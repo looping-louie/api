@@ -83,7 +83,7 @@ utils/
                 tasks.json
                      │
                      ▼
-        Workflow Controller (/workflow/run)
+         Task Controller (/task/run)
                      │
                      ▼
               Harness Service
@@ -276,11 +276,10 @@ If the run succeeds:
 
 - the final diff is applied to the original repository
 
-If running through `/workflow/run`:
+If running through `/task/run`:
 
-- repository changes are committed
-- task is marked as completed
-- next task begins
+- repository changes are applied to the original repository
+- commit is executed by CLI when API marks commit handoff as allowed
 
 ---
 
@@ -360,9 +359,9 @@ The worktree isolates every execution from the original repository.
 
 ## Task Lifecycle
 
-The `/workflow/run` endpoint executes an entire backlog.
+Multi-task backlog orchestration is CLI-owned.
 
-Workflow:
+CLI workflow (conceptual):
 
 ```text
 tasks.json
@@ -373,7 +372,7 @@ first pending task
 
 ↓
 
-run harness
+call /task/run (or stepped task flow)
 
 ↓
 

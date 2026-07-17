@@ -1,9 +1,8 @@
 # API
 
-Looping Louie currently exposes three HTTP endpoints.
+Looping Louie currently exposes two HTTP endpoints.
 
 - `/task/run` executes one task end to end (transitional API-side harness path).
-- `/workflow/run` executes an entire `tasks.json` backlog (legacy path).
 - `/meeting/run` runs a discussion between several personas to produce shape an
   idea or implement an execution plan.
 
@@ -15,98 +14,6 @@ Executes one task through planner, harness, and commit.
 
 This endpoint is currently a transitional compatibility path while task
 planning and review contracts are adopted by CLI-based execution.
-
----
-
-## POST /workflow/run
-
-Legacy path. This endpoint remains available but is currently lower priority
-than task-focused migration contracts.
-
-Executes every pending task from a task array.
-
-Tasks must be sent directly in the `tasks` field.
-
-Tasks are processed sequentially.
-
-For each approved task, Looping Louie:
-
-1. Executes the harness.
-2. Commits the repository changes.
-3. Marks the task as `done`.
-4. Continues with the next pending task.
-
-Execution stops immediately when a task cannot be approved within the
-configured iteration limit.
-
-### Run Workflow Request
-
-| Field | Description |
-| ----- | ----------- |
-| `repo_path` | Path to the Git repository. |
-| `tasks` | Ordered array of workflow tasks to execute. Required. |
-| `max_iterations` | Maximum iterations per task. |
-| `generator_model` | Model used for generation. |
-| `reviewer_model` | Model used for every reviewer skill. |
-| `constitution` | Project principles and constraints. |
-| `project_profile` | Typed repository profile provided by caller. |
-| `required_reviewer_skills` | Reviewer skills that must appear in the team. |
-
-### Run Workflow Example
-
-```sh
-curl -X POST http://127.0.0.1:8000/workflow/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
-    "constitution": "Implement only the requested task.",
-    "project_profile": {
-      "source_file_count": 120,
-      "approximate_source_chars": 350000,
-      "extension_counts": {
-        ".ts": 60,
-        ".vue": 35,
-        ".py": 20,
-        ".md": 5
-      },
-      "top_level_entries": [
-        "src/",
-        "tests/",
-        "README.md"
-      ],
-      "markers": {
-        "nuxt": true,
-        "package_json": true,
-        "fastapi": false,
-        "docker": false,
-        "tests": true
-      }
-    },
-    "tasks": [
-      {
-        "id": "task-001",
-        "status": "pending",
-        "prompt": "Implement the new empty state for ideas.",
-        "run_id": null,
-        "commit_message": "Add ideas empty state"
-      }
-    ],
-    "max_iterations": 3,
-    "generator_model": "zai-org/GLM-5.2",
-    "reviewer_model": "gpt-4.1-mini",
-    "required_reviewer_skills": [
-      "small_patch_quality",
-      "nuxt_code_review",
-      "preserve_existing_ui"
-    ]
-  }'
-```
-
-### Run Workflow Example From `tasks.json`
-
-```sh
-jq -n --arg repo_path "/home/jadraque/Documents/source/looping-louie/web" --argjson tasks "$(jq -c . /home/jadraque/Documents/source/looping-louie/web/.looping-louie/tasks.json)" '{repo_path:$repo_path,constitution:"Implement only the requested task.",project_profile:{source_file_count:120,approximate_source_chars:350000,extension_counts:{".ts":60,".vue":35,".py":20,".md":5},top_level_entries:["src/","tests/","README.md"],markers:{nuxt:true,package_json:true,fastapi:false,docker:false,tests:true}},tasks:$tasks,max_iterations:3,generator_model:"zai-org/GLM-5.2",reviewer_model:"gpt-4.1-mini",required_reviewer_skills:["small_patch_quality","nuxt_code_review","preserve_existing_ui"]}' | curl -X POST http://127.0.0.1:8000/workflow/run -H "Content-Type: application/json" --data-binary @-
-```
 
 ---
 

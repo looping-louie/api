@@ -10,12 +10,12 @@ from src.app.schemas import (
     RunHarnessRequest,
 )
 from src.app.schemas.task import (
+    CompletedTask,
     ContinueResponse,
     TaskAction,
     TaskErrorCode,
     TaskStatus,
 )
-from src.app.schemas.workflow import CompletedTask
 from src.app.utils.io import write_json
 
 

@@ -5,9 +5,34 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.metrics import ModelMetrics
+from src.app.schemas.plan import ProjectPhase
 from src.app.schemas.project import ProjectProfile
-from src.app.schemas.workflow import CompletedTask, Task
+from src.app.schemas.reviewer import ReviewerAssignment
+
+
+class Task(BaseModel):
+    """One task received from the caller."""
+
+    id: str
+    status: Literal['pending', 'done']
+    prompt: str
+    run_id: str | None = None
+    commit_message: str
+
+
+class CompletedTask(BaseModel):
+    """One task completed during execution."""
+
+    task_id: str
+    run_id: str
+    commit_sha: str
+    commit_message: str
+    phase: ProjectPhase
+    reasoning: str
+    generator: GeneratorAssignment
+    reviewers: list[ReviewerAssignment]
 
 
 class RunRequest(BaseModel):
@@ -198,6 +223,7 @@ __all__ = [
     'ApplyOperationsActionResult',
     'ApplyOperationsPayload',
     'CollectSnapshotActionResult',
+    'CompletedTask',
     'CommitIfAllowedActionResult',
     'GetResponse',
     'RunRequest',
@@ -213,5 +239,6 @@ __all__ = [
     'CheckpointPayload',
     'TaskErrorCode',
     'TaskStatus',
+    'Task',
     'WorkspaceMetadata',
 ]

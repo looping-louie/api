@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 from src.app.schemas import (
     GetTaskResponse,
-    RunWorkflowRequest,
-    RunWorkflowResponse,
     RunMeetingRequest,
     RunMeetingResponse,
     TaskContinueRequest,
@@ -12,25 +10,12 @@ from src.app.schemas import (
     TaskStartRequest,
     TaskStartResponse,
 )
-from src.app.controllers.workflow import run_workflow
 from src.app.controllers.meeting import run_meeting
 from src.app.controllers.task import continue_task, get_task, run_task, start_task
 
 
 # Create the router instance
 router = APIRouter()
-
-
-@router.post("/workflow/run", response_model=RunWorkflowResponse)
-async def workflow_run_endpoint(req: RunWorkflowRequest) -> RunWorkflowResponse:
-    """
-    Execute every pending task from a tasks.json file.
-
-    Tasks are processed sequentially.
-    Each approved task is committed immediately.
-    Execution stops at the first task that cannot be approved.
-    """
-    return await run_workflow(req)
 
 
 @router.post("/meeting/run", response_model=RunMeetingResponse)
@@ -54,8 +39,6 @@ async def meeting_run_endpoint(
 async def task_run_endpoint(req: RunTaskRequest) -> RunTaskResponse:
     """
     Execute one task through planner, harness, and commit stages.
-
-    This endpoint mirrors the workflow inner loop for a single task.
     """
     return await run_task(req)
 
