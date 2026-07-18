@@ -1,12 +1,15 @@
 # API
 
-Looping Louie currently exposes task checkpoint endpoints and meeting endpoints.
+Looping Louie API exposes task checkpoint endpoints and meeting endpoints.
+
+The API owns planning, generation, and reviewer decisions.
+CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 
 - `/task/start` starts one task run and returns the first checkpoint action.
 - `/task/continue` advances one checkpoint transition.
 - `/task/{run_id}` returns the latest checkpoint state for one run.
-- `/meeting/run` runs a discussion between several personas to produce shape an
-  idea or implement an execution plan.
+- `/meeting/run` runs a discussion between several personas to shape an idea
+  or produce an implementation plan.
 
 ---
 

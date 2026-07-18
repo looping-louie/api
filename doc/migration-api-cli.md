@@ -74,7 +74,7 @@ Use schema names consistently to preserve clear boundaries:
 
 Example applied now:
 
-- Harness service uses `RunHarnessRequest` + `RunHarnessResult`.
+- Internal checkpoint planning/review flow uses `RunHarnessRequest`.
 - API endpoints keep task checkpoint request/response models and
     `RunMeetingRequest`/`RunMeetingResponse`.
 

@@ -1,6 +1,6 @@
 # Looping Louie Architecture
 
-Looping Louie is a Harness-as-a-Service runtime for iterative LLM software
+Looping Louie API is the decision engine for iterative LLM software
 development.
 
 Rather than trusting a single model to generate production-ready code, Looping
@@ -30,19 +30,13 @@ controllers/
     HTTP-level request orchestration
 
 services/harness/
-    Harness orchestration
-
-services/workspace/
-    Workspace lifecycle management
+    Planning and reviewer decision helpers
 
 services/model_context/
     Repository snapshot and prompt context construction
 
-services/filesystem/
-    File operation parsing and application
-
-services/git/
-    Git diff, patch and repository helpers
+services/task_checkpoint/
+    Checkpoint run path and operation contract parsing
 
 services/llm_service/
     Provider-specific model integrations
@@ -55,9 +49,6 @@ services/task_plan/
 
 services/meeting/
     Multi-persona meeting orchestration
-
-services/project/
-    Project profile and constitution loading
 
 personas/
     Persona library and registry
@@ -86,36 +77,16 @@ utils/
             Task Checkpoint Controller
                      │
                      ▼
-              Harness Service
+        Planner + Generator
                      │
-          ┌──────────┴──────────┐
-          │                     │
-          ▼                     │
-   Workspace Manager            │
-          │                     │
-          ▼                     │
-     Git Worktree               │
-          │                     │
-          ▼                     │
-   Repository Snapshot          │
-          │                     │
-          ▼                     │
-      Prompt Builder            │
-          │                     │
-          ▼                     │
-      Generator Model           │
-          │                     │
-          ▼                     │
-     JSON File Operations       │
-          │                     │
-          ▼                     │
-      File Operations           │
-          │                     │
-          ▼                     │
-      Git Diff Builder          │
-          │                     │
-          ▼                     │
-      Reviewer Skills ◄─────────┘
+                     ▼
+    Operation Contract (JSON operations)
+                     │
+                     ▼
+           CLI Executes Locally
+                     │
+                     ▼
+             Reviewer Skills
           │
           ▼
       Aggregator
@@ -124,8 +95,8 @@ utils/
       │        │
       │No      │Yes
       ▼        ▼
- Retry      Apply diff
-             Commit
+ Retry      Commit allowed
+             (CLI commits)
              Next task
 ```
 
@@ -133,22 +104,12 @@ utils/
 
 ## Execution Lifecycle
 
-A single harness execution follows these steps.
+A single checkpoint task execution follows these steps.
 
-### 1. Create a workspace
+### 1. Start run and persist API artefacts
 
-A temporary Git worktree is created from the repository HEAD.
-
-The original repository remains untouched.
-
-Every run receives a repository-scoped worktree directory under:
-
-```text
-.looping-louie/runs/<run_id>/
-```
-
-Harness execution artefacts (request, prompts, responses, diff, trace,
-metrics) are persisted under the API runtime root:
+Task execution artefacts (request, prompts, responses, operations,
+review summaries, metrics) are persisted under the API runtime root:
 
 ```text
 runtime/executions/<run_id>/
@@ -156,15 +117,11 @@ runtime/executions/<run_id>/
 
 ---
 
-### 2. Build repository context
+### 2. Receive repository context from CLI
 
-The repository is scanned.
+CLI sends the repository snapshot context in `collect_snapshot`.
 
-Only relevant source files are included.
-
-Large generated artefacts such as lockfiles, build output and dependencies are ignored.
-
-The resulting snapshot becomes part of the generator prompt.
+API uses that context to build iteration prompts.
 
 ---
 
@@ -206,23 +163,21 @@ Example:
 
 ---
 
-### 5. Apply file operations
+### 5. Validate operation contract and ask CLI to apply
 
-The runtime validates every operation.
+API validates generator operations contract and returns them in checkpoint
+payload.
 
-Operations are applied only inside the temporary worktree.
-
-The original repository is still untouched.
+CLI applies operations locally and reports success/failure in
+`apply_operations`.
 
 ---
 
-### 6. Produce the Git diff
+### 6. Receive diff and changed file contents from CLI
 
-Git computes the real diff.
+CLI sends `final_diff` and changed file contents in `submit_review_input`.
 
-The generator never produces patches directly.
-
-Git is considered the single source of truth.
+API uses this reviewer input as the decision source of truth.
 
 ---
 
@@ -274,12 +229,8 @@ The loop continues until:
 
 If the run succeeds:
 
-- the final diff is applied to the original repository
-
-If running through checkpoint task flow:
-
-- repository changes are applied to the original repository
-- commit is executed by CLI when API marks commit handoff as allowed
+- API marks commit handoff as allowed.
+- CLI performs the commit and reports the result.
 
 ---
 
@@ -329,31 +280,9 @@ release/
 
 ## Workspace Lifecycle
 
-Each harness execution owns one workspace.
+Workspace lifecycle is CLI-owned.
 
-```text
-.looping-louie/
-
-runs/
-
-<run_id>/
-
-worktree/
-
-generator/
-
-reviewers/
-
-diffs/
-
-request.json
-
-response.json
-
-trace.json
-```
-
-The worktree isolates every execution from the original repository.
+API only persists orchestration artefacts under `runtime/executions/<run_id>/`.
 
 ---
 

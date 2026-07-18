@@ -1,6 +1,6 @@
 # Looping Louie
 
-Looping Louie is a Harness-as-a-Service runtime for iterative LLM software development.
+Looping Louie API is the decision engine for iterative LLM software development.
 
 Instead of relying on a single model, Looping Louie orchestrates a development loop where:
 
@@ -25,11 +25,11 @@ will be able to rapidly implement whatever project is in their mind.
 
 - Iterative generator/reviewer workflow
 - Multiple independent review skills
-- Git worktree isolation
+- Checkpoint-based API-CLI orchestration
 - Automatic Git diff generation
 - JSON-based file operations
-- Automatic task execution from `tasks.json`
-- One commit per approved task
+- API-guided local execution in CLI
+- One commit per approved task (executed by CLI)
 - Complete execution traces
 - Token and latency metrics
 - Provider-independent architecture
@@ -81,7 +81,7 @@ http://127.0.0.1:8000
 
 ## Usage
 
-Looping Louie currently exposes two endpoints.
+Looping Louie currently exposes these endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -130,19 +130,13 @@ task request
 /task/start
       │
       ▼
-CLI local action
+CLI builds snapshot and runs local action
       │
       ▼
 /task/continue
       │
       ▼
-Harness service
-      │
-      ▼
-Create Git worktree
-      │
-      ▼
-Build repository snapshot
+Planner and reviewer services
       │
       ▼
 Generator model
@@ -164,8 +158,8 @@ Approved?
  │           │
  │ No        │ Yes
  ▼           ▼
-Retry    Apply diff
-          Commit
+Retry    Commit allowed
+          (CLI commits)
 ```
 
 ---
@@ -176,7 +170,7 @@ Looping Louie is currently an MVP focused on validating the execution runtime.
 
 The current implementation already supports:
 
-- isolated Git worktrees;
+- checkpoint task execution contracts;
 - multi-skill review;
 - automatic commits;
 - execution traces;
