@@ -129,7 +129,7 @@ async def _apply_transition(
     action_result: Any,
     *,
     create_execution_plan_fn: Any,
-    build_local_harness_execution_ports_fn: Any,
+    parse_file_operations_fn: Any,
     build_generator_base_prompt_fn: Any,
     build_assignment_instructions_fn: Any,
     combine_generator_prompt_fn: Any,
@@ -147,7 +147,7 @@ async def _apply_transition(
             state,
             action_result,
             create_execution_plan_fn=create_execution_plan_fn,
-            build_local_harness_execution_ports_fn=build_local_harness_execution_ports_fn,
+            parse_file_operations_fn=parse_file_operations_fn,
             build_generator_base_prompt_fn=build_generator_base_prompt_fn,
             build_assignment_instructions_fn=build_assignment_instructions_fn,
             combine_generator_prompt_fn=combine_generator_prompt_fn,
@@ -179,7 +179,7 @@ async def _handle_collect_snapshot(
     action_result: Any,
     *,
     create_execution_plan_fn: Any,
-    build_local_harness_execution_ports_fn: Any,
+    parse_file_operations_fn: Any,
     build_generator_base_prompt_fn: Any,
     build_assignment_instructions_fn: Any,
     combine_generator_prompt_fn: Any,
@@ -240,10 +240,9 @@ async def _handle_collect_snapshot(
             state.generator_model,
             current_prompt,
         )
-        execution_ports = build_local_harness_execution_ports_fn()
         operations = cast(
             list[dict[str, Any]],
-            execution_ports.filesystem.parse_file_operations(
+            parse_file_operations_fn(
                 generator_response['text']
             ),
         )

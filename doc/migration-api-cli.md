@@ -35,7 +35,7 @@ change when they improve boundary clarity.
 - Defer authentication and authorization design.
 - Keep code operational in API now so selected modules can later move to CLI.
 
-## Current State Snapshot (2026-07-14)
+## Current State Snapshot (2026-07-17)
 
 Implemented task-related endpoints:
 
@@ -46,6 +46,11 @@ Implemented task-related endpoints:
 Additional active endpoints:
 
 - `POST /meeting/run`.
+
+Removed endpoints:
+
+- `POST /task/run`.
+- `POST /workflow/run`.
 
 Current task contract notes:
 
@@ -256,8 +261,7 @@ Continue task-focused migration with clear boundaries:
 
 1. Keep task execution on checkpoint endpoints (`/task/start`, `/task/continue`).
 2. Keep LLM calls in API services; avoid moving model calls into controllers.
-3. Move harness execution responsibilities to CLI incrementally after decision
-    contracts are stable.
-4. Evaluate and refine the checkpoint proposal in
-    `doc/task-checkpoint-protocol-v1.md` to split monolithic task execution
-    into resumable synchronous API-CLI exchanges.
+3. Keep workflow orchestration in CLI by reusing checkpoint task execution per
+    workflow task.
+4. Improve observability contracts (`run_id`, iteration, action) across API and
+    CLI traces for end-to-end debugging.

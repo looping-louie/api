@@ -10,14 +10,16 @@ from src.app.schemas.task import (
     StartResponse,
 )
 from src.app.services.execution_planner import create_execution_plan
-from src.app.services.harness.adapters import build_local_harness_execution_ports
 from src.app.services.harness.decision import build_generator_base_prompt
 from src.app.services.harness.reviewers import build_failed_feedback, run_single_reviewer
-from src.app.services.harness.runner import build_execution_run_path
 from src.app.services.instructions import build_assignment_instructions
 from src.app.services.instructions import combine_generator_prompt
 from src.app.services.llm_service.together import call_together
 from src.app.services.model_context import build_reviewer_input
+from src.app.services.task_checkpoint import (
+    build_execution_run_path,
+    parse_file_operations,
+)
 from src.app.utils.io import write_json
 from . import utils
 
@@ -143,7 +145,7 @@ async def continue_task(req: ContinueRequest) -> ContinueResponse:
         state,
         req.action_result,
         create_execution_plan_fn=create_execution_plan,
-        build_local_harness_execution_ports_fn=build_local_harness_execution_ports,
+        parse_file_operations_fn=parse_file_operations,
         build_generator_base_prompt_fn=build_generator_base_prompt,
         build_assignment_instructions_fn=build_assignment_instructions,
         combine_generator_prompt_fn=combine_generator_prompt,

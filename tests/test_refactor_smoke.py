@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from src.app.controllers import task
-import src.app.services.harness.runner as harness_runner
+import src.app.services.task_checkpoint as task_checkpoint
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
@@ -314,14 +314,14 @@ def test_task_checkpoint_get_returns_latest_state():
     assert missing_result.ok is False
     assert missing_result.error_code == 'run_not_found'
 
-def test_harness_runner_creates_execution_run_path_under_runtime(
+def test_task_checkpoint_creates_execution_run_path_under_runtime(
     monkeypatch,
     tmp_path,
 ):
     executions_root = tmp_path / 'runtime' / 'executions'
-    monkeypatch.setattr(harness_runner, 'EXECUTION_RUNS_DIR', executions_root)
+    monkeypatch.setattr(task_checkpoint, 'EXECUTION_RUNS_DIR', executions_root)
 
-    run_path = harness_runner.build_execution_run_path('run-abc123')
+    run_path = task_checkpoint.build_execution_run_path('run-abc123')
 
     assert run_path == executions_root / 'run-abc123'
     assert run_path.exists()

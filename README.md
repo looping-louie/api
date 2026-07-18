@@ -12,6 +12,15 @@ The runtime is provider-independent and designed to be reproducible, observable 
 
 ---
 
+## Big picture
+
+Lets take a step back and remember: Looping Louie is an app for fast
+AI-driven development, which intends to automate the dev cycle.
+
+Ideally, an user will create a repo (looping-louie-test) and, by means of
+interacting with the lopping-louie CLI (which internally calls to the API),
+will be able to rapidly implement whatever project is in their mind.
+
 ## Features
 
 - Iterative generator/reviewer workflow

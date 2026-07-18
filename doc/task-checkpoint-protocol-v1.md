@@ -1,4 +1,4 @@
-# Task Checkpoint Protocol V1 (Draft)
+# Task Checkpoint Protocol V1
 
 ## Purpose
 
@@ -21,10 +21,10 @@ at every iteration without losing run continuity.
 
 ## Scope
 
-This draft covers task execution only.
+This protocol is the canonical task execution contract.
 
-Workflow execution can reuse the same envelope by nesting one task run under a
-workflow run.
+Workflow execution in CLI reuses this task envelope by executing each workflow
+task through `POST /task/start` and `POST /task/continue`.
 
 ## Core Ideas
 
@@ -252,16 +252,16 @@ Every error includes:
 - CLI can own workspace and local mutations immediately.
 - API keeps planner/reviewer/model logic with minimal rewrite.
 - Existing loop semantics remain intact, but are externalized into checkpoints.
-- Task migration can complete before workflow migration.
 - Workflow can reuse this protocol with a parent workflow envelope.
 
-## Implementation Plan (Smallest Viable)
+## Implementation Status
 
-1. Add `/task/start` and `/task/continue` as the canonical task execution path.
-2. Implement API run-state persistence for checkpoint fields only.
-3. Implement CLI continuation loop behind a feature flag.
-4. Validate parity against historical single-call behavior.
-5. Keep checkpoint flow as the only task execution API contract.
+1. `POST /task/start` and `POST /task/continue` are the canonical task
+  execution path.
+2. API run-state persistence for checkpoint fields is active.
+3. CLI `task run` uses checkpoint continuation as the default execution path.
+4. CLI `workflow run` reuses the same checkpoint task execution loop.
+5. Legacy monolithic task execution endpoint is removed.
 
 ## Non-Goals for V1
 
