@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-from src.app.schemas import ExecutionPlan, IterationTrace, RunMetrics
+from src.app.schemas import ExecutionPlan
 
 
 class RunRequest(BaseModel):
@@ -29,19 +29,4 @@ class RunRequest(BaseModel):
     constitution: str = ''
 
 
-class RunResult(BaseModel):
-    """
-    Final response returned by one harness execution.
-
-    Contains the final diff, approval status, execution trace
-    and aggregated execution metrics.
-    """
-
-    run_id: str
-    final_output: str
-    approved: bool
-    run_metrics: RunMetrics
-    execution_trace: list[IterationTrace]
-
-
-__all__ = ['RunRequest', 'RunResult']
+__all__ = ['RunRequest']
