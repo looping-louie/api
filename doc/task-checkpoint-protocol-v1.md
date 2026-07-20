@@ -9,13 +9,13 @@ The protocol keeps API as the decision engine and moves local execution to CLI.
 
 ## Why This Exists
 
-The current harness loop combines three responsibilities in one API request:
+The legacy single-call flow combined three responsibilities in one API request:
 
 - build iteration prompt and call generator model;
 - apply generator operations to workspace and compute local diff;
 - run reviewers and decide whether to continue.
 
-Workspace and local repository mutations belong to CLI in the target
+Local repository mutations belong to CLI in the target
 architecture. A checkpoint protocol lets API and CLI alternate responsibilities
 at every iteration without losing run continuity.
 
@@ -48,8 +48,8 @@ Every response and continuation request includes these fields:
 
 ## Next Actions
 
-- `collect_snapshot`: CLI builds repository snapshot from workspace and sends it.
-- `apply_operations`: CLI applies API-provided operations to workspace.
+- `collect_snapshot`: CLI builds repository snapshot from local repo state and sends it.
+- `apply_operations`: CLI applies API-provided operations locally.
 - `submit_review_input`: CLI sends final diff and changed file contents.
 - `commit_if_allowed`: CLI commits approved changes locally.
 - `none`: terminal state.
@@ -113,7 +113,7 @@ Response:
 
 ### collect_snapshot -> action_result
 
-- `repo_context`: formatted snapshot text from workspace.
+- `repo_context`: formatted snapshot text from local repository state.
 - `workspace_metadata`:
     - `workspace_path`
     - `source_commit_sha`
