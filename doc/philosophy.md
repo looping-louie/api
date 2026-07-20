@@ -23,7 +23,9 @@ Every modification ultimately becomes a Git diff.
 
 ### Never modify the original repository during execution
 
-Every harness execution happens inside an isolated Git worktree.
+The API never mutates the target repository directly.
+
+Repository mutations happen in CLI under checkpoint guidance.
 
 The original repository is modified only after every reviewer has approved the
 final result.
@@ -38,7 +40,7 @@ Generator models never generate git patches.
 
 They describe filesystem operations.
 
-The runtime applies those operations inside a worktree.
+The CLI applies those operations in the local repository context.
 
 Git is responsible for computing the real diff.
 

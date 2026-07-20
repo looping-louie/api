@@ -1,0 +1,112 @@
+"""Helpers for checkpoint-based task execution contracts."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+EXECUTION_RUNS_DIR = Path(__file__).resolve().parents[4] / 'runtime' / 'executions'
+
+ALLOWED_OPERATIONS = {'create', 'replace', 'replace_text', 'delete'}
+
+
+def build_execution_run_path(run_id: str) -> Path:
+    """Resolve and create the API-owned execution directory for one run."""
+    run_path = EXECUTION_RUNS_DIR / run_id
+    run_path.mkdir(parents=True, exist_ok=False)
+    return run_path
+
+
+def parse_file_operations(raw: str) -> list[dict]:
+    """Parse and validate generator output operations."""
+    cleaned = _extract_json_object(raw)
+
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f'Invalid JSON from generator: {exc}') from exc
+
+    operations = data.get('operations')
+
+    if not isinstance(operations, list):
+        raise ValueError('Generator JSON must contain an operations list')
+
+    for operation in operations:
+        _validate_operation(operation)
+
+    return operations
+
+
+def _extract_json_object(raw: str) -> str:
+    """Extract the first JSON object from raw model output."""
+    text = raw.strip()
+
+    if text.startswith('```'):
+        lines = text.splitlines()
+        if lines[0].startswith('```'):
+            lines = lines[1:]
+        if lines and lines[-1].startswith('```'):
+            lines = lines[:-1]
+        text = '\n'.join(lines).strip()
+
+    start = text.find('{')
+    end = text.rfind('}')
+
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError('Generator output does not contain a JSON object')
+
+    return text[start : end + 1]
+
+
+def _validate_operation(operation: dict) -> None:
+    """Validate one file operation object."""
+    if not isinstance(operation, dict):
+        raise ValueError('Each operation must be an object')
+
+    op = operation.get('operation')
+    path = operation.get('path')
+
+    if op not in ALLOWED_OPERATIONS:
+        raise ValueError(f'Invalid operation: {op}')
+
+    if not path or not isinstance(path, str):
+        raise ValueError('Operation path must be a non-empty string')
+
+    if path.startswith('/'):
+        raise ValueError(f'Absolute paths are not allowed: {path}')
+
+    if '..' in Path(path).parts:
+        raise ValueError(f'Parent path traversal is not allowed: {path}')
+
+    if op in {'create', 'replace'}:
+        content = operation.get('content')
+        if not isinstance(content, str):
+            raise ValueError(f'{op} operation requires string content')
+
+    if op == 'delete' and any(
+        key in operation
+        for key in ('content', 'old_content', 'new_content')
+    ):
+        raise ValueError(
+            'delete operation must not include file content'
+        )
+
+    if op == 'replace_text':
+        old_content = operation.get('old_content')
+        new_content = operation.get('new_content')
+
+        if not isinstance(old_content, str) or not old_content:
+            raise ValueError(
+                'replace_text operation requires non-empty old_content'
+            )
+
+        if not isinstance(new_content, str):
+            raise ValueError(
+                'replace_text operation requires string new_content'
+            )
+
+        if 'content' in operation:
+            raise ValueError(
+                'replace_text operation must not include content'
+            )

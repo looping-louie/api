@@ -1,6 +1,6 @@
 # Looping Louie
 
-Looping Louie is a Harness-as-a-Service runtime for iterative LLM software development.
+Looping Louie API is the decision engine for iterative LLM software development.
 
 Instead of relying on a single model, Looping Louie orchestrates a development loop where:
 
@@ -12,22 +12,31 @@ The runtime is provider-independent and designed to be reproducible, observable 
 
 ---
 
-# Features
+## Big picture
+
+Lets take a step back and remember: Looping Louie is an app for fast
+AI-driven development, which intends to automate the dev cycle.
+
+Ideally, an user will create a repo (looping-louie-test) and, by means of
+interacting with the lopping-louie CLI (which internally calls to the API),
+will be able to rapidly implement whatever project is in their mind.
+
+## Features
 
 - Iterative generator/reviewer workflow
 - Multiple independent review skills
-- Git worktree isolation
+- Checkpoint-based API-CLI orchestration
 - Automatic Git diff generation
 - JSON-based file operations
-- Automatic task execution from `tasks.json`
-- One commit per approved task
+- API-guided local execution in CLI
+- One commit per approved task (executed by CLI)
 - Complete execution traces
 - Token and latency metrics
 - Provider-independent architecture
 
 ---
 
-# Installation
+## Installation
 
 Clone the repository and install the project:
 
@@ -43,7 +52,7 @@ This command will:
 
 ---
 
-# Configuration
+## Configuration
 
 Populate the generated `.env` file:
 
@@ -54,7 +63,7 @@ OPENAI_API_KEY=
 
 ---
 
-# Running the API
+## Running the API
 
 Start the development server:
 
@@ -70,22 +79,24 @@ http://127.0.0.1:8000
 
 ---
 
-# Usage
+## Usage
 
-Looping Louie currently exposes two endpoints.
+Looping Louie currently exposes these endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/run-harness` | Execute a single harness run. |
-| `/run-tasks` | Execute an entire `tasks.json` backlog. |
+| `/task/start` | Start one checkpoint-based task execution. |
+| `/task/continue` | Advance one checkpoint transition. |
+| `/task/{run_id}` | Read latest checkpoint state for a task run. |
+| `/meeting/run` | Run a structured multi-persona meeting. |
 
 See the complete API documentation:
 
-- [`docs/API.md`](doc/API.md)
+- [`doc/API.md`](doc/API.md)
 
 ---
 
-# Repository Requirements
+## Repository Requirements
 
 Before running Looping Louie:
 
@@ -96,9 +107,9 @@ Looping Louie refuses to execute against a dirty repository to guarantee determi
 
 ---
 
-# Documentation
+## Documentation
 
-Project documentation is organised under `docs/`.
+Project documentation is organised under `doc/`.
 
 | Document | Purpose |
 |----------|---------|
@@ -110,22 +121,22 @@ Project documentation is organised under `docs/`.
 
 ---
 
-# High-Level Execution Flow
+## High-Level Execution Flow
 
 ```
-tasks.json
+task request
       │
       ▼
-/run-tasks
+/task/start
       │
       ▼
-run_harness()
+CLI builds snapshot and runs local action
       │
       ▼
-Create Git worktree
+/task/continue
       │
       ▼
-Build repository snapshot
+Planner and reviewer services
       │
       ▼
 Generator model
@@ -147,21 +158,20 @@ Approved?
  │           │
  │ No        │ Yes
  ▼           ▼
-Retry    Apply diff
-          Commit
+Retry    Commit allowed
+          (CLI commits)
 ```
 
 ---
 
-# Current Status
+## Current Status
 
 Looping Louie is currently an MVP focused on validating the execution runtime.
 
 The current implementation already supports:
 
-- isolated Git worktrees;
+- checkpoint task execution contracts;
 - multi-skill review;
-- task backlogs (`tasks.json`);
 - automatic commits;
 - execution traces;
 - run persistence;
@@ -171,6 +181,6 @@ Future work is tracked in `doc/roadmap.md`.
 
 ---
 
-# License
+## License
 
 _Not yet defined._

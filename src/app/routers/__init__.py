@@ -1,46 +1,23 @@
 from fastapi import APIRouter
 from src.app.schemas import (
-  RunTasksRequest,
-  RunHarnessRequest,
-  RunHarnessResponse,
-  RunMeetingRequest,
-  RunMeetingResponse
+    GetTaskResponse,
+    RunMeetingRequest,
+    RunMeetingResponse,
+    TaskContinueRequest,
+    TaskContinueResponse,
+    TaskStartRequest,
+    TaskStartResponse,
 )
-from src.app.controllers.harness_runner import run_harness
-from src.app.controllers.task_runner import run_tasks
-from src.app.controllers.meeting_runner import run_meeting
+from src.app.controllers.meeting import run_meeting
+from src.app.controllers.task import continue_task, get_task, start_task
 
 
 # Create the router instance
 router = APIRouter()
 
 
-@router.post("/run-harness", response_model=RunHarnessResponse)
-async def run_harness_endpoint(req: RunHarnessRequest):
-    """
-    Execute a single harness run.
-
-    The repository is evolved inside an isolated git worktree.
-    If every reviewer approves, the final diff is applied to the
-    original repository without creating a commit.
-    """
-    return await run_harness(req)
-
-
-@router.post("/run-tasks")
-async def run_tasks_endpoint(req: RunTasksRequest):
-    """
-    Execute every pending task from a tasks.json file.
-
-    Tasks are processed sequentially.
-    Each approved task is committed immediately.
-    Execution stops at the first task that cannot be approved.
-    """
-    return await run_tasks(req)
-
-
-@router.post("/run-meeting", response_model=RunMeetingResponse)
-async def run_meeting_endpoint(
+@router.post("/meeting/run", response_model=RunMeetingResponse)
+async def meeting_run_endpoint(
     req: RunMeetingRequest,
 ) -> RunMeetingResponse:
     """
@@ -54,3 +31,21 @@ async def run_meeting_endpoint(
     trace and execution metrics.
     """
     return await run_meeting(req)
+
+
+@router.post('/task/start', response_model=TaskStartResponse)
+async def task_start_endpoint(req: TaskStartRequest) -> TaskStartResponse:
+    """Start checkpoint-based task execution and return first action."""
+    return await start_task(req)
+
+
+@router.post('/task/continue', response_model=TaskContinueResponse)
+async def task_continue_endpoint(req: TaskContinueRequest) -> TaskContinueResponse:
+    """Advance one checkpoint transition for an existing task run."""
+    return await continue_task(req)
+
+
+@router.get('/task/{run_id}', response_model=GetTaskResponse)
+async def task_get_endpoint(run_id: str) -> GetTaskResponse:
+    """Return latest checkpoint state for one task run identifier."""
+    return await get_task(run_id)

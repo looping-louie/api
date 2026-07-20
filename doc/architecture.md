@@ -1,6 +1,6 @@
 # Looping Louie Architecture
 
-Looping Louie is a Harness-as-a-Service runtime for iterative LLM software
+Looping Louie API is the decision engine for iterative LLM software
 development.
 
 Rather than trusting a single model to generate production-ready code, Looping
@@ -13,45 +13,80 @@ language, framework or LLM provider.
 
 ---
 
+## Repository Structure
+
+Top-level packages and modules:
+
+```text
+app/
+
+main.py
+    HTTP API
+
+routers/
+    Endpoint composition
+
+controllers/
+    HTTP-level request orchestration
+
+services/harness/
+    Planning and reviewer decision helpers
+
+services/model_context/
+    Repository snapshot and prompt context construction
+
+services/task_checkpoint/
+    Checkpoint run path and operation contract parsing
+
+services/llm_service/
+    Provider-specific model integrations
+
+services/execution_planner/
+    Planner strategy for task execution
+
+services/task_plan/
+    Task list loading, selection and persistence
+
+services/meeting/
+    Multi-persona meeting orchestration
+
+personas/
+    Persona library and registry
+
+skills/
+    Skill library and registry
+
+schemas/
+    API contracts and shared models
+
+models/
+    Internal domain entities
+
+utils/
+    Shared IO and helper utilities
+```
+
+---
+
 ## High-Level Architecture
 
 ```text
                 tasks.json
                      │
                      ▼
-             Task Runner (/run-tasks)
+            Task Checkpoint Controller
                      │
                      ▼
-              Harness Runner (/run-harness)
+        Planner + Generator
                      │
-          ┌──────────┴──────────┐
-          │                     │
-          ▼                     │
-   Workspace Manager            │
-          │                     │
-          ▼                     │
-     Git Worktree               │
-          │                     │
-          ▼                     │
-   Repository Snapshot          │
-          │                     │
-          ▼                     │
-      Prompt Builder            │
-          │                     │
-          ▼                     │
-      Generator Model           │
-          │                     │
-          ▼                     │
-     JSON File Operations       │
-          │                     │
-          ▼                     │
-      File Operations           │
-          │                     │
-          ▼                     │
-      Git Diff Builder          │
-          │                     │
-          ▼                     │
-      Reviewer Skills ◄─────────┘
+                     ▼
+    Operation Contract (JSON operations)
+                     │
+                     ▼
+           CLI Executes Locally
+                     │
+                     ▼
+             Reviewer Skills
           │
           ▼
       Aggregator
@@ -60,8 +95,8 @@ language, framework or LLM provider.
       │        │
       │No      │Yes
       ▼        ▼
- Retry      Apply diff
-             Commit
+ Retry      Commit allowed
+             (CLI commits)
              Next task
 ```
 
@@ -69,31 +104,24 @@ language, framework or LLM provider.
 
 ## Execution Lifecycle
 
-A single harness execution follows these steps.
+A single checkpoint task execution follows these steps.
 
-### 1. Create a workspace
+### 1. Start run and persist API artefacts
 
-A temporary Git worktree is created from the repository HEAD.
-
-The original repository remains untouched.
-
-Every run receives its own directory under:
+Task execution artefacts (request, prompts, responses, operations,
+review summaries, metrics) are persisted under the API runtime root:
 
 ```text
-.looping-louie/runs/<run_id>/
+runtime/executions/<run_id>/
 ```
 
 ---
 
-### 2. Build repository context
+### 2. Receive repository context from CLI
 
-The repository is scanned.
+CLI sends the repository snapshot context in `collect_snapshot`.
 
-Only relevant source files are included.
-
-Large generated artefacts such as lockfiles, build output and dependencies are ignored.
-
-The resulting snapshot becomes part of the generator prompt.
+API uses that context to build iteration prompts.
 
 ---
 
@@ -135,23 +163,21 @@ Example:
 
 ---
 
-### 5. Apply file operations
+### 5. Validate operation contract and ask CLI to apply
 
-The runtime validates every operation.
+API validates generator operations contract and returns them in checkpoint
+payload.
 
-Operations are applied only inside the temporary worktree.
-
-The original repository is still untouched.
+CLI applies operations locally and reports success/failure in
+`apply_operations`.
 
 ---
 
-### 6. Produce the Git diff
+### 6. Receive diff and changed file contents from CLI
 
-Git computes the real diff.
+CLI sends `final_diff` and changed file contents in `submit_review_input`.
 
-The generator never produces patches directly.
-
-Git is considered the single source of truth.
+API uses this reviewer input as the decision source of truth.
 
 ---
 
@@ -203,56 +229,8 @@ The loop continues until:
 
 If the run succeeds:
 
-- the final diff is applied to the original repository
-
-If running through `/run-tasks`:
-
-- repository changes are committed
-- task is marked as completed
-- next task begins
-
----
-
-## Repository Structure
-
-Current modules:
-
-```text
-app/
-
-main.py
-    HTTP API
-
-runner.py
-    Harness orchestration
-
-task_runner.py
-    Multi-task execution
-
-workspace.py
-    Git worktree lifecycle
-
-model_context_service.py
-    Prompt construction and Repository snapshot builder
-
-file_change_service.py
-    JSON file operations
-
-git_service.py
-    Git commit helpers and Git diff generation
-
-llm_service.py
-    Manages calls to generator and reviewer/s provider/s
-
-skill_loader.py
-    Skill loading
-
-run_store.py
-    Execution persistence
-
-schemas.py
-    API models
-```
+- API marks commit handoff as allowed.
+- CLI performs the commit and reports the result.
 
 ---
 
@@ -302,41 +280,17 @@ release/
 
 ## Workspace Lifecycle
 
-Each harness execution owns one workspace.
+Workspace lifecycle is CLI-owned.
 
-```text
-.looping-louie/
-
-runs/
-
-<run_id>/
-
-worktree/
-
-generator/
-
-reviewers/
-
-diffs/
-
-request.json
-
-response.json
-
-trace.json
-```
-
-The worktree isolates every execution from the original repository.
+API only persists orchestration artefacts under `runtime/executions/<run_id>/`.
 
 ---
 
 ## Task Lifecycle
 
-The `/run` endpoint executes one task.
+Multi-task backlog orchestration is CLI-owned.
 
-The `/run-tasks` endpoint executes an entire backlog.
-
-Workflow:
+CLI workflow (conceptual):
 
 ```text
 tasks.json
@@ -347,7 +301,7 @@ first pending task
 
 ↓
 
-run harness
+call /task/start then iterate /task/continue
 
 ↓
 
