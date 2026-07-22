@@ -3,7 +3,6 @@ Looping Louie HTTP API.
 
 This module exposes the public FastAPI endpoints.
 
-<<<<<<< HEAD
 Endpoints
 ---------
 POST /task/start
@@ -15,11 +14,6 @@ GET /task/{run_id}
 
 The API layer is intentionally thin.
 Business logic lives in services and concise controller modules.
-=======
-The API layer is intentionally thin.
-Business logic is assembled in bootstrap.py and delegated through controllers
-and application services.
->>>>>>> 916a49b (feat(middleware): autentificación en dev)
 """
 
 from collections.abc import AsyncIterator
@@ -43,7 +37,6 @@ async def lifespan(
 
     await configure_application(app)
     yield
-
 
 app = FastAPI(
     title="Looping Louie",
