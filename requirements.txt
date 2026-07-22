@@ -5,3 +5,9 @@ pytest==8.*
 python-dotenv==1.*
 together==2.*
 uvicorn==0.49.*
+aiosqlite==0.22.*
+cryptography==44.0.*
+httpx==0.28.*
+pytest==9.1.*
+pytest-asyncio==1.4.*
+httpx2==2.5.*

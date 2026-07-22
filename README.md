@@ -2,13 +2,16 @@
 
 Looping Louie API is the decision engine for iterative LLM software development.
 
-Instead of relying on a single model, Looping Louie orchestrates a development loop where:
+Instead of relying on a single model, Looping Louie orchestrates a development
+loop where:
 
-1. a generator proposes code changes;
-2. one or more specialised reviewer skills validate those changes;
-3. the generator iterates until every reviewer approves or a maximum number of iterations is reached.
+1. A generator proposes code changes.
+2. One or more specialised reviewer skills validate those changes.
+3. The generator iterates until every reviewer approves or the maximum number
+   of iterations is reached.
 
-The runtime is provider-independent and designed to be reproducible, observable and enterprise deployable.
+The runtime is provider-independent and designed to be reproducible, observable
+and deployable in SaaS and on-premise environments.
 
 ---
 
@@ -23,7 +26,7 @@ will be able to rapidly implement whatever project is in their mind.
 
 ## Features
 
-- Iterative generator/reviewer workflow
+- Iterative generator and reviewer workflow
 - Multiple independent review skills
 - Checkpoint-based API-CLI orchestration
 - Automatic Git diff generation
@@ -33,12 +36,14 @@ will be able to rapidly implement whatever project is in their mind.
 - Complete execution traces
 - Token and latency metrics
 - Provider-independent architecture
+- Encrypted provider credential storage
+- Local SQLite persistence for development and simple on-premise deployments
 
 ---
 
 ## Installation
 
-Clone the repository and install the project:
+Clone the repository and run:
 
 ```sh
 make install
@@ -46,20 +51,71 @@ make install
 
 This command will:
 
-- create the Python virtual environment;
-- install all dependencies;
-- create a `.env` file if it does not already exist.
+- Create the Python virtual environment in `env/`.
+- Install every dependency from `requirements.txt`.
+- Create `.env.local` when it does not already exist.
+- Generate a Fernet encryption key.
+- Store the generated key as `LOUIE_ENCRYPTION_KEY` in `.env.local`.
+
+The installer never overwrites an existing `.env.local`, because changing
+`LOUIE_ENCRYPTION_KEY` would make previously encrypted provider credentials
+unreadable.
+
+Ensure `requirements.txt` contains the provider feature dependencies:
+
+```text
+aiosqlite
+cryptography
+httpx
+python-dotenv
+```
 
 ---
 
 ## Configuration
 
-Populate the generated `.env` file:
+After installation, populate the provider API keys required by the execution
+runtime in `.env.local`:
 
 ```text
 TOGETHER_API_KEY=
 OPENAI_API_KEY=
 ```
+
+The installer also creates these local provider settings:
+
+```text
+LOUIE_ENCRYPTION_KEY=<generated Fernet key>
+LOUIE_DB_PATH=.looping-louie/data/looping-louie.db
+LOUIE_ORG_ID=local-org
+LOUIE_USER_ID=local-user
+LOUIE_PROVIDER_MODEL_COUNTS={"anthropic":0,"nvidia":0,"ollama":0,"openai":0,"together":0}
+```
+
+`LOUIE_ENCRYPTION_KEY` is the Looping Louie master encryption key. It encrypts
+provider credentials before they are stored in SQLite. Do not commit it, log it
+or regenerate it while encrypted credentials still exist.
+
+Add these patterns to `.gitignore`:
+
+```gitignore
+.env
+.env.local
+*.db
+*.db-shm
+*.db-wal
+.looping-louie/
+```
+
+To deliberately replace the local configuration and generate a new encryption
+key:
+
+```sh
+make reset-config
+```
+
+This is destructive for existing encrypted provider credentials. Remove or
+reconfigure those credentials after resetting the key.
 
 ---
 
@@ -68,13 +124,28 @@ OPENAI_API_KEY=
 Start the development server:
 
 ```sh
+make dev
+```
+
+Or use the existing alias:
+
+```sh
 make run
 ```
 
-The API will be available at:
+The Makefile always starts Uvicorn with the virtual environment interpreter and
+exports the values from `.env.local`.
+
+The API is available at:
 
 ```text
 http://127.0.0.1:8000
+```
+
+Interactive API documentation is available at:
+
+```text
+http://127.0.0.1:8000/docs
 ```
 
 ---
@@ -98,12 +169,13 @@ See the complete API documentation:
 
 ## Repository Requirements
 
-Before running Looping Louie:
+Before running Looping Louie against a target repository:
 
-- the target directory must be a Git repository;
-- the repository must have no uncommitted changes.
+- The target directory must be a Git repository.
+- The repository must have no uncommitted changes.
 
-Looping Louie refuses to execute against a dirty repository to guarantee deterministic results.
+Looping Louie refuses to execute against a dirty repository to keep runs
+deterministic.
 
 ---
 
@@ -112,7 +184,7 @@ Looping Louie refuses to execute against a dirty repository to guarantee determi
 Project documentation is organised under `doc/`.
 
 | Document | Purpose |
-|----------|---------|
+|---|---|
 | `architecture.md` | Runtime architecture and execution lifecycle. |
 | `philosophy.md` | Design principles and engineering philosophy. |
 | `roadmap.md` | Planned architectural evolution. |
@@ -168,7 +240,7 @@ Retry    Commit allowed
 
 Looping Louie is currently an MVP focused on validating the execution runtime.
 
-The current implementation already supports:
+The current implementation supports:
 
 - checkpoint task execution contracts;
 - multi-skill review;
@@ -177,7 +249,7 @@ The current implementation already supports:
 - run persistence;
 - reusable review skills.
 
-Future work is tracked in `doc/roadmap.md`.
+Future work is tracked in `docs/roadmap.md`.
 
 ---
 
