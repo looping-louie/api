@@ -23,10 +23,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.app.bootstrap import configure_application
-from src.app.http import register_exception_handlers
 from src.app.routers import api_v1_router, router
 from src.app.middleware import DevelopmentAuthMiddleware
 from src.app.services.app_settings_service import get_app_settings
+from src.app.utils.http import register_exception_handlers
 
 
 @asynccontextmanager

@@ -7,11 +7,11 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from src.app.controllers.provider import ProviderController
-from src.app.http import register_exception_handlers
 from src.app.routers.providers import router as providers_router
 from src.app.services.providers.provider_connection_service import (
     ProviderConnectionError,
 )
+from src.app.utils.http import register_exception_handlers
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
 )
