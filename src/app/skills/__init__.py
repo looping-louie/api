@@ -24,15 +24,25 @@ def load_skill_registry() -> list[dict[str, Any]]:
 
     return [
         {
-            "id": entry["key"],
-            "description": entry["description"],
-            "applies_when": list(entry["applies_when"]),
-            "applies_to": list(entry["applies_to"]),
-            "reviewer_default_strictness": dict(
-                entry["reviewer_default_strictness"]
+            "id": entry.key,
+            "description": entry.description,
+            "applies_when": list(entry.metadata.applies_when),
+            "applies_to": sorted(
+                role.value
+                for role in entry.metadata.applies_to
             ),
+            "reviewer_default_strictness": {
+                "prototype": (
+                    entry.reviewer_default_strictness.prototype
+                ),
+                "mvp": entry.reviewer_default_strictness.mvp,
+                "production": (
+                    entry.reviewer_default_strictness.production
+                ),
+            },
         }
         for entry in load_skill_catalog()
+        if entry.reviewer_default_strictness is not None
     ]
 
 

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI
 
+from src.app.catalogs.loader import load_instruction_catalog
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.council import CouncilController
 from src.app.controllers.loop import LoopController
@@ -77,6 +78,7 @@ async def configure_application(
     """Build and register the SQLite application dependencies."""
 
     resolved_settings = settings or get_app_settings()
+    instruction_catalog = load_instruction_catalog()
 
     await run_sqlite_migrations(
         database_path=resolved_settings.database_path,
@@ -216,6 +218,7 @@ async def configure_application(
     )
 
     app.state.database = database
+    app.state.instruction_catalog = instruction_catalog
 
 
 def _require_encryption_key(

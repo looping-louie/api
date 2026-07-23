@@ -1,32 +1,176 @@
-"""Loader for packaged skill definitions."""
+"""Typed loader for packaged skill definitions."""
+
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Mapping
 
 from src.app.catalogs._resource_loader import (
-    load_content,
-    load_registry,
+    CatalogLoadError,
+    load_catalog_resources,
+    require_boolean,
+    require_heading,
+    require_mapping,
+    require_positive_integer,
+    require_string_tuple,
+    require_text,
 )
-from src.app.catalogs.instructions import CatalogInstructionType
+from src.app.catalogs.instructions import (
+    AgentRole,
+    CatalogInstructionType,
+    InstructionCatalogMetadata,
+    InstructionOrigin,
+    ProjectPhase,
+    ReviewerStrictnessDefaults,
+    SkillArtifact,
+    SkillCatalogEntry,
+    SkillOutput,
+    SkillPhase,
+)
 
 
 SKILL_CATALOG_DIR = Path(__file__).parent
 
 
-def load_skill_catalog() -> list[dict[str, Any]]:
-    """Load skill metadata from its explicit manifest."""
+def load_skill_catalog(
+    catalog_dir: Path = SKILL_CATALOG_DIR,
+) -> tuple[SkillCatalogEntry, ...]:
+    """Load and fully validate immutable skill definitions."""
 
-    return load_registry(
-        catalog_dir=SKILL_CATALOG_DIR,
+    resources = load_catalog_resources(
+        catalog_dir=catalog_dir,
         instruction_type=CatalogInstructionType.SKILL,
     )
+    entries: list[SkillCatalogEntry] = []
+
+    for resource in resources:
+        manifest = resource.manifest
+        instruction_id = require_text(manifest, "id")
+        name = require_text(manifest, "name")
+        require_heading(
+            resource=resource,
+            expected_heading=f"# {name}",
+        )
+
+        try:
+            entry = SkillCatalogEntry(
+                id=instruction_id,
+                key=require_text(manifest, "key"),
+                name=name,
+                description=require_text(
+                    manifest,
+                    "description",
+                ),
+                instructions=resource.content,
+                content_path=require_text(
+                    manifest,
+                    "content_path",
+                ),
+                checksum=resource.checksum,
+                metadata=InstructionCatalogMetadata(
+                    applies_when=require_string_tuple(
+                        manifest,
+                        "applies_when",
+                        allow_empty=False,
+                    ),
+                    applies_to=_load_roles(
+                        manifest,
+                        "applies_to",
+                    ),
+                ),
+                origin=InstructionOrigin.BUILTIN,
+                enabled_by_default=require_boolean(
+                    manifest,
+                    "enabled_by_default",
+                ),
+                catalog_version=require_positive_integer(
+                    manifest,
+                    "version",
+                ),
+                reviewer_default_strictness=_load_strictness(
+                    manifest,
+                ),
+                category=require_text(manifest, "category"),
+                phase=SkillPhase(
+                    require_text(manifest, "phase")
+                ),
+                artifacts=tuple(
+                    SkillArtifact(value)
+                    for value in require_string_tuple(
+                        manifest,
+                        "artifacts",
+                        allow_empty=False,
+                    )
+                ),
+                output=SkillOutput(
+                    require_text(manifest, "output")
+                ),
+            )
+        except (TypeError, ValueError) as exc:
+            raise CatalogLoadError(
+                f"Invalid skill '{instruction_id}': {exc}"
+            ) from exc
+
+        entries.append(entry)
+
+    return tuple(entries)
 
 
-def load_skill_content(skill_id_or_key: str) -> str:
+def load_skill_content(
+    skill_id_or_key: str,
+    *,
+    catalog_dir: Path = SKILL_CATALOG_DIR,
+) -> str:
     """Load one skill using its stable ID or temporary legacy key."""
 
-    return load_content(
-        catalog_dir=SKILL_CATALOG_DIR,
-        registry=load_skill_catalog(),
-        instruction_id_or_key=skill_id_or_key,
+    requested = skill_id_or_key.strip()
+
+    for entry in load_skill_catalog(catalog_dir):
+        if entry.id == requested or entry.key == requested:
+            return entry.instructions
+
+    raise ValueError(f"Unknown skill: {requested}")
+
+
+def _load_roles(
+    manifest: Mapping[str, object],
+    field_name: str,
+) -> frozenset[AgentRole]:
+    values = require_string_tuple(
+        manifest,
+        field_name,
+        allow_empty=False,
+    )
+
+    try:
+        return frozenset(
+            AgentRole(value)
+            for value in values
+        )
+    except ValueError as exc:
+        raise CatalogLoadError(
+            f"Catalog field '{field_name}' contains unsupported role."
+        ) from exc
+
+
+def _load_strictness(
+    manifest: Mapping[str, object],
+) -> ReviewerStrictnessDefaults:
+    field_name = "reviewer_default_strictness"
+    values = require_mapping(manifest, field_name)
+    expected_phases = {
+        phase.value
+        for phase in ProjectPhase
+    }
+
+    if set(values) != expected_phases:
+        raise CatalogLoadError(
+            f"Catalog field '{field_name}' must define exactly "
+            f"{sorted(expected_phases)}."
+        )
+
+    return ReviewerStrictnessDefaults(
+        prototype=values["prototype"],
+        mvp=values["mvp"],
+        production=values["production"],
     )

@@ -24,15 +24,21 @@ def load_persona_registry() -> list[dict[str, Any]]:
 
     return [
         {
-            "id": entry["key"],
-            "description": entry["description"],
-            "applies_when": list(entry["applies_when"]),
-            "applies_to": list(entry["applies_to"]),
+            "id": entry.key,
+            "description": entry.description,
+            "applies_when": list(entry.metadata.applies_when),
+            "applies_to": sorted(
+                role.value
+                for role in entry.metadata.applies_to
+            ),
             "preferred_skills": [
                 skill_id.rsplit(":", maxsplit=1)[-1]
-                for skill_id in entry["preferred_skill_ids"]
+                for skill_id in entry.preferred_skill_ids
             ],
-            "default_for": list(entry["default_for"]),
+            "default_for": sorted(
+                role.value
+                for role in entry.default_for
+            ),
         }
         for entry in load_persona_catalog()
     ]

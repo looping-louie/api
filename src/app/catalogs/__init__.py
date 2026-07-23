@@ -1,3 +1,4 @@
+from ._resource_loader import CatalogLoadError
 from .instructions import (
     AgentRole,
     CatalogInstructionEntry,
@@ -7,8 +8,15 @@ from .instructions import (
     PersonaCatalogEntry,
     ProjectPhase,
     ReviewerStrictnessDefaults,
+    SkillArtifact,
     SkillCatalogEntry,
+    SkillOutput,
+    SkillPhase,
     build_builtin_instruction_id,
+)
+from .loader import (
+    InstructionCatalog,
+    load_instruction_catalog,
 )
 from .models import (
     MODEL_CATALOG,
@@ -28,12 +36,16 @@ from .providers import (
     ProviderCatalogEntry,
     ProviderId,
 )
+from .personas import load_persona_catalog
+from .skills import load_skill_catalog
 
 __all__ = [
     "AgentRole",
+    "CatalogLoadError",
     "CatalogInstructionEntry",
     "CatalogInstructionType",
     "InstructionCatalogMetadata",
+    "InstructionCatalog",
     "InstructionOrigin",
     "MODEL_CATALOG",
     "MODEL_CATALOG_BY_ID",
@@ -51,7 +63,13 @@ __all__ = [
     "ProviderCatalogEntry",
     "ProviderId",
     "ReviewerStrictnessDefaults",
+    "SkillArtifact",
     "SkillCatalogEntry",
+    "SkillOutput",
+    "SkillPhase",
     "build_builtin_instruction_id",
+    "load_instruction_catalog",
+    "load_persona_catalog",
+    "load_skill_catalog",
     "validate_model_catalog",
 ]

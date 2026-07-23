@@ -58,6 +58,30 @@ class ProjectPhase(StrEnum):
     PRODUCTION = "production"
 
 
+class SkillPhase(StrEnum):
+    """Workflow phases in which packaged skills participate."""
+
+    CODE_REVIEW = "code_review"
+    DELIBERATION = "deliberation"
+    REVIEW = "review"
+
+
+class SkillArtifact(StrEnum):
+    """Artifacts a packaged skill may inspect."""
+
+    CHANGED_FILES = "changed_files"
+    CONTRIBUTIONS = "contributions"
+    CURRENT_ARTIFACT = "current_artifact"
+    GIT_DIFF = "git_diff"
+    PROMPT = "prompt"
+
+
+class SkillOutput(StrEnum):
+    """Output contracts requested by packaged skills."""
+
+    JSON = "json"
+
+
 def build_builtin_instruction_id(
     instruction_type: CatalogInstructionType,
     key: str,
@@ -148,6 +172,9 @@ class CatalogInstructionEntry:
     catalog_version: int | None
     deprecated: bool = False
     source_instruction_id: str | None = None
+    key: str | None = None
+    content_path: str | None = None
+    checksum: str | None = None
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
@@ -187,18 +214,40 @@ class CatalogInstructionEntry:
         if not isinstance(self.deprecated, bool):
             raise ValueError("deprecated must be a boolean.")
 
+        if self.key is not None:
+            _require_non_empty_text(self.key, field_name="key")
+
+        if self.content_path is not None:
+            _require_non_empty_text(
+                self.content_path,
+                field_name="content_path",
+            )
+
+        if self.checksum is not None and not re.fullmatch(
+            r"[0-9a-f]{64}",
+            self.checksum,
+        ):
+            raise ValueError(
+                "checksum must be a lowercase SHA-256 hexadecimal digest."
+            )
+
         self._validate_origin_contract()
 
     def _validate_origin_contract(self) -> None:
         if self.origin == InstructionOrigin.BUILTIN:
+            catalog_key = (
+                self.key
+                if self.key is not None
+                else self.id.rsplit(":", maxsplit=1)[-1]
+            )
             expected_id = build_builtin_instruction_id(
                 self.instruction_type,
-                self.id.rsplit(":", maxsplit=1)[-1],
+                catalog_key,
             )
 
             if self.id != expected_id:
                 raise ValueError(
-                    "Builtin instruction IDs must use "
+                    "Builtin instruction IDs and keys must use "
                     f"'{InstructionOrigin.BUILTIN.value}:"
                     f"{self.instruction_type.value}:<key>'."
                 )
@@ -246,10 +295,43 @@ class SkillCatalogEntry(CatalogInstructionEntry):
     """Catalog definition of a reusable skill."""
 
     reviewer_default_strictness: ReviewerStrictnessDefaults | None = None
+    category: str | None = None
+    phase: SkillPhase | None = None
+    artifacts: tuple[SkillArtifact, ...] = field(default_factory=tuple)
+    output: SkillOutput | None = None
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
         return CatalogInstructionType.SKILL
+
+    def __post_init__(self) -> None:
+        super(SkillCatalogEntry, self).__post_init__()
+
+        if self.category is not None:
+            _require_non_empty_text(
+                self.category,
+                field_name="category",
+            )
+
+        if self.phase is not None and not isinstance(
+            self.phase,
+            SkillPhase,
+        ):
+            raise ValueError("phase must be a SkillPhase.")
+
+        if any(
+            not isinstance(artifact, SkillArtifact)
+            for artifact in self.artifacts
+        ):
+            raise ValueError(
+                "artifacts must contain only SkillArtifact values."
+            )
+
+        if self.output is not None and not isinstance(
+            self.output,
+            SkillOutput,
+        ):
+            raise ValueError("output must be a SkillOutput.")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
