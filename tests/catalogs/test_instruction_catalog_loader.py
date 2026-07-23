@@ -1,5 +1,6 @@
 import json
 import shutil
+import sqlite3
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 from types import SimpleNamespace
@@ -273,11 +274,26 @@ async def test_invalid_catalog_prevents_application_startup(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    database_path = tmp_path / "must-not-exist.db"
+    database_path = tmp_path / "invalid-catalog.db"
+
+    async def run_migrations(*, database_path: Path) -> None:
+        with sqlite3.connect(database_path) as connection:
+            connection.execute(
+                """
+                CREATE TABLE schema_migrations (
+                    version TEXT PRIMARY KEY
+                )
+                """
+            )
 
     def reject_catalog() -> None:
         raise CatalogLoadError("Invalid packaged catalog.")
 
+    monkeypatch.setattr(
+        bootstrap,
+        "run_sqlite_migrations",
+        run_migrations,
+    )
     monkeypatch.setattr(
         bootstrap,
         "load_instruction_catalog",
@@ -290,14 +306,19 @@ async def test_invalid_catalog_prevents_application_startup(
             encryption_key="unused",
         ),
     )
+    app = FastAPI()
 
     with pytest.raises(
         CatalogLoadError,
         match="Invalid packaged catalog",
     ):
         await bootstrap.configure_application(
-            FastAPI(),
+            app,
             settings=settings,
         )
 
-    assert database_path.exists() is False
+    assert database_path.exists() is True
+    assert not hasattr(
+        app.state,
+        "persona_controller",
+    )

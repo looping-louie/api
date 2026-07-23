@@ -19,7 +19,6 @@ class AppSettings:
     encryption_key: str | None
     database_path: Path
     user_id: str
-    builtin_skills_path: Path
     dev_auth_enabled: bool
     dev_user_id: str
     catalog_strict_versioning: bool
@@ -40,7 +39,6 @@ def get_app_settings() -> AppSettings:
             )
         ),
         user_id=os.getenv("LOUIE_USER_ID", "local-user"),
-        builtin_skills_path=_resolve_builtin_skills_path(),
         dev_auth_enabled=_environment_flag(
             "LOUIE_DEV_AUTH",
         ),
@@ -66,29 +64,6 @@ def _environment_flag(name: str) -> bool:
         "yes",
         "on",
     }
-
-
-def _resolve_builtin_skills_path() -> Path:
-    """Resolve the version-controlled built-in skills directory."""
-
-    configured = _optional_environment_value(
-        "LOUIE_BUILTIN_SKILLS_PATH"
-    )
-
-    if configured is not None:
-        return Path(configured)
-
-    candidates = (
-        Path("src/app/catalogs/skills"),
-        Path("src/app/resources/skills"),
-        Path("skills"),
-    )
-
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-
-    return candidates[0]
 
 
 def _optional_environment_value(name: str) -> str | None:

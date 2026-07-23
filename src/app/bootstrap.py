@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import FastAPI
 
-from src.app.catalogs.loader import load_instruction_catalog
+from src.app.catalogs.loader import (
+    InstructionCatalog,
+    load_instruction_catalog,
+)
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.council import CouncilController
 from src.app.controllers.loop import LoopController
@@ -74,20 +78,28 @@ from src.app.services.shared.validation_service import ValidationService
 from src.app.services.skill_service import SkillService
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 async def configure_application(
     app: FastAPI,
     *,
     settings: AppSettings | None = None,
+    instruction_catalog: InstructionCatalog | None = None,
 ) -> None:
     """Build and register the SQLite application dependencies."""
 
     resolved_settings = settings or get_app_settings()
-    instruction_catalog = load_instruction_catalog()
 
     await run_sqlite_migrations(
         database_path=resolved_settings.database_path,
     )
 
+    resolved_catalog = (
+        instruction_catalog
+        if instruction_catalog is not None
+        else load_instruction_catalog()
+    )
     catalog_synchronizer = InstructionCatalogSynchronizer(
         database_path=resolved_settings.database_path,
         checksum_policy=(
@@ -101,7 +113,15 @@ async def configure_application(
         ),
     )
     catalog_synchronization = catalog_synchronizer.synchronize(
-        instruction_catalog,
+        resolved_catalog,
+    )
+    LOGGER.info(
+        "Instruction catalog synchronized: inserted=%d updated=%d "
+        "unchanged=%d deprecated=%d",
+        catalog_synchronization.inserted,
+        catalog_synchronization.updated,
+        catalog_synchronization.unchanged,
+        catalog_synchronization.deprecated,
     )
 
     await ensure_local_tenant(
@@ -238,7 +258,7 @@ async def configure_application(
     )
 
     app.state.database = database
-    app.state.instruction_catalog = instruction_catalog
+    app.state.instruction_catalog = resolved_catalog
     app.state.catalog_synchronization = catalog_synchronization
 
 
