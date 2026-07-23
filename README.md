@@ -89,7 +89,6 @@ LOUIE_ENCRYPTION_KEY=<generated Fernet key>
 LOUIE_DB_PATH=.looping-louie/data/looping-louie.db
 LOUIE_ORG_ID=local-org
 LOUIE_USER_ID=local-user
-LOUIE_PROVIDER_MODEL_COUNTS={"anthropic":0,"nvidia":0,"ollama":0,"openai":0,"together":0}
 ```
 
 `LOUIE_ENCRYPTION_KEY` is the Looping Louie master encryption key. It encrypts

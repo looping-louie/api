@@ -467,8 +467,9 @@ class ProviderService:
                 else definition.default_base_url
             ),
             model_count=self._model_registry.count_by_provider(
-                definition.id.value,
+                definition.id,
             ),
+            model_catalog_note=definition.model_catalog_note,
         )
 
     def _get_definition(self, provider_id: str) -> ProviderCatalogEntry:

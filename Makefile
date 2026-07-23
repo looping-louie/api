@@ -31,7 +31,6 @@ config: venv
 			'LOUIE_DB_PATH=.looping-louie/data/looping-louie.db' \
 			'LOUIE_ORG_ID=local-org' \
 			'LOUIE_USER_ID=local-user' \
-			'LOUIE_PROVIDER_MODEL_COUNTS='"'"'{"anthropic":0,"nvidia":0,"ollama":0,"openai":0,"together":0}'"'" \
 			> "$(ENV_FILE)"; \
 		chmod 600 "$(ENV_FILE)"; \
 		echo "Created $(ENV_FILE) with a generated encryption key."; \

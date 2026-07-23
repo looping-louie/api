@@ -33,6 +33,7 @@ class ProviderResponse(BaseModel):
     key_trimmed: str | None
     base_url: str | None
     model_count: int = Field(ge=0)
+    model_catalog_note: str | None
 
 
 class ProviderTestResponse(BaseModel):

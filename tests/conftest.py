@@ -4,7 +4,10 @@ from typing import Callable
 
 import pytest
 
-from src.app.catalogs.providers import PROVIDER_CATALOG
+from src.app.catalogs.providers import (
+    PROVIDER_CATALOG,
+    ProviderId,
+)
 from src.app.controllers.model import ModelController
 from src.app.services.model_service import (
     ModelAvailabilityService,
@@ -22,6 +25,7 @@ from tests.fakes.composition_repository import FakeCompositionRepository
 from tests.fakes.dependency_checker import FakeDependencyChecker
 from tests.fakes.dependency_repository import FakeDependencyRepository
 from tests.fakes.instruction_repository import FakeInstructionRepository
+from tests.fakes.model_registry_service import FakeModelRegistryService
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )
@@ -29,9 +33,6 @@ from tests.fakes.reference_repository import FakeReferenceRepository
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.validation_repository import FakeValidationRepository
 from src.app.controllers.provider import ProviderController
-from src.app.services.providers.model_registry_service import (
-    StaticModelRegistryService,
-)
 from src.app.services.providers.provider_service import ProviderService
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
@@ -242,13 +243,13 @@ def provider_service(
         tenant_service=tenant_service,
         secret_service=provider_secret_service,
         connection_service=provider_connection_service,
-        model_registry=StaticModelRegistryService(
+        model_registry=FakeModelRegistryService(
             counts={
-                "anthropic": 4,
-                "nvidia": 0,
-                "ollama": 0,
-                "openai": 3,
-                "together": 10,
+                ProviderId.ANTHROPIC: 4,
+                ProviderId.NVIDIA: 0,
+                ProviderId.OLLAMA: 0,
+                ProviderId.OPENAI: 3,
+                ProviderId.TOGETHER: 10,
             }
         ),
         catalog=PROVIDER_CATALOG,

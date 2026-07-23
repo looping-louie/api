@@ -21,6 +21,10 @@ async def test_controller_lists_provider_responses(
     assert len(response) == 5
     assert response[0].provider == "anthropic"
     assert response[-1].provider == "together"
+    assert response[1].model_count == 0
+    assert response[1].model_catalog_note is not None
+    assert response[2].model_count == 0
+    assert response[2].model_catalog_note is not None
 
 
 @pytest.mark.asyncio

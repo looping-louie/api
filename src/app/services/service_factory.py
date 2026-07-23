@@ -9,7 +9,7 @@ from src.app.repositories.provider_repository import (
 from src.app.repositories.sqlite_database import SqliteDatabase
 from src.app.services.app_settings_service import get_app_settings
 from src.app.services.providers.model_registry_service import (
-    StaticModelRegistryService,
+    CatalogModelRegistryService,
 )
 from src.app.services.providers.provider_connection_service import (
     HttpProviderConnectionService,
@@ -45,9 +45,7 @@ def get_provider_service() -> ProviderService:
             settings.encryption_key
         ),
         connection_service=HttpProviderConnectionService(),
-        model_registry=StaticModelRegistryService(
-            counts=settings.model_counts
-        ),
+        model_registry=CatalogModelRegistryService(),
         catalog=PROVIDER_CATALOG,
         request_context=get_request_context(),
     )

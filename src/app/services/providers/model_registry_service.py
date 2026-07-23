@@ -8,12 +8,13 @@ from src.app.catalogs.models import (
     ModelCatalogEntry,
     ModelStatus,
 )
+from src.app.catalogs.providers import ProviderId
 
 
 class ModelRegistryService(Protocol):
     """Provides model information grouped by provider."""
 
-    def count_by_provider(self, provider: str) -> int:
+    def count_by_provider(self, provider: ProviderId) -> int:
         """Return the number of selectable logical models for a provider."""
         ...
 
@@ -27,17 +28,15 @@ class CatalogModelRegistryService:
     ) -> None:
         self._catalog = tuple(catalog)
 
-    def count_by_provider(self, provider: str) -> int:
+    def count_by_provider(self, provider: ProviderId) -> int:
         """Count active logical models exposed through one provider."""
-
-        provider_id = provider.strip().casefold()
 
         return sum(
             1
             for model in self._catalog
             if self._is_available_through_provider(
                 model=model,
-                provider_id=provider_id,
+                provider_id=provider,
             )
         )
 
@@ -45,31 +44,13 @@ class CatalogModelRegistryService:
     def _is_available_through_provider(
         *,
         model: ModelCatalogEntry,
-        provider_id: str,
+        provider_id: ProviderId,
     ) -> bool:
         if model.status == ModelStatus.DEPRECATED:
             return False
 
         return any(
-            deployment.provider_id.value == provider_id
+            deployment.provider_id == provider_id
             and deployment.status != ModelStatus.DEPRECATED
             for deployment in model.deployments
-        )
-
-
-class StaticModelRegistryService:
-    """Small configurable registry retained for focused tests."""
-
-    def __init__(self, counts: dict[str, int] | None = None) -> None:
-        self._counts = {
-            provider.strip().casefold(): max(0, count)
-            for provider, count in (counts or {}).items()
-        }
-
-    def count_by_provider(self, provider: str) -> int:
-        """Return the configured model count or zero."""
-
-        return self._counts.get(
-            provider.strip().casefold(),
-            0,
         )

@@ -31,6 +31,7 @@ class ProviderCatalogEntry:
     logo_url: str
     requires_api_key: bool
     default_base_url: str | None
+    model_catalog_note: str | None = None
 
 
 PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
@@ -54,6 +55,11 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/nvidia.jpeg",
         requires_api_key=True,
         default_base_url="https://integrate.api.nvidia.com/v1",
+        model_catalog_note=(
+            "No curated NVIDIA model deployments are available yet. "
+            "Configuring this provider does not currently enable a "
+            "selectable model."
+        ),
     ),
     ProviderCatalogEntry(
         id=ProviderId.OLLAMA,
@@ -65,6 +71,10 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/ollama.jpeg",
         requires_api_key=False,
         default_base_url="http://localhost:11434",
+        model_catalog_note=(
+            "No curated Ollama model deployments are available yet. "
+            "Local model discovery is not currently part of the catalog."
+        ),
     ),
     ProviderCatalogEntry(
         id=ProviderId.OPENAI,

@@ -57,6 +57,6 @@ def test_catalog_registry_counts_active_logical_models_once() -> None:
         catalog=catalog,
     )
 
-    assert registry.count_by_provider("together") == 1
-    assert registry.count_by_provider("OPENAI") == 1
-    assert registry.count_by_provider("anthropic") == 0
+    assert registry.count_by_provider(ProviderId.TOGETHER) == 1
+    assert registry.count_by_provider(ProviderId.OPENAI) == 1
+    assert registry.count_by_provider(ProviderId.ANTHROPIC) == 0

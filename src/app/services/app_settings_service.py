@@ -1,6 +1,5 @@
 """Environment-backed application settings shared by feature services."""
 
-import json
 import os
 from dataclasses import dataclass
 from functools import lru_cache
@@ -20,7 +19,6 @@ class AppSettings:
     encryption_key: str | None
     database_path: Path
     user_id: str
-    model_counts: dict[str, int]
     builtin_skills_path: Path
     dev_auth_enabled: bool
     dev_user_id: str
@@ -41,7 +39,6 @@ def get_app_settings() -> AppSettings:
             )
         ),
         user_id=os.getenv("LOUIE_USER_ID", "local-user"),
-        model_counts=_load_provider_model_counts(),
         builtin_skills_path=_resolve_builtin_skills_path(),
         dev_auth_enabled=_environment_flag(
             "LOUIE_DEV_AUTH",
@@ -64,29 +61,6 @@ def _environment_flag(name: str) -> bool:
         "true",
         "yes",
         "on",
-    }
-
-
-def _load_provider_model_counts() -> dict[str, int]:
-    """Parse provider model counts from JSON configuration."""
-
-    raw_counts = os.getenv("LOUIE_PROVIDER_MODEL_COUNTS", "{}")
-
-    try:
-        parsed_counts = json.loads(raw_counts)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            "LOUIE_PROVIDER_MODEL_COUNTS must be a JSON object."
-        ) from exc
-
-    if not isinstance(parsed_counts, dict):
-        raise RuntimeError(
-            "LOUIE_PROVIDER_MODEL_COUNTS must be a JSON object."
-        )
-
-    return {
-        str(provider): max(0, int(count))
-        for provider, count in parsed_counts.items()
     }
 
 

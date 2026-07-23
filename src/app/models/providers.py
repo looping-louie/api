@@ -44,6 +44,7 @@ class ProviderState:
     key_trimmed: str | None
     base_url: str | None
     model_count: int
+    model_catalog_note: str | None
 
 
 @dataclass(frozen=True)

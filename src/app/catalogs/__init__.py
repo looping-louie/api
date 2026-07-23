@@ -14,11 +14,13 @@ from .models import (
     MODEL_CATALOG,
     MODEL_CATALOG_BY_ID,
     ModelCapability,
+    ModelCatalogValidationError,
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
     ModelPricing,
     ModelStatus,
+    validate_model_catalog,
 )
 from .providers import (
     PROVIDER_CATALOG,
@@ -36,6 +38,7 @@ __all__ = [
     "MODEL_CATALOG",
     "MODEL_CATALOG_BY_ID",
     "ModelCapability",
+    "ModelCatalogValidationError",
     "ModelCatalogEntry",
     "ModelDeployment",
     "ModelEndpoint",
@@ -50,4 +53,5 @@ __all__ = [
     "ReviewerStrictnessDefaults",
     "SkillCatalogEntry",
     "build_builtin_instruction_id",
+    "validate_model_catalog",
 ]

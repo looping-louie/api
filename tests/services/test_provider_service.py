@@ -6,9 +6,6 @@ from src.app.catalogs.providers import (
     ProviderCatalogEntry,
     ProviderId,
 )
-from src.app.services.providers.model_registry_service import (
-    StaticModelRegistryService,
-)
 from src.app.services.providers.provider_connection_service import (
     ProviderConnectionError,
 )
@@ -23,6 +20,7 @@ from tests.factories.providers import build_provider_credential
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
 )
+from tests.fakes.model_registry_service import FakeModelRegistryService
 from tests.fakes.provider_repository import FakeProviderRepository
 from tests.fakes.secret_service import FakeSecretService
 
@@ -66,6 +64,15 @@ async def test_list_returns_curated_order_and_workspace_state(
 
     assert anthropic.configured is False
     assert anthropic.enabled is False
+    assert anthropic.model_catalog_note is None
+
+    nvidia = providers[1]
+    ollama = providers[2]
+
+    assert nvidia.model_count == 0
+    assert nvidia.model_catalog_note is not None
+    assert ollama.model_count == 0
+    assert ollama.model_catalog_note is not None
 
 
 @pytest.mark.asyncio
@@ -80,7 +87,7 @@ async def test_list_uses_the_injected_provider_catalog(
         tenant_service=tenant_service,
         secret_service=provider_secret_service,
         connection_service=provider_connection_service,
-        model_registry=StaticModelRegistryService(),
+        model_registry=FakeModelRegistryService(),
         catalog=(
             ProviderCatalogEntry(
                 id=ProviderId.OLLAMA,
