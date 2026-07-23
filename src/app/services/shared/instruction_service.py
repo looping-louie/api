@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from typing import Callable, Literal, Mapping, Protocol, Sequence
 from uuid import uuid4
 
+from src.app.catalogs.instructions import InstructionOrigin
+
 from .dependency_checker import DependencyChecker
 from .reference_resolver import ResourceReference
 from .validation_service import ValidationService
@@ -52,6 +54,62 @@ class InstructionDocument:
 
 
 @dataclass(frozen=True, slots=True)
+class AvailableInstructionSummary:
+    """Instruction visible in one workspace's effective library."""
+
+    id: str
+    workspace_id: str
+    instruction_type: InstructionType
+    origin: InstructionOrigin
+    owner_workspace_id: str | None
+    name: str
+    description: str
+    enabled: bool
+    enabled_by_default: bool
+    deprecated: bool
+    catalog_version: int | None
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+    @property
+    def selectable(self) -> bool:
+        """Return whether new compositions may select this definition."""
+
+        return self.enabled and not self.deprecated
+
+
+@dataclass(frozen=True, slots=True)
+class AvailableInstructionDocument:
+    """Complete instruction resolved in one workspace's library."""
+
+    id: str
+    workspace_id: str
+    instruction_type: InstructionType
+    origin: InstructionOrigin
+    owner_workspace_id: str | None
+    source_instruction_id: str | None
+    name: str
+    description: str
+    instructions: str
+    metadata: Mapping[str, object]
+    enabled: bool
+    enabled_by_default: bool
+    deprecated: bool
+    catalog_version: int | None
+    checksum: str | None
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+    @property
+    def selectable(self) -> bool:
+        """Return whether new compositions may select this definition."""
+
+        return self.enabled and not self.deprecated
+
+
+@dataclass(frozen=True, slots=True)
 class InstructionCreate:
     """Data required to create a persona or skill."""
 
@@ -82,7 +140,7 @@ class InstructionRepository(Protocol):
         instruction_type: InstructionType,
         search: str | None = None,
     ) -> Sequence[InstructionSummary]:
-        """Return lightweight instruction records."""
+        """Return owned custom summaries for editing workflows."""
         ...
 
     async def get(
@@ -92,7 +150,58 @@ class InstructionRepository(Protocol):
         instruction_type: InstructionType,
         instruction_id: str,
     ) -> InstructionDocument | None:
-        """Return one complete instruction document."""
+        """Return one custom instruction owned by the workspace."""
+        ...
+
+    async def list_available_for_workspace(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        search: str | None = None,
+        include_deprecated: bool = False,
+    ) -> Sequence[AvailableInstructionSummary]:
+        """Return the effective instruction library for a workspace."""
+        ...
+
+    async def get_available_for_workspace(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+        include_deprecated: bool = False,
+    ) -> AvailableInstructionDocument | None:
+        """Resolve a visible instruction, including disabled definitions."""
+        ...
+
+    async def get_owned_custom(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> InstructionDocument | None:
+        """Return a custom instruction owned by the workspace."""
+        ...
+
+    async def set_enabled(
+        self,
+        *,
+        workspace_id: str,
+        instruction_id: str,
+        enabled: bool,
+    ) -> bool:
+        """Persist an explicit workspace enablement override."""
+        ...
+
+    async def is_enabled(
+        self,
+        *,
+        workspace_id: str,
+        instruction_id: str,
+    ) -> bool:
+        """Return whether an instruction is selectable in the workspace."""
         ...
 
     async def create(
