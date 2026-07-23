@@ -1,19 +1,3 @@
----
-id: acceptance_criteria
-name: Acceptance Criteria
-category: specification_review
-description: >
-  Provides methods for writing and validating concrete, observable, testable
-  acceptance criteria that define successful behaviour, boundaries, failure
-  states, and completion without prescribing unnecessary implementation detail.
-phase: deliberation
-artifacts:
-    - prompt
-    - current_artifact
-    - contributions
-output: json
----
-
 # Acceptance Criteria
 
 ## Scope

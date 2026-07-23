@@ -1,18 +1,3 @@
----
-id: web_development
-name: Web Development
-category: web_review
-description: >
-  Provides platform-agnostic web development review knowledge for functional
-  correctness, HTML foundations, accessibility, security, privacy, SEO,
-  performance, resilience, internationalisation, and machine readability.
-phase: code_review
-artifacts:
-    - git_diff
-    - changed_files
-output: json
----
-
 # Web Development
 
 ## Scope

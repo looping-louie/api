@@ -1,20 +1,3 @@
----
-id: seo
-name: SEO
-category: discoverability_review
-description: >
-  Provides search-engine optimisation knowledge for crawlability, indexability,
-  rendering, metadata, canonicals, redirects, structured data, internal linking,
-  sitemaps, robots directives, content quality, and multilingual discovery.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # SEO
 
 ## Scope

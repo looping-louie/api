@@ -1,20 +1,3 @@
----
-id: privacy
-name: Privacy
-category: compliance_review
-description: >
-  Provides privacy knowledge for data minimisation, purpose limitation, consent,
-  transparency, retention, deletion, user rights, logging, analytics, storage,
-  third-party sharing, and privacy-preserving product design.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # Privacy
 
 ## Scope

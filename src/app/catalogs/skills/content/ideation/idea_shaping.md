@@ -1,19 +1,3 @@
----
-id: idea_shaping
-name: Idea Shaping
-category: product_planning
-description: >
-  Provides structured methods for turning an ambiguous idea into a bounded,
-  testable, decision-ready product concept with explicit scope, appetite,
-  risks, validation needs, and success criteria.
-phase: deliberation
-artifacts:
-    - prompt
-    - current_artifact
-    - contributions
-output: json
----
-
 # Idea Shaping
 
 ## Scope

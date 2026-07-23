@@ -1,20 +1,3 @@
----
-id: agent_readiness
-name: Agent Readiness
-category: machine_readability_review
-description: >
-  Provides agent-readiness knowledge for semantic content, stable URLs,
-  machine-readable representations, discovery metadata, API and tool contracts,
-  crawler policy, provenance, structured output, and safe automation.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # Agent Readiness
 
 ## Scope

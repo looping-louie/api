@@ -1,18 +1,3 @@
----
-id: nuxt
-name: Nuxt
-category: framework_review
-description: >
-  Provides Nuxt-specific review knowledge for application structure, Vue
-  integration, routing, rendering, hydration, data fetching, state, Nitro APIs,
-  runtime configuration, caching, deployment, type safety, and testing.
-phase: code_review
-artifacts:
-    - git_diff
-    - changed_files
-output: json
----
-
 # Nuxt
 
 ## Scope

@@ -1,20 +1,3 @@
----
-id: security
-name: Security
-category: security_review
-description: >
-  Provides application-security knowledge for authentication, authorisation,
-  input validation, output encoding, secrets, sessions, data protection,
-  dependency trust, abuse resistance, server boundaries, and secure deployment.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # Security
 
 ## Scope

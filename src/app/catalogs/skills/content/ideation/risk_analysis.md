@@ -1,19 +1,3 @@
----
-id: risk_analysis
-name: Risk Analysis
-category: risk_review
-description: >
-  Provides structured identification, classification, prioritisation, and
-  treatment of product, technical, operational, commercial, legal, security,
-  privacy, delivery, and adoption risks.
-phase: deliberation
-artifacts:
-    - prompt
-    - current_artifact
-    - contributions
-output: json
----
-
 # Risk Analysis
 
 ## Scope

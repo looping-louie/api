@@ -1,20 +1,3 @@
----
-id: performance
-name: Performance
-category: performance_review
-description: >
-  Provides performance knowledge for rendering, Core Web Vitals, JavaScript,
-  CSS, images, fonts, network requests, caching, payload size, server latency,
-  runtime work, and measurement-driven optimisation.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # Performance
 
 ## Scope

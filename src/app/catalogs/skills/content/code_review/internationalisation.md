@@ -1,20 +1,3 @@
----
-id: internationalisation
-name: Internationalisation
-category: web_review
-description: >
-  Provides internationalisation knowledge for language, locale, translation,
-  pluralisation, formatting, multilingual routing, metadata, right-to-left
-  layouts, writing systems, and locale-sensitive user experience.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # Internationalisation
 
 ## Scope

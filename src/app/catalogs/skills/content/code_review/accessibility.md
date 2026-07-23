@@ -1,20 +1,3 @@
----
-id: accessibility
-name: Accessibility
-category: web_review
-description: >
-  Provides accessibility knowledge for semantic structure, keyboard interaction,
-  focus management, forms, names and labels, visual presentation, motion, media,
-  tables, authentication, and assistive-technology compatibility.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - git_diff
-    - changed_files
-output: json
----
-
 # Accessibility
 
 ## Scope

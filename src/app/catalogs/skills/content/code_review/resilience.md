@@ -1,19 +1,3 @@
----
-id: resilience
-name: Resilience
-category: reliability_review
-description: >
-  Provides cross-cutting resilience knowledge for failure handling, retries,
-  idempotency, degradation, recovery, observability, rollback, dependency
-  failure, state integrity, and operational continuity.
-phase: review
-artifacts:
-    - prompt
-    - current_artifact
-    - changed_files
-output: json
----
-
 # Resilience
 
 ## Scope

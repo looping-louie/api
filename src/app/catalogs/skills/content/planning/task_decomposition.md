@@ -1,19 +1,3 @@
----
-id: task_decomposition
-name: Task Decomposition
-category: implementation_planning
-description: >
-  Provides methods for converting an approved idea or specification into
-  small, ordered, independently reviewable implementation tasks with clear
-  boundaries, dependencies, context, and commit outcomes.
-phase: deliberation
-artifacts:
-    - prompt
-    - current_artifact
-    - contributions
-output: json
----
-
 # Task Decomposition
 
 ## Scope

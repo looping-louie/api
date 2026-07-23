@@ -1,6 +1,15 @@
 [
   {
-    "id": "web_development",
+    "id": "builtin:skill:web_development",
+    "key": "web_development",
+    "name": "Web Development",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/web_development.md",
+    "category": "web_review",
+    "phase": "code_review",
+    "artifacts": ["git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides platform-agnostic web development knowledge covering functional correctness, accessibility, SEO, security, performance, privacy, resilience, and standards compliance.",
     "applies_when": [
       "web",
@@ -20,7 +29,16 @@
     }
   },
   {
-    "id": "nuxt",
+    "id": "builtin:skill:nuxt",
+    "key": "nuxt",
+    "name": "Nuxt",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/nuxt.md",
+    "category": "framework_review",
+    "phase": "code_review",
+    "artifacts": ["git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides Nuxt-specific knowledge covering application structure, Vue integration, routing, rendering, hydration, data fetching, state, Nitro APIs, deployment, type safety, and testing.",
     "applies_when": [
       "nuxt",
@@ -41,7 +59,16 @@
     }
   },
   {
-    "id": "accessibility",
+    "id": "builtin:skill:accessibility",
+    "key": "accessibility",
+    "name": "Accessibility",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/accessibility.md",
+    "category": "web_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides accessibility knowledge covering semantic structure, keyboard interaction, focus management, forms, visual presentation, motion, media, tables, and assistive-technology compatibility.",
     "applies_when": [
       "accessibility",
@@ -64,7 +91,16 @@
     }
   },
   {
-    "id": "privacy",
+    "id": "builtin:skill:privacy",
+    "key": "privacy",
+    "name": "Privacy",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/privacy.md",
+    "category": "compliance_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides privacy knowledge covering data minimisation, consent, transparency, retention, deletion, user rights, logging, analytics, storage, and third-party sharing.",
     "applies_when": [
       "privacy",
@@ -87,7 +123,16 @@
     }
   },
   {
-    "id": "security",
+    "id": "builtin:skill:security",
+    "key": "security",
+    "name": "Security",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/security.md",
+    "category": "security_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides application-security knowledge covering authentication, authorisation, validation, injection, secrets, sessions, tenant isolation, abuse resistance, dependencies, and secure deployment.",
     "applies_when": [
       "security",
@@ -111,7 +156,16 @@
     }
   },
   {
-    "id": "internationalisation",
+    "id": "builtin:skill:internationalisation",
+    "key": "internationalisation",
+    "name": "Internationalisation",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/internationalisation.md",
+    "category": "web_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides internationalisation knowledge covering language, locale, translation, pluralisation, formatting, multilingual routing, metadata, right-to-left layouts, and locale-sensitive user experience.",
     "applies_when": [
       "internationalisation",
@@ -134,7 +188,16 @@
     }
   },
   {
-    "id": "performance",
+    "id": "builtin:skill:performance",
+    "key": "performance",
+    "name": "Performance",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/performance.md",
+    "category": "performance_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides performance knowledge covering rendering, Core Web Vitals, JavaScript, CSS, images, fonts, network requests, caching, payload size, server latency, and measurement-driven optimisation.",
     "applies_when": [
       "performance",
@@ -158,7 +221,16 @@
     }
   },
   {
-    "id": "seo",
+    "id": "builtin:skill:seo",
+    "key": "seo",
+    "name": "SEO",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/seo.md",
+    "category": "discoverability_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides search-engine optimisation knowledge covering crawlability, indexability, rendering, metadata, canonicals, redirects, structured data, internal linking, sitemaps, and robots directives.",
     "applies_when": [
       "seo",
@@ -181,7 +253,16 @@
     }
   },
   {
-    "id": "agent_readiness",
+    "id": "builtin:skill:agent_readiness",
+    "key": "agent_readiness",
+    "name": "Agent Readiness",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/agent_readiness.md",
+    "category": "machine_readability_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "git_diff", "changed_files"],
+    "output": "json",
     "description": "Provides agent-readiness knowledge covering semantic content, stable URLs, machine-readable representations, discovery metadata, API and tool contracts, crawler policy, provenance, and safe automation.",
     "applies_when": [
       "agents",
@@ -204,7 +285,16 @@
     }
   },
   {
-    "id": "idea_shaping",
+    "id": "builtin:skill:idea_shaping",
+    "key": "idea_shaping",
+    "name": "Idea Shaping",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/ideation/idea_shaping.md",
+    "category": "product_planning",
+    "phase": "deliberation",
+    "artifacts": ["prompt", "current_artifact", "contributions"],
+    "output": "json",
     "description": "Provides structured methods for turning an ambiguous idea into a bounded, testable, decision-ready product concept with explicit scope, appetite, risks, validation needs, and success criteria.",
     "applies_when": [
       "idea",
@@ -227,7 +317,16 @@
     }
   },
   {
-    "id": "customer_problem",
+    "id": "builtin:skill:customer_problem",
+    "key": "customer_problem",
+    "name": "Customer Problem",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/ideation/customer_problem.md",
+    "category": "product_discovery",
+    "phase": "deliberation",
+    "artifacts": ["prompt", "current_artifact", "contributions"],
+    "output": "json",
     "description": "Provides methods for identifying, testing, and expressing customer problems, affected users, current alternatives, context, severity, frequency, and supporting evidence.",
     "applies_when": [
       "customer",
@@ -250,7 +349,16 @@
     }
   },
   {
-    "id": "risk_analysis",
+    "id": "builtin:skill:risk_analysis",
+    "key": "risk_analysis",
+    "name": "Risk Analysis",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/ideation/risk_analysis.md",
+    "category": "risk_review",
+    "phase": "deliberation",
+    "artifacts": ["prompt", "current_artifact", "contributions"],
+    "output": "json",
     "description": "Provides structured identification, classification, prioritisation, and treatment of product, technical, operational, commercial, legal, security, privacy, delivery, and adoption risks.",
     "applies_when": [
       "risk",
@@ -273,7 +381,16 @@
     }
   },
   {
-    "id": "resilience",
+    "id": "builtin:skill:resilience",
+    "key": "resilience",
+    "name": "Resilience",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/code_review/resilience.md",
+    "category": "reliability_review",
+    "phase": "review",
+    "artifacts": ["prompt", "current_artifact", "changed_files"],
+    "output": "json",
     "description": "Provides cross-cutting resilience knowledge covering failure handling, retries, idempotency, degradation, recovery, observability, rollback, dependency failure, and state integrity.",
     "applies_when": [
       "resilience",
@@ -297,7 +414,16 @@
     }
   },
   {
-    "id": "task_decomposition",
+    "id": "builtin:skill:task_decomposition",
+    "key": "task_decomposition",
+    "name": "Task Decomposition",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/planning/task_decomposition.md",
+    "category": "implementation_planning",
+    "phase": "deliberation",
+    "artifacts": ["prompt", "current_artifact", "contributions"],
+    "output": "json",
     "description": "Provides methods for converting an approved idea or specification into small, ordered, independently reviewable implementation tasks with explicit dependencies, context, and commit outcomes.",
     "applies_when": [
       "tasks",
@@ -320,7 +446,16 @@
     }
   },
   {
-    "id": "acceptance_criteria",
+    "id": "builtin:skill:acceptance_criteria",
+    "key": "acceptance_criteria",
+    "name": "Acceptance Criteria",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/planning/acceptance_criteria.md",
+    "category": "specification_review",
+    "phase": "deliberation",
+    "artifacts": ["prompt", "current_artifact", "contributions"],
+    "output": "json",
     "description": "Provides methods for writing and validating concrete, observable, testable acceptance criteria covering successful behaviour, boundaries, failure states, and completion.",
     "applies_when": [
       "acceptance_criteria",

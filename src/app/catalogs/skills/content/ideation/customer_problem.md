@@ -1,19 +1,3 @@
----
-id: customer_problem
-name: Customer Problem
-category: product_discovery
-description: >
-  Provides methods for identifying, testing, and expressing customer problems,
-  affected users, current alternatives, context, severity, frequency, and
-  evidence without prematurely committing to a solution.
-phase: deliberation
-artifacts:
-    - prompt
-    - current_artifact
-    - contributions
-output: json
----
-
 # Customer Problem
 
 ## Scope

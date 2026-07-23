@@ -75,7 +75,7 @@ def _resolve_builtin_skills_path() -> Path:
         return Path(configured)
 
     candidates = (
-        Path("src/app/skills"),
+        Path("src/app/catalogs/skills"),
         Path("src/app/resources/skills"),
         Path("skills"),
     )
