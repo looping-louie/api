@@ -56,13 +56,24 @@ class SqliteValidationRepository:
 
         table_name, type_column = location
         name_key = normalized_name
+        workspace_column = (
+            "owner_workspace_id"
+            if table_name == "instructions"
+            else "workspace_id"
+        )
+        origin_clause = (
+            "AND origin = 'custom'"
+            if table_name == "instructions"
+            else ""
+        )
 
         query = f"""
             SELECT id
             FROM {table_name}
-            WHERE workspace_id = ?
+            WHERE {workspace_column} = ?
               AND {type_column} = ?
               AND name_key = ?
+              {origin_clause}
             LIMIT 1
         """
 

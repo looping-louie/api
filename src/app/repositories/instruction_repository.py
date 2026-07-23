@@ -41,7 +41,7 @@ class SqliteInstructionRepository:
                 """
                 SELECT
                     id,
-                    workspace_id,
+                    owner_workspace_id AS workspace_id,
                     instruction_type,
                     name,
                     description,
@@ -49,7 +49,8 @@ class SqliteInstructionRepository:
                     created_at,
                     updated_at
                 FROM instructions
-                WHERE workspace_id = ?
+                WHERE origin = 'custom'
+                  AND owner_workspace_id = ?
                   AND instruction_type = ?
                 ORDER BY
                     name_key ASC,
@@ -103,23 +104,32 @@ class SqliteInstructionRepository:
                     """
                     INSERT INTO instructions (
                         id,
-                        workspace_id,
                         instruction_type,
+                        origin,
+                        owner_workspace_id,
+                        source_instruction_id,
                         name,
                         name_key,
                         description,
                         content,
                         metadata_json,
+                        catalog_version,
+                        checksum,
+                        enabled_by_default,
+                        deprecated,
                         version,
                         created_at,
                         updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (
+                        ?, ?, 'custom', ?, NULL, ?, ?, ?, ?, ?,
+                        NULL, NULL, 1, 0, ?, ?, ?
+                    )
                     """,
                     (
                         document.id,
-                        document.workspace_id,
                         document.instruction_type,
+                        document.workspace_id,
                         document.name,
                         self._normalize_name(document.name),
                         document.description,
@@ -166,7 +176,8 @@ class SqliteInstructionRepository:
                         version = ?,
                         updated_at = ?
                     WHERE id = ?
-                      AND workspace_id = ?
+                      AND origin = 'custom'
+                      AND owner_workspace_id = ?
                       AND instruction_type = ?
                       AND version = ?
                     """,
@@ -225,7 +236,8 @@ class SqliteInstructionRepository:
                     """
                     DELETE FROM instructions
                     WHERE id = ?
-                      AND workspace_id = ?
+                      AND origin = 'custom'
+                      AND owner_workspace_id = ?
                       AND instruction_type = ?
                     """,
                     (
@@ -258,7 +270,7 @@ class SqliteInstructionRepository:
             """
             SELECT
                 id,
-                workspace_id,
+                owner_workspace_id AS workspace_id,
                 instruction_type,
                 name,
                 description,
@@ -269,7 +281,8 @@ class SqliteInstructionRepository:
                 updated_at
             FROM instructions
             WHERE id = ?
-              AND workspace_id = ?
+              AND origin = 'custom'
+              AND owner_workspace_id = ?
               AND instruction_type = ?
             LIMIT 1
             """,

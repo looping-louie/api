@@ -34,6 +34,7 @@ EXPECTED_TABLES = {
     "composition_items",
     "resource_dependencies",
     "provider_credentials",
+    "workspace_instruction_settings",
 }
 
 
@@ -146,6 +147,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0002_instructions",
         "0003_compositions",
         "0004_provider_credentials",
+        "0005_instruction_catalog",
     ]
 
 
