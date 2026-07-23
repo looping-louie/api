@@ -22,6 +22,7 @@ class AppSettings:
     builtin_skills_path: Path
     dev_auth_enabled: bool
     dev_user_id: str
+    catalog_strict_versioning: bool
 
 
 @lru_cache(maxsize=1)
@@ -47,6 +48,9 @@ def get_app_settings() -> AppSettings:
             "LOUIE_DEV_USER_ID",
             "local-user",
             ).strip(),
+        catalog_strict_versioning=_environment_flag(
+            "LOUIE_CATALOG_STRICT_VERSIONING",
+        ),
     )
 
 

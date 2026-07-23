@@ -87,6 +87,7 @@ The installer also creates these local provider settings:
 ```text
 LOUIE_ENCRYPTION_KEY=<generated Fernet key>
 LOUIE_DB_PATH=.looping-louie/data/looping-louie.db
+LOUIE_CATALOG_STRICT_VERSIONING=false
 LOUIE_ORG_ID=local-org
 LOUIE_USER_ID=local-user
 ```
@@ -94,6 +95,10 @@ LOUIE_USER_ID=local-user
 `LOUIE_ENCRYPTION_KEY` is the Looping Louie master encryption key. It encrypts
 provider credentials before they are stored in SQLite. Do not commit it, log it
 or regenerate it while encrypted credentials still exist.
+
+`LOUIE_CATALOG_STRICT_VERSIONING` defaults to `false` for development. Set it
+to `true` in production so a builtin checksum change requires an incremented
+`catalog_version`.
 
 Add these patterns to `.gitignore`:
 

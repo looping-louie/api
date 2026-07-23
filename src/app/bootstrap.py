@@ -47,6 +47,10 @@ from src.app.services.app_settings_service import (
     get_app_settings,
 )
 from src.app.services.council_service import CouncilService
+from src.app.services.instruction_catalog_synchronizer import (
+    CatalogChecksumPolicy,
+    InstructionCatalogSynchronizer,
+)
 from src.app.services.loop_service import LoopService
 from src.app.services.model_service import (
     ModelAvailabilityService,
@@ -82,6 +86,22 @@ async def configure_application(
 
     await run_sqlite_migrations(
         database_path=resolved_settings.database_path,
+    )
+
+    catalog_synchronizer = InstructionCatalogSynchronizer(
+        database_path=resolved_settings.database_path,
+        checksum_policy=(
+            CatalogChecksumPolicy.REQUIRE_VERSION_INCREMENT
+            if getattr(
+                resolved_settings,
+                "catalog_strict_versioning",
+                False,
+            )
+            else CatalogChecksumPolicy.ALLOW_WITH_WARNING
+        ),
+    )
+    catalog_synchronization = catalog_synchronizer.synchronize(
+        instruction_catalog,
     )
 
     await ensure_local_tenant(
@@ -219,6 +239,7 @@ async def configure_application(
 
     app.state.database = database
     app.state.instruction_catalog = instruction_catalog
+    app.state.catalog_synchronization = catalog_synchronization
 
 
 def _require_encryption_key(

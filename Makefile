@@ -29,6 +29,7 @@ config: venv
 			'OPENAI_API_KEY=' \
 			"LOUIE_ENCRYPTION_KEY=$$ENCRYPTION_KEY" \
 			'LOUIE_DB_PATH=.looping-louie/data/looping-louie.db' \
+			'LOUIE_CATALOG_STRICT_VERSIONING=false' \
 			'LOUIE_ORG_ID=local-org' \
 			'LOUIE_USER_ID=local-user' \
 			> "$(ENV_FILE)"; \
