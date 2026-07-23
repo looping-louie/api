@@ -1,13 +1,16 @@
 """Application service for model provider configuration."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from time import perf_counter
 from uuid import uuid4
 
+from src.app.catalogs.providers import (
+    ProviderCatalogEntry,
+    ProviderId,
+)
 from src.app.models.providers import (
     ProviderCredential,
-    ProviderDefinition,
     ProviderState,
     ProviderTestResult,
 )
@@ -61,68 +64,6 @@ class ProviderNotConfiguredError(ProviderError):
         self.provider_id = provider_id
 
 
-PROVIDERS: tuple[ProviderDefinition, ...] = (
-    ProviderDefinition(
-        provider="anthropic",
-        name="Anthropic",
-        description=(
-            "Access Claude models for reasoning, coding and "
-            "long-context review."
-        ),
-        logo_url="/images/providers/anthropic.jpeg",
-        requires_api_key=True,
-        default_base_url="https://api.anthropic.com/v1",
-    ),
-    ProviderDefinition(
-        provider="nvidia",
-        name="NVIDIA",
-        description=(
-            "Access NVIDIA-hosted open models through the NVIDIA NIM API."
-        ),
-        logo_url="/images/providers/nvidia.jpeg",
-        requires_api_key=True,
-        default_base_url="https://integrate.api.nvidia.com/v1",
-    ),
-    ProviderDefinition(
-        provider="ollama",
-        name="Ollama",
-        description=(
-            "Connect local or self-hosted open-source models through "
-            "an Ollama endpoint."
-        ),
-        logo_url="/images/providers/ollama.jpeg",
-        requires_api_key=False,
-        default_base_url="http://localhost:11434",
-    ),
-    ProviderDefinition(
-        provider="openai",
-        name="OpenAI",
-        description=(
-            "Access GPT models for generation, reasoning and "
-            "specialised reviews."
-        ),
-        logo_url="/images/providers/openai.jpeg",
-        requires_api_key=True,
-        default_base_url="https://api.openai.com/v1",
-    ),
-    ProviderDefinition(
-        provider="together",
-        name="Together",
-        description=(
-            "Access a broad catalogue of hosted open-source models."
-        ),
-        logo_url="/images/providers/together.jpeg",
-        requires_api_key=True,
-        default_base_url="https://api.together.xyz/v1",
-    ),
-)
-
-PROVIDERS_BY_ID: dict[str, ProviderDefinition] = {
-    definition.provider: definition
-    for definition in PROVIDERS
-}
-
-
 class ProviderService:
     """Coordinates provider configuration, storage and testing."""
 
@@ -134,6 +75,7 @@ class ProviderService:
         secret_service: SecretService,
         connection_service: ProviderConnectionService,
         model_registry: ModelRegistryService,
+        catalog: Sequence[ProviderCatalogEntry],
         clock: Clock | None = None,
         id_factory: IdFactory | None = None,
     ) -> None:
@@ -142,6 +84,11 @@ class ProviderService:
         self._secret_service = secret_service
         self._connection_service = connection_service
         self._model_registry = model_registry
+        self._catalog = tuple(catalog)
+        self._catalog_by_id = {
+            entry.id: entry
+            for entry in self._catalog
+        }
         self._clock = clock or self._default_clock
         self._id_factory = id_factory or self._default_id_factory
 
@@ -169,10 +116,10 @@ class ProviderService:
             self._build_state(
                 definition=definition,
                 credential=credentials_by_provider.get(
-                    definition.provider,
+                    definition.id.value,
                 ),
             )
-            for definition in PROVIDERS
+            for definition in self._catalog
         ]
 
     async def describe(
@@ -191,7 +138,7 @@ class ProviderService:
         )
         credential = await self._repository.get(
             workspace_id,
-            definition.provider,
+            definition.id.value,
         )
 
         return self._build_state(
@@ -217,7 +164,7 @@ class ProviderService:
         )
         current = await self._repository.get(
             workspace_id,
-            definition.provider,
+            definition.id.value,
         )
 
         clean_api_key = self._clean_optional_value(api_key)
@@ -267,7 +214,7 @@ class ProviderService:
                 else self._id_factory()
             ),
             workspace_id=workspace_id,
-            provider=definition.provider,
+            provider=definition.id.value,
             enabled=True,
             enabled_by=actor_user_id,
             enabled_on=now,
@@ -342,7 +289,7 @@ class ProviderService:
 
         await self._repository.unset(
             workspace_id=workspace_id,
-            provider=definition.provider,
+            provider=definition.id.value,
             updated_at=self._clock(),
         )
 
@@ -385,7 +332,7 @@ class ProviderService:
         )
 
         return ProviderTestResult(
-            provider=definition.provider,
+            provider=definition.id.value,
             success=True,
             message="Provider connection succeeded.",
             latency_ms=latency_ms,
@@ -419,7 +366,7 @@ class ProviderService:
         now = self._clock()
         stored = await self._repository.set_enabled(
             workspace_id=workspace_id,
-            provider=definition.provider,
+            provider=definition.id.value,
             enabled=enabled,
             enabled_by=actor_user_id if enabled else None,
             enabled_on=now if enabled else None,
@@ -435,16 +382,16 @@ class ProviderService:
         self,
         *,
         workspace_id: str,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
     ) -> ProviderCredential:
         credential = await self._repository.get(
             workspace_id,
-            definition.provider,
+            definition.id.value,
         )
 
         if credential is None:
             raise ProviderNotConfiguredError(
-                provider_id=definition.provider,
+                provider_id=definition.id.value,
             )
 
         return credential
@@ -452,7 +399,7 @@ class ProviderService:
     async def _test_configuration(
         self,
         *,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
         key_ciphertext: str | None,
         plaintext_api_key: str | None,
         base_url: str | None,
@@ -466,7 +413,7 @@ class ProviderService:
                 )
 
             await self._connection_service.test_connection(
-                provider=definition.provider,
+                provider=definition.id,
                 api_key=api_key,
                 base_url=base_url,
             )
@@ -489,7 +436,7 @@ class ProviderService:
     def _build_state(
         self,
         *,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
         credential: ProviderCredential | None,
     ) -> ProviderState:
         configured = self._is_configured(
@@ -498,7 +445,7 @@ class ProviderService:
         )
 
         return ProviderState(
-            provider=definition.provider,
+            provider=definition.id.value,
             name=definition.name,
             description=definition.description,
             logo_url=definition.logo_url,
@@ -520,14 +467,23 @@ class ProviderService:
                 else definition.default_base_url
             ),
             model_count=self._model_registry.count_by_provider(
-                definition.provider,
+                definition.id.value,
             ),
         )
 
-    @staticmethod
-    def _get_definition(provider_id: str) -> ProviderDefinition:
+    def _get_definition(self, provider_id: str) -> ProviderCatalogEntry:
         normalized_provider_id = provider_id.strip().casefold()
-        definition = PROVIDERS_BY_ID.get(normalized_provider_id)
+
+        try:
+            catalog_id = ProviderId(normalized_provider_id)
+        except ValueError:
+            catalog_id = None
+
+        definition = (
+            self._catalog_by_id.get(catalog_id)
+            if catalog_id is not None
+            else None
+        )
 
         if definition is None:
             raise UnknownProviderError(
@@ -541,7 +497,7 @@ class ProviderService:
         *,
         supplied: str | None,
         current: ProviderCredential | None,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
     ) -> str | None:
         clean_supplied = ProviderService._clean_optional_value(
             supplied,
@@ -558,26 +514,26 @@ class ProviderService:
     @staticmethod
     def _validate_configuration(
         *,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
         key_ciphertext: str | None,
         base_url: str | None,
     ) -> None:
         if definition.requires_api_key and key_ciphertext is None:
             raise ProviderConfigurationError(
-                provider_id=definition.provider,
+                provider_id=definition.id.value,
                 reason="an API key is required",
             )
 
         if base_url is None:
             raise ProviderConfigurationError(
-                provider_id=definition.provider,
+                provider_id=definition.id.value,
                 reason="a base URL is required",
             )
 
     @staticmethod
     def _is_configured(
         *,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
         credential: ProviderCredential | None,
     ) -> bool:
         if credential is None or not credential.base_url:

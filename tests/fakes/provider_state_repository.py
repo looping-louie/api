@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-from src.app.catalogs.models import ProviderId
+from src.app.catalogs.providers import ProviderId
 from src.app.services.model_service import ProviderConnectionState
 
 

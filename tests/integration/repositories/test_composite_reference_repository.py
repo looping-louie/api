@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.repositories.composition_repository import (
     SqliteCompositionRepository,
 )
@@ -58,6 +59,7 @@ def build_repository(
     )
     provider_state_repository = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
     availability_service = ModelAvailabilityService(
         provider_state_repository=provider_state_repository,

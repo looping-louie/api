@@ -5,15 +5,7 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 
-
-class ProviderId(StrEnum):
-    """Providers supported by the Looping Louie MVP."""
-
-    ANTHROPIC = "anthropic"
-    NVIDIA = "nvidia"
-    OLLAMA = "ollama"
-    OPENAI = "openai"
-    TOGETHER = "together"
+from .providers import ProviderId
 
 
 class ModelStatus(StrEnum):

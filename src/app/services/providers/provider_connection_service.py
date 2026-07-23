@@ -4,6 +4,8 @@ from typing import Protocol
 
 import httpx
 
+from src.app.catalogs.providers import ProviderId
+
 
 class ProviderConnectionError(RuntimeError):
     """Raised when a provider configuration cannot be reached or authorised."""
@@ -14,7 +16,7 @@ class ProviderConnectionService(Protocol):
 
     async def test_connection(
         self,
-        provider: str,
+        provider: ProviderId,
         api_key: str | None,
         base_url: str | None,
     ) -> None:
@@ -25,11 +27,11 @@ class HttpProviderConnectionService:
     """HTTP implementation using each provider's model-list endpoint."""
 
     _PATHS = {
-        "anthropic": "/models",
-        "nvidia": "/models",
-        "ollama": "/api/tags",
-        "openai": "/models",
-        "together": "/models",
+        ProviderId.ANTHROPIC: "/models",
+        ProviderId.NVIDIA: "/models",
+        ProviderId.OLLAMA: "/api/tags",
+        ProviderId.OPENAI: "/models",
+        ProviderId.TOGETHER: "/models",
     }
 
     def __init__(self, timeout_seconds: float = 15.0) -> None:
@@ -39,7 +41,7 @@ class HttpProviderConnectionService:
 
     async def test_connection(
         self,
-        provider: str,
+        provider: ProviderId,
         api_key: str | None,
         base_url: str | None,
     ) -> None:
@@ -79,7 +81,7 @@ class HttpProviderConnectionService:
 
     @staticmethod
     def _build_headers(
-        provider: str,
+        provider: ProviderId,
         api_key: str | None,
     ) -> dict[str, str]:
         """Build authentication headers without logging their values."""
@@ -87,7 +89,7 @@ class HttpProviderConnectionService:
         if not api_key:
             return {}
 
-        if provider == "anthropic":
+        if provider == ProviderId.ANTHROPIC:
             return {
                 "x-api-key": api_key,
                 "anthropic-version": "2023-06-01",

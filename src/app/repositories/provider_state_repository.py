@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from src.app.catalogs.models import ProviderId
-from src.app.models.providers import (
-    ProviderCredential,
-    ProviderDefinition,
+from src.app.catalogs.providers import (
+    ProviderCatalogEntry,
+    ProviderId,
 )
+from src.app.models.providers import ProviderCredential
 from src.app.repositories.provider_repository import ProviderRepository
 from src.app.services.model_service import ProviderConnectionState
-from src.app.services.providers.provider_service import PROVIDERS_BY_ID
 
 
 class ProviderStateRepositoryAdapter:
@@ -21,8 +20,13 @@ class ProviderStateRepositoryAdapter:
         self,
         *,
         provider_repository: ProviderRepository,
+        catalog: Sequence[ProviderCatalogEntry],
     ) -> None:
         self._provider_repository = provider_repository
+        self._catalog_by_id = {
+            entry.id: entry
+            for entry in catalog
+        }
 
     async def get_states(
         self,
@@ -43,9 +47,7 @@ class ProviderStateRepositoryAdapter:
         states: dict[ProviderId, ProviderConnectionState] = {}
 
         for provider_id in self._unique_provider_ids(provider_ids):
-            definition = PROVIDERS_BY_ID.get(
-                provider_id.value,
-            )
+            definition = self._catalog_by_id.get(provider_id)
 
             if definition is None:
                 continue
@@ -73,7 +75,7 @@ class ProviderStateRepositoryAdapter:
     @staticmethod
     def _is_configured(
         *,
-        definition: ProviderDefinition,
+        definition: ProviderCatalogEntry,
         credential: ProviderCredential | None,
     ) -> bool:
         if credential is None or not credential.base_url:

@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.app.catalogs.models import (
     ModelCapability,
     ModelStatus,
-    ProviderId,
 )
+from src.app.catalogs.providers import ProviderId
 from src.app.schemas.model import (
     ModelListResponse,
     ModelResponse,

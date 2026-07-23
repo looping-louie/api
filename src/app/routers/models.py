@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Path, Query
 from src.app.catalogs.models import (
     ModelCapability,
     ModelStatus,
-    ProviderId,
 )
+from src.app.catalogs.providers import ProviderId
 from src.app.controllers.model import ModelController
 from src.app.schemas.model import (
     ModelListResponse,

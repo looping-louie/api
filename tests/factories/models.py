@@ -9,8 +9,8 @@ from src.app.catalogs.models import (
     ModelEndpoint,
     ModelPricing,
     ModelStatus,
-    ProviderId,
 )
+from src.app.catalogs.providers import ProviderId
 
 
 def build_deployment(

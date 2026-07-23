@@ -1,9 +1,7 @@
 """Tests for the provider model registry."""
 
-from src.app.catalogs.models import (
-    ModelStatus,
-    ProviderId,
-)
+from src.app.catalogs.models import ModelStatus
+from src.app.catalogs.providers import ProviderId
 from src.app.services.providers.model_registry_service import (
     CatalogModelRegistryService,
 )

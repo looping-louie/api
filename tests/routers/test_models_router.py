@@ -4,11 +4,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
+from src.app.catalogs.providers import ProviderId
 from src.app.controllers.model import ModelController
 from src.app.routers.models import router as models_router
 from src.app.services.model_service import ProviderConnectionState
 from src.app.utils.http import register_exception_handlers
-from src.app.catalogs.models import ProviderId
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )

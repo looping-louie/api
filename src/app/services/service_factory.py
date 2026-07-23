@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.repositories.provider_repository import (
     SqliteProviderRepository,
 )
@@ -47,5 +48,6 @@ def get_provider_service() -> ProviderService:
         model_registry=StaticModelRegistryService(
             counts=settings.model_counts
         ),
+        catalog=PROVIDER_CATALOG,
         request_context=get_request_context(),
     )

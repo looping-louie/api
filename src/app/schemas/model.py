@@ -9,8 +9,8 @@ from src.app.catalogs.models import (
     ModelCapability,
     ModelEndpoint,
     ModelStatus,
-    ProviderId,
 )
+from src.app.catalogs.providers import ProviderId
 
 from .common import (
     ListResponse,

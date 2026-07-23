@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI
 
+from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.council import CouncilController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.model import ModelController
@@ -117,6 +118,7 @@ async def configure_application(
     )
     provider_state_repository = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
 
     tenant_service = TenantService(
@@ -189,6 +191,7 @@ async def configure_application(
         ),
         connection_service=HttpProviderConnectionService(),
         model_registry=CatalogModelRegistryService(),
+        catalog=PROVIDER_CATALOG,
         id_factory=_create_identifier,
         clock=_utc_now,
     )

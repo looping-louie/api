@@ -4,6 +4,7 @@ from typing import Callable
 
 import pytest
 
+from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
 from src.app.services.model_service import (
     ModelAvailabilityService,
@@ -250,6 +251,7 @@ def provider_service(
                 "together": 10,
             }
         ),
+        catalog=PROVIDER_CATALOG,
         id_factory=create_identifier,
         clock=clock,
     )

@@ -19,6 +19,11 @@ from .models import (
     ModelEndpoint,
     ModelPricing,
     ModelStatus,
+)
+from .providers import (
+    PROVIDER_CATALOG,
+    PROVIDER_CATALOG_BY_ID,
+    ProviderCatalogEntry,
     ProviderId,
 )
 
@@ -38,6 +43,9 @@ __all__ = [
     "ModelStatus",
     "PersonaCatalogEntry",
     "ProjectPhase",
+    "PROVIDER_CATALOG",
+    "PROVIDER_CATALOG_BY_ID",
+    "ProviderCatalogEntry",
     "ProviderId",
     "ReviewerStrictnessDefaults",
     "SkillCatalogEntry",

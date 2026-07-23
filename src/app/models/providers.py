@@ -12,18 +12,6 @@ class RequestActor:
     user_id: str
 
 
-@dataclass(frozen=True)
-class ProviderDefinition:
-    """Static metadata for one supported model provider."""
-
-    provider: str
-    name: str
-    description: str
-    logo_url: str
-    requires_api_key: bool
-    default_base_url: str | None
-
-
 @dataclass
 class ProviderCredential:
     """Encrypted provider configuration persisted by the repository."""

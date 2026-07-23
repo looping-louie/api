@@ -2,6 +2,13 @@
 
 import pytest
 
+from src.app.catalogs.providers import (
+    ProviderCatalogEntry,
+    ProviderId,
+)
+from src.app.services.providers.model_registry_service import (
+    StaticModelRegistryService,
+)
 from src.app.services.providers.provider_connection_service import (
     ProviderConnectionError,
 )
@@ -11,6 +18,7 @@ from src.app.services.providers.provider_service import (
     ProviderService,
     UnknownProviderError,
 )
+from src.app.services.shared.tenant_service import TenantService
 from tests.factories.providers import build_provider_credential
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
@@ -58,6 +66,41 @@ async def test_list_returns_curated_order_and_workspace_state(
 
     assert anthropic.configured is False
     assert anthropic.enabled is False
+
+
+@pytest.mark.asyncio
+async def test_list_uses_the_injected_provider_catalog(
+    provider_repository: FakeProviderRepository,
+    tenant_service: TenantService,
+    provider_secret_service: FakeSecretService,
+    provider_connection_service: FakeProviderConnectionService,
+) -> None:
+    service = ProviderService(
+        repository=provider_repository,
+        tenant_service=tenant_service,
+        secret_service=provider_secret_service,
+        connection_service=provider_connection_service,
+        model_registry=StaticModelRegistryService(),
+        catalog=(
+            ProviderCatalogEntry(
+                id=ProviderId.OLLAMA,
+                name="Injected Ollama",
+                description="Injected provider catalog entry.",
+                logo_url="/injected/ollama.svg",
+                requires_api_key=False,
+                default_base_url="http://ollama.internal",
+            ),
+        ),
+    )
+
+    providers = await service.list(
+        user_id="user-1",
+    )
+
+    assert len(providers) == 1
+    assert providers[0].provider == "ollama"
+    assert providers[0].name == "Injected Ollama"
+    assert providers[0].base_url == "http://ollama.internal"
 
 
 @pytest.mark.asyncio

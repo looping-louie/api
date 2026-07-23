@@ -6,7 +6,10 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from src.app.catalogs.models import ProviderId
+from src.app.catalogs.providers import (
+    PROVIDER_CATALOG,
+    ProviderId,
+)
 from src.app.repositories.provider_repository import (
     SqliteProviderRepository,
 )
@@ -33,6 +36,7 @@ async def test_returns_configured_and_enabled_provider_state(
     )
     adapter = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
 
     await provider_repository.upsert(
@@ -63,6 +67,7 @@ async def test_provider_without_credentials_is_not_configured(
     )
     adapter = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
 
     states = await adapter.get_states(
@@ -89,6 +94,7 @@ async def test_ollama_is_configured_without_api_key(
     )
     adapter = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
 
     await provider_repository.upsert(
@@ -124,6 +130,7 @@ async def test_disabled_provider_remains_configured(
     )
     adapter = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
 
     await provider_repository.upsert(
@@ -161,6 +168,7 @@ async def test_provider_states_are_isolated_by_workspace(
     )
     adapter = ProviderStateRepositoryAdapter(
         provider_repository=provider_repository,
+        catalog=PROVIDER_CATALOG,
     )
 
     await provider_repository.upsert(

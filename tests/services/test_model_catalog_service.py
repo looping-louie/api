@@ -3,8 +3,8 @@ import pytest
 from src.app.catalogs.models import (
     ModelCapability,
     ModelStatus,
-    ProviderId,
 )
+from src.app.catalogs.providers import ProviderId
 from src.app.services.model_service import (
     ModelAvailabilityService,
     ModelCatalogService,

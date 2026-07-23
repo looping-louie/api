@@ -12,8 +12,8 @@ from src.app.catalogs.models import (
     ModelDeployment,
     ModelPricing,
     ModelStatus,
-    ProviderId,
 )
+from src.app.catalogs.providers import ProviderId
 from src.app.services.shared.tenant_service import TenantService
 
 
