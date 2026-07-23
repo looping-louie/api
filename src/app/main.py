@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.app.bootstrap import configure_application
 from src.app.http import register_exception_handlers
-from src.app.routers import api_v1_router
+from src.app.routers import api_v1_router, router
 from src.app.middleware import DevelopmentAuthMiddleware
 from src.app.services.app_settings_service import get_app_settings
 
@@ -56,3 +56,4 @@ if settings.dev_auth_enabled:
     )
 
 app.include_router(api_v1_router)
+app.include_router(router)
