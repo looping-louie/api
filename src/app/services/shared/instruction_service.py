@@ -51,6 +51,7 @@ class InstructionDocument:
     version: int
     created_at: datetime
     updated_at: datetime
+    source_instruction_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,6 +266,56 @@ class InstructionNotFoundError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
+class BuiltinInstructionImmutableError(InstructionServiceError):
+    """Raised when a builtin is passed to a mutation operation."""
+
+    def __init__(
+        self,
+        *,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> None:
+        super().__init__(
+            f"Builtin {instruction_type} '{instruction_id}' is immutable."
+        )
+        self.instruction_type = instruction_type
+        self.instruction_id = instruction_id
+
+
+class InstructionDisabledError(InstructionServiceError):
+    """Raised when an instruction cannot be selected for new work."""
+
+    def __init__(
+        self,
+        *,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> None:
+        super().__init__(
+            f"{instruction_type.capitalize()} '{instruction_id}' is "
+            "disabled or deprecated."
+        )
+        self.instruction_type = instruction_type
+        self.instruction_id = instruction_id
+
+
+class InstructionNotOwnedError(InstructionServiceError):
+    """Raised when a mutation target is not owned by the workspace."""
+
+    def __init__(
+        self,
+        *,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> None:
+        super().__init__(
+            f"{instruction_type.capitalize()} '{instruction_id}' is not "
+            "a custom instruction owned by this workspace."
+        )
+        self.instruction_type = instruction_type
+        self.instruction_id = instruction_id
+
+
 class InstructionVersionConflictError(InstructionServiceError):
     """Raised when an update uses a stale resource version."""
 
@@ -320,12 +371,12 @@ class InstructionService:
         workspace_id: str,
         instruction_type: InstructionType,
         search: str | None = None,
-    ) -> list[InstructionSummary]:
-        """List personas or skills without returning their full instructions."""
+    ) -> list[AvailableInstructionSummary]:
+        """List the effective instruction library of a workspace."""
 
         self._require_instruction_type(instruction_type)
 
-        summaries = await self._repository.list_summaries(
+        summaries = await self._repository.list_available_for_workspace(
             workspace_id=self._require_text(workspace_id, "workspace_id"),
             instruction_type=instruction_type,
             search=self._normalize_search(search),
@@ -339,18 +390,20 @@ class InstructionService:
         workspace_id: str,
         instruction_type: InstructionType,
         instruction_id: str,
-    ) -> InstructionDocument:
-        """Return a complete persona or skill document."""
+        include_deprecated: bool = False,
+    ) -> AvailableInstructionDocument:
+        """Return a visible instruction, including disabled definitions."""
 
         self._require_instruction_type(instruction_type)
 
-        document = await self._require_document(
+        document = await self._require_available(
             workspace_id=self._require_text(workspace_id, "workspace_id"),
             instruction_type=instruction_type,
             instruction_id=self._require_text(instruction_id, "instruction_id"),
+            include_deprecated=include_deprecated,
         )
 
-        return self._copy_document(document)
+        return self._copy_available_document(document)
 
     async def create(
         self,
@@ -359,34 +412,115 @@ class InstructionService:
         instruction_type: InstructionType,
         payload: InstructionCreate,
     ) -> InstructionDocument:
-        """Create a persona or skill."""
+        """Create a workspace-owned custom instruction."""
 
         self._require_instruction_type(instruction_type)
         workspace_id = self._require_text(workspace_id, "workspace_id")
-        normalized = self._normalize_create(payload)
-
-        await self._validation_service.require_unique_name(
-            workspace_id=workspace_id,
-            resource_type=instruction_type,
-            name=normalized.name,
-        )
-
-        now = self._clock()
-        document = InstructionDocument(
-            id=self._id_factory(),
+        return await self._create_custom(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
-            name=normalized.name,
-            description=normalized.description,
-            instructions=normalized.instructions,
-            metadata=deepcopy(dict(normalized.metadata)),
-            version=1,
-            created_at=now,
-            updated_at=now,
+            payload=payload,
+            source_instruction_id=None,
         )
 
-        created = await self._repository.create(document=document)
-        return self._copy_document(created)
+    async def enable(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> AvailableInstructionDocument:
+        """Enable a visible instruction for new compositions."""
+
+        return await self._set_enabled(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            enabled=True,
+        )
+
+    async def disable(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> AvailableInstructionDocument:
+        """Disable a visible instruction without hiding its definition."""
+
+        return await self._set_enabled(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            enabled=False,
+        )
+
+    async def duplicate(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+        name: str | None = None,
+    ) -> InstructionDocument:
+        """Fork a visible instruction into a new editable custom copy."""
+
+        self._require_instruction_type(instruction_type)
+        workspace_id = self._require_text(
+            workspace_id,
+            "workspace_id",
+        )
+        instruction_id = self._require_text(
+            instruction_id,
+            "instruction_id",
+        )
+        source = await self._require_available(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            include_deprecated=False,
+        )
+        duplicate_name = (
+            self._require_text(name, "name")
+            if name is not None
+            else f"{source.name} Copy"
+        )
+
+        return await self._create_custom(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            payload=InstructionCreate(
+                name=duplicate_name,
+                description=source.description,
+                instructions=source.instructions,
+                metadata=deepcopy(dict(source.metadata)),
+            ),
+            source_instruction_id=source.id,
+        )
+
+    async def resolve_for_selection(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+    ) -> AvailableInstructionDocument:
+        """Resolve an instruction that may be used in new compositions."""
+
+        document = await self.describe(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            include_deprecated=True,
+        )
+
+        if not document.selectable:
+            raise InstructionDisabledError(
+                instruction_type=instruction_type,
+                instruction_id=instruction_id,
+            )
+
+        return document
 
     async def update(
         self,
@@ -402,7 +536,7 @@ class InstructionService:
         workspace_id = self._require_text(workspace_id, "workspace_id")
         instruction_id = self._require_text(instruction_id, "instruction_id")
 
-        current = await self._require_document(
+        current = await self._require_owned_custom(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
@@ -473,7 +607,7 @@ class InstructionService:
         workspace_id = self._require_text(workspace_id, "workspace_id")
         instruction_id = self._require_text(instruction_id, "instruction_id")
 
-        await self._require_document(
+        await self._require_owned_custom(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
@@ -499,21 +633,144 @@ class InstructionService:
                 instruction_id=instruction_id,
             )
 
-    async def _require_document(
+    async def _create_custom(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        payload: InstructionCreate,
+        source_instruction_id: str | None,
+    ) -> InstructionDocument:
+        normalized = self._normalize_create(payload)
+
+        await self._validation_service.require_unique_name(
+            workspace_id=workspace_id,
+            resource_type=instruction_type,
+            name=normalized.name,
+        )
+
+        now = self._clock()
+        document = InstructionDocument(
+            id=self._id_factory(),
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            name=normalized.name,
+            description=normalized.description,
+            instructions=normalized.instructions,
+            metadata=deepcopy(dict(normalized.metadata)),
+            version=1,
+            created_at=now,
+            updated_at=now,
+            source_instruction_id=source_instruction_id,
+        )
+        created = await self._repository.create(
+            document=document,
+        )
+        return self._copy_document(created)
+
+    async def _set_enabled(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+        enabled: bool,
+    ) -> AvailableInstructionDocument:
+        self._require_instruction_type(instruction_type)
+        workspace_id = self._require_text(
+            workspace_id,
+            "workspace_id",
+        )
+        instruction_id = self._require_text(
+            instruction_id,
+            "instruction_id",
+        )
+        current = await self._require_available(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            include_deprecated=True,
+        )
+
+        if current.deprecated:
+            raise InstructionDisabledError(
+                instruction_type=instruction_type,
+                instruction_id=instruction_id,
+            )
+
+        persisted = await self._repository.set_enabled(
+            workspace_id=workspace_id,
+            instruction_id=instruction_id,
+            enabled=enabled,
+        )
+
+        if not persisted:
+            raise InstructionNotFoundError(
+                instruction_type=instruction_type,
+                instruction_id=instruction_id,
+            )
+
+        return await self._require_available(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            include_deprecated=False,
+        )
+
+    async def _require_available(
+        self,
+        *,
+        workspace_id: str,
+        instruction_type: InstructionType,
+        instruction_id: str,
+        include_deprecated: bool,
+    ) -> AvailableInstructionDocument:
+        document = await self._repository.get_available_for_workspace(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            include_deprecated=include_deprecated,
+        )
+
+        if document is None:
+            raise InstructionNotFoundError(
+                instruction_type=instruction_type,
+                instruction_id=instruction_id,
+            )
+
+        return document
+
+    async def _require_owned_custom(
         self,
         *,
         workspace_id: str,
         instruction_type: InstructionType,
         instruction_id: str,
     ) -> InstructionDocument:
-        document = await self._repository.get(
+        available = await self._repository.get_available_for_workspace(
+            workspace_id=workspace_id,
+            instruction_type=instruction_type,
+            instruction_id=instruction_id,
+            include_deprecated=True,
+        )
+
+        if (
+            available is not None
+            and available.origin == InstructionOrigin.BUILTIN
+        ):
+            raise BuiltinInstructionImmutableError(
+                instruction_type=instruction_type,
+                instruction_id=instruction_id,
+            )
+
+        document = await self._repository.get_owned_custom(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
 
         if document is None:
-            raise InstructionNotFoundError(
+            raise InstructionNotOwnedError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -528,14 +785,14 @@ class InstructionService:
         instruction_id: str,
         expected_version: int,
     ) -> None:
-        current = await self._repository.get(
+        current = await self._repository.get_owned_custom(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
 
         if current is None:
-            raise InstructionNotFoundError(
+            raise InstructionNotOwnedError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -617,6 +874,15 @@ class InstructionService:
 
     @staticmethod
     def _copy_document(document: InstructionDocument) -> InstructionDocument:
+        return replace(
+            document,
+            metadata=deepcopy(dict(document.metadata)),
+        )
+
+    @staticmethod
+    def _copy_available_document(
+        document: AvailableInstructionDocument,
+    ) -> AvailableInstructionDocument:
         return replace(
             document,
             metadata=deepcopy(dict(document.metadata)),

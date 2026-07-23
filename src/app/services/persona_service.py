@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from .shared.instruction_service import (
+    AvailableInstructionDocument,
+    AvailableInstructionSummary,
     InstructionCreate,
     InstructionDocument,
     InstructionService,
-    InstructionSummary,
     InstructionUpdate,
 )
 from .shared.tenant_service import TenantService
@@ -28,7 +29,7 @@ class PersonaService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-    ) -> list[InstructionSummary]:
+    ) -> list[AvailableInstructionSummary]:
         """List personas available in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -48,7 +49,8 @@ class PersonaService:
         user_id: str,
         persona_id: str,
         requested_workspace_id: str | None = None,
-    ) -> InstructionDocument:
+        include_deprecated: bool = False,
+    ) -> AvailableInstructionDocument:
         """Return a complete persona."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -57,6 +59,85 @@ class PersonaService:
         )
 
         return await self._instruction_service.describe(
+            workspace_id=workspace_id,
+            instruction_type="persona",
+            instruction_id=persona_id,
+            include_deprecated=include_deprecated,
+        )
+
+    async def enable(
+        self,
+        *,
+        user_id: str,
+        persona_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> AvailableInstructionDocument:
+        """Enable a persona in the resolved workspace."""
+
+        workspace_id = await self._resolve_workspace_id(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return await self._instruction_service.enable(
+            workspace_id=workspace_id,
+            instruction_type="persona",
+            instruction_id=persona_id,
+        )
+
+    async def disable(
+        self,
+        *,
+        user_id: str,
+        persona_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> AvailableInstructionDocument:
+        """Disable a persona in the resolved workspace."""
+
+        workspace_id = await self._resolve_workspace_id(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return await self._instruction_service.disable(
+            workspace_id=workspace_id,
+            instruction_type="persona",
+            instruction_id=persona_id,
+        )
+
+    async def duplicate(
+        self,
+        *,
+        user_id: str,
+        persona_id: str,
+        name: str | None = None,
+        requested_workspace_id: str | None = None,
+    ) -> InstructionDocument:
+        """Fork a persona into an editable workspace custom."""
+
+        workspace_id = await self._resolve_workspace_id(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return await self._instruction_service.duplicate(
+            workspace_id=workspace_id,
+            instruction_type="persona",
+            instruction_id=persona_id,
+            name=name,
+        )
+
+    async def resolve_for_selection(
+        self,
+        *,
+        user_id: str,
+        persona_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> AvailableInstructionDocument:
+        """Resolve an enabled persona for a new composition."""
+
+        workspace_id = await self._resolve_workspace_id(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return await self._instruction_service.resolve_for_selection(
             workspace_id=workspace_id,
             instruction_type="persona",
             instruction_id=persona_id,

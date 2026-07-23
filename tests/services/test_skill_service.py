@@ -1,6 +1,7 @@
 import pytest
 
 from src.app.services.shared.instruction_service import (
+    InstructionDisabledError,
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
@@ -14,6 +15,10 @@ from src.app.services.skill_service import (
     SkillValidationError,
 )
 from tests.fakes.tenant_repository import FakeTenantRepository
+from tests.fakes.instruction_repository import (
+    FakeInstructionRepository,
+)
+from tests.services.test_instruction_service import seed_builtin
 
 
 def build_skill_service(
@@ -177,3 +182,39 @@ async def test_update_skill_without_metadata_preserves_metadata(
     assert updated.metadata == {
         "applies_when": ["backend"],
     }
+
+
+@pytest.mark.asyncio
+async def test_skill_service_exposes_enable_and_duplicate(
+    instruction_service: InstructionService,
+    instruction_repository: FakeInstructionRepository,
+) -> None:
+    service = build_skill_service(instruction_service)
+    builtin = seed_builtin(
+        instruction_repository,
+        instruction_type="skill",
+    )
+
+    await service.disable(
+        user_id="user-1",
+        skill_id=builtin.id,
+    )
+
+    with pytest.raises(InstructionDisabledError):
+        await service.resolve_for_selection(
+            user_id="user-1",
+            skill_id=builtin.id,
+        )
+
+    await service.enable(
+        user_id="user-1",
+        skill_id=builtin.id,
+    )
+    duplicate = await service.duplicate(
+        user_id="user-1",
+        skill_id=builtin.id,
+        name="Workspace Security",
+    )
+
+    assert duplicate.source_instruction_id == builtin.id
+    assert duplicate.name == "Workspace Security"

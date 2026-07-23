@@ -454,7 +454,7 @@ class SqliteInstructionRepository:
                         updated_at
                     )
                     VALUES (
-                        ?, ?, 'custom', ?, NULL, ?, ?, ?, ?, ?,
+                        ?, ?, 'custom', ?, ?, ?, ?, ?, ?, ?,
                         NULL, NULL, 1, 0, ?, ?, ?
                     )
                     """,
@@ -462,6 +462,7 @@ class SqliteInstructionRepository:
                         document.id,
                         document.instruction_type,
                         document.workspace_id,
+                        document.source_instruction_id,
                         document.name,
                         self._normalize_name(document.name),
                         document.description,
@@ -604,6 +605,7 @@ class SqliteInstructionRepository:
                 id,
                 owner_workspace_id AS workspace_id,
                 instruction_type,
+                source_instruction_id,
                 name,
                 description,
                 content,
@@ -679,6 +681,11 @@ class SqliteInstructionRepository:
             instruction_type=cast(
                 InstructionType,
                 str(row["instruction_type"]),
+            ),
+            source_instruction_id=(
+                str(row["source_instruction_id"])
+                if row["source_instruction_id"] is not None
+                else None
             ),
             name=str(row["name"]),
             description=str(row["description"]),

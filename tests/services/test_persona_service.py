@@ -1,5 +1,6 @@
 import pytest
 
+from src.app.catalogs.instructions import InstructionOrigin
 from src.app.services.persona_service import PersonaService
 from src.app.services.shared.instruction_service import (
     InstructionCreate,
@@ -12,6 +13,10 @@ from src.app.services.shared.tenant_service import (
     WorkspaceMembership,
 )
 from tests.fakes.tenant_repository import FakeTenantRepository
+from tests.fakes.instruction_repository import (
+    FakeInstructionRepository,
+)
+from tests.services.test_instruction_service import seed_builtin
 
 
 def build_persona_service(
@@ -61,7 +66,9 @@ async def test_persona_crud_flow(
         persona_id=created.id,
     )
 
-    assert described == created
+    assert described.id == created.id
+    assert described.origin == InstructionOrigin.CUSTOM
+    assert described.instructions == created.instructions
 
     updated = await service.update(
         user_id="user-1",
@@ -85,3 +92,32 @@ async def test_persona_crud_flow(
             user_id="user-1",
             persona_id=created.id,
         )
+
+
+@pytest.mark.asyncio
+async def test_persona_service_exposes_enable_and_duplicate(
+    instruction_service: InstructionService,
+    instruction_repository: FakeInstructionRepository,
+) -> None:
+    service = build_persona_service(instruction_service)
+    builtin = seed_builtin(
+        instruction_repository,
+        instruction_type="persona",
+    )
+
+    disabled = await service.disable(
+        user_id="user-1",
+        persona_id=builtin.id,
+    )
+    enabled = await service.enable(
+        user_id="user-1",
+        persona_id=builtin.id,
+    )
+    duplicate = await service.duplicate(
+        user_id="user-1",
+        persona_id=builtin.id,
+    )
+
+    assert disabled.enabled is False
+    assert enabled.enabled is True
+    assert duplicate.source_instruction_id == builtin.id

@@ -20,7 +20,10 @@ from src.app.services.shared.dependency_checker import (
     ResourceInUseError,
 )
 from src.app.services.shared.instruction_service import (
+    BuiltinInstructionImmutableError,
+    InstructionDisabledError,
     InstructionNotFoundError,
+    InstructionNotOwnedError,
     InstructionValidationError,
     InstructionVersionConflictError,
     InvalidInstructionTypeError,
@@ -121,6 +124,13 @@ def _instruction_not_found_details(error: Exception) -> ErrorDetails:
     return {
         "resource_type": error.instruction_type,
         "resource_id": error.instruction_id,
+    }
+
+
+def _instruction_access_details(error: Exception) -> ErrorDetails:
+    return {
+        "resource_type": getattr(error, "instruction_type"),
+        "resource_id": getattr(error, "instruction_id"),
     }
 
 
@@ -252,6 +262,21 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_404_NOT_FOUND,
         code="instruction_not_found",
         details_builder=_instruction_not_found_details,
+    ),
+    BuiltinInstructionImmutableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="builtin_instruction_immutable",
+        details_builder=_instruction_access_details,
+    ),
+    InstructionDisabledError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="instruction_disabled",
+        details_builder=_instruction_access_details,
+    ),
+    InstructionNotOwnedError: ErrorDefinition(
+        status_code=status.HTTP_403_FORBIDDEN,
+        code="instruction_not_owned",
+        details_builder=_instruction_access_details,
     ),
     InstructionVersionConflictError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,

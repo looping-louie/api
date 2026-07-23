@@ -1,9 +1,17 @@
+from datetime import UTC, datetime
+
 import pytest
 
+from src.app.catalogs.instructions import InstructionOrigin
 from src.app.services.shared.instruction_service import (
+    AvailableInstructionDocument,
+    BuiltinInstructionImmutableError,
     InstructionCreate,
+    InstructionDisabledError,
     InstructionNotFoundError,
+    InstructionNotOwnedError,
     InstructionService,
+    InstructionType,
     InstructionUpdate,
 )
 from src.app.services.shared.reference_resolver import ResourceReference
@@ -15,6 +23,48 @@ from tests.fakes.dependency_checker import (
     FakeDependencyChecker,
     FakeResourceInUseError,
 )
+from tests.fakes.instruction_repository import (
+    FakeInstructionRepository,
+)
+
+
+def seed_builtin(
+    repository: FakeInstructionRepository,
+    *,
+    instruction_type: InstructionType,
+) -> AvailableInstructionDocument:
+    now = datetime(
+        2026,
+        7,
+        23,
+        12,
+        0,
+        tzinfo=UTC,
+    )
+    document = AvailableInstructionDocument(
+        id=f"builtin:{instruction_type}:security",
+        workspace_id="catalog",
+        instruction_type=instruction_type,
+        origin=InstructionOrigin.BUILTIN,
+        owner_workspace_id=None,
+        source_instruction_id=None,
+        name="Security",
+        description="Builtin security definition.",
+        instructions="Review security.",
+        metadata={
+            "applies_when": ["security"],
+        },
+        enabled=True,
+        enabled_by_default=True,
+        deprecated=False,
+        catalog_version=1,
+        checksum="a" * 64,
+        version=1,
+        created_at=now,
+        updated_at=now,
+    )
+    repository.seed_available(document)
+    return document
 
 
 @pytest.mark.asyncio
@@ -45,7 +95,11 @@ async def test_create_describe_and_list_instruction(
         instruction_id=created.id,
     )
 
-    assert described == created
+    assert described.id == created.id
+    assert described.origin == InstructionOrigin.CUSTOM
+    assert described.owner_workspace_id == "workspace-1"
+    assert described.instructions == created.instructions
+    assert described.metadata == created.metadata
 
     summaries = await instruction_service.list(
         workspace_id="workspace-1",
@@ -261,4 +315,189 @@ async def test_delete_removes_instruction(
             workspace_id="workspace-1",
             instruction_type="skill",
             instruction_id=created.id,
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "instruction_type",
+    [
+        "skill",
+        "persona",
+    ],
+)
+async def test_builtin_cannot_be_updated_or_deleted(
+    instruction_service: InstructionService,
+    instruction_repository: FakeInstructionRepository,
+    instruction_type: InstructionType,
+) -> None:
+    builtin = seed_builtin(
+        instruction_repository,
+        instruction_type=instruction_type,
+    )
+
+    with pytest.raises(BuiltinInstructionImmutableError):
+        await instruction_service.update(
+            workspace_id="workspace-1",
+            instruction_type=instruction_type,
+            instruction_id=builtin.id,
+            payload=InstructionUpdate(
+                expected_version=1,
+                description="Forbidden",
+            ),
+        )
+
+    with pytest.raises(BuiltinInstructionImmutableError):
+        await instruction_service.delete(
+            workspace_id="workspace-1",
+            instruction_type=instruction_type,
+            instruction_id=builtin.id,
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "instruction_type",
+    [
+        "skill",
+        "persona",
+    ],
+)
+async def test_builtin_can_be_disabled_enabled_and_described(
+    instruction_service: InstructionService,
+    instruction_repository: FakeInstructionRepository,
+    instruction_type: InstructionType,
+) -> None:
+    builtin = seed_builtin(
+        instruction_repository,
+        instruction_type=instruction_type,
+    )
+    library = await instruction_service.list(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+    )
+
+    assert builtin.id in {
+        instruction.id
+        for instruction in library
+    }
+
+    disabled = await instruction_service.disable(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=builtin.id,
+    )
+    described = await instruction_service.describe(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=builtin.id,
+    )
+
+    assert disabled.enabled is False
+    assert described.enabled is False
+
+    with pytest.raises(InstructionDisabledError):
+        await instruction_service.resolve_for_selection(
+            workspace_id="workspace-1",
+            instruction_type=instruction_type,
+            instruction_id=builtin.id,
+        )
+
+    enabled = await instruction_service.enable(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=builtin.id,
+    )
+    selected = await instruction_service.resolve_for_selection(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=builtin.id,
+    )
+
+    assert enabled.enabled is True
+    assert selected.id == builtin.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "instruction_type",
+    [
+        "skill",
+        "persona",
+    ],
+)
+async def test_duplicate_creates_editable_custom_copy(
+    instruction_service: InstructionService,
+    instruction_repository: FakeInstructionRepository,
+    instruction_type: InstructionType,
+) -> None:
+    builtin = seed_builtin(
+        instruction_repository,
+        instruction_type=instruction_type,
+    )
+
+    duplicate = await instruction_service.duplicate(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=builtin.id,
+    )
+
+    assert duplicate.id != builtin.id
+    assert duplicate.workspace_id == "workspace-1"
+    assert duplicate.source_instruction_id == builtin.id
+    assert duplicate.name == "Security Copy"
+    assert duplicate.instructions == builtin.instructions
+    assert duplicate.metadata == builtin.metadata
+
+    updated = await instruction_service.update(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=duplicate.id,
+        payload=InstructionUpdate(
+            expected_version=1,
+            description="Editable fork.",
+        ),
+    )
+    available_copy = await instruction_service.describe(
+        workspace_id="workspace-1",
+        instruction_type=instruction_type,
+        instruction_id=duplicate.id,
+    )
+
+    assert updated.version == 2
+    assert updated.description == "Editable fork."
+    assert available_copy.origin == InstructionOrigin.CUSTOM
+    assert available_copy.source_instruction_id == builtin.id
+
+
+@pytest.mark.asyncio
+async def test_mutation_does_not_disclose_foreign_custom(
+    instruction_service: InstructionService,
+) -> None:
+    foreign = await instruction_service.create(
+        workspace_id="workspace-2",
+        instruction_type="skill",
+        payload=InstructionCreate(
+            name="Foreign",
+            description="Other workspace.",
+            instructions="Private instructions.",
+        ),
+    )
+
+    with pytest.raises(InstructionNotOwnedError):
+        await instruction_service.update(
+            workspace_id="workspace-1",
+            instruction_type="skill",
+            instruction_id=foreign.id,
+            payload=InstructionUpdate(
+                expected_version=1,
+                description="Forbidden",
+            ),
+        )
+
+    with pytest.raises(InstructionNotOwnedError):
+        await instruction_service.delete(
+            workspace_id="workspace-1",
+            instruction_type="skill",
+            instruction_id=foreign.id,
         )

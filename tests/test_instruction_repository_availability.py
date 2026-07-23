@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,9 @@ from src.app.repositories.instruction_repository import (
 )
 from src.app.services.instruction_catalog_synchronizer import (
     InstructionCatalogSynchronizer,
+)
+from src.app.services.shared.instruction_service import (
+    InstructionDocument,
 )
 
 
@@ -444,6 +448,55 @@ async def test_effective_search_is_literal_and_order_is_stable(
         for instruction in all_skills
     ]
     assert ordering == sorted(ordering)
+
+
+@pytest.mark.asyncio
+async def test_custom_persists_source_instruction_id(
+    library_database: Path,
+) -> None:
+    repository = SqliteInstructionRepository(
+        library_database
+    )
+    now = datetime(
+        2026,
+        7,
+        23,
+        13,
+        0,
+        tzinfo=UTC,
+    )
+    document = InstructionDocument(
+        id="forked-security",
+        workspace_id="workspace-1",
+        instruction_type="skill",
+        name="Forked Security",
+        description="Editable builtin fork.",
+        instructions="Forked instructions.",
+        metadata={"forked": True},
+        version=1,
+        created_at=now,
+        updated_at=now,
+        source_instruction_id="builtin:skill:security",
+    )
+
+    await repository.create(document)
+    stored = await repository.get_owned_custom(
+        workspace_id="workspace-1",
+        instruction_type="skill",
+        instruction_id=document.id,
+    )
+    available = await repository.get_available_for_workspace(
+        workspace_id="workspace-1",
+        instruction_type="skill",
+        instruction_id=document.id,
+    )
+
+    assert stored == document
+    assert available is not None
+    assert available.origin == InstructionOrigin.CUSTOM
+    assert available.source_instruction_id == (
+        "builtin:skill:security"
+    )
 
 
 def insert_custom(
