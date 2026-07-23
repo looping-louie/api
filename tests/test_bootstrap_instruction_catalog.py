@@ -16,6 +16,9 @@ import src.app.bootstrap as bootstrap
 from src.app.catalogs import load_instruction_catalog
 from src.app.catalogs.loader import InstructionCatalog
 from src.app.services.app_settings_service import AppSettings
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibraryService,
+)
 from src.app.services.instruction_catalog_synchronizer import (
     CatalogSynchronizationError,
     InstructionCatalogSynchronizer,
@@ -125,6 +128,10 @@ async def test_bootstrap_orders_catalog_steps_and_is_idempotent(
         == len(packaged_catalog.entries)
     )
     assert first_app.state.catalog_synchronization.unchanged == 0
+    assert isinstance(
+        first_app.state.execution_instruction_library_service,
+        ExecutionInstructionLibraryService,
+    )
 
     with sqlite3.connect(database_path) as connection:
         first_rows = connection.execute(

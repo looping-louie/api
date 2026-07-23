@@ -1,11 +1,6 @@
-"""Prompt assembly helpers shared across services.
+"""Pure prompt assembly helpers shared across execution services."""
 
-Transitional location: moved out of harness so instructions can remain in API
-when harness execution migrates to CLI.
-"""
-
-from src.app.personas import load_persona
-from src.app.skills import load_skill
+from collections.abc import Sequence
 
 
 MAX_GENERATOR_SKILLS = 1
@@ -14,38 +9,34 @@ MAX_GENERATOR_SKILLS = 1
 def build_assignment_instructions(
     *,
     role: str,
-    persona_id: str,
-    skill_ids: list[str],
+    persona_content: str,
+    skill_contents: Sequence[str],
     focus: str,
 ) -> str:
-    """
-    Build provider-agnostic instructions from one persona and its skills.
+    """Build provider-agnostic instructions from already-resolved content."""
 
-    Loaders own filesystem lookup and registry validation. Callers only
-    combine persona and skill content for the model call.
-    """
-    effective_skill_ids = (
-        skill_ids[:MAX_GENERATOR_SKILLS]
+    effective_skill_contents = (
+        skill_contents[:MAX_GENERATOR_SKILLS]
         if role == 'generator'
-        else skill_ids
+        else skill_contents
     )
-    persona_content = load_persona(persona_id).strip()
-    skill_contents = [
-        load_skill(skill_id).strip()
-        for skill_id in effective_skill_ids
+    normalized_skills = [
+        content.strip()
+        for content in effective_skill_contents
+        if content.strip()
     ]
 
     sections = [
         f'# {role.title()} assignment',
         '## Persona',
-        persona_content,
+        persona_content.strip(),
     ]
 
-    if skill_contents:
+    if normalized_skills:
         sections.extend(
             [
                 '## Assigned skills',
-                '\n\n---\n\n'.join(skill_contents),
+                '\n\n---\n\n'.join(normalized_skills),
             ]
         )
 

@@ -10,6 +10,9 @@ from src.app.schemas.task import (
     StartResponse,
 )
 from src.app.services.execution_planner import create_execution_plan
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibrary,
+)
 from src.app.services.harness.decision import build_generator_base_prompt
 from src.app.services.harness.reviewers import build_failed_feedback, run_single_reviewer
 from src.app.services.instructions import build_assignment_instructions
@@ -27,7 +30,11 @@ from . import utils
 _TASK_RUNS = utils.TASK_RUNS
 
 
-async def start_task(req: StartRequest) -> StartResponse:
+async def start_task(
+    req: StartRequest,
+    *,
+    instruction_library: ExecutionInstructionLibrary,
+) -> StartResponse:
     """Start a checkpoint-based task run and return first action."""
     run_id = uuid.uuid4().hex[:12]
     task = req.task.model_dump()
@@ -57,6 +64,7 @@ async def start_task(req: StartRequest) -> StartResponse:
         planner_model=req.planner_model,
         required_reviewer_skills=list(req.required_reviewer_skills),
         generator_persona=req.generator_persona,
+        instruction_library=instruction_library,
         run_path=build_execution_run_path(run_id),
         max_iterations=req.max_iterations,
         continuation_token=utils.new_continuation_token(),

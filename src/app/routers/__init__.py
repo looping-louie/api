@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Query, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
 from src.app.schemas import (
     GetTaskResponse,
     RunMeetingRequest,
@@ -10,6 +12,14 @@ from src.app.schemas import (
 )
 from src.app.controllers.meeting import run_meeting
 from src.app.controllers.task import continue_task, get_task, start_task
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibraryService,
+)
+from .dependencies import (
+    RequestContext,
+    get_execution_instruction_library_service,
+    get_request_context,
+)
 from .api_v1 import router as api_v1_router
 
 __all__ = [
@@ -20,10 +30,21 @@ __all__ = [
 # Create the router instance
 router = APIRouter()
 
+ContextDependency = Annotated[
+    RequestContext,
+    Depends(get_request_context),
+]
+InstructionLibraryDependency = Annotated[
+    ExecutionInstructionLibraryService,
+    Depends(get_execution_instruction_library_service),
+]
+
 
 @router.post("/meeting/run", response_model=RunMeetingResponse)
 async def meeting_run_endpoint(
     req: RunMeetingRequest,
+    context: ContextDependency,
+    instruction_library_service: InstructionLibraryDependency,
 ) -> RunMeetingResponse:
     """
     Execute one structured multi-persona meeting.
@@ -35,13 +56,31 @@ async def meeting_run_endpoint(
     Returns the final generated artifact together with the complete meeting
     trace and execution metrics.
     """
-    return await run_meeting(req)
+    instruction_library = await instruction_library_service.load(
+        user_id=context.user_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+    return await run_meeting(
+        req,
+        instruction_library=instruction_library,
+    )
 
 
 @router.post('/task/start', response_model=TaskStartResponse)
-async def task_start_endpoint(req: TaskStartRequest) -> TaskStartResponse:
+async def task_start_endpoint(
+    req: TaskStartRequest,
+    context: ContextDependency,
+    instruction_library_service: InstructionLibraryDependency,
+) -> TaskStartResponse:
     """Start checkpoint-based task execution and return first action."""
-    return await start_task(req)
+    instruction_library = await instruction_library_service.load(
+        user_id=context.user_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+    return await start_task(
+        req,
+        instruction_library=instruction_library,
+    )
 
 
 @router.post('/task/continue', response_model=TaskContinueResponse)

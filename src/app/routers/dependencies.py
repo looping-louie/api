@@ -11,6 +11,9 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.provider import ProviderController
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibraryService,
+)
 
 
 ControllerType = TypeVar("ControllerType")
@@ -157,4 +160,16 @@ def get_provider_controller(
         request,
         attribute_name="provider_controller",
         expected_type=ProviderController,
+    )
+
+
+def get_execution_instruction_library_service(
+    request: Request,
+) -> ExecutionInstructionLibraryService:
+    """Return the configured SQL-backed execution instruction library."""
+
+    return _get_controller(
+        request,
+        attribute_name="execution_instruction_library_service",
+        expected_type=ExecutionInstructionLibraryService,
     )

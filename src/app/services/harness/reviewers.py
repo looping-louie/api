@@ -4,6 +4,9 @@ import re
 from pathlib import Path
 
 from src.app.schemas import ReviewerAssignment, ReviewerMetrics, ReviewerResult, RunHarnessRequest
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibrary,
+)
 from src.app.services.llm_service.openai import review_with_openai
 from src.app.services.instructions import build_assignment_instructions
 from src.app.utils.io import write_json, write_text
@@ -59,6 +62,7 @@ async def run_single_reviewer(
     iteration: int,
     run_id: str,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> ReviewerResult:
     """Execute and persist one persona-plus-skills reviewer."""
     current_reviewer_key = reviewer_key(
@@ -67,8 +71,12 @@ async def run_single_reviewer(
     )
     reviewer_instructions = build_assignment_instructions(
         role='reviewer',
-        persona_id=assignment.persona,
-        skill_ids=assignment.skills,
+        persona_content=instruction_library.persona_content(
+            assignment.persona
+        ),
+        skill_contents=instruction_library.skill_contents(
+            assignment.skills
+        ),
         focus=assignment.focus,
     )
 

@@ -8,14 +8,12 @@ skills, while local validation prevents invalid or incompatible plans.
 
 from typing import Any
 
-from src.app.personas import load_persona_registry
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
     ReviewerAssignment,
 )
 from src.app.services.llm_service.openai import plan_execution_with_openai
-from src.app.skills import load_skill_registry
 
 
 MAX_SELECTED_REVIEWERS = 3
@@ -35,6 +33,8 @@ async def create_execution_plan(
     project_profile: dict[str, Any],
     constitution: str,
     required_skills: list[str],
+    skill_registry: list[dict[str, Any]],
+    persona_registry: list[dict[str, Any]],
     generator_persona: str | None = None,
 ) -> ExecutionPlan:
     """
@@ -44,9 +44,6 @@ async def create_execution_plan(
     least one reviewer. The generator persona may be fixed by the caller or
     selected automatically by the planner.
     """
-    skill_registry = load_skill_registry()
-    persona_registry = load_persona_registry()
-
     skills_by_id = _index_registry(skill_registry, "skill")
     personas_by_id = _index_registry(persona_registry, "persona")
 
@@ -694,7 +691,7 @@ def _validate_required_skills(
 
     if unknown:
         raise ValueError(
-            "Required skills are not present in registry.json: "
+            "Required skills are not available for execution: "
             f"{sorted(unknown)}"
         )
 

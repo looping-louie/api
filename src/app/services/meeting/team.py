@@ -1,11 +1,7 @@
 """Meeting team composition and persona-plus-skill normalisation."""
 
 from dataclasses import dataclass
-from typing import Any, Literal
-
-from src.app.personas import load_persona
-from src.app.skills import load_skill
-
+from typing import Any, Literal, Sequence
 
 MeetingRole = Literal[
     "participant",
@@ -95,13 +91,13 @@ def validate_meeting_constraints(
 
     if unknown_personas:
         raise ValueError(
-            "Required personas are not present in registry.json: "
+            "Required personas are not available for execution: "
             f"{sorted(unknown_personas)}"
         )
 
     if unknown_skills:
         raise ValueError(
-            "Required skills are not present in registry.json: "
+            "Required skills are not available for execution: "
             f"{sorted(unknown_skills)}"
         )
 
@@ -720,12 +716,18 @@ def build_member_instructions(
     *,
     member: MeetingMember,
     role: MeetingRole,
+    persona_content: str,
+    skill_contents: Sequence[str],
 ) -> str:
     """
-    Assemble one persona and its assigned skills into model instructions.
+    Assemble already-resolved persona and skill content into instructions.
     """
-    persona = load_persona(member.persona).strip()
-    skills = [load_skill(skill_id).strip() for skill_id in member.skills]
+    persona = persona_content.strip()
+    skills = [
+        content.strip()
+        for content in skill_contents
+        if content.strip()
+    ]
     sections = [
         f"# Meeting role: {role}",
         "## Persona",

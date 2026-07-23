@@ -5,7 +5,6 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from src.app.personas import load_persona_registry
 from src.app.schemas import RunMeetingRequest
 from src.app.services.llm_service.prompts import render_prompt
 from src.app.services.llm_service.instructions import MEETING_PLANNER_INSTRUCTIONS
@@ -21,7 +20,6 @@ from src.app.services.meeting.team import (
     normalise_meeting_plan,
     validate_meeting_constraints,
 )
-from src.app.skills import load_skill_registry
 from src.app.utils.io import write_json, write_text
 
 
@@ -48,10 +46,10 @@ async def create_meeting_plan(
     req: RunMeetingRequest,
     usage: UsageTotals,
     run_path: Path,
+    persona_registry: list[dict[str, Any]],
+    skill_registry: list[dict[str, Any]],
 ) -> MeetingPlan:
     """Ask the planner for a team and normalise its untrusted response."""
-    persona_registry = load_persona_registry()
-    skill_registry = load_skill_registry()
     personas_by_id = index_registry(persona_registry, "persona")
     skills_by_id = index_registry(skill_registry, "skill")
     required_personas = list(dict.fromkeys(req.required_personas))

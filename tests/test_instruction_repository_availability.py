@@ -20,10 +20,18 @@ from src.app.repositories.instruction_repository import (
 from src.app.services.instruction_catalog_synchronizer import (
     InstructionCatalogSynchronizer,
 )
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibraryService,
+)
 from src.app.services.shared.instruction_service import (
     InstructionDocument,
 )
 from src.app.services.shared.reference_resolver import ResourceReference
+from src.app.services.shared.tenant_service import (
+    TenantService,
+    WorkspaceMembership,
+)
+from tests.fakes.tenant_repository import FakeTenantRepository
 
 
 MIGRATIONS_PATH = (
@@ -589,6 +597,63 @@ async def test_builtin_dependencies_are_scoped_by_referencing_workspace(
     ]
     assert [usage.source.resource_id for usage in workspace_two] == [
         "council-2",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execution_library_reads_sql_not_packaged_markdown(
+    library_database: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.app.catalogs.skills.loader as skill_loader
+
+    service = ExecutionInstructionLibraryService(
+        repository=SqliteInstructionRepository(library_database),
+        tenant_service=TenantService(
+            repository=FakeTenantRepository(
+                [
+                    WorkspaceMembership(
+                        user_id="user-1",
+                        workspace_id="workspace-1",
+                        is_default=True,
+                    ),
+                ]
+            )
+        ),
+    )
+    initial = await service.load(user_id="user-1")
+    initial_content = initial.skill_contents(["security"])[0]
+
+    monkeypatch.setattr(
+        skill_loader,
+        "load_skill_content",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("Runtime must not read Markdown")
+        ),
+    )
+    unchanged = await service.load(user_id="user-1")
+
+    with sqlite3.connect(library_database) as connection:
+        connection.execute(
+            """
+            UPDATE instructions
+            SET
+                content = ?,
+                version = version + 1,
+                updated_at = ?
+            WHERE id = 'builtin:skill:security'
+            """,
+            (
+                "Runtime content updated directly in SQL.",
+                TIMESTAMP,
+            ),
+        )
+
+    updated = await service.load(user_id="user-1")
+
+    assert unchanged.skill_contents(["security"])[0] == initial_content
+    assert updated.skill_contents(["security"]) == [
+        "Runtime content updated directly in SQL.",
     ]
 
 

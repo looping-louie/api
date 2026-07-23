@@ -200,8 +200,8 @@ async def plan_execution_with_openai(
     Select the project phase, generator assignment, and reviewer team.
 
     Only compact registry metadata is exposed to the planner. Complete persona
-    and skill Markdown bodies are loaded later when the harness assembles each
-    model prompt.
+    and skill content, already resolved from SQL, is added later when the
+    harness assembles each model prompt.
     """
     client = _get_openai_client()
 

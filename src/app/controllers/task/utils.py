@@ -16,6 +16,9 @@ from src.app.schemas.task import (
     TaskErrorCode,
     TaskStatus,
 )
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibrary,
+)
 from src.app.utils.io import write_json
 
 
@@ -34,6 +37,7 @@ class _TaskRunState:
     planner_model: str
     required_reviewer_skills: list[str]
     generator_persona: str | None
+    instruction_library: ExecutionInstructionLibrary
     run_path: Path
     max_iterations: int
     iteration: int = 1
@@ -167,16 +171,41 @@ async def _handle_collect_snapshot(
                 task_prompt=state.task_prompt,
                 project_profile=state.project_profile,
                 constitution=state.constitution,
-                required_skills=state.required_reviewer_skills,
-                generator_persona=state.generator_persona,
+                required_skills=[
+                    state.instruction_library.normalize_skill_id(
+                        skill_id
+                    )
+                    for skill_id in state.required_reviewer_skills
+                ],
+                generator_persona=(
+                    state.instruction_library.normalize_persona_id(
+                        state.generator_persona
+                    )
+                    if state.generator_persona is not None
+                    else None
+                ),
+                skill_registry=(
+                    state.instruction_library.skill_registry()
+                ),
+                persona_registry=(
+                    state.instruction_library.persona_registry()
+                ),
             )
             created_execution_plan = state.execution_plan
             if created_execution_plan is None:
                 raise RuntimeError('Planner did not return an execution plan.')
             state.generator_instructions = build_assignment_instructions_fn(
                 role='generator',
-                persona_id=created_execution_plan.generator.persona,
-                skill_ids=created_execution_plan.generator.skills,
+                persona_content=(
+                    state.instruction_library.persona_content(
+                        created_execution_plan.generator.persona
+                    )
+                ),
+                skill_contents=(
+                    state.instruction_library.skill_contents(
+                        created_execution_plan.generator.skills
+                    )
+                ),
                 focus=created_execution_plan.generator.focus,
             )
             write_json(
@@ -337,6 +366,7 @@ async def _handle_submit_review_input(
             iteration=state.iteration,
             run_id=state.run_id,
             run_path=state.run_path,
+            instruction_library=state.instruction_library,
         )
         reviewer_results.append(result)
 

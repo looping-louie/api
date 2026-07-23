@@ -8,6 +8,9 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from src.app.services.council_service import CouncilValidationError
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionNotFoundError,
+)
 from src.app.services.loop_service import LoopValidationError
 from src.app.services.shared.composition_service import (
     CompositionNotFoundError,
@@ -131,6 +134,17 @@ def _instruction_access_details(error: Exception) -> ErrorDetails:
     return {
         "resource_type": getattr(error, "instruction_type"),
         "resource_id": getattr(error, "instruction_id"),
+    }
+
+
+def _execution_instruction_not_found_details(
+    error: Exception,
+) -> ErrorDetails:
+    assert isinstance(error, ExecutionInstructionNotFoundError)
+
+    return {
+        "resource_type": error.instruction_type,
+        "resource_id": error.instruction_id,
     }
 
 
@@ -317,6 +331,11 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_404_NOT_FOUND,
         code="referenced_resource_not_found",
         details_builder=_referenced_resources_details,
+    ),
+    ExecutionInstructionNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="execution_instruction_not_found",
+        details_builder=_execution_instruction_not_found_details,
     ),
     DependencyValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

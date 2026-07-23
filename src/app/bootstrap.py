@@ -51,6 +51,9 @@ from src.app.services.app_settings_service import (
     get_app_settings,
 )
 from src.app.services.council_service import CouncilService
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibraryService,
+)
 from src.app.services.instruction_catalog_synchronizer import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
@@ -166,6 +169,12 @@ async def configure_application(
     tenant_service = TenantService(
         repository=tenant_repository,
     )
+    execution_instruction_library_service = (
+        ExecutionInstructionLibraryService(
+            repository=instruction_repository,
+            tenant_service=tenant_service,
+        )
+    )
     validation_service = ValidationService(
         repository=validation_repository,
     )
@@ -260,6 +269,9 @@ async def configure_application(
     app.state.database = database
     app.state.instruction_catalog = resolved_catalog
     app.state.catalog_synchronization = catalog_synchronization
+    app.state.execution_instruction_library_service = (
+        execution_instruction_library_service
+    )
 
 
 def _require_encryption_key(

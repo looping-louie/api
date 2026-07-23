@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from src.app.schemas import RunMeetingRequest
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibrary,
+)
 from src.app.services.llm_service.prompts import render_prompt
 from src.app.services.llm_service.instructions import (
     CHALLENGER_INSTRUCTIONS,
@@ -25,6 +28,7 @@ from src.app.services.meeting.artifact import (
 from src.app.services.meeting.team import (
     MeetingMember,
     MeetingPlan,
+    MeetingRole,
     build_member_instructions,
 )
 from src.app.services.meeting.runtime import (
@@ -34,6 +38,24 @@ from src.app.services.meeting.runtime import (
     strip_code_fence,
 )
 from src.app.utils.io import write_json, write_text
+
+
+def _member_instructions(
+    *,
+    instruction_library: ExecutionInstructionLibrary,
+    member: MeetingMember,
+    role: MeetingRole,
+) -> str:
+    return build_member_instructions(
+        member=member,
+        role=role,
+        persona_content=instruction_library.persona_content(
+            member.persona
+        ),
+        skill_contents=instruction_library.skill_contents(
+            member.skills
+        ),
+    )
 
 
 async def _facilitate_round(
@@ -46,6 +68,7 @@ async def _facilitate_round(
     disagreements: list[str],
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> dict[str, Any]:
     """
     Ask the facilitator to define the current contribution round.
@@ -58,7 +81,11 @@ async def _facilitate_round(
         current_artifact=current_artifact or "No artifact exists yet.",
         previous_feedback=previous_feedback or "No previous feedback.",
         disagreements_json=json.dumps(disagreements, ensure_ascii=False),
-        member_instructions=build_member_instructions(member=plan.facilitator, role="facilitator")
+        member_instructions=_member_instructions(
+            instruction_library=instruction_library,
+            member=plan.facilitator,
+            role="facilitator",
+        ),
     )
     path = f"rounds/{round_number}/facilitator-brief"
     write_text(run_path, f"{path}-prompt.txt", facilitator_input)
@@ -81,6 +108,7 @@ async def _run_participant(
     brief: dict[str, Any],
     current_artifact: str,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Execute one participant contribution for the current round.
@@ -91,7 +119,11 @@ async def _run_participant(
         artifact_contract=get_artifact_contract(req.meeting_type),
         current_artifact=current_artifact or "No artifact exists yet.",
         brief_json=json.dumps(brief, ensure_ascii=False),
-        member_instructions=build_member_instructions(member=member, role="participant")
+        member_instructions=_member_instructions(
+            instruction_library=instruction_library,
+            member=member,
+            role="participant",
+        ),
     )
     member_key = f"participant-{member_index:02d}-{member.persona}"
     path = f"rounds/{round_number}/{member_key}"
@@ -120,6 +152,7 @@ async def _run_participants(
     current_artifact: str,
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> list[dict[str, Any]]:
     """
     Execute all participant contributions concurrently.
@@ -134,6 +167,7 @@ async def _run_participants(
                 brief=brief,
                 current_artifact=current_artifact,
                 run_path=run_path,
+                instruction_library=instruction_library,
             )
             for index, member in enumerate(plan.participants, start=1)
         ]
@@ -155,6 +189,7 @@ async def _aggregate_round(
     current_artifact: str,
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> dict[str, Any]:
     """
     Consolidate participant contributions and identify disagreements.
@@ -166,7 +201,11 @@ async def _aggregate_round(
         current_artifact=current_artifact or "No artifact exists yet.",
         brief_json=json.dumps(brief, ensure_ascii=False),
         contributions_json=json.dumps(contributions, ensure_ascii=False),
-        member_instructions=build_member_instructions(member=plan.facilitator, role="facilitator")
+        member_instructions=_member_instructions(
+            instruction_library=instruction_library,
+            member=plan.facilitator,
+            role="facilitator",
+        ),
     )
 
     path = f"rounds/{round_number}/facilitator-aggregation"
@@ -191,6 +230,7 @@ async def _synthesize_artifact(
     previous_feedback: str,
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> str:
     """
     Ask the synthesizer to produce the complete artifact for this round.
@@ -202,7 +242,11 @@ async def _synthesize_artifact(
         current_artifact=current_artifact or "No artifact exists yet.",
         facilitator_aggregation_json=json.dumps(aggregation, ensure_ascii=False),
         previous_feedback=previous_feedback or "No previous feedback.",
-        member_instructions=build_member_instructions(member=plan.synthesizer, role="synthesizer")
+        member_instructions=_member_instructions(
+            instruction_library=instruction_library,
+            member=plan.synthesizer,
+            role="synthesizer",
+        ),
     )
 
     path = f"rounds/{round_number}/synthesizer"
@@ -231,6 +275,7 @@ async def _run_challenger(
     round_number: int,
     artifact: str,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Execute one challenger review against the current artifact.
@@ -241,7 +286,11 @@ async def _run_challenger(
         prompt=req.prompt,
         artifact_contract=get_artifact_contract(req.meeting_type),
         artifact=artifact,
-        member_instructions=build_member_instructions(member=member, role="challenger"),
+        member_instructions=_member_instructions(
+            instruction_library=instruction_library,
+            member=member,
+            role="challenger",
+        ),
         constitution=req.constitution
     )
 
@@ -287,6 +336,7 @@ async def _run_challengers(
     artifact: str,
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> list[dict[str, Any]]:
     """
     Execute all challenger reviews concurrently.
@@ -300,6 +350,7 @@ async def _run_challengers(
                 round_number=round_number,
                 artifact=artifact,
                 run_path=run_path,
+                instruction_library=instruction_library,
             )
             for index, member in enumerate(plan.challengers, start=1)
         ]
@@ -319,6 +370,7 @@ async def _validate_artifact(
     artifact: str,
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> dict[str, Any]:
     """
     Validate the artifact using deterministic and model-based checks.
@@ -334,7 +386,11 @@ async def _validate_artifact(
         artifact_contract=get_artifact_contract(req.meeting_type),
         artifact=artifact,
         issues_json=json.dumps(local_issues, ensure_ascii=False),
-        member_instructions=build_member_instructions(member=plan.validator, role="validator")
+        member_instructions=_member_instructions(
+            instruction_library=instruction_library,
+            member=plan.validator,
+            role="validator",
+        ),
     )
 
     path = f"rounds/{round_number}/validator"
@@ -385,6 +441,7 @@ async def execute_meeting_round(
     disagreements: list[str],
     usage: UsageTotals,
     run_path: Path,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> MeetingRoundResult:
     """Execute all stages of one meeting round and return its new state."""
     brief = await _facilitate_round(
@@ -396,6 +453,7 @@ async def execute_meeting_round(
         disagreements=disagreements,
         usage=usage,
         run_path=run_path,
+        instruction_library=instruction_library,
     )
     contributions = await _run_participants(
         req=req,
@@ -405,6 +463,7 @@ async def execute_meeting_round(
         current_artifact=current_artifact,
         usage=usage,
         run_path=run_path,
+        instruction_library=instruction_library,
     )
     aggregation = await _aggregate_round(
         req=req,
@@ -415,6 +474,7 @@ async def execute_meeting_round(
         current_artifact=current_artifact,
         usage=usage,
         run_path=run_path,
+        instruction_library=instruction_library,
     )
     artifact = await _synthesize_artifact(
         req=req,
@@ -425,6 +485,7 @@ async def execute_meeting_round(
         previous_feedback=previous_feedback,
         usage=usage,
         run_path=run_path,
+        instruction_library=instruction_library,
     )
     challenger_results = await _run_challengers(
         req=req,
@@ -433,6 +494,7 @@ async def execute_meeting_round(
         artifact=artifact,
         usage=usage,
         run_path=run_path,
+        instruction_library=instruction_library,
     )
     validation = await _validate_artifact(
         req=req,
@@ -441,6 +503,7 @@ async def execute_meeting_round(
         artifact=artifact,
         usage=usage,
         run_path=run_path,
+        instruction_library=instruction_library,
     )
 
     approved = (
@@ -471,4 +534,3 @@ async def execute_meeting_round(
         approved=approved,
         trace=trace,
     )
-

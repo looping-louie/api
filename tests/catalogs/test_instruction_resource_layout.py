@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import src.app.personas as legacy_personas
-import src.app.skills as legacy_skills
 from src.app.catalogs.personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
@@ -85,35 +83,8 @@ def test_content_loaders_accept_stable_ids_and_temporary_legacy_keys() -> None:
     ) == load_persona_content("tech_lead")
 
 
-def test_legacy_wrappers_preserve_current_runtime_registry_shape() -> None:
-    skills = legacy_skills.load_skill_registry()
-    personas = legacy_personas.load_persona_registry()
+def test_legacy_runtime_wrappers_were_removed() -> None:
+    app_dir = Path(__file__).resolve().parents[2] / "src" / "app"
 
-    assert skills[0]["id"] == "web_development"
-    assert personas[0]["id"] == "product_manager"
-    assert personas[0]["preferred_skills"] == [
-        "web_development",
-        "accessibility",
-        "privacy",
-        "resilience",
-    ]
-
-
-def test_legacy_wrappers_are_explicitly_temporary() -> None:
-    assert "Temporary compatibility wrapper" in (
-        legacy_skills.__doc__
-        or ""
-    )
-    assert "Temporary compatibility wrapper" in (
-        legacy_personas.__doc__
-        or ""
-    )
-
-
-def test_legacy_directories_contain_no_catalog_resources() -> None:
-    app_dir = Path(legacy_skills.__file__).parents[1]
-
-    assert not list((app_dir / "skills").glob("*.json"))
-    assert not list((app_dir / "skills").rglob("*.md"))
-    assert not list((app_dir / "personas").glob("*.json"))
-    assert not list((app_dir / "personas").rglob("*.md"))
+    assert not (app_dir / "skills" / "__init__.py").exists()
+    assert not (app_dir / "personas" / "__init__.py").exists()

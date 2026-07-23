@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Any
 
 from src.app.schemas import RunMeetingRequest
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibrary,
+)
 from src.app.services.meeting.rounds import MeetingRoundResult
 from src.app.services.meeting.runtime import UsageTotals
 from src.app.services.meeting.team import MeetingPlan
@@ -16,6 +19,7 @@ async def execute_meeting_iterations(
     usage: UsageTotals,
     run_path: Path,
     execute_meeting_round_fn: Any,
+    instruction_library: ExecutionInstructionLibrary,
 ) -> tuple[list[dict[str, Any]], str, bool]:
     """Execute meeting rounds until approval or iteration limit."""
     trace: list[dict[str, Any]] = []
@@ -34,6 +38,7 @@ async def execute_meeting_iterations(
             disagreements=disagreements,
             usage=usage,
             run_path=run_path,
+            instruction_library=instruction_library,
         )
         current_artifact = result.artifact
         previous_feedback = result.feedback

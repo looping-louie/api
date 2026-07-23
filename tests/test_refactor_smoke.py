@@ -1,4 +1,5 @@
 import asyncio
+from types import MappingProxyType
 
 import pytest
 
@@ -10,6 +11,10 @@ from src.app.schemas import (
     ReviewerAssignment,
 )
 from src.app.schemas.task import ContinueRequest, StartRequest
+from src.app.services.execution_instruction_library import (
+    ExecutionInstruction,
+    ExecutionInstructionLibrary,
+)
 
 
 VALID_PROJECT_PROFILE = {
@@ -32,6 +37,68 @@ VALID_PROJECT_PROFILE = {
         'tests': True,
     },
 }
+
+
+def execution_instruction_library() -> ExecutionInstructionLibrary:
+    """Return the SQL-resolved instruction shape required by task tests."""
+
+    skill = ExecutionInstruction(
+        id='small_patch_quality',
+        source_id='builtin:skill:small_patch_quality',
+        name='Small patch quality',
+        description='Review a small patch.',
+        content='Review the patch carefully.',
+        metadata={
+            'applies_when': ['code'],
+            'applies_to': ['generator', 'reviewer'],
+            'reviewer_default_strictness': {
+                'prototype': 50,
+                'mvp': 55,
+                'production': 70,
+            },
+        },
+    )
+    persona = ExecutionInstruction(
+        id='tech_lead',
+        source_id='builtin:persona:tech_lead',
+        name='Tech Lead',
+        description='Lead technical implementation.',
+        content='Act as the technical lead.',
+        metadata={
+            'applies_when': ['engineering'],
+            'applies_to': ['generator', 'reviewer'],
+            'preferred_skill_ids': [
+                'builtin:skill:small_patch_quality',
+            ],
+            'default_for': ['generator', 'reviewer'],
+        },
+    )
+    return ExecutionInstructionLibrary(
+        workspace_id='workspace-1',
+        skills=MappingProxyType({skill.id: skill}),
+        personas=MappingProxyType({persona.id: persona}),
+        skill_aliases=MappingProxyType(
+            {
+                skill.id: skill.id,
+                skill.source_id: skill.id,
+            }
+        ),
+        persona_aliases=MappingProxyType(
+            {
+                persona.id: persona.id,
+                persona.source_id: persona.id,
+            }
+        ),
+    )
+
+
+async def start_task_with_library(request: StartRequest):
+    return await task.start_task(
+        request,
+        instruction_library=execution_instruction_library(),
+    )
+
+
 def test_request_schema_rejects_invalid_project_profile():
     with pytest.raises(ValueError):
         StartRequest(
@@ -69,7 +136,7 @@ def test_task_checkpoint_start_returns_first_action():
         },
     )
 
-    result = asyncio.run(task.start_task(request))
+    result = asyncio.run(start_task_with_library(request))
 
     assert result.ok is True
     assert result.status == 'in_progress'
@@ -83,7 +150,7 @@ def test_task_checkpoint_continue_rejects_token_conflict():
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
 
     start_result = asyncio.run(
-        task.start_task(
+        start_task_with_library(
             StartRequest(
                 repo_path='/tmp/repo',
                 constitution='Implement only the requested task.',
@@ -126,7 +193,7 @@ def test_task_checkpoint_continue_replays_token_conflict_with_same_idempotency_k
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
 
     start_result = asyncio.run(
-        task.start_task(
+        start_task_with_library(
             StartRequest(
                 repo_path='/tmp/repo',
                 constitution='Implement only the requested task.',
@@ -169,7 +236,7 @@ def test_task_checkpoint_continue_rejects_invalid_transition():
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
 
     start_result = asyncio.run(
-        task.start_task(
+        start_task_with_library(
             StartRequest(
                 repo_path='/tmp/repo',
                 constitution='Implement only the requested task.',
@@ -241,7 +308,7 @@ def test_task_checkpoint_continue_replays_idempotent_response(monkeypatch):
     monkeypatch.setattr(task, 'call_together', fake_call_together)
 
     start_result = asyncio.run(
-        task.start_task(
+        start_task_with_library(
             StartRequest(
                 repo_path='/tmp/repo',
                 constitution='Implement only the requested task.',
@@ -287,7 +354,7 @@ def test_task_checkpoint_get_returns_latest_state():
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
 
     start_result = asyncio.run(
-        task.start_task(
+        start_task_with_library(
             StartRequest(
                 repo_path='/tmp/repo',
                 constitution='Implement only the requested task.',
