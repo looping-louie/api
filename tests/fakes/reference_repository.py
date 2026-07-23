@@ -7,6 +7,7 @@ class FakeReferenceRepository:
 
     def __init__(self) -> None:
         self._resources: dict[tuple[str, str, str], object] = {}
+        self._historical_only: set[tuple[str, str, str]] = set()
         self.calls: list[tuple[str, str, tuple[str, ...]]] = []
 
     def seed(
@@ -16,6 +17,7 @@ class FakeReferenceRepository:
         resource_type: str,
         resource_id: str,
         value: object,
+        historical_only: bool = False,
     ) -> None:
         """Register a resource that can later be resolved."""
 
@@ -25,6 +27,31 @@ class FakeReferenceRepository:
             resource_id=resource_id,
         )
         self._resources[key] = deepcopy(value)
+
+        if historical_only:
+            self._historical_only.add(key)
+        else:
+            self._historical_only.discard(key)
+
+    def set_historical_only(
+        self,
+        *,
+        workspace_id: str,
+        resource_type: str,
+        resource_id: str,
+    ) -> None:
+        """Keep a resource resolvable only for stored references."""
+
+        key = self._build_key(
+            workspace_id=workspace_id,
+            resource_type=resource_type,
+            resource_id=resource_id,
+        )
+
+        if key not in self._resources:
+            raise KeyError(resource_id)
+
+        self._historical_only.add(key)
 
     def remove(
         self,
@@ -41,6 +68,7 @@ class FakeReferenceRepository:
             resource_id=resource_id,
         )
         self._resources.pop(key, None)
+        self._historical_only.discard(key)
 
     async def get_many(
         self,
@@ -48,6 +76,7 @@ class FakeReferenceRepository:
         workspace_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
+        include_historical: bool = False,
     ) -> Mapping[str, object]:
         normalized_type = resource_type.casefold()
         requested_ids = tuple(resource_ids)
@@ -70,7 +99,13 @@ class FakeReferenceRepository:
             )
             value = self._resources.get(key)
 
-            if value is not None:
+            if (
+                value is not None
+                and (
+                    include_historical
+                    or key not in self._historical_only
+                )
+            ):
                 resources[resource_id] = deepcopy(value)
 
         return resources

@@ -135,6 +135,44 @@ async def test_create_council_rejects_missing_reference(
 
 
 @pytest.mark.asyncio
+async def test_create_council_rejects_instruction_not_selectable(
+    tenant_service: TenantService,
+    validation_service: ValidationService,
+    reference_resolver: ReferenceResolver,
+    reference_repository: FakeReferenceRepository,
+    composition_service: CompositionService,
+) -> None:
+    seed_council_references(reference_repository)
+    reference_repository.set_historical_only(
+        workspace_id="workspace-1",
+        resource_type="skill",
+        resource_id="skill-1",
+    )
+    service = build_service(
+        tenant_service=tenant_service,
+        validation_service=validation_service,
+        reference_resolver=reference_resolver,
+        composition_service=composition_service,
+    )
+
+    with pytest.raises(ResourceNotFoundError):
+        await service.create(
+            user_id="user-1",
+            payload=CouncilCreate(
+                name="Council",
+                description="Description",
+                assignments=[
+                    CouncilAssignment(
+                        role="reviewer",
+                        persona_id="persona-1",
+                        skill_ids=["skill-1"],
+                    ),
+                ],
+            ),
+        )
+
+
+@pytest.mark.asyncio
 async def test_create_council_rejects_duplicate_assignment(
     tenant_service: TenantService,
     validation_service: ValidationService,

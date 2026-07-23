@@ -43,12 +43,40 @@ def seed_loop_references(
             "items": [
                 {
                     "role": "generator",
+                    "persona_id": "persona-generator",
+                    "skill_ids": ["skill-generator"],
                 },
                 {
                     "role": "reviewer",
+                    "persona_id": "persona-reviewer",
+                    "skill_ids": ["skill-reviewer"],
                 },
             ],
         },
+    )
+    repository.seed(
+        workspace_id="workspace-1",
+        resource_type="persona",
+        resource_id="persona-generator",
+        value={"id": "persona-generator"},
+    )
+    repository.seed(
+        workspace_id="workspace-1",
+        resource_type="persona",
+        resource_id="persona-reviewer",
+        value={"id": "persona-reviewer"},
+    )
+    repository.seed(
+        workspace_id="workspace-1",
+        resource_type="skill",
+        resource_id="skill-generator",
+        value={"id": "skill-generator"},
+    )
+    repository.seed(
+        workspace_id="workspace-1",
+        resource_type="skill",
+        resource_id="skill-reviewer",
+        value={"id": "skill-reviewer"},
     )
     repository.seed(
         workspace_id="workspace-1",
@@ -138,6 +166,49 @@ async def test_create_loop_rejects_missing_model(
                     LoopModelBinding(
                         role="reviewer",
                         model_id="missing-model",
+                    ),
+                ],
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_loop_new_use_rejects_retired_council_instruction(
+    tenant_service: TenantService,
+    validation_service: ValidationService,
+    reference_resolver: ReferenceResolver,
+    reference_repository: FakeReferenceRepository,
+    composition_service: CompositionService,
+) -> None:
+    seed_loop_references(reference_repository)
+    reference_repository.set_historical_only(
+        workspace_id="workspace-1",
+        resource_type="skill",
+        resource_id="skill-reviewer",
+    )
+    service = build_service(
+        tenant_service=tenant_service,
+        validation_service=validation_service,
+        reference_resolver=reference_resolver,
+        composition_service=composition_service,
+    )
+
+    with pytest.raises(ResourceNotFoundError):
+        await service.create(
+            user_id="user-1",
+            payload=LoopCreate(
+                name="Loop",
+                description="Description",
+                council_id="council-1",
+                max_iterations=3,
+                model_bindings=[
+                    LoopModelBinding(
+                        role="generator",
+                        model_id="model-generator",
+                    ),
+                    LoopModelBinding(
+                        role="reviewer",
+                        model_id="model-reviewer",
                     ),
                 ],
             ),
@@ -328,3 +399,61 @@ async def test_validate_detects_reference_removed_after_creation(
             user_id="user-1",
             loop_id=created.id,
         )
+
+
+@pytest.mark.asyncio
+async def test_validate_existing_loop_allows_retired_instruction(
+    tenant_service: TenantService,
+    validation_service: ValidationService,
+    reference_resolver: ReferenceResolver,
+    reference_repository: FakeReferenceRepository,
+    composition_service: CompositionService,
+) -> None:
+    seed_loop_references(reference_repository)
+    service = build_service(
+        tenant_service=tenant_service,
+        validation_service=validation_service,
+        reference_resolver=reference_resolver,
+        composition_service=composition_service,
+    )
+    created = await service.create(
+        user_id="user-1",
+        payload=LoopCreate(
+            name="Loop",
+            description="Description",
+            council_id="council-1",
+            max_iterations=3,
+            model_bindings=[
+                LoopModelBinding(
+                    role="generator",
+                    model_id="model-generator",
+                ),
+                LoopModelBinding(
+                    role="reviewer",
+                    model_id="model-reviewer",
+                ),
+            ],
+        ),
+    )
+    reference_repository.set_historical_only(
+        workspace_id="workspace-1",
+        resource_type="skill",
+        resource_id="skill-reviewer",
+    )
+
+    with pytest.raises(ResourceNotFoundError):
+        await service.update(
+            user_id="user-1",
+            loop_id=created.id,
+            payload=LoopUpdate(
+                expected_version=1,
+                max_iterations=4,
+            ),
+        )
+
+    validated = await service.validate(
+        user_id="user-1",
+        loop_id=created.id,
+    )
+
+    assert validated.id == created.id

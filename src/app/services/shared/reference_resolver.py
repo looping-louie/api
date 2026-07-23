@@ -30,12 +30,15 @@ class ReferenceRepository(Protocol):
         workspace_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
+        include_historical: bool = False,
     ) -> Mapping[str, object]:
         """
         Return resources indexed by their identifier.
 
         Missing resources must simply be omitted from the returned mapping.
-        Every returned resource must belong to the requested workspace.
+        Every returned resource must be visible to the requested workspace.
+        Historical lookup may include resources that cannot be selected for
+        new compositions, such as deprecated instructions.
         """
         ...
 
@@ -95,6 +98,21 @@ class ReferenceResolver:
 
         return resolved[0]
 
+    async def require_one_historical(
+        self,
+        *,
+        workspace_id: str,
+        reference: ResourceReference,
+    ) -> ResolvedReference:
+        """Resolve one existing reference, including historical resources."""
+
+        resolved = await self.require_many_historical(
+            workspace_id=workspace_id,
+            references=[reference],
+        )
+
+        return resolved[0]
+
     async def require_many(
         self,
         *,
@@ -108,6 +126,33 @@ class ReferenceResolver:
         references are only fetched once.
         """
 
+        return await self._require_many(
+            workspace_id=workspace_id,
+            references=references,
+            include_historical=False,
+        )
+
+    async def require_many_historical(
+        self,
+        *,
+        workspace_id: str,
+        references: Sequence[ResourceReference],
+    ) -> list[ResolvedReference]:
+        """Resolve stored references, including deprecated instructions."""
+
+        return await self._require_many(
+            workspace_id=workspace_id,
+            references=references,
+            include_historical=True,
+        )
+
+    async def _require_many(
+        self,
+        *,
+        workspace_id: str,
+        references: Sequence[ResourceReference],
+        include_historical: bool,
+    ) -> list[ResolvedReference]:
         workspace_id = self._require_text(
             workspace_id,
             "workspace_id",
@@ -124,6 +169,7 @@ class ReferenceResolver:
         values_by_reference = await self._load_references(
             workspace_id=workspace_id,
             grouped_ids=grouped_ids,
+            include_historical=include_historical,
         )
 
         missing = self._find_missing_references(
@@ -150,6 +196,7 @@ class ReferenceResolver:
         *,
         workspace_id: str,
         grouped_ids: Mapping[str, Sequence[str]],
+        include_historical: bool,
     ) -> dict[ResourceReference, object]:
         values_by_reference: dict[ResourceReference, object] = {}
 
@@ -158,6 +205,7 @@ class ReferenceResolver:
                 workspace_id=workspace_id,
                 resource_type=resource_type,
                 resource_ids=resource_ids,
+                include_historical=include_historical,
             )
 
             for resource_id, value in resources.items():

@@ -127,3 +127,34 @@ async def test_resolver_does_not_cross_workspace_boundaries(
                 resource_id="persona-1",
             ),
         )
+
+
+@pytest.mark.asyncio
+async def test_historical_resolution_keeps_retired_reference_available(
+    reference_resolver: ReferenceResolver,
+    reference_repository: FakeReferenceRepository,
+) -> None:
+    reference = ResourceReference(
+        resource_type="skill",
+        resource_id="retired-skill",
+    )
+    reference_repository.seed(
+        workspace_id="workspace-1",
+        resource_type="skill",
+        resource_id="retired-skill",
+        value={"name": "Retired skill"},
+        historical_only=True,
+    )
+
+    with pytest.raises(ResourceNotFoundError):
+        await reference_resolver.require_one(
+            workspace_id="workspace-1",
+            reference=reference,
+        )
+
+    resolved = await reference_resolver.require_one_historical(
+        workspace_id="workspace-1",
+        reference=reference,
+    )
+
+    assert resolved.value == {"name": "Retired skill"}

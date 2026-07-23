@@ -13,7 +13,13 @@ from src.app.services.shared.reference_resolver import ResourceReference
 
 
 class SqliteDependencyRepository:
-    """Reads composition dependencies from SQLite."""
+    """Reads workspace-scoped composition dependencies from SQLite.
+
+    ``workspace_id`` belongs to the referencing composition, not necessarily
+    to the target. This lets several workspaces safely reference the same
+    global builtin instruction ID while custom deletion remains isolated to
+    its owning workspace.
+    """
 
     def __init__(
         self,

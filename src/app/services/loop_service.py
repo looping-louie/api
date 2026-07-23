@@ -211,17 +211,11 @@ class LoopService:
             else current.model_bindings
         )
 
-        configuration_changed = (
-            normalized.council_id is not None
-            or normalized.model_bindings is not None
+        await self._validate_configuration(
+            workspace_id=workspace_id,
+            council_id=final_council_id,
+            model_bindings=final_bindings,
         )
-
-        if configuration_changed:
-            await self._validate_configuration(
-                workspace_id=workspace_id,
-                council_id=final_council_id,
-                model_bindings=final_bindings,
-            )
 
         attributes_changed = (
             normalized.council_id is not None
@@ -299,6 +293,7 @@ class LoopService:
             workspace_id=workspace_id,
             council_id=loop.council_id,
             model_bindings=loop.model_bindings,
+            include_historical_instructions=True,
         )
 
         return loop
@@ -309,6 +304,7 @@ class LoopService:
         workspace_id: str,
         council_id: str,
         model_bindings: Sequence[LoopModelBinding],
+        include_historical_instructions: bool = False,
     ) -> None:
         self._validation_service.require_distinct(
             values=[
@@ -335,6 +331,21 @@ class LoopService:
                 )
                 for binding in model_bindings
             ],
+        )
+
+        instruction_references = (
+            self._extract_council_instruction_references(
+                resolved_council.value,
+            )
+        )
+        instruction_resolver = (
+            self._reference_resolver.require_many_historical
+            if include_historical_instructions
+            else self._reference_resolver.require_many
+        )
+        await instruction_resolver(
+            workspace_id=workspace_id,
+            references=instruction_references,
         )
 
         council_roles = self._extract_council_roles(
@@ -395,6 +406,63 @@ class LoopService:
 
         return roles
 
+    def _extract_council_instruction_references(
+        self,
+        value: object,
+    ) -> tuple[ResourceReference, ...]:
+        references: list[ResourceReference] = []
+
+        for index, item in enumerate(
+            self._extract_council_items(value)
+        ):
+            persona_id = item.get("persona_id")
+
+            if persona_id is not None:
+                if not isinstance(persona_id, str) or not persona_id.strip():
+                    raise LoopValidationError(
+                        field_name=(
+                            f"council.items[{index}].persona_id"
+                        ),
+                        message="must be a non-empty string",
+                    )
+
+                references.append(
+                    ResourceReference(
+                        resource_type="persona",
+                        resource_id=persona_id,
+                    )
+                )
+
+            skill_ids = item.get("skill_ids")
+
+            if skill_ids is None:
+                continue
+
+            if not self._is_sequence(skill_ids):
+                raise LoopValidationError(
+                    field_name=f"council.items[{index}].skill_ids",
+                    message="must be a sequence",
+                )
+
+            for skill_index, skill_id in enumerate(skill_ids):
+                if not isinstance(skill_id, str) or not skill_id.strip():
+                    raise LoopValidationError(
+                        field_name=(
+                            f"council.items[{index}]."
+                            f"skill_ids[{skill_index}]"
+                        ),
+                        message="must be a non-empty string",
+                    )
+
+                references.append(
+                    ResourceReference(
+                        resource_type="skill",
+                        resource_id=skill_id,
+                    )
+                )
+
+        return tuple(references)
+
     def _extract_council_items(
         self,
         value: object,
@@ -414,6 +482,16 @@ class LoopService:
             return tuple(
                 {
                     "role": getattr(assignment, "role", None),
+                    "persona_id": getattr(
+                        assignment,
+                        "persona_id",
+                        None,
+                    ),
+                    "skill_ids": getattr(
+                        assignment,
+                        "skill_ids",
+                        None,
+                    ),
                 }
                 for assignment in assignments
             )

@@ -11,6 +11,9 @@ import pytest
 
 import src.app.repositories.instruction_repository as repository_module
 from src.app.catalogs import InstructionOrigin, load_instruction_catalog
+from src.app.repositories.dependency_repository import (
+    SqliteDependencyRepository,
+)
 from src.app.repositories.instruction_repository import (
     SqliteInstructionRepository,
 )
@@ -20,6 +23,7 @@ from src.app.services.instruction_catalog_synchronizer import (
 from src.app.services.shared.instruction_service import (
     InstructionDocument,
 )
+from src.app.services.shared.reference_resolver import ResourceReference
 
 
 MIGRATIONS_PATH = (
@@ -509,6 +513,83 @@ async def test_custom_persists_source_instruction_id(
     assert summary.source_instruction_id == (
         "builtin:skill:security"
     )
+
+
+@pytest.mark.asyncio
+async def test_builtin_dependencies_are_scoped_by_referencing_workspace(
+    library_database: Path,
+) -> None:
+    with sqlite3.connect(library_database) as connection:
+        for workspace_id, council_id in (
+            ("workspace-1", "council-1"),
+            ("workspace-2", "council-2"),
+        ):
+            connection.execute(
+                """
+                INSERT INTO compositions (
+                    id,
+                    workspace_id,
+                    composition_type,
+                    name,
+                    name_key,
+                    description,
+                    attributes_json,
+                    version,
+                    created_at,
+                    updated_at
+                )
+                VALUES (?, ?, 'council', ?, ?, '', '{}', 1, ?, ?)
+                """,
+                (
+                    council_id,
+                    workspace_id,
+                    council_id,
+                    council_id,
+                    TIMESTAMP,
+                    TIMESTAMP,
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO resource_dependencies (
+                    workspace_id,
+                    source_type,
+                    source_id,
+                    target_type,
+                    target_id,
+                    relation,
+                    position
+                )
+                VALUES (?, 'council', ?, 'skill', ?, ?, 0)
+                """,
+                (
+                    workspace_id,
+                    council_id,
+                    "builtin:skill:security",
+                    "assignment_skill",
+                ),
+            )
+
+    repository = SqliteDependencyRepository(library_database)
+    target = ResourceReference(
+        resource_type="skill",
+        resource_id="builtin:skill:security",
+    )
+    workspace_one = await repository.find_usages(
+        workspace_id="workspace-1",
+        target=target,
+    )
+    workspace_two = await repository.find_usages(
+        workspace_id="workspace-2",
+        target=target,
+    )
+
+    assert [usage.source.resource_id for usage in workspace_one] == [
+        "council-1",
+    ]
+    assert [usage.source.resource_id for usage in workspace_two] == [
+        "council-2",
+    ]
 
 
 def insert_custom(
