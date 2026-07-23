@@ -8,6 +8,8 @@ from src.app.controllers.skill import SkillController
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.skill import (
     SkillCreateRequest,
+    SkillDuplicateRequest,
+    SkillEnabledRequest,
     SkillListResponse,
     SkillResponse,
     SkillUpdateRequest,
@@ -120,6 +122,55 @@ async def update_skill(
     """Update an existing skill."""
 
     return await controller.update(
+        user_id=context.user_id,
+        skill_id=skill_id,
+        payload=payload,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.put(
+    "/{skill_id}/enabled",
+    response_model=SkillResponse,
+    summary="Set skill enablement",
+)
+async def set_skill_enabled(
+    payload: SkillEnabledRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    skill_id: Annotated[
+        str,
+        Path(min_length=1),
+    ],
+) -> SkillResponse:
+    """Enable or disable a skill in the selected workspace."""
+
+    return await controller.set_enabled(
+        user_id=context.user_id,
+        skill_id=skill_id,
+        payload=payload,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    "/{skill_id}/duplicate",
+    response_model=SkillResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Duplicate skill",
+)
+async def duplicate_skill(
+    payload: SkillDuplicateRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    skill_id: Annotated[
+        str,
+        Path(min_length=1),
+    ],
+) -> SkillResponse:
+    """Fork an available skill into an editable custom skill."""
+
+    return await controller.duplicate(
         user_id=context.user_id,
         skill_id=skill_id,
         payload=payload,

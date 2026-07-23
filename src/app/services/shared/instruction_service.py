@@ -63,6 +63,7 @@ class AvailableInstructionSummary:
     instruction_type: InstructionType
     origin: InstructionOrigin
     owner_workspace_id: str | None
+    source_instruction_id: str | None
     name: str
     description: str
     enabled: bool
@@ -78,6 +79,21 @@ class AvailableInstructionSummary:
         """Return whether new compositions may select this definition."""
 
         return self.enabled and not self.deprecated
+
+    @property
+    def editable(self) -> bool:
+        """Return whether the workspace may mutate this definition."""
+
+        return (
+            self.origin == InstructionOrigin.CUSTOM
+            and self.owner_workspace_id == self.workspace_id
+        )
+
+    @property
+    def duplicable(self) -> bool:
+        """Return whether the workspace may fork this definition."""
+
+        return not self.deprecated
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +124,21 @@ class AvailableInstructionDocument:
         """Return whether new compositions may select this definition."""
 
         return self.enabled and not self.deprecated
+
+    @property
+    def editable(self) -> bool:
+        """Return whether the workspace may mutate this definition."""
+
+        return (
+            self.origin == InstructionOrigin.CUSTOM
+            and self.owner_workspace_id == self.workspace_id
+        )
+
+    @property
+    def duplicable(self) -> bool:
+        """Return whether the workspace may fork this definition."""
+
+        return not self.deprecated
 
 
 @dataclass(frozen=True, slots=True)

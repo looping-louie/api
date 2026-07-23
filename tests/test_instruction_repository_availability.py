@@ -490,11 +490,23 @@ async def test_custom_persists_source_instruction_id(
         instruction_type="skill",
         instruction_id=document.id,
     )
+    summaries = await repository.list_available_for_workspace(
+        workspace_id="workspace-1",
+        instruction_type="skill",
+    )
+    summary = next(
+        item
+        for item in summaries
+        if item.id == document.id
+    )
 
     assert stored == document
     assert available is not None
     assert available.origin == InstructionOrigin.CUSTOM
     assert available.source_instruction_id == (
+        "builtin:skill:security"
+    )
+    assert summary.source_instruction_id == (
         "builtin:skill:security"
     )
 

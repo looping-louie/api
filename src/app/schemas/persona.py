@@ -3,15 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, StrictBool, model_validator
 
 from .common import (
+    InstructionCapabilitiesResponse,
     ListResponse,
     NonEmptyString,
     PositiveInteger,
     RequestSchema,
     ResourceSummaryResponse,
-    ResponseSchema,
 )
 
 
@@ -50,11 +50,26 @@ class PersonaUpdateRequest(RequestSchema):
         return self
 
 
-class PersonaSummaryResponse(ResourceSummaryResponse):
+class PersonaEnabledRequest(RequestSchema):
+    """Request body for changing effective workspace enablement."""
+
+    enabled: StrictBool
+
+
+class PersonaDuplicateRequest(RequestSchema):
+    """Optional overrides used when forking an available persona."""
+
+    name: NonEmptyString | None = None
+
+
+class PersonaSummaryResponse(
+    InstructionCapabilitiesResponse,
+    ResourceSummaryResponse,
+):
     """Lightweight persona returned by list operations."""
 
 
-class PersonaResponse(ResponseSchema):
+class PersonaResponse(InstructionCapabilitiesResponse):
     """Complete persona returned by describe and write operations."""
 
     id: str

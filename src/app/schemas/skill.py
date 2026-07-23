@@ -3,15 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Self
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, StrictBool, model_validator
 
 from .common import (
+    InstructionCapabilitiesResponse,
     ListResponse,
     NonEmptyString,
     PositiveInteger,
     RequestSchema,
     ResourceSummaryResponse,
-    ResponseSchema,
     StrictnessValue,
 )
 
@@ -74,11 +74,26 @@ class SkillUpdateRequest(RequestSchema):
         return self
 
 
-class SkillSummaryResponse(ResourceSummaryResponse):
+class SkillEnabledRequest(RequestSchema):
+    """Request body for changing effective workspace enablement."""
+
+    enabled: StrictBool
+
+
+class SkillDuplicateRequest(RequestSchema):
+    """Optional overrides used when forking an available skill."""
+
+    name: NonEmptyString | None = None
+
+
+class SkillSummaryResponse(
+    InstructionCapabilitiesResponse,
+    ResourceSummaryResponse,
+):
     """Lightweight skill returned by list operations."""
 
 
-class SkillResponse(ResponseSchema):
+class SkillResponse(InstructionCapabilitiesResponse):
     """Complete skill returned by describe and write operations."""
 
     id: str

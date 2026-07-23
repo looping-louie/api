@@ -3,6 +3,8 @@ from __future__ import annotations
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.persona import (
     PersonaCreateRequest,
+    PersonaDuplicateRequest,
+    PersonaEnabledRequest,
     PersonaListResponse,
     PersonaResponse,
     PersonaSummaryResponse,
@@ -76,6 +78,11 @@ class PersonaController:
                 metadata=payload.metadata,
             ),
         )
+        document = await self._persona_service.describe(
+            user_id=user_id,
+            persona_id=document.id,
+            requested_workspace_id=requested_workspace_id,
+        )
 
         return PersonaResponse.model_validate(document)
 
@@ -98,6 +105,58 @@ class PersonaController:
                 instructions=payload.instructions,
                 metadata=payload.metadata,
             ),
+        )
+        document = await self._persona_service.describe(
+            user_id=user_id,
+            persona_id=document.id,
+            requested_workspace_id=requested_workspace_id,
+        )
+
+        return PersonaResponse.model_validate(document)
+
+    async def set_enabled(
+        self,
+        *,
+        user_id: str,
+        persona_id: str,
+        payload: PersonaEnabledRequest,
+        requested_workspace_id: str | None = None,
+    ) -> PersonaResponse:
+        """Set the effective enablement of a persona for one workspace."""
+
+        operation = (
+            self._persona_service.enable
+            if payload.enabled
+            else self._persona_service.disable
+        )
+        document = await operation(
+            user_id=user_id,
+            persona_id=persona_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+
+        return PersonaResponse.model_validate(document)
+
+    async def duplicate(
+        self,
+        *,
+        user_id: str,
+        persona_id: str,
+        payload: PersonaDuplicateRequest,
+        requested_workspace_id: str | None = None,
+    ) -> PersonaResponse:
+        """Fork an available persona into an editable custom copy."""
+
+        duplicate = await self._persona_service.duplicate(
+            user_id=user_id,
+            persona_id=persona_id,
+            name=payload.name,
+            requested_workspace_id=requested_workspace_id,
+        )
+        document = await self._persona_service.describe(
+            user_id=user_id,
+            persona_id=duplicate.id,
+            requested_workspace_id=requested_workspace_id,
         )
 
         return PersonaResponse.model_validate(document)

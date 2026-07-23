@@ -3,6 +3,8 @@ from __future__ import annotations
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.skill import (
     SkillCreateRequest,
+    SkillDuplicateRequest,
+    SkillEnabledRequest,
     SkillListResponse,
     SkillResponse,
     SkillSummaryResponse,
@@ -78,6 +80,11 @@ class SkillController:
                 ),
             ),
         )
+        document = await self._skill_service.describe(
+            user_id=user_id,
+            skill_id=document.id,
+            requested_workspace_id=requested_workspace_id,
+        )
 
         return SkillResponse.model_validate(document)
 
@@ -107,6 +114,58 @@ class SkillController:
                 instructions=payload.instructions,
                 metadata=metadata,
             ),
+        )
+        document = await self._skill_service.describe(
+            user_id=user_id,
+            skill_id=document.id,
+            requested_workspace_id=requested_workspace_id,
+        )
+
+        return SkillResponse.model_validate(document)
+
+    async def set_enabled(
+        self,
+        *,
+        user_id: str,
+        skill_id: str,
+        payload: SkillEnabledRequest,
+        requested_workspace_id: str | None = None,
+    ) -> SkillResponse:
+        """Set the effective enablement of a skill for one workspace."""
+
+        operation = (
+            self._skill_service.enable
+            if payload.enabled
+            else self._skill_service.disable
+        )
+        document = await operation(
+            user_id=user_id,
+            skill_id=skill_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+
+        return SkillResponse.model_validate(document)
+
+    async def duplicate(
+        self,
+        *,
+        user_id: str,
+        skill_id: str,
+        payload: SkillDuplicateRequest,
+        requested_workspace_id: str | None = None,
+    ) -> SkillResponse:
+        """Fork an available skill into an editable custom copy."""
+
+        duplicate = await self._skill_service.duplicate(
+            user_id=user_id,
+            skill_id=skill_id,
+            name=payload.name,
+            requested_workspace_id=requested_workspace_id,
+        )
+        document = await self._skill_service.describe(
+            user_id=user_id,
+            skill_id=duplicate.id,
+            requested_workspace_id=requested_workspace_id,
         )
 
         return SkillResponse.model_validate(document)

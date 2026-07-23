@@ -106,6 +106,7 @@ class SqliteInstructionRepository:
                 i.instruction_type,
                 i.origin,
                 i.owner_workspace_id,
+                i.source_instruction_id,
                 i.name,
                 i.description,
                 COALESCE(
@@ -721,6 +722,11 @@ class SqliteInstructionRepository:
             owner_workspace_id=(
                 str(row["owner_workspace_id"])
                 if row["owner_workspace_id"] is not None
+                else None
+            ),
+            source_instruction_id=(
+                str(row["source_instruction_id"])
+                if row["source_instruction_id"] is not None
                 else None
             ),
             name=str(row["name"]),

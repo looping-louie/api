@@ -8,6 +8,8 @@ from src.app.controllers.persona import PersonaController
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.persona import (
     PersonaCreateRequest,
+    PersonaDuplicateRequest,
+    PersonaEnabledRequest,
     PersonaListResponse,
     PersonaResponse,
     PersonaUpdateRequest,
@@ -120,6 +122,55 @@ async def update_persona(
     """Update an existing persona."""
 
     return await controller.update(
+        user_id=context.user_id,
+        persona_id=persona_id,
+        payload=payload,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.put(
+    "/{persona_id}/enabled",
+    response_model=PersonaResponse,
+    summary="Set persona enablement",
+)
+async def set_persona_enabled(
+    payload: PersonaEnabledRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    persona_id: Annotated[
+        str,
+        Path(min_length=1),
+    ],
+) -> PersonaResponse:
+    """Enable or disable a persona in the selected workspace."""
+
+    return await controller.set_enabled(
+        user_id=context.user_id,
+        persona_id=persona_id,
+        payload=payload,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    "/{persona_id}/duplicate",
+    response_model=PersonaResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Duplicate persona",
+)
+async def duplicate_persona(
+    payload: PersonaDuplicateRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    persona_id: Annotated[
+        str,
+        Path(min_length=1),
+    ],
+) -> PersonaResponse:
+    """Fork an available persona into an editable custom persona."""
+
+    return await controller.duplicate(
         user_id=context.user_id,
         persona_id=persona_id,
         payload=payload,

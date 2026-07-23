@@ -5,6 +5,8 @@ from typing import Annotated, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.app.catalogs.instructions import InstructionOrigin
+
 
 NonEmptyString = Annotated[
     str,
@@ -53,6 +55,18 @@ class ResourceSummaryResponse(ResponseSchema):
     version: PositiveInteger
     created_at: datetime
     updated_at: datetime
+
+
+class InstructionCapabilitiesResponse(ResponseSchema):
+    """Workspace-specific origin and action capabilities for an instruction."""
+
+    origin: InstructionOrigin
+    enabled: bool
+    editable: bool
+    duplicable: bool
+    deprecated: bool
+    catalog_version: PositiveInteger | None
+    source_instruction_id: str | None
 
 
 class CompositionSummaryResponse(ResourceSummaryResponse):

@@ -158,6 +158,7 @@ class FakeInstructionRepository:
                 instruction_type=document.instruction_type,
                 origin=document.origin,
                 owner_workspace_id=document.owner_workspace_id,
+                source_instruction_id=document.source_instruction_id,
                 name=document.name,
                 description=document.description,
                 enabled=document.enabled,
