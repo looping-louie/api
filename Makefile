@@ -1,4 +1,4 @@
-.PHONY: install venv config reset-config dev run test tests smoke
+.PHONY: install venv config reset-config dev run test tests smoke catalog-check
 
 PYTHON ?= python3
 VENV := env
@@ -30,8 +30,6 @@ config: venv
 			"LOUIE_ENCRYPTION_KEY=$$ENCRYPTION_KEY" \
 			'LOUIE_DB_PATH=.looping-louie/data/looping-louie.db' \
 			'LOUIE_CATALOG_STRICT_VERSIONING=false' \
-			'LOUIE_ORG_ID=local-org' \
-			'LOUIE_USER_ID=local-user' \
 			> "$(ENV_FILE)"; \
 		chmod 600 "$(ENV_FILE)"; \
 		echo "Created $(ENV_FILE) with a generated encryption key."; \
@@ -61,6 +59,9 @@ run: dev
 
 test tests: venv
 	@"$(VENV_PYTHON)" -m pytest -q
+
+catalog-check: venv
+	@"$(VENV_PYTHON)" scripts/check_catalog.py
 
 smoke: venv config
 	@ENV_FILE="$(ENV_FILE)" ./scripts/smoke_api.sh

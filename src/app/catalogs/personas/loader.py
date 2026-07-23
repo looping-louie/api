@@ -103,22 +103,6 @@ def load_persona_catalog(
     return tuple(entries)
 
 
-def load_persona_content(
-    persona_id_or_key: str,
-    *,
-    catalog_dir: Path = PERSONA_CATALOG_DIR,
-) -> str:
-    """Load one persona using its stable ID or temporary legacy key."""
-
-    requested = persona_id_or_key.strip()
-
-    for entry in load_persona_catalog(catalog_dir):
-        if entry.id == requested or entry.key == requested:
-            return entry.instructions
-
-    raise ValueError(f"Unknown persona: {requested}")
-
-
 def _load_roles(
     manifest: Mapping[str, object],
     field_name: str,

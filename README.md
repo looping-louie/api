@@ -88,8 +88,6 @@ The installer also creates these local provider settings:
 LOUIE_ENCRYPTION_KEY=<generated Fernet key>
 LOUIE_DB_PATH=.looping-louie/data/looping-louie.db
 LOUIE_CATALOG_STRICT_VERSIONING=false
-LOUIE_ORG_ID=local-org
-LOUIE_USER_ID=local-user
 ```
 
 `LOUIE_ENCRYPTION_KEY` is the Looping Louie master encryption key. It encrypts

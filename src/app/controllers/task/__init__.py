@@ -84,6 +84,11 @@ async def start_task(
             'reviewer_model': req.reviewer_model,
         },
     )
+    write_json(
+        state.run_path,
+        'instructions-snapshot.json',
+        instruction_library.snapshot(),
+    )
 
     _TASK_RUNS[run_id] = state
 

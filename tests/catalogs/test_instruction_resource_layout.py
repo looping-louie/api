@@ -3,12 +3,10 @@ from pathlib import Path
 from src.app.catalogs.personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
-    load_persona_content,
 )
 from src.app.catalogs.skills.loader import (
     SKILL_CATALOG_DIR,
     load_skill_catalog,
-    load_skill_content,
 )
 
 
@@ -72,15 +70,6 @@ def test_persona_manifest_uses_stable_preferred_skill_ids() -> None:
             skill_id.startswith("builtin:skill:")
             for skill_id in entry.preferred_skill_ids
         )
-
-
-def test_content_loaders_accept_stable_ids_and_temporary_legacy_keys() -> None:
-    assert load_skill_content(
-        "builtin:skill:security"
-    ) == load_skill_content("security")
-    assert load_persona_content(
-        "builtin:persona:tech_lead"
-    ) == load_persona_content("tech_lead")
 
 
 def test_legacy_runtime_wrappers_were_removed() -> None:

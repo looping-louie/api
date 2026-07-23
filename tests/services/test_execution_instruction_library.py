@@ -66,6 +66,23 @@ async def test_api_custom_is_immediately_available_to_execution(
         entry["id"]
         for entry in library.persona_registry()
     }
+    snapshot_entries = {
+        entry["id"]: entry
+        for entry in library.snapshot()["instructions"]
+    }
+    skill_snapshot = snapshot_entries[skill.id]
+    persona_snapshot = snapshot_entries[persona.id]
+
+    assert skill_snapshot["instruction_type"] == "skill"
+    assert skill_snapshot["origin"] == "custom"
+    assert skill_snapshot["version"] == 1
+    assert skill_snapshot["catalog_version"] is None
+    assert skill_snapshot["content"] == (
+        "SQL skill content version one."
+    )
+    assert skill_snapshot["metadata"] == {}
+    assert persona_snapshot["instruction_type"] == "persona"
+    assert persona_snapshot["content"] == "SQL persona content."
 
 
 @pytest.mark.asyncio
@@ -108,6 +125,23 @@ async def test_fresh_execution_read_reflects_sql_update(
     assert after.skill_contents([skill.id]) == [
         "SQL content after update.",
     ]
+    before_snapshot = {
+        entry["id"]: entry
+        for entry in before.snapshot()["instructions"]
+    }
+    after_snapshot = {
+        entry["id"]: entry
+        for entry in after.snapshot()["instructions"]
+    }
+
+    assert before_snapshot[skill.id]["version"] == 1
+    assert before_snapshot[skill.id]["content"] == (
+        "SQL content before update."
+    )
+    assert after_snapshot[skill.id]["version"] == 2
+    assert after_snapshot[skill.id]["content"] == (
+        "SQL content after update."
+    )
 
 
 def test_assignment_builder_only_uses_resolved_content() -> None:

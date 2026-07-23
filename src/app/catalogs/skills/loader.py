@@ -116,22 +116,6 @@ def load_skill_catalog(
     return tuple(entries)
 
 
-def load_skill_content(
-    skill_id_or_key: str,
-    *,
-    catalog_dir: Path = SKILL_CATALOG_DIR,
-) -> str:
-    """Load one skill using its stable ID or temporary legacy key."""
-
-    requested = skill_id_or_key.strip()
-
-    for entry in load_skill_catalog(catalog_dir):
-        if entry.id == requested or entry.key == requested:
-            return entry.instructions
-
-    raise ValueError(f"Unknown skill: {requested}")
-
-
 def _load_roles(
     manifest: Mapping[str, object],
     field_name: str,

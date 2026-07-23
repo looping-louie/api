@@ -18,7 +18,6 @@ class AppSettings:
 
     encryption_key: str | None
     database_path: Path
-    user_id: str
     dev_auth_enabled: bool
     dev_user_id: str
     catalog_strict_versioning: bool
@@ -38,7 +37,6 @@ def get_app_settings() -> AppSettings:
                 ".looping-louie/data/looping-louie.db",
             )
         ),
-        user_id=os.getenv("LOUIE_USER_ID", "local-user"),
         dev_auth_enabled=_environment_flag(
             "LOUIE_DEV_AUTH",
         ),

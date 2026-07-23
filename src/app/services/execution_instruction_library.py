@@ -48,6 +48,10 @@ class ExecutionInstruction:
 
     id: str
     source_id: str
+    instruction_type: InstructionType
+    origin: InstructionOrigin
+    version: int
+    catalog_version: int | None
     name: str
     description: str
     content: str
@@ -63,6 +67,29 @@ class ExecutionInstructionLibrary:
     personas: Mapping[str, ExecutionInstruction]
     skill_aliases: Mapping[str, str]
     persona_aliases: Mapping[str, str]
+
+    def snapshot(self) -> dict[str, object]:
+        """Serialize every definition visible when the execution started."""
+
+        instructions = [
+            self._snapshot_entry(instruction)
+            for instruction in (
+                *self.skills.values(),
+                *self.personas.values(),
+            )
+        ]
+        instructions.sort(
+            key=lambda item: (
+                str(item["instruction_type"]),
+                str(item["id"]),
+            )
+        )
+
+        return {
+            "snapshot_version": 1,
+            "workspace_id": self.workspace_id,
+            "instructions": instructions,
+        }
 
     def skill_registry(self) -> list[dict[str, object]]:
         """Return planner metadata for every selectable skill."""
@@ -139,6 +166,23 @@ class ExecutionInstructionLibrary:
                 metadata.get("reviewer_default_strictness")
                 or metadata.get("default_strictness")
             ),
+        }
+
+    @staticmethod
+    def _snapshot_entry(
+        instruction: ExecutionInstruction,
+    ) -> dict[str, object]:
+        return {
+            "id": instruction.source_id,
+            "runtime_id": instruction.id,
+            "instruction_type": instruction.instruction_type,
+            "origin": instruction.origin.value,
+            "version": instruction.version,
+            "catalog_version": instruction.catalog_version,
+            "name": instruction.name,
+            "description": instruction.description,
+            "content": instruction.content,
+            "metadata": deepcopy(dict(instruction.metadata)),
         }
 
     def _persona_registry_entry(
@@ -353,6 +397,10 @@ class ExecutionInstructionLibraryService:
             ExecutionInstruction(
                 id=self._runtime_id(document),
                 source_id=document.id,
+                instruction_type=document.instruction_type,
+                origin=document.origin,
+                version=document.version,
+                catalog_version=document.catalog_version,
                 name=document.name,
                 description=document.description,
                 content=document.instructions,

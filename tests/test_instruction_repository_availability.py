@@ -626,9 +626,9 @@ async def test_execution_library_reads_sql_not_packaged_markdown(
 
     monkeypatch.setattr(
         skill_loader,
-        "load_skill_content",
+        "load_skill_catalog",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            AssertionError("Runtime must not read Markdown")
+            AssertionError("Runtime must not load the packaged catalog")
         ),
     )
     unchanged = await service.load(user_id="user-1")

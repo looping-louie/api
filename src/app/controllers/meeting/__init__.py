@@ -19,6 +19,7 @@ from src.app.services.meeting.runtime import (
     persist_meeting_response,
 )
 from src.app.services.meeting.team import MeetingPlan
+from src.app.utils.io import write_json
 from .utils import execute_meeting_iterations
 
 
@@ -42,6 +43,11 @@ async def run_meeting(
     )
     started_at = time.perf_counter()
     run_id, run_path = create_meeting_run(req)
+    write_json(
+        run_path,
+        "instructions-snapshot.json",
+        instruction_library.snapshot(),
+    )
     usage = UsageTotals()
     plan: MeetingPlan = await create_meeting_plan(
         req=req,
