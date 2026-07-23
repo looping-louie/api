@@ -1,3 +1,15 @@
+from .instructions import (
+    AgentRole,
+    CatalogInstructionEntry,
+    CatalogInstructionType,
+    InstructionCatalogMetadata,
+    InstructionOrigin,
+    PersonaCatalogEntry,
+    ProjectPhase,
+    ReviewerStrictnessDefaults,
+    SkillCatalogEntry,
+    build_builtin_instruction_id,
+)
 from .models import (
     MODEL_CATALOG,
     MODEL_CATALOG_BY_ID,
@@ -11,6 +23,11 @@ from .models import (
 )
 
 __all__ = [
+    "AgentRole",
+    "CatalogInstructionEntry",
+    "CatalogInstructionType",
+    "InstructionCatalogMetadata",
+    "InstructionOrigin",
     "MODEL_CATALOG",
     "MODEL_CATALOG_BY_ID",
     "ModelCapability",
@@ -19,5 +36,10 @@ __all__ = [
     "ModelEndpoint",
     "ModelPricing",
     "ModelStatus",
+    "PersonaCatalogEntry",
+    "ProjectPhase",
     "ProviderId",
+    "ReviewerStrictnessDefaults",
+    "SkillCatalogEntry",
+    "build_builtin_instruction_id",
 ]
