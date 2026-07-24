@@ -77,11 +77,9 @@ def execution_instruction_library() -> ExecutionInstructionLibrary:
         metadata={
             'applies_when': ['engineering'],
             'applies_to': ['generator', 'reviewer'],
-            'preferred_skill_ids': [
-                'builtin:skill:small_patch_quality',
-            ],
             'default_for': ['generator', 'reviewer'],
         },
+        skill_ids=('builtin:skill:small_patch_quality',),
     )
     return ExecutionInstructionLibrary(
         workspace_id='workspace-1',

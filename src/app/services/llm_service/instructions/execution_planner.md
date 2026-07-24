@@ -44,7 +44,7 @@ Composition rules:
 - Do not assign the same skill to multiple reviewers.
 - Select the minimum useful reviewer set for the task.
 - Never exceed the stated reviewer or skill limits.
-- Use preferred_skills as guidance, not as a mandatory restriction.
+- Use skills as guidance, not as a mandatory restriction.
 - Judge repository maturity from structural evidence.
 - Do not demand production completeness from an early prototype.
 - strictness must be an integer from 0 to 100.

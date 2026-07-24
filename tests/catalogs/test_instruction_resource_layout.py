@@ -64,11 +64,11 @@ def test_skill_metadata_was_moved_out_of_markdown_front_matter() -> None:
         assert not content.startswith("---")
 
 
-def test_persona_manifest_uses_stable_preferred_skill_ids() -> None:
+def test_persona_manifest_uses_stable_skill_ids() -> None:
     for entry in load_persona_catalog():
         assert all(
             skill_id.startswith("builtin:skill:")
-            for skill_id in entry.preferred_skill_ids
+            for skill_id in entry.skill_ids
         )
 
 

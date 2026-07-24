@@ -223,7 +223,7 @@ async def plan_execution_with_openai(
             "description": item["description"],
             "applies_when": item["applies_when"],
             "applies_to": item["applies_to"],
-            "preferred_skills": item["preferred_skills"],
+            "skills": item["skills"],
             "default_for": item["default_for"],
         }
         for item in persona_registry

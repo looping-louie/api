@@ -10,6 +10,9 @@ from src.app.catalogs import InstructionOrigin
 from src.app.repositories.instruction_repository import (
     SqliteInstructionRepository,
 )
+from src.app.repositories.persona_skill_repository import (
+    SqlitePersonaSkillRepository,
+)
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
 )
@@ -82,6 +85,9 @@ async def test_execution_library_reads_sql_not_packaged_markdown(
 
     service = ExecutionInstructionLibraryService(
         repository=SqliteInstructionRepository(library_database),
+        persona_skill_repository=SqlitePersonaSkillRepository(
+            library_database,
+        ),
         tenant_service=TenantService(
             repository=FakeTenantRepository(
                 [

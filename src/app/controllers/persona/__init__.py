@@ -10,10 +10,10 @@ from src.app.schemas.persona import (
     PersonaResponse,
     PersonaSummaryResponse,
 )
-from src.app.services.persona_service import PersonaService
-from src.app.services.shared.instruction_service import (
-    InstructionCreate,
-    InstructionUpdate,
+from src.app.services.persona_service import (
+    PersonaCreate,
+    PersonaService,
+    PersonaUpdate,
 )
 
 
@@ -90,11 +90,12 @@ class PersonaController:
             document = await self._persona_service.create(
                 user_id=user_id,
                 requested_workspace_id=requested_workspace_id,
-                payload=InstructionCreate(
+                payload=PersonaCreate(
                     name=payload.name,
                     description=payload.description,
                     instructions=payload.instructions,
                     metadata=payload.metadata,
+                    skill_ids=tuple(payload.skill_ids),
                 ),
             )
         document = await self._persona_service.describe(
@@ -122,12 +123,17 @@ class PersonaController:
                 user_id=user_id,
                 persona_id=persona_id,
                 requested_workspace_id=requested_workspace_id,
-                payload=InstructionUpdate(
+                payload=PersonaUpdate(
                     expected_version=payload.expected_version,
                     name=payload.name,
                     description=payload.description,
                     instructions=payload.instructions,
                     metadata=payload.metadata,
+                    skill_ids=(
+                        tuple(payload.skill_ids)
+                        if payload.skill_ids is not None
+                        else None
+                    ),
                 ),
             )
 

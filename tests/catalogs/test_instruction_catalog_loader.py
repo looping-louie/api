@@ -230,13 +230,13 @@ def test_rejects_strictness_outside_range(
         load_skill_catalog(skill_dir)
 
 
-def test_rejects_unknown_preferred_skill_reference(
+def test_rejects_unknown_associated_skill_reference(
     tmp_path: Path,
 ) -> None:
     skill_dir, persona_dir = copy_catalogs(tmp_path)
 
     def change_reference(data: list[dict[str, Any]]) -> None:
-        data[0]["preferred_skill_ids"].append(
+        data[0]["skill_ids"].append(
             "builtin:skill:missing"
         )
 
@@ -244,7 +244,7 @@ def test_rejects_unknown_preferred_skill_reference(
 
     with pytest.raises(
         CatalogLoadError,
-        match="unknown preferred skills",
+        match="unknown associated skills",
     ):
         load_instruction_catalog(
             skill_catalog_dir=skill_dir,

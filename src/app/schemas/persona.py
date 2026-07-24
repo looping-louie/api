@@ -23,12 +23,15 @@ class PersonaCreateRequest(RequestSchema):
     name: NonEmptyString | None = None
     description: str = ""
     instructions: NonEmptyString | None = None
+    skill_ids: list[NonEmptyString] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     source_persona_id: NonEmptyString | None = None
 
     @model_validator(mode="after")
     def validate_creation_mode(self) -> Self:
         """Validate the fields required by direct and source-based creation."""
+
+        self._require_unique_skill_ids()
 
         if self.source_persona_id is None:
             if self.name is None or self.instructions is None:
@@ -40,6 +43,7 @@ class PersonaCreateRequest(RequestSchema):
         unsupported_overrides = {
             "description",
             "instructions",
+            "skill_ids",
             "metadata",
         } & self.model_fields_set
         if unsupported_overrides:
@@ -49,6 +53,12 @@ class PersonaCreateRequest(RequestSchema):
 
         return self
 
+    def _require_unique_skill_ids(self) -> None:
+        """Reject ambiguous duplicate persona-skill associations."""
+
+        if len(self.skill_ids) != len(set(self.skill_ids)):
+            raise ValueError("Skill ids must be unique.")
+
 
 class PersonaPatchRequest(RequestSchema):
     """Fields that may change for an available persona."""
@@ -57,6 +67,7 @@ class PersonaPatchRequest(RequestSchema):
     name: NonEmptyString | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
+    skill_ids: list[NonEmptyString] | None = None
     metadata: dict[str, Any] | None = None
     enabled: StrictBool | None = None
 
@@ -68,6 +79,7 @@ class PersonaPatchRequest(RequestSchema):
             self.name,
             self.description,
             self.instructions,
+            self.skill_ids,
             self.metadata,
         )
         has_content_changes = any(
@@ -84,6 +96,11 @@ class PersonaPatchRequest(RequestSchema):
             raise ValueError(
                 "Expected version is required when modifying persona content."
             )
+        if (
+            self.skill_ids is not None
+            and len(self.skill_ids) != len(set(self.skill_ids))
+        ):
+            raise ValueError("Skill ids must be unique.")
 
         return self
 
@@ -96,6 +113,7 @@ class PersonaPatchRequest(RequestSchema):
                 self.name,
                 self.description,
                 self.instructions,
+                self.skill_ids,
                 self.metadata,
             )
         )
@@ -115,6 +133,7 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     name: str
     description: str
     instructions: str
+    skill_ids: list[str]
     metadata: dict[str, Any]
     version: PositiveInteger
     created_at: datetime

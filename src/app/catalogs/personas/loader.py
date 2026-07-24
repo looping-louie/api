@@ -82,9 +82,9 @@ def load_persona_catalog(
                     manifest,
                     "version",
                 ),
-                preferred_skill_ids=require_string_tuple(
+                skill_ids=require_string_tuple(
                     manifest,
-                    "preferred_skill_ids",
+                    "skill_ids",
                     allow_empty=True,
                 ),
                 default_for=_load_roles(

@@ -20,7 +20,7 @@
       "generator",
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:web_development",
       "builtin:skill:accessibility",
       "builtin:skill:privacy",
@@ -47,7 +47,7 @@
     "applies_to": [
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:web_development",
       "builtin:skill:privacy",
       "builtin:skill:security",
@@ -76,7 +76,7 @@
       "generator",
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:web_development",
       "builtin:skill:accessibility",
       "builtin:skill:internationalisation"
@@ -104,7 +104,7 @@
       "generator",
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:nuxt",
       "builtin:skill:web_development",
       "builtin:skill:security",
@@ -135,7 +135,7 @@
     "applies_to": [
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:security",
       "builtin:skill:privacy",
       "builtin:skill:resilience",
@@ -164,7 +164,7 @@
       "generator",
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:seo",
       "builtin:skill:performance",
       "builtin:skill:web_development",
@@ -191,7 +191,7 @@
     "applies_to": [
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:security",
       "builtin:skill:privacy",
       "builtin:skill:resilience",
@@ -219,7 +219,7 @@
     "applies_to": [
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:privacy",
       "builtin:skill:security",
       "builtin:skill:resilience"
@@ -247,7 +247,7 @@
       "generator",
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:security",
       "builtin:skill:performance",
       "builtin:skill:resilience",
@@ -276,7 +276,7 @@
       "generator",
       "reviewer"
     ],
-    "preferred_skill_ids": [
+    "skill_ids": [
       "builtin:skill:seo",
       "builtin:skill:accessibility",
       "builtin:skill:internationalisation",

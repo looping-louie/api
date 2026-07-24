@@ -33,6 +33,7 @@ EXPECTED_TABLES = {
     "loop_agents",
     "loop_changelog_entries",
     "provider_credentials",
+    "persona_skills",
     "workspace_instruction_settings",
 }
 
@@ -151,6 +152,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0004_provider_credentials",
         "0005_instruction_catalog",
         "0006_loops",
+        "0007_persona_skills",
     ]
 
 

@@ -27,6 +27,9 @@ from src.app.repositories.dependency_repository import (
 from src.app.repositories.instruction_repository import (
     SqliteInstructionRepository,
 )
+from src.app.repositories.persona_skill_repository import (
+    SqlitePersonaSkillRepository,
+)
 from src.app.repositories.migration_runner import run_sqlite_migrations
 from src.app.repositories.local_tenant_seed import ensure_local_tenant
 from src.app.repositories.provider_repository import (
@@ -145,6 +148,9 @@ async def configure_application(
     instruction_repository = SqliteInstructionRepository(
         resolved_settings.database_path,
     )
+    persona_skill_repository = SqlitePersonaSkillRepository(
+        resolved_settings.database_path,
+    )
     loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
@@ -169,6 +175,7 @@ async def configure_application(
     execution_instruction_library_service = (
         ExecutionInstructionLibraryService(
             repository=instruction_repository,
+            persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
         )
     )
@@ -205,6 +212,7 @@ async def configure_application(
     persona_service = PersonaService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
+        persona_skill_repository=persona_skill_repository,
     )
     skill_service = SkillService(
         tenant_service=tenant_service,

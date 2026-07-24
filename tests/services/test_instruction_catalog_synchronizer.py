@@ -107,6 +107,33 @@ def test_synchronization_is_idempotent(
     assert all(owner_workspace_id is None for _, owner_workspace_id in rows)
 
 
+def test_synchronization_persists_persona_skill_associations(
+    catalog_database: Path,
+) -> None:
+    """Catalog synchronization stores ordered associations relationally."""
+
+    catalog = load_instruction_catalog()
+    persona = catalog.personas[0]
+
+    build_synchronizer(catalog_database).synchronize(catalog)
+
+    with sqlite3.connect(catalog_database) as connection:
+        skill_ids = [
+            str(row[0])
+            for row in connection.execute(
+                """
+                SELECT skill_id
+                FROM persona_skills
+                WHERE persona_id = ?
+                ORDER BY position ASC
+                """,
+                (persona.id,),
+            )
+        ]
+
+    assert skill_ids == list(persona.skill_ids)
+
+
 def test_synchronization_does_not_modify_custom_instructions(
     catalog_database: Path,
 ) -> None:

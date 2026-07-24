@@ -3,12 +3,14 @@
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.persona_service import PersonaService
+from src.app.services.persona_service import (
+    PersonaCreate,
+    PersonaService,
+    PersonaUpdate,
+)
 from src.app.services.shared.instruction_service import (
-    InstructionCreate,
     InstructionNotFoundError,
     InstructionService,
-    InstructionUpdate,
 )
 from src.app.services.shared.tenant_service import (
     TenantService,
@@ -18,11 +20,15 @@ from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
 )
+from tests.fakes.persona_skill_repository import (
+    FakePersonaSkillRepository,
+)
 from tests.services.test_instruction_service import seed_builtin
 
 
 def build_persona_service(
     instruction_service: InstructionService,
+    persona_skill_repository: FakePersonaSkillRepository | None = None,
 ) -> PersonaService:
     """Build a persona service with one default workspace membership."""
 
@@ -39,6 +45,10 @@ def build_persona_service(
     return PersonaService(
         tenant_service=TenantService(repository=repository),
         instruction_service=instruction_service,
+        persona_skill_repository=(
+            persona_skill_repository
+            or FakePersonaSkillRepository()
+        ),
     )
 
 
@@ -52,7 +62,7 @@ async def test_persona_crud_flow(
 
     created = await service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=PersonaCreate(
             name="Tech Lead",
             description="Technical reviewer",
             instructions="Review architecture and implementation.",
@@ -79,7 +89,7 @@ async def test_persona_crud_flow(
     updated = await service.update(
         user_id="user-1",
         persona_id=created.id,
-        payload=InstructionUpdate(
+        payload=PersonaUpdate(
             expected_version=1,
             description="Senior technical reviewer",
         ),
@@ -131,3 +141,55 @@ async def test_persona_service_sets_enabled_and_creates_from_source(
     assert disabled.enabled is False
     assert enabled.enabled is True
     assert copied.source_instruction_id == builtin.id
+
+
+@pytest.mark.asyncio
+async def test_persona_service_manages_and_copies_skill_associations(
+    instruction_service: InstructionService,
+    instruction_repository: FakeInstructionRepository,
+) -> None:
+    """Persona writes replace skill IDs and source copies retain them."""
+
+    association_repository = FakePersonaSkillRepository()
+    service = build_persona_service(
+        instruction_service,
+        association_repository,
+    )
+    skill = seed_builtin(
+        instruction_repository,
+        instruction_type="skill",
+    )
+    source = seed_builtin(
+        instruction_repository,
+        instruction_type="persona",
+    )
+    await association_repository.replace_for_persona(
+        persona_id=source.id,
+        skill_ids=(skill.id,),
+    )
+
+    created = await service.create(
+        user_id="user-1",
+        payload=PersonaCreate(
+            name="Associated reviewer",
+            description="Reviews with one skill.",
+            instructions="Review the work.",
+            skill_ids=(skill.id,),
+        ),
+    )
+    updated = await service.update(
+        user_id="user-1",
+        persona_id=created.id,
+        payload=PersonaUpdate(
+            expected_version=1,
+            skill_ids=(),
+        ),
+    )
+    copied = await service.create_from_source(
+        user_id="user-1",
+        source_persona_id=source.id,
+    )
+
+    assert created.skill_ids == (skill.id,)
+    assert updated.skill_ids == ()
+    assert copied.skill_ids == (skill.id,)

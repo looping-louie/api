@@ -15,9 +15,11 @@ from src.app.services.meeting.team import (
     MAX_PARTICIPANTS,
     MAX_SKILLS_PER_MEMBER,
     MeetingPlan,
+    normalise_meeting_plan,
+)
+from src.app.services.meeting.team_registry import (
     compact_registry,
     index_registry,
-    normalise_meeting_plan,
     validate_meeting_constraints,
 )
 from src.app.utils.io import write_json, write_text
@@ -28,7 +30,7 @@ PERSONA_PLANNER_FIELDS = {
     "description",
     "applies_when",
     "applies_to",
-    "preferred_skills",
+    "skills",
     "default_for",
 }
 
@@ -60,6 +62,7 @@ async def create_meeting_plan(
         required_skills=required_skills,
         personas_by_id=personas_by_id,
         skills_by_id=skills_by_id,
+        max_people=MAX_PARTICIPANTS + MAX_CHALLENGERS,
     )
 
     planner_input = _build_planner_input(

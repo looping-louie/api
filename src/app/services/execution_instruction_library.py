@@ -15,6 +15,7 @@ from .shared.instruction_service import (
     InstructionType,
 )
 from .shared.tenant_service import TenantService
+from .persona_service import PersonaSkillRepository
 
 
 DEFAULT_AGENT_ROLES = ("generator", "reviewer")
@@ -56,6 +57,7 @@ class ExecutionInstruction:
     description: str
     content: str
     metadata: Mapping[str, object]
+    skill_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,7 +174,7 @@ class ExecutionInstructionLibrary:
     def _snapshot_entry(
         instruction: ExecutionInstruction,
     ) -> dict[str, object]:
-        return {
+        snapshot: dict[str, object] = {
             "id": instruction.source_id,
             "runtime_id": instruction.id,
             "instruction_type": instruction.instruction_type,
@@ -184,6 +186,9 @@ class ExecutionInstructionLibrary:
             "content": instruction.content,
             "metadata": deepcopy(dict(instruction.metadata)),
         }
+        if instruction.instruction_type == "persona":
+            snapshot["skill_ids"] = list(instruction.skill_ids)
+        return snapshot
 
     def _persona_registry_entry(
         self,
@@ -193,28 +198,17 @@ class ExecutionInstructionLibrary:
     ) -> dict[str, object]:
         metadata = instruction.metadata
         applies_to = self._roles(metadata.get("applies_to"))
-        preferred_values = (
-            metadata.get("preferred_skill_ids")
-            or metadata.get("preferred_skills")
-        )
-        preferred_skills = []
+        skills = []
 
-        if isinstance(preferred_values, Sequence) and not isinstance(
-            preferred_values,
-            (str, bytes, bytearray),
-        ):
-            for value in preferred_values:
-                if not isinstance(value, str):
-                    continue
+        for skill_id in instruction.skill_ids:
+            runtime_id = self.skill_aliases.get(skill_id)
 
-                runtime_id = self.skill_aliases.get(value.strip())
-
-                if (
-                    runtime_id is not None
-                    and runtime_id in available_skill_ids
-                    and runtime_id not in preferred_skills
-                ):
-                    preferred_skills.append(runtime_id)
+            if (
+                runtime_id is not None
+                and runtime_id in available_skill_ids
+                and runtime_id not in skills
+            ):
+                skills.append(runtime_id)
 
         default_for = [
             role
@@ -236,7 +230,7 @@ class ExecutionInstructionLibrary:
                 default=[instruction.name],
             ),
             "applies_to": applies_to,
-            "preferred_skills": preferred_skills,
+            "skills": skills,
             "default_for": default_for,
         }
 
@@ -319,9 +313,11 @@ class ExecutionInstructionLibraryService:
         self,
         *,
         repository: InstructionRepository,
+        persona_skill_repository: PersonaSkillRepository,
         tenant_service: TenantService,
     ) -> None:
         self._repository = repository
+        self._persona_skill_repository = persona_skill_repository
         self._tenant_service = tenant_service
 
     async def load(
@@ -393,23 +389,35 @@ class ExecutionInstructionLibraryService:
             if document is not None and document.selectable:
                 documents.append(document)
 
-        return tuple(
-            ExecutionInstruction(
-                id=self._runtime_id(document),
-                source_id=document.id,
-                instruction_type=document.instruction_type,
-                origin=document.origin,
-                version=document.version,
-                catalog_version=document.catalog_version,
-                name=document.name,
-                description=document.description,
-                content=document.instructions,
-                metadata=MappingProxyType(
-                    deepcopy(dict(document.metadata))
-                ),
+        instructions: list[ExecutionInstruction] = []
+
+        for document in documents:
+            skill_ids = (
+                await self._persona_skill_repository.list_for_persona(
+                    persona_id=document.id,
+                )
+                if instruction_type == "persona"
+                else ()
             )
-            for document in documents
-        )
+            instructions.append(
+                ExecutionInstruction(
+                    id=self._runtime_id(document),
+                    source_id=document.id,
+                    instruction_type=document.instruction_type,
+                    origin=document.origin,
+                    version=document.version,
+                    catalog_version=document.catalog_version,
+                    name=document.name,
+                    description=document.description,
+                    content=document.instructions,
+                    metadata=MappingProxyType(
+                        deepcopy(dict(document.metadata))
+                    ),
+                    skill_ids=skill_ids,
+                )
+            )
+
+        return tuple(instructions)
 
     @staticmethod
     def _runtime_id(

@@ -57,7 +57,7 @@ Rules:
 - Never exceed the supplied participant, challenger, or skill limits.
 - Do not assign the same persona twice inside one role.
 - Prefer complementary perspectives rather than redundant ones.
-- Use preferred_skills as guidance, not as a restriction.
+- Use skills as guidance, not as a restriction.
 - Every challenger must have at least one skill.
 - strictness must be an integer from 0 to 100.
 - Do not include Markdown or additional prose.

@@ -263,7 +263,7 @@ Cambios:
   - Versiones positivas.
   - Roles válidos.
   - Rangos de strictness.
-  - `preferred_skill_ids` existentes.
+  - `skill_ids` existentes.
   - IDs coherentes entre manifest y contenido.
 - Calcular un checksum determinista del contenido y metadatos.
 

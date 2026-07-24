@@ -35,9 +35,16 @@
 [x] Simplificar la API de proveedores a `GET /providers`,
 `GET/PATCH/DELETE /providers/{provider_id}`.
 
-[x] Meter `/src/app/skills` y `/src/app/personas` en `/src/app/catalogs`.
+[x] Simplificar la API de modelos a `GET /models`,
+`GET /models/{model_id}`.
 
-[ ] Eliminar el concepto de `Council`.
+[x] Simplificar la API de personas a `GET /personas`,
+`GET/POST/PATCH/DELETE /personas/{persona_id}`.
+
+[x] Simplificar la API de habilidades a `GET /skills`,
+`GET/POST/PATCH/DELETE /skills/{skill_id}`.
+
+[x] Meter `/src/app/skills` y `/src/app/personas` en `/src/app/catalogs`.
 
 [ ] Eliminar el concepto de `Meeting`.
 

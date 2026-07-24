@@ -1,6 +1,7 @@
 """HTTP contract tests for persona routes."""
 
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 
 import pytest
 from fastapi import FastAPI, Request
@@ -120,6 +121,50 @@ def test_create_persona_from_source(
     assert body["source_instruction_id"] == builtin.id
 
 
+def test_persona_routes_create_and_replace_skill_associations(
+    persona_controller: PersonaController,
+    instruction_repository: FakeInstructionRepository,
+) -> None:
+    """POST and PATCH expose explicit ordered persona skill IDs."""
+
+    first_skill = seed_builtin(
+        instruction_repository,
+        instruction_type="skill",
+    )
+    second_skill = replace(
+        first_skill,
+        id="builtin:skill:privacy",
+        name="Privacy",
+    )
+    instruction_repository.seed_available(second_skill)
+    client = TestClient(build_app(controller=persona_controller))
+
+    created = client.post(
+        "/api/v1/personas",
+        json={
+            "name": "Platform reviewer",
+            "instructions": "Review platform changes.",
+            "skill_ids": [first_skill.id, second_skill.id],
+        },
+    )
+    persona_id = created.json()["id"]
+    patched = client.patch(
+        f"/api/v1/personas/{persona_id}",
+        json={
+            "expected_version": 1,
+            "skill_ids": [second_skill.id],
+        },
+    )
+
+    assert created.status_code == 201
+    assert created.json()["skill_ids"] == [
+        first_skill.id,
+        second_skill.id,
+    ]
+    assert patched.status_code == 200
+    assert patched.json()["skill_ids"] == [second_skill.id]
+
+
 def test_patch_changes_builtin_enabled_state_without_version(
     persona_controller: PersonaController,
     instruction_repository: FakeInstructionRepository,
@@ -153,6 +198,10 @@ def test_patch_changes_builtin_enabled_state_without_version(
         {},
         {"enabled": None},
         {"description": "Missing version"},
+        {
+            "expected_version": 1,
+            "skill_ids": ["skill-1", "skill-1"],
+        },
         {
             "source_persona_id": "builtin:persona:source",
             "instructions": "Do not override copied content.",

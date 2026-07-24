@@ -61,13 +61,13 @@ def load_instruction_catalog(
     for persona in personas:
         missing_skill_ids = [
             skill_id
-            for skill_id in persona.preferred_skill_ids
+            for skill_id in persona.skill_ids
             if skill_id not in skill_ids
         ]
 
         if missing_skill_ids:
             raise CatalogLoadError(
-                f"Persona '{persona.id}' references unknown preferred "
+                f"Persona '{persona.id}' references unknown associated "
                 f"skills: {sorted(missing_skill_ids)}."
             )
 

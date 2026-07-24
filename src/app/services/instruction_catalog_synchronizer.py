@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 from collections.abc import Callable
@@ -10,15 +9,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
 
 from src.app.catalogs.instructions import (
     CatalogInstructionEntry,
     InstructionOrigin,
     PersonaCatalogEntry,
-    SkillCatalogEntry,
 )
 from src.app.catalogs.loader import InstructionCatalog
+from src.app.services.instruction_catalog_serialization import (
+    serialize_catalog_metadata,
+)
 
 
 Clock = Callable[[], datetime]
@@ -179,6 +179,14 @@ class InstructionCatalogSynchronizer:
                         for instruction_id in retired_ids
                     ],
                 )
+
+            for entry in entries:
+                if isinstance(entry, PersonaCatalogEntry):
+                    self._replace_persona_skills(
+                        connection,
+                        persona_id=entry.id,
+                        skill_ids=entry.skill_ids,
+                    )
 
             connection.commit()
         except Exception:
@@ -371,7 +379,7 @@ class InstructionCatalogSynchronizer:
         entry: CatalogInstructionEntry,
         *,
         timestamp: str,
-    ) -> tuple[Any, ...]:
+    ) -> tuple[object, ...]:
         return (
             entry.id,
             entry.instruction_type.value,
@@ -379,7 +387,7 @@ class InstructionCatalogSynchronizer:
             cls._normalize_name(entry.name),
             entry.description,
             entry.instructions,
-            cls._serialize_metadata(entry),
+            serialize_catalog_metadata(entry),
             cls._require_catalog_version(entry),
             cls._require_checksum(entry),
             int(entry.enabled_by_default),
@@ -389,70 +397,31 @@ class InstructionCatalogSynchronizer:
         )
 
     @staticmethod
-    def _serialize_metadata(
-        entry: CatalogInstructionEntry,
-    ) -> str:
-        metadata: dict[str, Any] = {
-            "applies_to": sorted(
-                role.value
-                for role in entry.metadata.applies_to
-            ),
-            "applies_when": list(entry.metadata.applies_when),
-        }
+    def _replace_persona_skills(
+        connection: sqlite3.Connection,
+        *,
+        persona_id: str,
+        skill_ids: tuple[str, ...],
+    ) -> None:
+        """Synchronize one builtin persona's ordered skill associations."""
 
-        if isinstance(entry, SkillCatalogEntry):
-            metadata.update(
-                {
-                    "artifacts": [
-                        artifact.value
-                        for artifact in entry.artifacts
-                    ],
-                    "category": entry.category,
-                    "output": (
-                        entry.output.value
-                        if entry.output is not None
-                        else None
-                    ),
-                    "phase": (
-                        entry.phase.value
-                        if entry.phase is not None
-                        else None
-                    ),
-                    "reviewer_default_strictness": (
-                        {
-                            "prototype": (
-                                entry.reviewer_default_strictness.prototype
-                            ),
-                            "mvp": (
-                                entry.reviewer_default_strictness.mvp
-                            ),
-                            "production": (
-                                entry.reviewer_default_strictness.production
-                            ),
-                        }
-                        if entry.reviewer_default_strictness is not None
-                        else None
-                    ),
-                }
+        connection.execute(
+            "DELETE FROM persona_skills WHERE persona_id = ?",
+            (persona_id,),
+        )
+        connection.executemany(
+            """
+            INSERT INTO persona_skills (
+                persona_id,
+                skill_id,
+                position
             )
-        elif isinstance(entry, PersonaCatalogEntry):
-            metadata.update(
-                {
-                    "default_for": sorted(
-                        role.value
-                        for role in entry.default_for
-                    ),
-                    "preferred_skill_ids": list(
-                        entry.preferred_skill_ids
-                    ),
-                }
-            )
-
-        return json.dumps(
-            metadata,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
+            VALUES (?, ?, ?)
+            """,
+            [
+                (persona_id, skill_id, position)
+                for position, skill_id in enumerate(skill_ids)
+            ],
         )
 
     @staticmethod

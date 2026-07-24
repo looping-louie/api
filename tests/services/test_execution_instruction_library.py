@@ -4,7 +4,10 @@ from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
 )
 from src.app.services.instructions import build_assignment_instructions
-from src.app.services.persona_service import PersonaService
+from src.app.services.persona_service import (
+    PersonaCreate,
+    PersonaService,
+)
 from src.app.services.shared.instruction_service import (
     InstructionCreate,
     InstructionService,
@@ -13,6 +16,9 @@ from src.app.services.shared.instruction_service import (
 from src.app.services.shared.tenant_service import TenantService
 from src.app.services.skill_service import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
+from tests.fakes.persona_skill_repository import (
+    FakePersonaSkillRepository,
+)
 
 
 @pytest.mark.asyncio
@@ -21,6 +27,7 @@ async def test_api_custom_is_immediately_available_to_execution(
     instruction_repository: FakeInstructionRepository,
     tenant_service: TenantService,
 ) -> None:
+    persona_skill_repository = FakePersonaSkillRepository()
     skill_service = SkillService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
@@ -28,9 +35,11 @@ async def test_api_custom_is_immediately_available_to_execution(
     persona_service = PersonaService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
+        persona_skill_repository=persona_skill_repository,
     )
     runtime_service = ExecutionInstructionLibraryService(
         repository=instruction_repository,
+        persona_skill_repository=persona_skill_repository,
         tenant_service=tenant_service,
     )
     skill = await skill_service.create(
@@ -43,10 +52,11 @@ async def test_api_custom_is_immediately_available_to_execution(
     )
     persona = await persona_service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=PersonaCreate(
             name="Workspace Lead",
             description="Custom technical lead.",
             instructions="SQL persona content.",
+            skill_ids=(skill.id,),
         ),
     )
 
@@ -66,6 +76,12 @@ async def test_api_custom_is_immediately_available_to_execution(
         entry["id"]
         for entry in library.persona_registry()
     }
+    persona_registry_entry = next(
+        entry
+        for entry in library.persona_registry()
+        if entry["id"] == persona.id
+    )
+    assert persona_registry_entry["skills"] == [skill.id]
     snapshot_entries = {
         entry["id"]: entry
         for entry in library.snapshot()["instructions"]
@@ -83,6 +99,7 @@ async def test_api_custom_is_immediately_available_to_execution(
     assert skill_snapshot["metadata"] == {}
     assert persona_snapshot["instruction_type"] == "persona"
     assert persona_snapshot["content"] == "SQL persona content."
+    assert persona_snapshot["skill_ids"] == [skill.id]
 
 
 @pytest.mark.asyncio
@@ -91,12 +108,14 @@ async def test_fresh_execution_read_reflects_sql_update(
     instruction_repository: FakeInstructionRepository,
     tenant_service: TenantService,
 ) -> None:
+    persona_skill_repository = FakePersonaSkillRepository()
     skill_service = SkillService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
     )
     runtime_service = ExecutionInstructionLibraryService(
         repository=instruction_repository,
+        persona_skill_repository=persona_skill_repository,
         tenant_service=tenant_service,
     )
     skill = await skill_service.create(

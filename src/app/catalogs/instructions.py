@@ -336,9 +336,9 @@ class SkillCatalogEntry(CatalogInstructionEntry):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PersonaCatalogEntry(CatalogInstructionEntry):
-    """Catalog definition of a persona and its preferred skills."""
+    """Catalog definition of a persona and its associated skills."""
 
-    preferred_skill_ids: tuple[str, ...] = field(default_factory=tuple)
+    skill_ids: tuple[str, ...] = field(default_factory=tuple)
     default_for: frozenset[AgentRole] = field(default_factory=frozenset)
 
     @property
@@ -348,8 +348,8 @@ class PersonaCatalogEntry(CatalogInstructionEntry):
     def __post_init__(self) -> None:
         super(PersonaCatalogEntry, self).__post_init__()
         _require_unique_non_empty_strings(
-            self.preferred_skill_ids,
-            field_name="preferred_skill_ids",
+            self.skill_ids,
+            field_name="skill_ids",
             allow_empty=True,
         )
 
