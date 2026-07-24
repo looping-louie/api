@@ -8,7 +8,9 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from src.app.repositories.sqlite_loop_repository import SqliteLoopRepository
+from src.app.repositories.loops.sqlite_loop_repository import (
+    SqliteLoopRepository,
+)
 from src.app.services.loop_catalog_seeder import seed_loop_catalog
 from tests.integration.conftest import WorkspaceFactory
 

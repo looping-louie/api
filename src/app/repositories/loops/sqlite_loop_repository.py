@@ -9,7 +9,7 @@ from pathlib import Path
 import aiosqlite
 
 from src.app.models.loop import LoopChangelogEntry, LoopDocument
-from src.app.repositories.loop_repository_mapping import (
+from .loop_repository_mapping import (
     insert_agents,
     insert_changelog,
     insert_loop,

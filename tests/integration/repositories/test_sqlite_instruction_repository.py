@@ -11,7 +11,7 @@ from typing import Any
 import aiosqlite
 import pytest
 
-from src.app.repositories.instruction_repository import (
+from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
 from src.app.services.shared.instruction_service import (

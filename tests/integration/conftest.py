@@ -9,8 +9,12 @@ import aiosqlite
 import pytest
 import pytest_asyncio
 
-from src.app.repositories.migration_runner import run_sqlite_migrations
-from src.app.repositories.sqlite_database import SqliteDatabase
+from src.app.repositories.infrastructure.migration_runner import (
+    run_sqlite_migrations,
+)
+from src.app.repositories.infrastructure.sqlite_database import (
+    SqliteDatabase,
+)
 
 
 WorkspaceMembershipSeed = tuple[str, str, bool]

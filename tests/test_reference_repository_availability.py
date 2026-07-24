@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.repositories.reference_repository import (
+from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
 from src.app.services.shared.instruction_service import (

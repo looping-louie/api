@@ -17,7 +17,7 @@ from src.app.models.loop import (
     LoopOutputContract,
     LoopStopConditions,
 )
-from src.app.repositories.loop_repository_mapping import (
+from src.app.repositories.loops.loop_repository_mapping import (
     insert_agents,
     insert_changelog,
     insert_loop,

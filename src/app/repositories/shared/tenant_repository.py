@@ -18,6 +18,8 @@ class SqliteTenantRepository:
         self,
         database_path: str | Path,
     ) -> None:
+        """Store the SQLite database path."""
+
         self._database_path = Path(database_path)
 
     async def get_membership(
@@ -109,6 +111,8 @@ class SqliteTenantRepository:
         query: str,
         parameters: Sequence[Any],
     ) -> aiosqlite.Row | None:
+        """Execute a query and return its first row."""
+
         async with aiosqlite.connect(
             self._database_path,
         ) as connection:
@@ -130,6 +134,8 @@ class SqliteTenantRepository:
         query: str,
         parameters: Sequence[Any],
     ) -> list[aiosqlite.Row]:
+        """Execute a query and return all rows."""
+
         async with aiosqlite.connect(
             self._database_path,
         ) as connection:
@@ -152,6 +158,8 @@ class SqliteTenantRepository:
     def _to_membership(
         row: aiosqlite.Row,
     ) -> WorkspaceMembership:
+        """Convert a SQLite row into a workspace membership."""
+
         return WorkspaceMembership(
             user_id=str(row["user_id"]),
             workspace_id=str(row["workspace_id"]),

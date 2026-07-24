@@ -18,34 +18,38 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
-from src.app.repositories.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_loop_repository import (
     SqliteLoopRepository,
 )
-from src.app.repositories.dependency_repository import (
+from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
 )
-from src.app.repositories.instruction_repository import (
+from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.persona_skill_repository import (
+from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.repositories.migration_runner import run_sqlite_migrations
-from src.app.repositories.local_tenant_seed import ensure_local_tenant
-from src.app.repositories.provider_repository import (
+from src.app.repositories.infrastructure.migration_runner import (
+    run_sqlite_migrations,
+)
+from src.app.repositories.infrastructure.local_tenant_seed import (
+    ensure_local_tenant,
+)
+from src.app.repositories.providers.provider_repository import (
     SqliteProviderRepository,
 )
-from src.app.repositories.provider_state_repository import (
+from src.app.repositories.providers.provider_state_repository import (
     ProviderStateRepositoryAdapter,
 )
-from src.app.repositories.reference_repository import (
+from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
-from src.app.repositories.sqlite_database import SqliteDatabase
-from src.app.repositories.tenant_repository import (
+from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
+from src.app.repositories.shared.tenant_repository import (
     SqliteTenantRepository,
 )
-from src.app.repositories.validation_repository import (
+from src.app.repositories.shared.validation_repository import (
     SqliteValidationRepository,
 )
 from src.app.services.app_settings_service import (

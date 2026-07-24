@@ -6,11 +6,14 @@ from datetime import datetime
 from typing import Protocol
 
 from src.app.models.providers import ProviderCredential
-from src.app.repositories.provider_credential_mapper import (
+from src.app.repositories.infrastructure.sqlite_database import (
+    SqliteDatabase,
+)
+
+from .provider_credential_mapper import (
     credential_values,
     row_to_credential,
 )
-from src.app.repositories.sqlite_database import SqliteDatabase
 
 
 class ProviderRepository(Protocol):
@@ -55,6 +58,8 @@ class SqliteProviderRepository:
         self,
         database: SqliteDatabase,
     ) -> None:
+        """Store the shared SQLite connection manager."""
+
         self._database = database
 
     async def list_for_workspace(

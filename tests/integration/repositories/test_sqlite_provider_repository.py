@@ -8,10 +8,12 @@ from datetime import timedelta
 
 import pytest
 
-from src.app.repositories.provider_repository import (
+from src.app.repositories.providers.provider_repository import (
     SqliteProviderRepository,
 )
-from src.app.repositories.sqlite_database import SqliteDatabase
+from src.app.repositories.infrastructure.sqlite_database import (
+    SqliteDatabase,
+)
 from tests.integration.factories import build_provider_credential
 
 

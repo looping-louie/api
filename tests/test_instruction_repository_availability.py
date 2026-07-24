@@ -8,9 +8,11 @@ from typing import Any
 
 import pytest
 
-import src.app.repositories.instruction_repository as repository_module
+from src.app.repositories.instructions import (
+    instruction_repository as repository_module,
+)
 from src.app.catalogs import InstructionOrigin, load_instruction_catalog
-from src.app.repositories.instruction_repository import (
+from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
 from src.app.services.instruction_catalog_synchronizer import (

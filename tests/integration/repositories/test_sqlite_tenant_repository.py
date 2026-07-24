@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.tenant_repository import (
+from src.app.repositories.shared.tenant_repository import (
     SqliteTenantRepository,
 )
 

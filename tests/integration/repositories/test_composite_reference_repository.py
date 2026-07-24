@@ -8,20 +8,22 @@ from pathlib import Path
 import pytest
 
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.repositories.instruction_repository import (
+from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.provider_repository import (
+from src.app.repositories.providers.provider_repository import (
     SqliteProviderRepository,
 )
-from src.app.repositories.provider_state_repository import (
+from src.app.repositories.providers.provider_state_repository import (
     ProviderStateRepositoryAdapter,
 )
-from src.app.repositories.reference_repository import (
+from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
-from src.app.repositories.sqlite_database import SqliteDatabase
-from src.app.repositories.tenant_repository import (
+from src.app.repositories.infrastructure.sqlite_database import (
+    SqliteDatabase,
+)
+from src.app.repositories.shared.tenant_repository import (
     SqliteTenantRepository,
 )
 from src.app.services.model_service import (

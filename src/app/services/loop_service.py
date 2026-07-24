@@ -9,7 +9,7 @@ from src.app.models.loop import (
     LoopChangelogEntry,
     LoopDocument,
 )
-from src.app.repositories.loop_repository import LoopRepository
+from src.app.repositories.loops.loop_repository import LoopRepository
 from src.app.services.loop_mutation import (
     apply_patch,
     build_entry,

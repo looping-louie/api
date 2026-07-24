@@ -20,7 +20,9 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
-from src.app.repositories.sqlite_database import SqliteDatabase
+from src.app.repositories.infrastructure.sqlite_database import (
+    SqliteDatabase,
+)
 from src.app.services.app_settings_service import AppSettings
 
 

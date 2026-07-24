@@ -14,7 +14,7 @@ from src.app.services.app_settings_service import get_app_settings
 
 
 DEFAULT_MIGRATIONS_PATH = (
-    Path(__file__).resolve().parents[3]
+    Path(__file__).resolve().parents[4]
     / "migrations"
     / "sqlite"
 )
@@ -63,6 +63,7 @@ class SqliteMigrationRunner:
         database_path: Path,
         migrations_path: Path = DEFAULT_MIGRATIONS_PATH,
     ) -> None:
+        """Store the database and migration source paths."""
         self._database_path = database_path
         self._migrations_path = migrations_path
 
@@ -107,6 +108,7 @@ class SqliteMigrationRunner:
             return applied_versions
 
     def _load_migrations(self) -> tuple[Migration, ...]:
+        """Load and validate migration files in version order."""
         if not self._migrations_path.is_dir():
             raise MigrationDirectoryNotFoundError(
                 "SQLite migration directory does not exist: "
@@ -145,6 +147,7 @@ class SqliteMigrationRunner:
     async def _ensure_migration_table(
         connection: aiosqlite.Connection,
     ) -> None:
+        """Create the migration tracking table when absent."""
         await connection.execute(
             """
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -160,6 +163,7 @@ class SqliteMigrationRunner:
     async def _load_applied_migrations(
         connection: aiosqlite.Connection,
     ) -> dict[str, str]:
+        """Return applied migration checksums indexed by version."""
         cursor = await connection.execute(
             """
             SELECT
@@ -182,6 +186,7 @@ class SqliteMigrationRunner:
         connection: aiosqlite.Connection,
         migration: Migration,
     ) -> None:
+        """Apply one migration and record it atomically."""
         version_literal = self._sqlite_literal(
             migration.version,
         )
@@ -224,6 +229,7 @@ class SqliteMigrationRunner:
         migration: Migration,
         existing_checksum: str,
     ) -> None:
+        """Reject a migration changed after its initial application."""
         if migration.checksum == existing_checksum:
             return
 
@@ -234,12 +240,14 @@ class SqliteMigrationRunner:
 
     @staticmethod
     def _calculate_checksum(sql: str) -> str:
+        """Calculate the stable SHA-256 checksum for migration SQL."""
         return hashlib.sha256(
             sql.encode("utf-8")
         ).hexdigest()
 
     @staticmethod
     def _sqlite_literal(value: str) -> str:
+        """Quote a trusted string as a SQLite literal."""
         escaped = value.replace(
             "'",
             "''",

@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.instruction_repository import (
+from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.validation_repository import (
+from src.app.repositories.shared.validation_repository import (
     SqliteValidationRepository,
 )
 from tests.integration.factories import build_instruction

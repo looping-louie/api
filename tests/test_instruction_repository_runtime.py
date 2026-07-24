@@ -7,10 +7,10 @@ import sqlite3
 import pytest
 
 from src.app.catalogs import InstructionOrigin
-from src.app.repositories.instruction_repository import (
+from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.persona_skill_repository import (
+from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
 from src.app.services.execution_instruction_library import (

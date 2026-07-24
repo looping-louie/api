@@ -4,10 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.dependency_repository import (
+from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
 )
-from src.app.repositories.sqlite_loop_repository import SqliteLoopRepository
+from src.app.repositories.loops.sqlite_loop_repository import (
+    SqliteLoopRepository,
+)
 from src.app.services.shared.reference_resolver import ResourceReference
 from tests.integration.conftest import WorkspaceFactory
 from tests.integration.repositories.test_sqlite_loop_repository import (

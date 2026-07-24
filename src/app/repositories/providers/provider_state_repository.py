@@ -9,8 +9,9 @@ from src.app.catalogs.providers import (
     ProviderId,
 )
 from src.app.models.providers import ProviderCredential
-from src.app.repositories.provider_repository import ProviderRepository
 from src.app.services.model_service import ProviderConnectionState
+
+from .provider_repository import ProviderRepository
 
 
 class ProviderStateRepositoryAdapter:
@@ -22,6 +23,8 @@ class ProviderStateRepositoryAdapter:
         provider_repository: ProviderRepository,
         catalog: Sequence[ProviderCatalogEntry],
     ) -> None:
+        """Index the catalog and store the credential repository."""
+
         self._provider_repository = provider_repository
         self._catalog_by_id = {
             entry.id: entry
@@ -78,6 +81,8 @@ class ProviderStateRepositoryAdapter:
         definition: ProviderCatalogEntry,
         credential: ProviderCredential | None,
     ) -> bool:
+        """Return whether a credential satisfies its provider definition."""
+
         if credential is None or not credential.base_url:
             return False
 
@@ -90,6 +95,8 @@ class ProviderStateRepositoryAdapter:
     def _unique_provider_ids(
         provider_ids: Sequence[ProviderId],
     ) -> tuple[ProviderId, ...]:
+        """Deduplicate provider identifiers while preserving order."""
+
         unique_ids: list[ProviderId] = []
         seen: set[ProviderId] = set()
 
