@@ -1,4 +1,4 @@
-"""HTTP contract tests for persona and skill routes."""
+"""HTTP contract tests for skill routes."""
 
 from collections.abc import Awaitable, Callable
 
@@ -7,21 +7,20 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.persona import PersonaController
-from src.app.routers.personas import router as personas_router
+from src.app.controllers.skill import SkillController
 from src.app.routers.skills import router as skills_router
 from src.app.services.shared.instruction_service import InstructionService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.services.test_instruction_service import seed_builtin
-from tests.services.test_persona_service import build_persona_service
+from tests.services.test_skill_service import build_skill_service
 
 
-def build_app(*, controller: PersonaController) -> FastAPI:
-    """Build an authenticated minimal application for persona route tests."""
+def build_app(*, controller: SkillController) -> FastAPI:
+    """Build an authenticated minimal application for skill route tests."""
 
     app = FastAPI()
-    app.state.persona_controller = controller
+    app.state.skill_controller = controller
 
     @app.middleware("http")
     async def add_authenticated_user(
@@ -34,58 +33,61 @@ def build_app(*, controller: PersonaController) -> FastAPI:
         return await call_next(request)
 
     register_exception_handlers(app)
-    app.include_router(personas_router, prefix="/api/v1")
+    app.include_router(skills_router, prefix="/api/v1")
     return app
 
 
 @pytest.fixture
-def persona_controller(
+def skill_controller(
     instruction_service: InstructionService,
-) -> PersonaController:
+) -> SkillController:
     """Build a controller backed by deterministic in-memory fakes."""
 
-    return PersonaController(
-        persona_service=build_persona_service(instruction_service),
+    return SkillController(
+        skill_service=build_skill_service(instruction_service),
     )
 
 
-def test_persona_rest_crud_routes(
-    persona_controller: PersonaController,
+def test_skill_rest_crud_routes(
+    skill_controller: SkillController,
 ) -> None:
     """Create, list, get, patch, and delete use the REST resource paths."""
 
-    client = TestClient(build_app(controller=persona_controller))
+    client = TestClient(build_app(controller=skill_controller))
     created = client.post(
-        "/api/v1/personas",
+        "/api/v1/skills",
         json={
-            "name": "API Reviewer",
+            "name": "API Compatibility",
             "description": "Reviews API contracts.",
             "instructions": "Review every public API contract.",
-            "metadata": {"team": "platform"},
+            "metadata": {
+                "applies_when": ["HTTP contracts change"],
+                "default_strictness": {"production": 100},
+            },
         },
     )
 
     assert created.status_code == 201
-    persona_id = created.json()["id"]
+    skill_id = created.json()["id"]
 
-    listed = client.get("/api/v1/personas")
-    described = client.get(f"/api/v1/personas/{persona_id}")
+    listed = client.get("/api/v1/skills")
+    described = client.get(f"/api/v1/skills/{skill_id}")
     patched = client.patch(
-        f"/api/v1/personas/{persona_id}",
+        f"/api/v1/skills/{skill_id}",
         json={
             "expected_version": 1,
             "description": "Reviews REST API contracts.",
             "enabled": False,
         },
     )
-    deleted = client.delete(f"/api/v1/personas/{persona_id}")
+    deleted = client.delete(f"/api/v1/skills/{skill_id}")
 
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
     assert described.status_code == 200
-    assert described.json()["instructions"] == (
-        "Review every public API contract."
-    )
+    assert described.json()["metadata"]["applies_when"] == [
+        "HTTP contracts change"
+    ]
     assert patched.status_code == 200
     assert patched.json()["description"] == "Reviews REST API contracts."
     assert patched.json()["enabled"] is False
@@ -93,23 +95,21 @@ def test_persona_rest_crud_routes(
     assert deleted.json() == {"deleted": True}
 
 
-def test_create_persona_from_source(
-    persona_controller: PersonaController,
+def test_create_skill_from_source(
+    skill_controller: SkillController,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
     """POST copies an available source and records its lineage."""
 
     builtin = seed_builtin(
         instruction_repository,
-        instruction_type="persona",
+        instruction_type="skill",
     )
-    client = TestClient(build_app(controller=persona_controller))
+    client = TestClient(build_app(controller=skill_controller))
 
     response = client.post(
-        "/api/v1/personas",
-        json={
-            "source_persona_id": builtin.id,
-        },
+        "/api/v1/skills",
+        json={"source_skill_id": builtin.id},
     )
 
     assert response.status_code == 201
@@ -117,28 +117,29 @@ def test_create_persona_from_source(
     assert body["name"] == f"{builtin.name} Copy"
     assert body["description"] == builtin.description
     assert body["instructions"] == builtin.instructions
-    assert body["metadata"] == dict(builtin.metadata)
+    assert body["metadata"]["applies_when"] == builtin.metadata["applies_when"]
+    assert body["metadata"]["default_strictness"] is None
     assert body["source_instruction_id"] == builtin.id
 
 
 def test_patch_changes_builtin_enabled_state_without_version(
-    persona_controller: PersonaController,
+    skill_controller: SkillController,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
     """PATCH accepts a strict enabled value without expected_version."""
 
     builtin = seed_builtin(
         instruction_repository,
-        instruction_type="persona",
+        instruction_type="skill",
     )
-    client = TestClient(build_app(controller=persona_controller))
+    client = TestClient(build_app(controller=skill_controller))
 
     disabled = client.patch(
-        f"/api/v1/personas/{builtin.id}",
+        f"/api/v1/skills/{builtin.id}",
         json={"enabled": False},
     )
     enabled = client.patch(
-        f"/api/v1/personas/{builtin.id}",
+        f"/api/v1/skills/{builtin.id}",
         json={"enabled": True},
     )
 
@@ -155,22 +156,22 @@ def test_patch_changes_builtin_enabled_state_without_version(
         {"enabled": None},
         {"description": "Missing version"},
         {
-            "source_persona_id": "builtin:persona:source",
+            "source_skill_id": "builtin:skill:source",
             "instructions": "Do not override copied content.",
         },
     ],
 )
-def test_persona_write_payload_validation(
-    persona_controller: PersonaController,
+def test_skill_write_payload_validation(
+    skill_controller: SkillController,
     payload: dict[str, object],
 ) -> None:
     """Write schemas reject empty, nullable, and ambiguous operations."""
 
-    client = TestClient(build_app(controller=persona_controller))
-    path = "/api/v1/personas/persona-1"
+    client = TestClient(build_app(controller=skill_controller))
+    path = "/api/v1/skills/skill-1"
     response = (
-        client.post("/api/v1/personas", json=payload)
-        if "source_persona_id" in payload
+        client.post("/api/v1/skills", json=payload)
+        if "source_skill_id" in payload
         else client.patch(path, json=payload)
     )
 
@@ -178,31 +179,31 @@ def test_persona_write_payload_validation(
 
 
 def test_direct_creation_requires_name_and_instructions(
-    persona_controller: PersonaController,
+    skill_controller: SkillController,
 ) -> None:
     """POST rejects a direct creation without its required content."""
 
-    client = TestClient(build_app(controller=persona_controller))
+    client = TestClient(build_app(controller=skill_controller))
 
-    response = client.post("/api/v1/personas", json={})
+    response = client.post("/api/v1/skills", json={})
 
     assert response.status_code == 422
 
 
-def test_only_new_persona_routes_are_published(
-    persona_controller: PersonaController,
+def test_only_new_skill_routes_are_published(
+    skill_controller: SkillController,
 ) -> None:
-    """OpenAPI exposes only collection and item persona operations."""
+    """OpenAPI exposes only collection and item skill operations."""
 
-    client = TestClient(build_app(controller=persona_controller))
+    client = TestClient(build_app(controller=skill_controller))
     paths = {
         path: set(methods)
         for path, methods in client.get("/openapi.json").json()["paths"].items()
     }
 
     assert paths == {
-        "/api/v1/personas": {"get", "post"},
-        "/api/v1/personas/{persona_id}": {
+        "/api/v1/skills": {"get", "post"},
+        "/api/v1/skills/{skill_id}": {
             "get",
             "patch",
             "delete",
@@ -213,45 +214,24 @@ def test_only_new_persona_routes_are_published(
 @pytest.mark.parametrize(
     ("method", "path"),
     [
-        ("GET", "/api/v1/personas/list"),
-        ("GET", "/api/v1/personas/describe/persona-1"),
-        ("POST", "/api/v1/personas/create"),
-        ("POST", "/api/v1/personas/update/persona-1"),
-        ("PUT", "/api/v1/personas/persona-1/enabled"),
-        ("POST", "/api/v1/personas/persona-1/duplicate"),
-        ("DELETE", "/api/v1/personas/delete/persona-1"),
+        ("GET", "/api/v1/skills/list"),
+        ("GET", "/api/v1/skills/describe/skill-1"),
+        ("POST", "/api/v1/skills/create"),
+        ("POST", "/api/v1/skills/update/skill-1"),
+        ("PUT", "/api/v1/skills/skill-1/enabled"),
+        ("POST", "/api/v1/skills/skill-1/duplicate"),
+        ("DELETE", "/api/v1/skills/delete/skill-1"),
     ],
 )
-def test_legacy_persona_routes_are_unavailable(
-    persona_controller: PersonaController,
+def test_legacy_skill_routes_are_unavailable(
+    skill_controller: SkillController,
     method: str,
     path: str,
 ) -> None:
-    """Legacy persona action paths no longer expose successful operations."""
+    """Legacy skill action paths no longer expose successful operations."""
 
-    client = TestClient(build_app(controller=persona_controller))
+    client = TestClient(build_app(controller=skill_controller))
 
     response = client.request(method, path)
 
     assert response.status_code in {404, 405}
-
-
-def test_skill_action_routes_remain_registered() -> None:
-    """The persona refactor does not alter the existing skill contract."""
-
-    routes = {
-        (
-            route.path,
-            frozenset(route.methods or set()),
-        )
-        for route in skills_router.routes
-    }
-
-    assert (
-        "/skills/{skill_id}/enabled",
-        frozenset({"PUT"}),
-    ) in routes
-    assert (
-        "/skills/{skill_id}/duplicate",
-        frozenset({"POST"}),
-    ) in routes

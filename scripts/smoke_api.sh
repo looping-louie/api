@@ -247,7 +247,7 @@ cleanup() {
     fi
 
     if [[ -n "${SKILL_ID}" ]]; then
-        request DELETE "/skills/delete/${SKILL_ID}" >/dev/null
+        request DELETE "/skills/${SKILL_ID}" >/dev/null
     fi
 
     if [[ -n "${PERSONA_ID}" ]]; then
@@ -376,7 +376,7 @@ request \
 log "Creating skill"
 
 skill_response="$(
-    request POST "/skills/create" "$(
+    request POST "/skills" "$(
         cat <<JSON
 {
     "name": "Smoke Skill ${SMOKE_RUN_ID}",
@@ -400,19 +400,26 @@ JSON
 SKILL_ID="$(printf '%s' "${skill_response}" | json_field "id")"
 skill_version="$(printf '%s' "${skill_response}" | json_field "version")"
 
-request GET "/skills/describe/${SKILL_ID}" >/dev/null
-request GET "/skills/list" >/dev/null
+request GET "/skills/${SKILL_ID}" >/dev/null
+request GET "/skills" >/dev/null
 
 skill_response="$(
-    request POST "/skills/update/${SKILL_ID}" "$(
+    request PATCH "/skills/${SKILL_ID}" "$(
         cat <<JSON
 {
     "expected_version": ${skill_version},
-    "description": "Updated by scripts/smoke_api.sh"
+    "description": "Updated by scripts/smoke_api.sh",
+    "enabled": false
 }
 JSON
     )"
 )"
+
+request \
+    PATCH \
+    "/skills/${SKILL_ID}" \
+    '{"enabled": true}' \
+    >/dev/null
 
 log "Creating council"
 
@@ -462,7 +469,7 @@ request_expect_status \
 
 request_expect_status \
     DELETE \
-    "/skills/delete/${SKILL_ID}" \
+    "/skills/${SKILL_ID}" \
     409
 
 log "Creating loop"
@@ -521,7 +528,7 @@ LOOP_ID=""
 request DELETE "/councils/delete/${COUNCIL_ID}" >/dev/null
 COUNCIL_ID=""
 
-request DELETE "/skills/delete/${SKILL_ID}" >/dev/null
+request DELETE "/skills/${SKILL_ID}" >/dev/null
 SKILL_ID=""
 
 request DELETE "/personas/${PERSONA_ID}" >/dev/null
@@ -529,7 +536,7 @@ PERSONA_ID=""
 
 request GET "/loops/list" >/dev/null
 request GET "/councils/list" >/dev/null
-request GET "/skills/list" >/dev/null
+request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null
 
 if [[ "${PROVIDER_CREATED}" == "1" ]]; then

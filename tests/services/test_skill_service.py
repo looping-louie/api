@@ -1,3 +1,5 @@
+"""Tests for workspace-aware skill operations."""
+
 import pytest
 
 from src.app.services.shared.instruction_service import (
@@ -24,6 +26,8 @@ from tests.services.test_instruction_service import seed_builtin
 def build_skill_service(
     instruction_service: InstructionService,
 ) -> SkillService:
+    """Build a skill service with one default workspace membership."""
+
     repository = FakeTenantRepository(
         [
             WorkspaceMembership(
@@ -44,6 +48,8 @@ def build_skill_service(
 async def test_create_skill_with_valid_metadata(
     instruction_service: InstructionService,
 ) -> None:
+    """Valid structured metadata is preserved on skill creation."""
+
     service = build_skill_service(instruction_service)
 
     created = await service.create(
@@ -71,6 +77,8 @@ async def test_create_skill_with_valid_metadata(
 async def test_create_skill_rejects_duplicate_applies_when(
     instruction_service: InstructionService,
 ) -> None:
+    """Applicability values must be unique without case differences."""
+
     service = build_skill_service(instruction_service)
 
     with pytest.raises(SkillValidationError):
@@ -91,6 +99,8 @@ async def test_create_skill_rejects_duplicate_applies_when(
 async def test_create_skill_rejects_empty_applies_when(
     instruction_service: InstructionService,
 ) -> None:
+    """Applicability metadata cannot be an empty list."""
+
     service = build_skill_service(instruction_service)
 
     with pytest.raises(SkillValidationError):
@@ -111,6 +121,8 @@ async def test_create_skill_rejects_empty_applies_when(
 async def test_create_skill_rejects_invalid_strictness(
     instruction_service: InstructionService,
 ) -> None:
+    """Strictness values must stay within the supported range."""
+
     service = build_skill_service(instruction_service)
 
     with pytest.raises(SkillValidationError):
@@ -133,6 +145,8 @@ async def test_create_skill_rejects_invalid_strictness(
 async def test_create_skill_rejects_unknown_strictness_phase(
     instruction_service: InstructionService,
 ) -> None:
+    """Strictness metadata rejects unsupported project phases."""
+
     service = build_skill_service(instruction_service)
 
     with pytest.raises(SkillValidationError):
@@ -155,6 +169,8 @@ async def test_create_skill_rejects_unknown_strictness_phase(
 async def test_update_skill_without_metadata_preserves_metadata(
     instruction_service: InstructionService,
 ) -> None:
+    """Omitted update metadata preserves the stored metadata."""
+
     service = build_skill_service(instruction_service)
 
     created = await service.create(
@@ -185,19 +201,22 @@ async def test_update_skill_without_metadata_preserves_metadata(
 
 
 @pytest.mark.asyncio
-async def test_skill_service_exposes_enable_and_duplicate(
+async def test_skill_service_sets_enabled_and_creates_from_source(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
+    """Skill-specific methods support PATCH and sourced POST workflows."""
+
     service = build_skill_service(instruction_service)
     builtin = seed_builtin(
         instruction_repository,
         instruction_type="skill",
     )
 
-    await service.disable(
+    await service.set_enabled(
         user_id="user-1",
         skill_id=builtin.id,
+        enabled=False,
     )
 
     with pytest.raises(InstructionDisabledError):
@@ -206,15 +225,17 @@ async def test_skill_service_exposes_enable_and_duplicate(
             skill_id=builtin.id,
         )
 
-    await service.enable(
+    await service.set_enabled(
         user_id="user-1",
         skill_id=builtin.id,
+        enabled=True,
     )
-    duplicate = await service.duplicate(
+    copied = await service.create_from_source(
         user_id="user-1",
-        skill_id=builtin.id,
+        source_skill_id=builtin.id,
         name="Workspace Security",
     )
 
-    assert duplicate.source_instruction_id == builtin.id
-    assert duplicate.name == "Workspace Security"
+    assert copied.source_instruction_id == builtin.id
+    assert copied.name == "Workspace Security"
+    assert copied.metadata == builtin.metadata

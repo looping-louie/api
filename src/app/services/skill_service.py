@@ -1,6 +1,6 @@
-from __future__ import annotations
+"""Workspace-aware application service for skill resources."""
 
-from collections.abc import Mapping, Sequence
+from __future__ import annotations
 
 from .shared.instruction_service import (
     AvailableInstructionDocument,
@@ -11,24 +11,13 @@ from .shared.instruction_service import (
     InstructionUpdate,
 )
 from .shared.tenant_service import TenantService
-
-
-STRICTNESS_PHASES: frozenset[str] = frozenset(
-    {
-        "prototype",
-        "mvp",
-        "production",
-    }
+from .skill_metadata_validator import (
+    SkillValidationError,
+    validate_skill_metadata,
 )
 
 
-class SkillValidationError(Exception):
-    """Raised when skill-specific metadata is invalid."""
-
-    def __init__(self, *, field_name: str, message: str) -> None:
-        super().__init__(f"Invalid skill field '{field_name}': {message}")
-        self.field_name = field_name
-        self.message = message
+__all__ = ["SkillService", "SkillValidationError"]
 
 
 class SkillService:
@@ -40,6 +29,8 @@ class SkillService:
         tenant_service: TenantService,
         instruction_service: InstructionService,
     ) -> None:
+        """Initialize workspace resolution and shared instruction behavior."""
+
         self._tenant_service = tenant_service
         self._instruction_service = instruction_service
 
@@ -85,53 +76,40 @@ class SkillService:
             include_deprecated=include_deprecated,
         )
 
-    async def enable(
+    async def set_enabled(
         self,
         *,
         user_id: str,
         skill_id: str,
+        enabled: bool,
         requested_workspace_id: str | None = None,
     ) -> AvailableInstructionDocument:
-        """Enable a skill in the resolved workspace."""
+        """Set whether a skill is enabled in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return await self._instruction_service.enable(
+        operation = (
+            self._instruction_service.enable
+            if enabled
+            else self._instruction_service.disable
+        )
+        return await operation(
             workspace_id=workspace_id,
             instruction_type="skill",
             instruction_id=skill_id,
         )
 
-    async def disable(
+    async def create_from_source(
         self,
         *,
         user_id: str,
-        skill_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> AvailableInstructionDocument:
-        """Disable a skill in the resolved workspace."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return await self._instruction_service.disable(
-            workspace_id=workspace_id,
-            instruction_type="skill",
-            instruction_id=skill_id,
-        )
-
-    async def duplicate(
-        self,
-        *,
-        user_id: str,
-        skill_id: str,
+        source_skill_id: str,
         name: str | None = None,
         requested_workspace_id: str | None = None,
     ) -> InstructionDocument:
-        """Fork a skill into an editable workspace custom."""
+        """Create an editable skill copied from an available source."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
@@ -140,7 +118,7 @@ class SkillService:
         return await self._instruction_service.duplicate(
             workspace_id=workspace_id,
             instruction_type="skill",
-            instruction_id=skill_id,
+            instruction_id=source_skill_id,
             name=name,
         )
 
@@ -177,7 +155,7 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        self._validate_metadata(payload.metadata)
+        validate_skill_metadata(payload.metadata)
 
         return await self._instruction_service.create(
             workspace_id=workspace_id,
@@ -201,7 +179,7 @@ class SkillService:
         )
 
         if payload.metadata is not None:
-            self._validate_metadata(payload.metadata)
+            validate_skill_metadata(payload.metadata)
 
         return await self._instruction_service.update(
             workspace_id=workspace_id,
@@ -236,98 +214,11 @@ class SkillService:
         user_id: str,
         requested_workspace_id: str | None,
     ) -> str:
+        """Resolve the workspace selected for a skill operation."""
+
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
 
         return tenant.workspace_id
-
-    def _validate_metadata(self, metadata: Mapping[str, object]) -> None:
-        applies_when = metadata.get("applies_when")
-
-        if applies_when is not None:
-            self._validate_applies_when(applies_when)
-
-        default_strictness = metadata.get("default_strictness")
-
-        if default_strictness is not None:
-            self._validate_default_strictness(default_strictness)
-
-    def _validate_applies_when(self, value: object) -> None:
-        if not self._is_sequence(value):
-            raise SkillValidationError(
-                field_name="metadata.applies_when",
-                message="must be a list of strings",
-            )
-
-        normalized_values: list[str] = []
-        seen: set[str] = set()
-
-        for item in value:
-            if not isinstance(item, str) or not item.strip():
-                raise SkillValidationError(
-                    field_name="metadata.applies_when",
-                    message="must contain only non-empty strings",
-                )
-
-            normalized = item.strip()
-            comparison_key = normalized.casefold()
-
-            if comparison_key in seen:
-                raise SkillValidationError(
-                    field_name="metadata.applies_when",
-                    message=f"contains duplicate value '{normalized}'",
-                )
-
-            seen.add(comparison_key)
-            normalized_values.append(normalized)
-
-        if not normalized_values:
-            raise SkillValidationError(
-                field_name="metadata.applies_when",
-                message="must contain at least one value",
-            )
-
-    def _validate_default_strictness(self, value: object) -> None:
-        if not isinstance(value, Mapping):
-            raise SkillValidationError(
-                field_name="metadata.default_strictness",
-                message="must be an object",
-            )
-
-        unknown_phases = set(value) - STRICTNESS_PHASES
-
-        if unknown_phases:
-            phases = ", ".join(sorted(str(phase) for phase in unknown_phases))
-            raise SkillValidationError(
-                field_name="metadata.default_strictness",
-                message=f"contains unsupported phases: {phases}",
-            )
-
-        for phase, strictness in value.items():
-            self._validate_strictness_value(
-                phase=str(phase),
-                value=strictness,
-            )
-
-    @staticmethod
-    def _validate_strictness_value(*, phase: str, value: object) -> None:
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise SkillValidationError(
-                field_name=f"metadata.default_strictness.{phase}",
-                message="must be an integer between 0 and 100",
-            )
-
-        if value < 0 or value > 100:
-            raise SkillValidationError(
-                field_name=f"metadata.default_strictness.{phase}",
-                message="must be between 0 and 100",
-            )
-
-    @staticmethod
-    def _is_sequence(value: object) -> bool:
-        return isinstance(value, Sequence) and not isinstance(
-            value,
-            (str, bytes, bytearray),
-        )

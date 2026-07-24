@@ -10,8 +10,8 @@ from src.app.schemas.persona import (
     PersonaPatchRequest,
 )
 from src.app.schemas.skill import (
-    SkillDuplicateRequest,
-    SkillEnabledRequest,
+    SkillCreateRequest,
+    SkillPatchRequest,
 )
 from src.app.services.persona_service import PersonaService
 from src.app.services.shared.instruction_service import InstructionService
@@ -23,11 +23,11 @@ from tests.services.test_skill_service import build_skill_service
 
 
 @pytest.mark.asyncio
-async def test_skill_controller_exposes_effective_capabilities(
+async def test_skill_controller_patches_and_creates_from_source(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """Skill controllers retain capability and action behavior."""
+    """Skill controller patches enablement and creates sourced copies."""
 
     service: SkillService = build_skill_service(instruction_service)
     controller = SkillController(skill_service=service)
@@ -37,15 +37,17 @@ async def test_skill_controller_exposes_effective_capabilities(
     )
 
     listed = await controller.list(user_id="user-1")
-    disabled = await controller.set_enabled(
+    disabled = await controller.patch(
         user_id="user-1",
         skill_id=builtin.id,
-        payload=SkillEnabledRequest(enabled=False),
+        payload=SkillPatchRequest(enabled=False),
     )
-    duplicate = await controller.duplicate(
+    copied = await controller.create(
         user_id="user-1",
-        skill_id=builtin.id,
-        payload=SkillDuplicateRequest(name="Workspace Security"),
+        payload=SkillCreateRequest(
+            source_skill_id=builtin.id,
+            name="Workspace Security",
+        ),
     )
 
     summary = listed.items[0]
@@ -57,11 +59,11 @@ async def test_skill_controller_exposes_effective_capabilities(
     assert summary.catalog_version == 1
     assert summary.source_instruction_id is None
     assert disabled.enabled is False
-    assert duplicate.origin == InstructionOrigin.CUSTOM
-    assert duplicate.editable is True
-    assert duplicate.source_instruction_id == builtin.id
-    assert "owner_workspace_id" not in duplicate.model_dump()
-    assert "workspace_id" not in duplicate.model_dump()
+    assert copied.origin == InstructionOrigin.CUSTOM
+    assert copied.editable is True
+    assert copied.source_instruction_id == builtin.id
+    assert "owner_workspace_id" not in copied.model_dump()
+    assert "workspace_id" not in copied.model_dump()
 
 
 @pytest.mark.asyncio

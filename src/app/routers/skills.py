@@ -1,3 +1,5 @@
+"""REST routes for skill resources."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -8,11 +10,9 @@ from src.app.controllers.skill import SkillController
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.skill import (
     SkillCreateRequest,
-    SkillDuplicateRequest,
-    SkillEnabledRequest,
     SkillListResponse,
+    SkillPatchRequest,
     SkillResponse,
-    SkillUpdateRequest,
 )
 
 from .dependencies import (
@@ -39,7 +39,7 @@ ControllerDependency = Annotated[
 
 
 @router.get(
-    "/list",
+    "",
     response_model=SkillListResponse,
     summary="List skills",
 )
@@ -64,11 +64,11 @@ async def list_skills(
 
 
 @router.get(
-    "/describe/{skill_id}",
+    "/{skill_id}",
     response_model=SkillResponse,
-    summary="Describe skill",
+    summary="Get skill",
 )
-async def describe_skill(
+async def get_skill(
     context: ContextDependency,
     controller: ControllerDependency,
     skill_id: Annotated[
@@ -86,7 +86,7 @@ async def describe_skill(
 
 
 @router.post(
-    "/create",
+    "",
     response_model=SkillResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create skill",
@@ -105,13 +105,13 @@ async def create_skill(
     )
 
 
-@router.post(
-    "/update/{skill_id}",
+@router.patch(
+    "/{skill_id}",
     response_model=SkillResponse,
-    summary="Update skill",
+    summary="Modify skill",
 )
-async def update_skill(
-    payload: SkillUpdateRequest,
+async def patch_skill(
+    payload: SkillPatchRequest,
     context: ContextDependency,
     controller: ControllerDependency,
     skill_id: Annotated[
@@ -119,58 +119,9 @@ async def update_skill(
         Path(min_length=1),
     ],
 ) -> SkillResponse:
-    """Update an existing skill."""
+    """Modify skill content or its workspace enabled state."""
 
-    return await controller.update(
-        user_id=context.user_id,
-        skill_id=skill_id,
-        payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
-@router.put(
-    "/{skill_id}/enabled",
-    response_model=SkillResponse,
-    summary="Set skill enablement",
-)
-async def set_skill_enabled(
-    payload: SkillEnabledRequest,
-    context: ContextDependency,
-    controller: ControllerDependency,
-    skill_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
-) -> SkillResponse:
-    """Enable or disable a skill in the selected workspace."""
-
-    return await controller.set_enabled(
-        user_id=context.user_id,
-        skill_id=skill_id,
-        payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
-@router.post(
-    "/{skill_id}/duplicate",
-    response_model=SkillResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Duplicate skill",
-)
-async def duplicate_skill(
-    payload: SkillDuplicateRequest,
-    context: ContextDependency,
-    controller: ControllerDependency,
-    skill_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
-) -> SkillResponse:
-    """Fork an available skill into an editable custom skill."""
-
-    return await controller.duplicate(
+    return await controller.patch(
         user_id=context.user_id,
         skill_id=skill_id,
         payload=payload,
@@ -179,7 +130,7 @@ async def duplicate_skill(
 
 
 @router.delete(
-    "/delete/{skill_id}",
+    "/{skill_id}",
     response_model=DeleteResponse,
     summary="Delete skill",
 )

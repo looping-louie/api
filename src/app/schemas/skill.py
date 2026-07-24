@@ -1,3 +1,5 @@
+"""HTTP schemas for skill resources."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -40,50 +42,87 @@ class SkillMetadata(RequestSchema):
 
 
 class SkillCreateRequest(RequestSchema):
-    """Request body for creating a skill."""
+    """Request body for creating or copying a skill."""
 
-    name: NonEmptyString
+    name: NonEmptyString | None = None
     description: str = ""
-    instructions: NonEmptyString
+    instructions: NonEmptyString | None = None
     metadata: SkillMetadata = Field(default_factory=SkillMetadata)
+    source_skill_id: NonEmptyString | None = None
+
+    @model_validator(mode="after")
+    def validate_creation_mode(self) -> Self:
+        """Validate the fields required by direct and source-based creation."""
+
+        if self.source_skill_id is None:
+            if self.name is None or self.instructions is None:
+                raise ValueError(
+                    "Name and instructions are required when creating a skill."
+                )
+            return self
+
+        unsupported_overrides = {
+            "description",
+            "instructions",
+            "metadata",
+        } & self.model_fields_set
+        if unsupported_overrides:
+            raise ValueError(
+                "A skill copy only accepts source_skill_id and an optional name."
+            )
+
+        return self
 
 
-class SkillUpdateRequest(RequestSchema):
-    """Request body for updating a skill."""
+class SkillPatchRequest(RequestSchema):
+    """Fields that may change for an available skill."""
 
-    expected_version: PositiveInteger
+    expected_version: PositiveInteger | None = None
     name: NonEmptyString | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
     metadata: SkillMetadata | None = None
+    enabled: StrictBool | None = None
 
     @model_validator(mode="after")
-    def require_changes(self) -> Self:
-        """Require at least one mutable value."""
+    def validate_patch(self) -> Self:
+        """Require a concrete change and version content modifications."""
 
-        values = (
+        content_values = (
             self.name,
             self.description,
             self.instructions,
             self.metadata,
         )
+        has_content_changes = any(
+            value is not None
+            for value in content_values
+        )
+        enabled_supplied = "enabled" in self.model_fields_set
 
-        if all(value is None for value in values):
+        if not has_content_changes and not enabled_supplied:
             raise ValueError("At least one skill field must be updated.")
+        if enabled_supplied and self.enabled is None:
+            raise ValueError("Enabled must be true or false.")
+        if has_content_changes and self.expected_version is None:
+            raise ValueError(
+                "Expected version is required when modifying skill content."
+            )
 
         return self
 
+    def has_content_changes(self) -> bool:
+        """Return whether the request changes editable skill content."""
 
-class SkillEnabledRequest(RequestSchema):
-    """Request body for changing effective workspace enablement."""
-
-    enabled: StrictBool
-
-
-class SkillDuplicateRequest(RequestSchema):
-    """Optional overrides used when forking an available skill."""
-
-    name: NonEmptyString | None = None
+        return any(
+            value is not None
+            for value in (
+                self.name,
+                self.description,
+                self.instructions,
+                self.metadata,
+            )
+        )
 
 
 class SkillSummaryResponse(

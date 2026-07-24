@@ -49,11 +49,11 @@ Todas las rutas empiezan por el prefijo: `/api/v1`.
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ----------- |
-| `GET` | `/skills/list` | Lista skills sin devolver todo su contenido. |
-| `GET` | `/skills/describe/{skill_id}` | Devuelve metadatos e instrucciones completas. |
-| `POST` | `/skills/create` | Crea una skill. |
-| `POST` | `/skills/update/{skill_id}` | Modifica una skill existente. |
-| `DELETE` | `/skills/delete/{skill_id}` | Elimina una skill si no está siendo utilizada. |
+| `GET` | `/skills` | Lista skills sin devolver todo su contenido. |
+| `GET` | `/skills/{skill_id}` | Devuelve metadatos e instrucciones completas. |
+| `POST` | `/skills` | Crea una skill directamente o desde `source_skill_id`. |
+| `PATCH` | `/skills/{skill_id}` | Modifica contenido o el estado `enabled`. |
+| `DELETE` | `/skills/{skill_id}` | Elimina una skill si no está siendo utilizada. |
 
 ## Councils
 

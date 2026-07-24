@@ -77,9 +77,9 @@ from .skill import (
     SkillDefaultStrictness,
     SkillListResponse,
     SkillMetadata,
+    SkillPatchRequest,
     SkillResponse,
     SkillSummaryResponse,
-    SkillUpdateRequest,
 )
 from .model import (
     ModelDeploymentResponse,
@@ -117,9 +117,9 @@ __all__ = [
     "SkillDefaultStrictness",
     "SkillListResponse",
     "SkillMetadata",
+    "SkillPatchRequest",
     "SkillResponse",
     "SkillSummaryResponse",
-    "SkillUpdateRequest",
     "ModelDeploymentResponse",
     "ModelListResponse",
     "ModelPricingResponse",

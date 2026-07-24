@@ -220,20 +220,18 @@ items omit instructions and metadata.
 ## Skills
 
 A skill is a reusable review or deliberation instruction. Built-in skills are
-immutable; they can be enabled, disabled, or duplicated into editable custom
-skills.
+immutable; they can be enabled, disabled, or used as the source of an editable
+custom skill.
 
 ### Skill calls
 
-| Method   | Path                                           | Description                                                     |
-| -------- | ---------------------------------------------- | --------------------------------------------------------------- |
-| `GET`    | `/api/v1/skills/list`                          | Lists skill metadata without full instructions.                 |
-| `GET`    | `/api/v1/skills/describe/{skill_id}`           | Returns a skill including its complete instructions.            |
-| `POST`   | `/api/v1/skills/create`                        | Creates a custom skill in the selected workspace.               |
-| `POST`   | `/api/v1/skills/update/{skill_id}`             | Updates an editable skill.                                      |
-| `PUT`    | `/api/v1/skills/{skill_id}/enabled`            | Enables or disables an available skill in the workspace.        |
-| `POST`   | `/api/v1/skills/{skill_id}/duplicate`          | Duplicates an available skill as an editable custom skill.       |
-| `DELETE` | `/api/v1/skills/delete/{skill_id}`             | Deletes a skill when it has no blocking dependencies.           |
+| Method   | Path                            | Description                                               |
+| -------- | ------------------------------- | --------------------------------------------------------- |
+| `GET`    | `/api/v1/skills`                | Lists skill metadata without full instructions.           |
+| `GET`    | `/api/v1/skills/{skill_id}`     | Returns a skill including its complete instructions.      |
+| `POST`   | `/api/v1/skills`                | Creates a custom skill or copies an available source.     |
+| `PATCH`  | `/api/v1/skills/{skill_id}`     | Modifies content or workspace enablement.                 |
+| `DELETE` | `/api/v1/skills/{skill_id}`     | Deletes a skill when it has no blocking dependencies.     |
 
 ### Create Skill Request
 
@@ -243,25 +241,28 @@ skills.
 | `description`  | Optional description. Defaults to an empty string.                |
 | `instructions` | Required non-empty complete skill instructions.                   |
 | `metadata`     | Optional skill metadata. Defaults to `{}`.                         |
+| `source_skill_id` | Omit when creating a skill from supplied content.             |
 
 Skill metadata may contain `applies_when`, a non-empty list of strings, and
 `default_strictness`. Strictness values are integers from 0 to 100 keyed by
 `prototype`, `mvp`, and `production`. Extra metadata fields are allowed.
 
-### Update Skill Request
+To copy an available, non-deprecated skill, send `source_skill_id` and an
+optional `name`. The source description, instructions, and metadata are copied.
+Do not include those copied fields in the request. If `name` is omitted, it
+defaults to the source name followed by ` Copy`.
 
-`expected_version` is required. Include at least one of `name`, `description`,
-`instructions`, or `metadata`.
+### Patch Skill Request
 
-### Enable and Duplicate Skill Requests
-
-The enablement body is `{"enabled": true}` or `{"enabled": false}`. The
-duplicate body may be `{}` or contain a non-empty `name` override.
+Include at least one of `name`, `description`, `instructions`, `metadata`, or
+`enabled`. Content changes require `expected_version`; an enabled-only change
+does not. `enabled` must be `true` or `false`, not `null`. Built-in content is
+immutable, but its enabled state can be patched.
 
 ### Create Skill Example
 
 ```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/skills/create \
+curl -s -X POST http://127.0.0.1:8000/api/v1/skills \
   -H "Content-Type: application/json" \
   -H "X-Workspace-ID: workspace-id" \
   -d '{
@@ -277,7 +278,19 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/skills/create \
   }'
 ```
 
-Write and describe operations return the complete skill, including `id`,
+To create a copy instead:
+
+```sh
+curl -s -X POST http://127.0.0.1:8000/api/v1/skills \
+  -H "Content-Type: application/json" \
+  -H "X-Workspace-ID: workspace-id" \
+  -d '{
+    "source_skill_id": "builtin:skill:api_compatibility",
+    "name": "Platform API compatibility"
+  }'
+```
+
+Write and get operations return the complete skill, including `id`,
 instructions, metadata, origin and capabilities, version, and timestamps. List
 items omit instructions and metadata.
 
