@@ -74,22 +74,28 @@ The following constraints apply:
 
 ## File Size
 
-Handwritten Python source and test files MUST contain no more than 300 physical
-lines, including docstrings, comments, and blank lines.
+Handwritten Python source and test files SHOULD NOT contain more than 300
+physical lines, including docstrings, comments, and blank lines. New or
+modified files MUST NOT contain more than 500 physical lines under any
+circumstances.
 
 - Generated files, database migrations, and snapshots are exempt.
-- New files MUST comply with the limit.
-- A modified file SHOULD be split by responsibility when it approaches the
-  limit.
-- Existing files over the limit are technical debt, not authorization for a
+- New files SHOULD stay within 300 lines. They MAY exceed that target when
+  keeping one cohesive responsibility together is clearly safer than splitting
+  it, but they MUST remain within the absolute 500-line limit.
+- A modified file SHOULD be split by responsibility when it approaches or
+  exceeds 300 lines and doing so is safe and proportionate to the task.
+- Existing files over 300 lines are technical debt, not authorization for a
   repository-wide refactor.
 - When the requested change touches an existing file over 300 lines, split the
   relevant responsibility if that can be done safely within scope. If doing so
   would require a broad unrelated refactor, keep the requested change narrow,
   do not increase the file's line count unnecessarily, and report the
   pre-existing violation.
+- No new or modified handwritten Python source or test file may exceed 500
+  physical lines.
 - MUST NOT compress formatting, combine unrelated responsibilities, or remove
-  useful documentation merely to satisfy the limit.
+  useful documentation merely to satisfy either threshold.
 
 ## Documentation
 
@@ -147,11 +153,20 @@ Before declaring the work complete:
 1. Review the diff for accidental scope expansion.
 2. Confirm that new and modified code follows the architecture, size,
    documentation, and testing rules above.
-3. Run the full suite from the repository root:
+3. Run the full suite from the repository root using the project virtual
+   environment:
 
    ```bash
-   pytest -q
+   env/bin/python -m pytest -q
    ```
+
+   - Do not use bare `pytest`; it is not installed in the system environment.
+   - Do not use `make test` for routine verification because its `venv`
+     prerequisite reinstalls dependencies.
+   - In Codex environments, request execution outside the sandbox for tests
+     that use `aiosqlite`; they can stall inside the sandbox.
+   - If the suite makes no progress for 30 seconds, interrupt it and rerun the
+     affected test with `-vv -s -o faulthandler_timeout=10`.
 
 4. Report the exact verification result. MUST NOT claim that tests pass if the
    command was not run successfully.
@@ -171,12 +186,14 @@ A task is complete only when:
 - The requested behavior is implemented without unrequested functionality.
 - Layer responsibilities remain clear and no speculative abstraction was
   introduced.
-- New files respect the 300-line limit, and touched legacy violations were
-  handled according to the file-size policy.
+- New and modified files follow the 300-line target and absolute 500-line
+  limit, and touched legacy violations were handled according to the file-size
+  policy.
 - Modules, classes, functions, methods, and tests have useful docstrings.
 - Non-obvious implementation decisions have concise `why` comments.
 - Corresponding tests were added or updated.
-- `pytest -q` was run and its outcome was reported accurately.
+- `env/bin/python -m pytest -q` was run and its outcome was reported
+  accurately.
 - Existing API contracts and unrelated behavior remain intact.
 
 ## Communication
