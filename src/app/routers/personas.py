@@ -1,3 +1,5 @@
+"""REST routes for persona resources."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -8,11 +10,9 @@ from src.app.controllers.persona import PersonaController
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.persona import (
     PersonaCreateRequest,
-    PersonaDuplicateRequest,
-    PersonaEnabledRequest,
     PersonaListResponse,
+    PersonaPatchRequest,
     PersonaResponse,
-    PersonaUpdateRequest,
 )
 
 from .dependencies import (
@@ -39,7 +39,7 @@ ControllerDependency = Annotated[
 
 
 @router.get(
-    "/list",
+    "",
     response_model=PersonaListResponse,
     summary="List personas",
 )
@@ -64,11 +64,11 @@ async def list_personas(
 
 
 @router.get(
-    "/describe/{persona_id}",
+    "/{persona_id}",
     response_model=PersonaResponse,
-    summary="Describe persona",
+    summary="Get persona",
 )
-async def describe_persona(
+async def get_persona(
     context: ContextDependency,
     controller: ControllerDependency,
     persona_id: Annotated[
@@ -86,7 +86,7 @@ async def describe_persona(
 
 
 @router.post(
-    "/create",
+    "",
     response_model=PersonaResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create persona",
@@ -105,13 +105,13 @@ async def create_persona(
     )
 
 
-@router.post(
-    "/update/{persona_id}",
+@router.patch(
+    "/{persona_id}",
     response_model=PersonaResponse,
-    summary="Update persona",
+    summary="Modify persona",
 )
-async def update_persona(
-    payload: PersonaUpdateRequest,
+async def patch_persona(
+    payload: PersonaPatchRequest,
     context: ContextDependency,
     controller: ControllerDependency,
     persona_id: Annotated[
@@ -119,58 +119,9 @@ async def update_persona(
         Path(min_length=1),
     ],
 ) -> PersonaResponse:
-    """Update an existing persona."""
+    """Modify persona content or its workspace enabled state."""
 
-    return await controller.update(
-        user_id=context.user_id,
-        persona_id=persona_id,
-        payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
-@router.put(
-    "/{persona_id}/enabled",
-    response_model=PersonaResponse,
-    summary="Set persona enablement",
-)
-async def set_persona_enabled(
-    payload: PersonaEnabledRequest,
-    context: ContextDependency,
-    controller: ControllerDependency,
-    persona_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
-) -> PersonaResponse:
-    """Enable or disable a persona in the selected workspace."""
-
-    return await controller.set_enabled(
-        user_id=context.user_id,
-        persona_id=persona_id,
-        payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
-@router.post(
-    "/{persona_id}/duplicate",
-    response_model=PersonaResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Duplicate persona",
-)
-async def duplicate_persona(
-    payload: PersonaDuplicateRequest,
-    context: ContextDependency,
-    controller: ControllerDependency,
-    persona_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
-) -> PersonaResponse:
-    """Fork an available persona into an editable custom persona."""
-
-    return await controller.duplicate(
+    return await controller.patch(
         user_id=context.user_id,
         persona_id=persona_id,
         payload=payload,
@@ -179,7 +130,7 @@ async def duplicate_persona(
 
 
 @router.delete(
-    "/delete/{persona_id}",
+    "/{persona_id}",
     response_model=DeleteResponse,
     summary="Delete persona",
 )

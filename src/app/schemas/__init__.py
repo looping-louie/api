@@ -68,9 +68,9 @@ from .loop import (
 from .persona import (
     PersonaCreateRequest,
     PersonaListResponse,
+    PersonaPatchRequest,
     PersonaResponse,
     PersonaSummaryResponse,
-    PersonaUpdateRequest,
 )
 from .skill import (
     SkillCreateRequest,
@@ -109,9 +109,9 @@ __all__ = [
     "LoopValidationResponse",
     "PersonaCreateRequest",
     "PersonaListResponse",
+    "PersonaPatchRequest",
     "PersonaResponse",
     "PersonaSummaryResponse",
-    "PersonaUpdateRequest",
     "ResourceSummaryResponse",
     "SkillCreateRequest",
     "SkillDefaultStrictness",

@@ -2,7 +2,8 @@
 
 El workspace se resuelve desde el JWT o X-Workspace-ID; no aparece en las rutas.
 
-Para las operaciones comunes se usa esta regla consistente:
+Los recursos ya migrados usan rutas REST de colección y elemento. Otros
+recursos conservan temporalmente estas rutas de acción:
 
 /{resource}/list
 /{resource}/describe/{id}
@@ -38,11 +39,11 @@ Todas las rutas empiezan por el prefijo: `/api/v1`.
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ----------- |
-| `GET` | `/personas/list` | Lista personas y metadatos básicos. |
-| `GET` | `/personas/describe/{persona_id}` | Devuelve la persona y sus instrucciones completas. |
-| `POST` | `/personas/create` | Crea una persona. |
-| `POST` | `/personas/update/{persona_id}` | Modifica una persona existente. |
-| `DELETE` | `/personas/delete/{persona_id}` | Elimina una persona si no tiene dependencias. |
+| `GET` | `/personas` | Lista personas y metadatos básicos. |
+| `GET` | `/personas/{persona_id}` | Devuelve la persona y sus instrucciones completas. |
+| `POST` | `/personas` | Crea una persona directamente o desde `source_persona_id`. |
+| `PATCH` | `/personas/{persona_id}` | Modifica contenido o el estado `enabled`. |
+| `DELETE` | `/personas/{persona_id}` | Elimina una persona si no tiene dependencias. |
 
 ## Skills
 

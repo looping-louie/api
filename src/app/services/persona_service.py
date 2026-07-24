@@ -1,3 +1,5 @@
+"""Workspace-aware application service for persona resources."""
+
 from __future__ import annotations
 
 from .shared.instruction_service import (
@@ -20,6 +22,8 @@ class PersonaService:
         tenant_service: TenantService,
         instruction_service: InstructionService,
     ) -> None:
+        """Initialize workspace resolution and shared instruction behavior."""
+
         self._tenant_service = tenant_service
         self._instruction_service = instruction_service
 
@@ -65,53 +69,40 @@ class PersonaService:
             include_deprecated=include_deprecated,
         )
 
-    async def enable(
+    async def set_enabled(
         self,
         *,
         user_id: str,
         persona_id: str,
+        enabled: bool,
         requested_workspace_id: str | None = None,
     ) -> AvailableInstructionDocument:
-        """Enable a persona in the resolved workspace."""
+        """Set whether a persona is enabled in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return await self._instruction_service.enable(
+        operation = (
+            self._instruction_service.enable
+            if enabled
+            else self._instruction_service.disable
+        )
+        return await operation(
             workspace_id=workspace_id,
             instruction_type="persona",
             instruction_id=persona_id,
         )
 
-    async def disable(
+    async def create_from_source(
         self,
         *,
         user_id: str,
-        persona_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> AvailableInstructionDocument:
-        """Disable a persona in the resolved workspace."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return await self._instruction_service.disable(
-            workspace_id=workspace_id,
-            instruction_type="persona",
-            instruction_id=persona_id,
-        )
-
-    async def duplicate(
-        self,
-        *,
-        user_id: str,
-        persona_id: str,
+        source_persona_id: str,
         name: str | None = None,
         requested_workspace_id: str | None = None,
     ) -> InstructionDocument:
-        """Fork a persona into an editable workspace custom."""
+        """Create an editable persona copied from an available source."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
@@ -120,7 +111,7 @@ class PersonaService:
         return await self._instruction_service.duplicate(
             workspace_id=workspace_id,
             instruction_type="persona",
-            instruction_id=persona_id,
+            instruction_id=source_persona_id,
             name=name,
         )
 
@@ -157,8 +148,6 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        self._validate_create(payload)
-
         return await self._instruction_service.create(
             workspace_id=workspace_id,
             instruction_type="persona",
@@ -179,8 +168,6 @@ class PersonaService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-
-        self._validate_update(payload)
 
         return await self._instruction_service.update(
             workspace_id=workspace_id,
@@ -215,31 +202,11 @@ class PersonaService:
         user_id: str,
         requested_workspace_id: str | None,
     ) -> str:
+        """Resolve the workspace selected for a persona operation."""
+
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
 
         return tenant.workspace_id
-
-    @staticmethod
-    def _validate_create(payload: InstructionCreate) -> None:
-        """
-        Validate persona-specific creation rules.
-
-        No additional persona rules are currently required. Generic name,
-        content, metadata and uniqueness checks belong to InstructionService.
-        """
-
-        del payload
-
-    @staticmethod
-    def _validate_update(payload: InstructionUpdate) -> None:
-        """
-        Validate persona-specific update rules.
-
-        This method intentionally remains explicit so future persona-only
-        constraints do not leak into InstructionService.
-        """
-
-        del payload

@@ -251,7 +251,7 @@ cleanup() {
     fi
 
     if [[ -n "${PERSONA_ID}" ]]; then
-        request DELETE "/personas/delete/${PERSONA_ID}" >/dev/null
+        request DELETE "/personas/${PERSONA_ID}" >/dev/null
     fi
 
     if [[ "${PROVIDER_CREATED}" == "1" ]]; then
@@ -335,7 +335,7 @@ request GET "/models/${model_id}" >/dev/null
 log "Creating persona"
 
 persona_response="$(
-    request POST "/personas/create" "$(
+    request POST "/personas" "$(
         cat <<JSON
 {
     "name": "Smoke Persona ${SMOKE_RUN_ID}",
@@ -352,19 +352,26 @@ JSON
 PERSONA_ID="$(printf '%s' "${persona_response}" | json_field "id")"
 persona_version="$(printf '%s' "${persona_response}" | json_field "version")"
 
-request GET "/personas/describe/${PERSONA_ID}" >/dev/null
-request GET "/personas/list" >/dev/null
+request GET "/personas/${PERSONA_ID}" >/dev/null
+request GET "/personas" >/dev/null
 
 persona_response="$(
-    request POST "/personas/update/${PERSONA_ID}" "$(
+    request PATCH "/personas/${PERSONA_ID}" "$(
         cat <<JSON
 {
     "expected_version": ${persona_version},
-    "description": "Updated by scripts/smoke_api.sh"
+    "description": "Updated by scripts/smoke_api.sh",
+    "enabled": false
 }
 JSON
     )"
 )"
+
+request \
+    PATCH \
+    "/personas/${PERSONA_ID}" \
+    '{"enabled": true}' \
+    >/dev/null
 
 log "Creating skill"
 
@@ -450,7 +457,7 @@ log "Checking council dependency protection"
 
 request_expect_status \
     DELETE \
-    "/personas/delete/${PERSONA_ID}" \
+    "/personas/${PERSONA_ID}" \
     409
 
 request_expect_status \
@@ -517,13 +524,13 @@ COUNCIL_ID=""
 request DELETE "/skills/delete/${SKILL_ID}" >/dev/null
 SKILL_ID=""
 
-request DELETE "/personas/delete/${PERSONA_ID}" >/dev/null
+request DELETE "/personas/${PERSONA_ID}" >/dev/null
 PERSONA_ID=""
 
 request GET "/loops/list" >/dev/null
 request GET "/councils/list" >/dev/null
 request GET "/skills/list" >/dev/null
-request GET "/personas/list" >/dev/null
+request GET "/personas" >/dev/null
 
 if [[ "${PROVIDER_CREATED}" == "1" ]]; then
     request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null

@@ -148,20 +148,18 @@ workspace-specific availability reason.
 ## Personas
 
 A persona is a reusable set of agent instructions. Built-in personas are
-immutable; they can be enabled, disabled, or duplicated into editable custom
-personas.
+immutable; they can be enabled, disabled, or used as the source of an editable
+custom persona.
 
 ### Persona calls
 
-| Method   | Path                                               | Description                                                       |
-| -------- | -------------------------------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/api/v1/personas/list`                            | Lists persona metadata without full instructions.                 |
-| `GET`    | `/api/v1/personas/describe/{persona_id}`           | Returns a persona including its complete instructions.            |
-| `POST`   | `/api/v1/personas/create`                          | Creates a custom persona in the selected workspace.               |
-| `POST`   | `/api/v1/personas/update/{persona_id}`             | Updates an editable persona.                                      |
-| `PUT`    | `/api/v1/personas/{persona_id}/enabled`            | Enables or disables an available persona in the workspace.        |
-| `POST`   | `/api/v1/personas/{persona_id}/duplicate`          | Duplicates an available persona as an editable custom persona.     |
-| `DELETE` | `/api/v1/personas/delete/{persona_id}`             | Deletes a persona when it has no blocking dependencies.           |
+| Method   | Path                                | Description                                                   |
+| -------- | ----------------------------------- | ------------------------------------------------------------- |
+| `GET`    | `/api/v1/personas`                  | Lists persona metadata without full instructions.             |
+| `GET`    | `/api/v1/personas/{persona_id}`     | Returns a persona including its complete instructions.        |
+| `POST`   | `/api/v1/personas`                  | Creates a custom persona or copies an available source.       |
+| `PATCH`  | `/api/v1/personas/{persona_id}`     | Modifies content or workspace enablement.                     |
+| `DELETE` | `/api/v1/personas/{persona_id}`     | Deletes a persona when it has no blocking dependencies.       |
 
 ### Create Persona Request
 
@@ -171,21 +169,24 @@ personas.
 | `description`  | Optional description. Defaults to an empty string. |
 | `instructions` | Required non-empty complete persona instructions. |
 | `metadata`     | Optional JSON object. Defaults to `{}`.           |
+| `source_persona_id` | Omit when creating a persona from supplied content. |
 
-### Update Persona Request
+To copy an available, non-deprecated persona, send `source_persona_id` and an
+optional `name`. The source description, instructions, and metadata are copied.
+Do not include those copied fields in the request. If `name` is omitted, it
+defaults to the source name followed by ` Copy`.
 
-`expected_version` is required. Include at least one of `name`, `description`,
-`instructions`, or `metadata`.
+### Patch Persona Request
 
-### Enable and Duplicate Persona Requests
-
-The enablement body is `{"enabled": true}` or `{"enabled": false}`. The
-duplicate body may be `{}` or contain a non-empty `name` override.
+Include at least one of `name`, `description`, `instructions`, `metadata`, or
+`enabled`. Content changes require `expected_version`; an enabled-only change
+does not. `enabled` must be `true` or `false`, not `null`. Built-in content is
+immutable, but its enabled state can be patched.
 
 ### Create Persona Example
 
 ```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/personas/create \
+curl -s -X POST http://127.0.0.1:8000/api/v1/personas \
   -H "Content-Type: application/json" \
   -H "X-Workspace-ID: workspace-id" \
   -d '{
@@ -198,7 +199,19 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/personas/create \
   }'
 ```
 
-Write and describe operations return the complete persona, including `id`,
+To create a copy instead:
+
+```sh
+curl -s -X POST http://127.0.0.1:8000/api/v1/personas \
+  -H "Content-Type: application/json" \
+  -H "X-Workspace-ID: workspace-id" \
+  -d '{
+    "source_persona_id": "builtin:persona:tech_lead",
+    "name": "Platform lead"
+  }'
+```
+
+Write and get operations return the complete persona, including `id`,
 instructions, metadata, origin and capabilities, version, and timestamps. List
 items omit instructions and metadata.
 

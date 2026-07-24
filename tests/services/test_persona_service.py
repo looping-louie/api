@@ -1,3 +1,5 @@
+"""Tests for workspace-aware persona operations."""
+
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
@@ -22,6 +24,8 @@ from tests.services.test_instruction_service import seed_builtin
 def build_persona_service(
     instruction_service: InstructionService,
 ) -> PersonaService:
+    """Build a persona service with one default workspace membership."""
+
     repository = FakeTenantRepository(
         [
             WorkspaceMembership(
@@ -42,6 +46,8 @@ def build_persona_service(
 async def test_persona_crud_flow(
     instruction_service: InstructionService,
 ) -> None:
+    """Persona CRUD delegates to shared instruction behavior."""
+
     service = build_persona_service(instruction_service)
 
     created = await service.create(
@@ -95,29 +101,33 @@ async def test_persona_crud_flow(
 
 
 @pytest.mark.asyncio
-async def test_persona_service_exposes_enable_and_duplicate(
+async def test_persona_service_sets_enabled_and_creates_from_source(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
+    """Persona-specific methods support PATCH and sourced POST workflows."""
+
     service = build_persona_service(instruction_service)
     builtin = seed_builtin(
         instruction_repository,
         instruction_type="persona",
     )
 
-    disabled = await service.disable(
+    disabled = await service.set_enabled(
         user_id="user-1",
         persona_id=builtin.id,
+        enabled=False,
     )
-    enabled = await service.enable(
+    enabled = await service.set_enabled(
         user_id="user-1",
         persona_id=builtin.id,
+        enabled=True,
     )
-    duplicate = await service.duplicate(
+    copied = await service.create_from_source(
         user_id="user-1",
-        persona_id=builtin.id,
+        source_persona_id=builtin.id,
     )
 
     assert disabled.enabled is False
     assert enabled.enabled is True
-    assert duplicate.source_instruction_id == builtin.id
+    assert copied.source_instruction_id == builtin.id

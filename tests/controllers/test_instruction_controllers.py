@@ -1,11 +1,13 @@
+"""Tests for persona and skill instruction controllers."""
+
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.schemas.persona import (
-    PersonaDuplicateRequest,
-    PersonaEnabledRequest,
+    PersonaCreateRequest,
+    PersonaPatchRequest,
 )
 from src.app.schemas.skill import (
     SkillDuplicateRequest,
@@ -25,6 +27,8 @@ async def test_skill_controller_exposes_effective_capabilities(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
+    """Skill controllers retain capability and action behavior."""
+
     service: SkillService = build_skill_service(instruction_service)
     controller = SkillController(skill_service=service)
     builtin = seed_builtin(
@@ -61,10 +65,12 @@ async def test_skill_controller_exposes_effective_capabilities(
 
 
 @pytest.mark.asyncio
-async def test_persona_controller_enables_and_duplicates_builtin(
+async def test_persona_controller_patches_and_creates_from_source(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
+    """Persona controller patches enablement and creates sourced copies."""
+
     service: PersonaService = build_persona_service(instruction_service)
     controller = PersonaController(persona_service=service)
     builtin = seed_builtin(
@@ -72,24 +78,25 @@ async def test_persona_controller_enables_and_duplicates_builtin(
         instruction_type="persona",
     )
 
-    disabled = await controller.set_enabled(
+    disabled = await controller.patch(
         user_id="user-1",
         persona_id=builtin.id,
-        payload=PersonaEnabledRequest(enabled=False),
+        payload=PersonaPatchRequest(enabled=False),
     )
-    duplicate = await controller.duplicate(
+    copied = await controller.create(
         user_id="user-1",
-        persona_id=builtin.id,
-        payload=PersonaDuplicateRequest(name="Workspace Lead"),
+        payload=PersonaCreateRequest(
+            source_persona_id=builtin.id,
+            name="Workspace Lead",
+        ),
     )
 
     assert disabled.origin == InstructionOrigin.BUILTIN
     assert disabled.enabled is False
     assert disabled.editable is False
-    assert duplicate.origin == InstructionOrigin.CUSTOM
-    assert duplicate.enabled is True
-    assert duplicate.editable is True
-    assert duplicate.duplicable is True
-    assert duplicate.source_instruction_id == builtin.id
-    assert "owner_workspace_id" not in duplicate.model_dump()
-
+    assert copied.origin == InstructionOrigin.CUSTOM
+    assert copied.enabled is True
+    assert copied.editable is True
+    assert copied.duplicable is True
+    assert copied.source_instruction_id == builtin.id
+    assert "owner_workspace_id" not in copied.model_dump()
