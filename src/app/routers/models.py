@@ -1,3 +1,5 @@
+"""REST routes for the curated model catalog."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -39,7 +41,7 @@ ControllerDependency = Annotated[
 
 
 @router.get(
-    "/list",
+    "",
     response_model=ModelListResponse,
     summary="List models",
 )
@@ -101,7 +103,7 @@ async def list_models(
 
 
 @router.get(
-    "/describe/{model_id}",
+    "/{model_id}",
     response_model=ModelResponse,
     summary="Describe model",
 )

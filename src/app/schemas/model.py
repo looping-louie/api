@@ -90,4 +90,4 @@ class ModelResponse(ResponseSchema):
 
 
 class ModelListResponse(ListResponse[ModelSummaryResponse]):
-    """Response returned by GET /models/list."""
+    """Response returned by GET /models."""

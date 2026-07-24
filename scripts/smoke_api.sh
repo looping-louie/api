@@ -319,7 +319,7 @@ request \
 
 log "Checking model catalog"
 
-models_response="$(request GET "/models/list")"
+models_response="$(request GET "/models")"
 
 if [[ -n "${SMOKE_MODEL_ID}" ]]; then
     model_id="${SMOKE_MODEL_ID}"
@@ -330,7 +330,7 @@ else
     )"
 fi
 
-request GET "/models/describe/${model_id}" >/dev/null
+request GET "/models/${model_id}" >/dev/null
 
 log "Creating persona"
 

@@ -1,3 +1,5 @@
+"""HTTP contract tests for model catalog routes."""
+
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request
@@ -62,7 +64,7 @@ def test_list_models_route(
     )
 
     response = client.get(
-        "/api/v1/models/list",
+        "/api/v1/models",
         params={
             "provider_id": "together",
             "available": "true",
@@ -103,7 +105,7 @@ def test_describe_model_route(
     )
 
     response = client.get(
-        "/api/v1/models/describe/kimi-k2.6",
+        "/api/v1/models/kimi-k2.6",
     )
 
     assert response.status_code == 200
@@ -125,7 +127,7 @@ def test_describe_missing_model_returns_404(
     )
 
     response = client.get(
-        "/api/v1/models/describe/missing-model",
+        "/api/v1/models/missing-model",
     )
 
     assert response.status_code == 404
@@ -143,7 +145,7 @@ def test_models_routes_require_authentication(
     )
 
     response = client.get(
-        "/api/v1/models/list",
+        "/api/v1/models",
     )
 
     assert response.status_code == 401
@@ -162,7 +164,7 @@ def test_list_models_validates_query_enums(
     )
 
     response = client.get(
-        "/api/v1/models/list",
+        "/api/v1/models",
         params={
             "provider_id": "unsupported-provider",
         },

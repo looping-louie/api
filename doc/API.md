@@ -116,8 +116,8 @@ availability from the providers configured in the selected workspace.
 
 | Method | Path                                      | Description                                                   |
 | ------ | ----------------------------------------- | ------------------------------------------------------------- |
-| `GET`  | `/api/v1/models/list`                     | Lists models, catalog metadata, pricing, and availability.     |
-| `GET`  | `/api/v1/models/describe/{model_id}`      | Returns deployments, capabilities, and availability details.  |
+| `GET`  | `/api/v1/models`                          | Lists models, catalog metadata, pricing, and availability.     |
+| `GET`  | `/api/v1/models/{model_id}`               | Returns deployments, capabilities, and availability details.  |
 
 ### List Models Query
 
@@ -134,7 +134,7 @@ availability from the providers configured in the selected workspace.
 
 ```sh
 curl -s \
-  "http://127.0.0.1:8000/api/v1/models/list?capability=coding&available=true" \
+  "http://127.0.0.1:8000/api/v1/models?capability=coding&available=true" \
   -H "X-Workspace-ID: workspace-id"
 ```
 

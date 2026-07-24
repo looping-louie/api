@@ -31,8 +31,8 @@ Todas las rutas empiezan por el prefijo: `/api/v1`.
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ----------- |
-| `GET` | `/models/list` | Lista el catálogo curado y la disponibilidad de cada modelo. |
-| `GET` | `/models/describe/{model_id}` | Devuelve proveedor, capacidades y estado del modelo. |
+| `GET` | `/models` | Lista el catálogo curado y la disponibilidad de cada modelo. |
+| `GET` | `/models/{model_id}` | Devuelve proveedor, capacidades y estado del modelo. |
 
 ## Personas
 
