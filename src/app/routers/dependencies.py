@@ -8,6 +8,7 @@ from typing import Annotated, TypeVar
 from fastapi import Header, HTTPException, Request, status
 
 from src.app.controllers.loop import LoopController
+from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
@@ -127,6 +128,18 @@ def get_loop_controller(
         request,
         attribute_name="loop_controller",
         expected_type=LoopController,
+    )
+
+
+def get_pipeline_controller(
+    request: Request,
+) -> PipelineController:
+    """Return the configured pipeline controller."""
+
+    return _get_controller(
+        request,
+        attribute_name="pipeline_controller",
+        expected_type=PipelineController,
     )
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Any, cast
 
@@ -20,6 +19,10 @@ from src.app.models.loop import (
     LoopOutputType,
     LoopStatus,
     LoopStopConditions,
+)
+from src.app.repositories.shared.json_mapping import (
+    deserialize_json_object,
+    serialize_json,
 )
 
 
@@ -44,8 +47,8 @@ async def insert_loop(
             document.description,
             document.flow,
             document.status,
-            serialize(stop_conditions_dict(document)),
-            serialize(output_contract_dict(document)),
+            serialize_json(stop_conditions_dict(document)),
+            serialize_json(output_contract_dict(document)),
             document.created_at.isoformat(),
             document.created_by,
             document.updated_at.isoformat(),
@@ -101,8 +104,8 @@ async def insert_changelog(
             entry.change_type,
             entry.actor_id,
             entry.changed_at.isoformat(),
-            serialize(entry.diff),
-            serialize(entry.content),
+            serialize_json(entry.diff),
+            serialize_json(entry.content),
         ),
     )
 
@@ -127,8 +130,14 @@ async def to_document(
     finally:
         await cursor.close()
 
-    stop = cast(JsonObject, json.loads(row["stop_conditions_json"]))
-    output = cast(JsonObject, json.loads(row["output_contract_json"]))
+    stop = cast(
+        JsonObject,
+        deserialize_json_object(row["stop_conditions_json"]),
+    )
+    output = cast(
+        JsonObject,
+        deserialize_json_object(row["output_contract_json"]),
+    )
     return LoopDocument(
         id=str(row["id"]),
         workspace_id=str(row["workspace_id"]),
@@ -169,8 +178,8 @@ def to_changelog_entry(row: aiosqlite.Row) -> LoopChangelogEntry:
         change_type=cast(LoopChangeType, row["change_type"]),
         actor_id=str(row["actor_id"]),
         changed_at=datetime.fromisoformat(row["changed_at"]),
-        diff=deserialize_optional(row["diff_json"]),
-        content=deserialize_optional(row["content_json"]),
+        diff=deserialize_json_object(row["diff_json"]),
+        content=deserialize_json_object(row["content_json"]),
     )
 
 
@@ -182,8 +191,8 @@ def loop_update_values(document: LoopDocument) -> tuple[Any, ...]:
         document.description,
         document.flow,
         document.status,
-        serialize(stop_conditions_dict(document)),
-        serialize(output_contract_dict(document)),
+        serialize_json(stop_conditions_dict(document)),
+        serialize_json(output_contract_dict(document)),
         document.updated_at.isoformat(),
         document.updated_by,
         document.workspace_id,
@@ -212,19 +221,3 @@ def output_contract_dict(document: LoopDocument) -> JsonObject:
         "files": list(output.files),
         "schema": output.schema,
     }
-
-
-def serialize(value: JsonObject | None) -> str | None:
-    """Serialize an optional JSON object deterministically."""
-
-    if value is None:
-        return None
-    return json.dumps(value, sort_keys=True, separators=(",", ":"))
-
-
-def deserialize_optional(value: str | None) -> JsonObject | None:
-    """Deserialize an optional JSON object."""
-
-    if value is None:
-        return None
-    return cast(JsonObject, json.loads(value))

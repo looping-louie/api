@@ -19,6 +19,7 @@ from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant_service import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.loop_repository import FakeLoopRepository
+from tests.fakes.dependency_checker import FakeDependencyChecker
 from tests.fakes.reference_repository import FakeReferenceRepository
 
 
@@ -27,6 +28,7 @@ def build_service(
     repository: FakeLoopRepository,
     tenant_service: TenantService,
     reference_resolver: ReferenceResolver,
+    dependency_checker: FakeDependencyChecker | None = None,
 ) -> LoopService:
     """Build a deterministic service and seed selectable references."""
 
@@ -35,6 +37,7 @@ def build_service(
         repository=repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
+        dependency_checker=dependency_checker or FakeDependencyChecker(),
         id_factory=lambda: f"id-{next(identifiers)}",
         clock=IncrementingClock(),
     )

@@ -18,6 +18,7 @@ from src.app.bootstrap import configure_application
 from src.app.controllers.loop import LoopController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
+from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.infrastructure.sqlite_database import (
@@ -35,6 +36,9 @@ EXPECTED_TABLES = {
     "loop_agents",
     "loop_catalog_installations",
     "loop_changelog_entries",
+    "pipelines",
+    "pipeline_steps",
+    "pipeline_changelog_entries",
     "provider_credentials",
     "persona_skills",
     "workspace_instruction_settings",
@@ -102,6 +106,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
             LoopController,
         )
         assert isinstance(
+            app.state.pipeline_controller,
+            PipelineController,
+        )
+        assert isinstance(
             app.state.model_controller,
             ModelController,
         )
@@ -159,6 +167,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0006_loops",
         "0007_persona_skills",
         "0008_loop_catalog_installations",
+        "0009_pipelines",
     ]
     assert [str(row[0]) for row in loop_rows] == [
         "plan implementation",

@@ -16,7 +16,7 @@ from src.app.services.loop_mutation import (
     change_type,
     changed_fields,
     normalize_flow,
-    require_offset,
+    normalize_offset,
     require_patch_allowed,
 )
 from src.app.services.loop_types import (
@@ -38,10 +38,9 @@ from src.app.services.shared.reference_resolver import (
     ReferenceResolver,
     ResourceReference,
 )
+from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.tenant_service import TenantService
-
-
-LOOP_PAGE_SIZE = 10
+from src.app.services.shared.pagination import PAGE_SIZE
 
 
 class LoopService:
@@ -53,6 +52,7 @@ class LoopService:
         repository: LoopRepository,
         tenant_service: TenantService,
         reference_resolver: ReferenceResolver,
+        dependency_checker: DependencyChecker,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
     ) -> None:
@@ -61,6 +61,7 @@ class LoopService:
         self._repository = repository
         self._tenant_service = tenant_service
         self._reference_resolver = reference_resolver
+        self._dependency_checker = dependency_checker
         self._id_factory = id_factory
         self._clock = clock
 
@@ -78,8 +79,8 @@ class LoopService:
         )
         documents, total = await self._repository.list(
             workspace_id=workspace_id,
-            offset=require_offset(offset),
-            limit=LOOP_PAGE_SIZE,
+            offset=normalize_offset(offset),
+            limit=PAGE_SIZE,
         )
         return list(documents), total
 
@@ -205,6 +206,10 @@ class LoopService:
             user_id, requested_workspace_id
         )
         current = await self._require_loop(workspace_id, loop_id)
+        await self._dependency_checker.require_deletable(
+            workspace_id=workspace_id,
+            target=ResourceReference("loop", current.id),
+        )
         actor_id = require_text(user_id, "user_id")
         entry = build_entry(
             document=current,
@@ -237,8 +242,8 @@ class LoopService:
         entries, total = await self._repository.list_changelog(
             workspace_id=workspace_id,
             loop_id=require_text(loop_id, "loop_id"),
-            offset=require_offset(offset),
-            limit=LOOP_PAGE_SIZE,
+            offset=normalize_offset(offset),
+            limit=PAGE_SIZE,
         )
         if total == 0:
             raise LoopNotFoundError(loop_id=loop_id)

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
-from uuid import uuid4
 
 from fastapi import FastAPI
 
+from src.app.bootstrap_pipeline import build_pipeline_controller
 from src.app.catalogs.loader import (
     InstructionCatalog,
     load_instruction_catalog,
@@ -79,6 +78,7 @@ from src.app.services.providers.provider_connection_service import (
 from src.app.services.providers.provider_service import ProviderService
 from src.app.services.providers.secret_service import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
+from src.app.services.shared.generation import create_identifier, utc_now
 from src.app.services.shared.instruction_service import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant_service import TenantService
@@ -218,8 +218,8 @@ async def configure_application(
         repository=instruction_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
-        id_factory=_create_identifier,
-        clock=_utc_now,
+        id_factory=create_identifier,
+        clock=utc_now,
     )
     persona_service = PersonaService(
         tenant_service=tenant_service,
@@ -234,8 +234,9 @@ async def configure_application(
         repository=loop_repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
-        id_factory=_create_identifier,
-        clock=_utc_now,
+        dependency_checker=dependency_checker,
+        id_factory=create_identifier,
+        clock=utc_now,
     )
     provider_service = ProviderService(
         repository=provider_repository,
@@ -246,8 +247,8 @@ async def configure_application(
         connection_service=HttpProviderConnectionService(),
         model_registry=CatalogModelRegistryService(),
         catalog=PROVIDER_CATALOG,
-        id_factory=_create_identifier,
-        clock=_utc_now,
+        id_factory=create_identifier,
+        clock=utc_now,
     )
 
     app.state.persona_controller = PersonaController(
@@ -258,6 +259,13 @@ async def configure_application(
     )
     app.state.loop_controller = LoopController(
         loop_service=loop_service,
+    )
+    app.state.pipeline_controller = build_pipeline_controller(
+        database_path=resolved_settings.database_path,
+        loop_repository=loop_repository,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
@@ -285,15 +293,3 @@ def _require_encryption_key(
         )
 
     return settings.encryption_key
-
-
-def _create_identifier() -> str:
-    """Create one resource identifier."""
-
-    return uuid4().hex
-
-
-def _utc_now() -> datetime:
-    """Return the current timezone-aware UTC datetime."""
-
-    return datetime.now(UTC)

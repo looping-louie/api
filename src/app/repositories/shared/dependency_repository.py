@@ -31,8 +31,25 @@ class SqliteDependencyRepository:
     ) -> list[DependencyUsage]:
         """Return resources currently referencing the target."""
 
-        if target.resource_type != "persona":
-            return []
+        if target.resource_type == "loop":
+            return await self._find_pipeline_usages(
+                workspace_id=workspace_id,
+                loop_id=target.resource_id,
+            )
+        if target.resource_type == "persona":
+            return await self._find_loop_usages(
+                workspace_id=workspace_id,
+                persona_id=target.resource_id,
+            )
+        return []
+
+    async def _find_loop_usages(
+        self,
+        *,
+        workspace_id: str,
+        persona_id: str,
+    ) -> list[DependencyUsage]:
+        """Return loops assigning one persona."""
 
         async with self._connect() as connection:
             cursor = await connection.execute(
@@ -42,7 +59,7 @@ class SqliteDependencyRepository:
                 WHERE workspace_id = ? AND persona_id = ?
                 ORDER BY loop_id ASC
                 """,
-                (workspace_id, target.resource_id),
+                (workspace_id, persona_id),
             )
             try:
                 rows = await cursor.fetchall()
@@ -56,6 +73,40 @@ class SqliteDependencyRepository:
                     resource_id=str(row["loop_id"]),
                 ),
                 relation="persona",
+            )
+            for row in rows
+        ]
+
+    async def _find_pipeline_usages(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+    ) -> list[DependencyUsage]:
+        """Return pipelines containing one loop reference."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                """
+                SELECT DISTINCT pipeline_id
+                FROM pipeline_steps
+                WHERE workspace_id = ? AND loop_id = ?
+                ORDER BY pipeline_id ASC
+                """,
+                (workspace_id, loop_id),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+
+        return [
+            DependencyUsage(
+                source=ResourceReference(
+                    resource_type="pipeline",
+                    resource_id=str(row["pipeline_id"]),
+                ),
+                relation="loop",
             )
             for row in rows
         ]

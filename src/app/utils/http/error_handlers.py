@@ -50,12 +50,27 @@ from src.app.services.model_service import (
     ModelNotFoundError,
     ModelValidationError,
 )
+from src.app.services.pipeline_types import (
+    InvalidPipelineStepsError,
+    PipelineArchivedError,
+    PipelineNotFoundError,
+    UnsupportedHumanGateTypeError,
+    UnsupportedPipelineStepError,
+)
 from src.app.services.providers.provider_connection_service import (
     ProviderConnectionError,
 )
 from src.app.services.providers.provider_errors import (
     ProviderConfigurationError,
     UnknownProviderError,
+)
+from src.app.utils.http.request_validation import (
+    register_request_validation_handler,
+)
+from src.app.utils.http.pipeline_error_details import (
+    pipeline_details,
+    unsupported_gate_details,
+    unsupported_step_details,
 )
 
 
@@ -309,6 +324,31 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="loop_not_found",
         details_builder=_loop_details,
     ),
+    PipelineNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="pipeline_not_found",
+        details_builder=pipeline_details,
+    ),
+    PipelineArchivedError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="pipeline_archived",
+        details_builder=pipeline_details,
+    ),
+    InvalidPipelineStepsError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code="invalid_pipeline_steps",
+        details_builder=_validation_details,
+    ),
+    UnsupportedPipelineStepError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code="unsupported_pipeline_step",
+        details_builder=unsupported_step_details,
+    ),
+    UnsupportedHumanGateTypeError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code="unsupported_human_gate_type",
+        details_builder=unsupported_gate_details,
+    ),
     ReferenceValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="reference_validation_error",
@@ -432,6 +472,7 @@ async def domain_exception_handler(
 def register_exception_handlers(app: FastAPI) -> None:
     """Register every domain-to-HTTP exception mapping."""
 
+    register_request_validation_handler(app)
     for error_type in ERROR_DEFINITIONS:
         app.add_exception_handler(
             error_type,

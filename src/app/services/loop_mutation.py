@@ -26,6 +26,11 @@ from src.app.services.loop_validation import (
     normalize_stop_conditions,
     require_text,
 )
+from src.app.services.shared.changelog import (
+    build_changelog_metadata,
+    changed_field_diff,
+)
+from src.app.services.shared.pagination import require_offset
 
 
 def apply_patch(
@@ -107,15 +112,23 @@ def build_entry(
 ) -> LoopChangelogEntry:
     """Build one generated changelog entry."""
 
-    return LoopChangelogEntry(
-        id=entry_id,
-        loop_id=document.id,
+    metadata = build_changelog_metadata(
+        entry_id=entry_id,
         workspace_id=document.workspace_id,
-        change_type=change_type,  # type: ignore[arg-type]
         actor_id=actor_id,
         changed_at=changed_at,
         diff=diff,
         content=content,
+    )
+    return LoopChangelogEntry(
+        id=metadata.id,
+        loop_id=document.id,
+        workspace_id=metadata.workspace_id,
+        change_type=change_type,  # type: ignore[arg-type]
+        actor_id=metadata.actor_id,
+        changed_at=metadata.changed_at,
+        diff=metadata.diff,
+        content=metadata.content,
     )
 
 
@@ -128,11 +141,7 @@ def changed_fields(
 
     old = document_content(before)
     new = document_content(after)
-    return {
-        field: {"from": old[field], "to": new[field]}
-        for field in fields
-        if old[field] != new[field]
-    }
+    return changed_field_diff(old, new, fields)
 
 
 def change_type(before: LoopStatus, after: LoopStatus) -> str:
@@ -169,12 +178,13 @@ def normalize_status(value: object) -> LoopStatus:
     return value  # type: ignore[return-value]
 
 
-def require_offset(value: object) -> int:
-    """Validate a non-negative integer page offset."""
+def normalize_offset(value: object) -> int:
+    """Translate shared offset validation to the loop error contract."""
 
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+    try:
+        return require_offset(value)
+    except ValueError as error:
         raise LoopValidationError(
             field_name="offset",
             message="must be a non-negative integer",
-        )
-    return value
+        ) from error

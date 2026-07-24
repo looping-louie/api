@@ -11,6 +11,7 @@ CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 - `/api/v1/personas/*` manages persona instructions.
 - `/api/v1/skills/*` manages skill instructions.
 - `/api/v1/loops/*` manages stored multi-agent loop definitions.
+- `/api/v1/pipelines/*` manages ordered loop and human-gate definitions.
 - `/task/start` starts one task run and returns the first checkpoint action.
 - `/task/continue` advances one checkpoint transition.
 - `/task/{run_id}` returns the latest checkpoint state for one run.
@@ -19,7 +20,7 @@ CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 
 ## Versioned API conventions
 
-All provider, model, persona, skill, and loop routes use the
+All provider, model, persona, skill, loop, and pipeline routes use the
 `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
@@ -32,7 +33,9 @@ List operations return an object with `items` and `total`, except
 `GET /api/v1/providers`, which returns a JSON array. The optional `search`
 query parameter accepted by resource lists is case-insensitive and must contain
 between 1 and 200 characters. Loop and loop-changelog lists instead accept a
-non-negative `offset` and always return at most ten items.
+non-negative `offset` and always return at most ten items. Pipeline lists also
+use fixed ten-item pages, support `status` and `search`, and exclude archived
+pipelines unless `status=archived` is requested.
 
 Create operations return `201 Created`. Persona and skill content updates use
 optimistic concurrency and require the current positive integer
@@ -387,6 +390,82 @@ Every workspace initially receives two ordinary, active catalog loops:
 produces `tasks.json`. All their agents use `deepseek-v4-pro`. Installation is
 performed only once per workspace, so either loop can subsequently be modified
 or deleted without being reset or recreated.
+
+---
+
+## Pipelines
+
+A pipeline stores an ordered sequence of loop references and human checkpoints.
+The API manages and validates the definition but does not execute it.
+
+### Pipeline calls
+
+| Method   | Path                                        | Description                                   |
+| -------- | ------------------------------------------- | --------------------------------------------- |
+| `GET`    | `/api/v1/pipelines`                         | Lists ten filtered pipelines after an offset. |
+| `POST`   | `/api/v1/pipelines`                         | Creates an enabled pipeline.                  |
+| `GET`    | `/api/v1/pipelines/{pipeline_id}`           | Returns one complete ordered definition.      |
+| `PATCH`  | `/api/v1/pipelines/{pipeline_id}`           | Updates mutable fields or enablement.          |
+| `DELETE` | `/api/v1/pipelines/{pipeline_id}`           | Archives the pipeline.                        |
+| `GET`    | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries.            |
+
+Creation requires a non-empty `title`, a `description`, and at least two
+steps. New pipelines are enabled. PATCH accepts `title`, `description`,
+`enabled`, and `steps`; supplying `steps` replaces the complete ordered array.
+Archived pipelines are immutable and omitted from unfiltered listings.
+
+The list accepts a non-negative `offset`, optional case-insensitive `search`
+over title and description, and optional `status` of `active`, `disabled`, or
+`archived`. Active pipelines sort before disabled and archived pipelines.
+
+### Pipeline steps
+
+Loop steps contain only an active loop reference:
+
+```json
+{
+  "type": "loop",
+  "loop_id": "loop-id"
+}
+```
+
+Approval gates need no configuration:
+
+```json
+{
+  "type": "human_gate",
+  "gate_type": "approval"
+}
+```
+
+Quiz gates require `config` and `minimum_correct_answers`.
+`question_count` defaults to `10` and `option_count` defaults to `3`:
+
+```json
+{
+  "type": "human_gate",
+  "gate_type": "quiz",
+  "config": {
+    "minimum_correct_answers": 8,
+    "question_count": 10,
+    "option_count": 3
+  }
+}
+```
+
+Counts must be positive, `option_count` must be at least two, and
+`minimum_correct_answers` cannot exceed `question_count`. Approval gates reject
+`config`; pipeline definitions never store generated quiz questions or answers.
+Repeated loop references and repeated human gates are allowed.
+
+Every create, patch, enablement change, and archival appends a changelog entry
+in the same transaction. Step diffs report additions, removals, positional
+changes, and order changes.
+
+Request schema failures use the standard API error envelope. Pipeline step
+discriminator failures use `unsupported_pipeline_step`, human-gate
+discriminator failures use `unsupported_human_gate_type`, and other invalid
+step structures use `invalid_pipeline_steps`.
 
 ---
 
