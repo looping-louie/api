@@ -50,11 +50,14 @@ services/task_plan/
 services/meeting/
     Multi-persona meeting orchestration
 
-personas/
-    Persona library and registry
+catalogs/
+    Curated providers, models and builtin instructions
 
-skills/
-    Skill library and registry
+catalogs/personas/
+    Versioned persona manifest and Markdown content
+
+catalogs/skills/
+    Versioned skill manifest and Markdown content
 
 schemas/
     API contracts and shared models
@@ -114,6 +117,12 @@ review summaries, metrics) are persisted under the API runtime root:
 ```text
 runtime/executions/<run_id>/
 ```
+
+The run also persists a versioned `instructions-snapshot.json`. It contains
+every selectable skill and persona presented to the planner: stable and
+runtime IDs, type, origin, instruction version, catalog version, effective
+content and relevant metadata. The same in-memory snapshot is used for the
+entire run; execution services do not resolve those definitions again.
 
 ---
 
@@ -260,21 +269,45 @@ Contains:
 
 ---
 
-### Skill Files
+### Instruction catalog
 
-Skills are Markdown documents with YAML front matter.
+Packaged skills and personas are Markdown content documents referenced
+explicitly by catalog manifests. Identity, versioning and metadata live in
+`registry.json`; Markdown files contain instructions only.
 
 Example:
 
 ```text
-skills/
-
-code_review/
-    small_patch_quality.md
-
-release/
-    accessibility.md
+catalogs/skills/
+    registry.json
+    content/
+        code_review/
+            security.md
+        planning/
+            acceptance_criteria.md
 ```
+
+Startup has one ordered catalog boundary:
+
+```text
+run migrations
+    ↓
+load and validate packaged catalog
+    ↓
+synchronize builtins into SQL
+    ↓
+ensure local tenant
+    ↓
+construct repositories and services
+```
+
+Only startup reads packaged Markdown. API, loop resolution and execution all
+read the effective workspace library from SQL. Builtins are globally shared
+and immutable through the API; workspaces can enable, disable or duplicate
+them. Custom instructions belong to one workspace and remain editable.
+
+See [Builtin instruction catalog](builtin-instruction-catalog.md) for the
+maintenance procedure.
 
 ---
 
@@ -347,16 +380,23 @@ Skills remain project independent.
 
 Current providers:
 
-- Together (generator)
-- OpenAI (reviewers)
+- Anthropic
+- NVIDIA
+- Ollama
+- OpenAI
+- Together
+
+The curated model catalog currently contains deployments for Anthropic, OpenAI
+and Together. NVIDIA and Ollama are valid configurable providers, but they do
+not yet expose selectable curated deployments. Their provider API response
+returns a zero model count and an explicit catalog note until model discovery
+or supported deployments are added.
 
 The architecture is intentionally provider independent.
 
 Future providers may include:
 
-- Anthropic
 - Gemini
-- local models
 - enterprise models
 
 The runner should not contain provider-specific logic.
@@ -370,6 +410,7 @@ Every execution persists enough information for complete inspection.
 Typical artefacts include:
 
 - request
+- effective instruction snapshot
 - response
 - prompts
 - model responses
@@ -414,6 +455,7 @@ Looping Louie follows a small number of architectural principles.
 - One reviewer equals one responsibility.
 - Prompt construction is centralised.
 - Runs are fully observable.
+- Instruction definitions are snapshotted once per run.
 - Tasks are committed independently.
 - Small iterations are preferred over large rewrites.
 - Simplicity is preferred over abstraction.
