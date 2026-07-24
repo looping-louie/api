@@ -1,3 +1,5 @@
+"""Schemas and constrained values shared by HTTP resources."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -67,12 +69,6 @@ class InstructionCapabilitiesResponse(ResponseSchema):
     deprecated: bool
     catalog_version: PositiveInteger | None
     source_instruction_id: str | None
-
-
-class CompositionSummaryResponse(ResourceSummaryResponse):
-    """Summary fields shared by councils and loops."""
-
-    item_count: NonNegativeInteger
 
 
 ItemType = TypeVar("ItemType")

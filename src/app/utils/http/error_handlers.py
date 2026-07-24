@@ -7,16 +7,13 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from src.app.services.council_service import CouncilValidationError
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionNotFoundError,
 )
-from src.app.services.loop_service import LoopValidationError
-from src.app.services.shared.composition_service import (
-    CompositionNotFoundError,
-    CompositionValidationError,
-    CompositionVersionConflictError,
-    InvalidCompositionTypeError,
+from src.app.services.loop_service import (
+    ArchivedLoopImmutableError,
+    LoopNotFoundError,
+    LoopValidationError,
 )
 from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
@@ -137,12 +134,12 @@ def _execution_instruction_not_found_details(
     }
 
 
-def _composition_not_found_details(error: Exception) -> ErrorDetails:
-    assert isinstance(error, CompositionNotFoundError)
+def _loop_details(error: Exception) -> ErrorDetails:
+    """Return the loop identity carried by loop-specific errors."""
 
     return {
-        "resource_type": error.composition_type,
-        "resource_id": error.composition_id,
+        "resource_type": "loop",
+        "resource_id": getattr(error, "loop_id"),
     }
 
 
@@ -178,10 +175,6 @@ def _version_conflict_details(error: Exception) -> ErrorDetails:
 
     resource_id = getattr(error, "instruction_id", None)
     resource_type = getattr(error, "instruction_type", None)
-
-    if resource_id is None:
-        resource_id = getattr(error, "composition_id", None)
-        resource_type = getattr(error, "composition_type", None)
 
     if resource_id is not None:
         details["resource_id"] = resource_id
@@ -223,14 +216,6 @@ def _invalid_instruction_type_details(error: Exception) -> ErrorDetails:
 
     return {
         "instruction_type": error.instruction_type,
-    }
-
-
-def _invalid_composition_type_details(error: Exception) -> ErrorDetails:
-    assert isinstance(error, InvalidCompositionTypeError)
-
-    return {
-        "composition_type": error.composition_type,
     }
 
 
@@ -291,25 +276,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="instruction_validation_error",
         details_builder=_validation_details,
     ),
-    InvalidCompositionTypeError: ErrorDefinition(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        code="unsupported_composition_type",
-        details_builder=_invalid_composition_type_details,
-    ),
-    CompositionNotFoundError: ErrorDefinition(
+    LoopNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
-        code="composition_not_found",
-        details_builder=_composition_not_found_details,
-    ),
-    CompositionVersionConflictError: ErrorDefinition(
-        status_code=status.HTTP_409_CONFLICT,
-        code="version_conflict",
-        details_builder=_version_conflict_details,
-    ),
-    CompositionValidationError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="composition_validation_error",
-        details_builder=_validation_details,
+        code="loop_not_found",
+        details_builder=_loop_details,
     ),
     ReferenceValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -356,15 +326,15 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="skill_validation_error",
         details_builder=_validation_details,
     ),
-    CouncilValidationError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="council_validation_error",
-        details_builder=_validation_details,
-    ),
     LoopValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="loop_validation_error",
         details_builder=_validation_details,
+    ),
+    ArchivedLoopImmutableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="archived_loop_immutable",
+        details_builder=_loop_details,
     ),
     ModelNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

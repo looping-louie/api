@@ -7,10 +7,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.app.models.providers import ProviderCredential
-from src.app.services.shared.composition_service import (
-    CompositionDocument,
-    CompositionType,
-)
 from src.app.services.shared.instruction_service import (
     InstructionDocument,
     InstructionType,
@@ -50,35 +46,6 @@ def build_instruction(
         description=description,
         instructions=instructions,
         metadata=dict(metadata or {}),
-        version=version,
-        created_at=created_at,
-        updated_at=updated_at,
-    )
-
-
-def build_composition(
-    *,
-    composition_id: str = "composition-1",
-    workspace_id: str = "workspace-1",
-    composition_type: CompositionType = "council",
-    name: str = "Security Council",
-    description: str = "Reviews security-sensitive changes.",
-    attributes: Mapping[str, Any] | None = None,
-    items: tuple[dict[str, Any], ...] = (),
-    version: int = 1,
-    created_at: datetime = DEFAULT_DATETIME,
-    updated_at: datetime = DEFAULT_DATETIME,
-) -> CompositionDocument:
-    """Build one composition document."""
-
-    return CompositionDocument(
-        id=composition_id,
-        workspace_id=workspace_id,
-        composition_type=composition_type,
-        name=name,
-        description=description,
-        attributes=dict(attributes or {}),
-        items=items,
         version=version,
         created_at=created_at,
         updated_at=updated_at,

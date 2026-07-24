@@ -10,8 +10,7 @@ CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 - `/api/v1/models/*` exposes the curated model catalog.
 - `/api/v1/personas/*` manages persona instructions.
 - `/api/v1/skills/*` manages skill instructions.
-- `/api/v1/councils/*` manages persona and skill compositions.
-- `/api/v1/loops/*` manages executable council and model configurations.
+- `/api/v1/loops/*` manages stored multi-agent loop definitions.
 - `/task/start` starts one task run and returns the first checkpoint action.
 - `/task/continue` advances one checkpoint transition.
 - `/task/{run_id}` returns the latest checkpoint state for one run.
@@ -22,7 +21,7 @@ CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 
 ## Versioned API conventions
 
-All provider, model, persona, skill, council, and loop routes use the
+All provider, model, persona, skill, and loop routes use the
 `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
@@ -34,10 +33,12 @@ the API returns `409 workspace_selection_required`.
 List operations return an object with `items` and `total`, except
 `GET /api/v1/providers`, which returns a JSON array. The optional `search`
 query parameter accepted by resource lists is case-insensitive and must contain
-between 1 and 200 characters.
+between 1 and 200 characters. Loop and loop-changelog lists instead accept a
+non-negative `offset` and always return at most ten items.
 
-Create operations return `201 Created`. Updates use optimistic concurrency:
-the request must include the current positive integer `expected_version`.
+Create operations return `201 Created`. Persona and skill content updates use
+optimistic concurrency and require the current positive integer
+`expected_version`; loop updates do not.
 Successful deletes return:
 
 ```json
@@ -296,121 +297,87 @@ items omit instructions and metadata.
 
 ---
 
-## Councils
-
-A council assigns one persona and one or more skills to each role used during a
-meeting or loop.
-
-### Council calls
-
-| Method   | Path                                             | Description                                                  |
-| -------- | ------------------------------------------------ | ------------------------------------------------------------ |
-| `GET`    | `/api/v1/councils/list`                          | Lists council metadata without expanding assignments.        |
-| `GET`    | `/api/v1/councils/describe/{council_id}`         | Returns the council and all role assignments.                 |
-| `POST`   | `/api/v1/councils/create`                        | Creates a council.                                           |
-| `POST`   | `/api/v1/councils/update/{council_id}`           | Updates metadata or replaces assignments.                    |
-| `DELETE` | `/api/v1/councils/delete/{council_id}`           | Deletes a council when no loop depends on it.                 |
-
-### Create Council Request
-
-| Field         | Description                                                   |
-| ------------- | ------------------------------------------------------------- |
-| `name`        | Required non-empty display name.                              |
-| `description` | Optional description. Defaults to an empty string.            |
-| `assignments` | Required non-empty array of role assignments.                 |
-
-Each assignment contains a non-empty `role`, a `persona_id`, and a non-empty
-`skill_ids` array. Referenced personas and skills must exist and be enabled.
-
-### Update Council Request
-
-`expected_version` is required. Include at least one of `name`, `description`,
-or `assignments`. When supplied, `assignments` replaces the complete assignment
-list.
-
-### Create Council Example
-
-```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/councils/create \
-  -H "Content-Type: application/json" \
-  -H "X-Workspace-ID: workspace-id" \
-  -d '{
-    "name": "Implementation council",
-    "description": "Generates and reviews implementation changes.",
-    "assignments": [
-      {
-        "role": "generator",
-        "persona_id": "builtin:persona:tech_lead",
-        "skill_ids": ["builtin:skill:web_development"]
-      }
-    ]
-  }'
-```
-
-Describe and write operations return assignments, version, and timestamps.
-List items replace assignments with `item_count`.
-
----
-
 ## Loops
 
-A loop binds a council's roles to models and defines the maximum number of
-iterations.
+A loop stores a validated flow, its model/persona agents, stop conditions, and
+the expected output. The API stores this definition but does not execute it.
 
 ### Loop calls
 
-| Method   | Path                                      | Description                                                       |
-| -------- | ----------------------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/api/v1/loops/list`                      | Lists loop metadata and configuration summaries.                  |
-| `GET`    | `/api/v1/loops/describe/{loop_id}`       | Returns council, model bindings, and iteration limit.              |
-| `POST`   | `/api/v1/loops/create`                   | Creates a loop.                                                   |
-| `POST`   | `/api/v1/loops/update/{loop_id}`         | Updates loop metadata or configuration.                           |
-| `DELETE` | `/api/v1/loops/delete/{loop_id}`         | Deletes a loop without deleting historical run snapshots.         |
-| `POST`   | `/api/v1/loops/validate/{loop_id}`       | Validates council roles and model references for a stored loop.    |
+| Method   | Path                                      | Description                                                   |
+| -------- | ----------------------------------------- | ------------------------------------------------------------- |
+| `GET`    | `/api/v1/loops`                           | Lists up to ten complete loop definitions.                    |
+| `POST`   | `/api/v1/loops`                           | Creates an active loop.                                       |
+| `GET`    | `/api/v1/loops/{loop_id}`                 | Returns one complete loop.                                    |
+| `PATCH`  | `/api/v1/loops/{loop_id}`                 | Updates supplied mutable fields or changes status.            |
+| `DELETE` | `/api/v1/loops/{loop_id}`                 | Permanently deletes a loop while retaining its changelog.     |
+| `GET`    | `/api/v1/loops/{loop_id}/changelog`       | Lists up to ten newest immutable changelog entries.           |
 
 ### Create Loop Request
 
-| Field            | Description                                                   |
-| ---------------- | ------------------------------------------------------------- |
-| `name`           | Required non-empty display name.                              |
-| `description`    | Optional description. Defaults to an empty string.            |
-| `council_id`     | Required identifier of an existing council.                   |
-| `max_iterations` | Required positive integer.                                    |
-| `model_bindings` | Required non-empty array assigning a model to each role.      |
+| Field              | Description                                                       |
+| ------------------ | ----------------------------------------------------------------- |
+| `title`            | Required non-empty display title.                                 |
+| `description`      | Required description.                                             |
+| `flow`             | `direct`, `refinement`, or `roundtable`.                           |
+| `stop_conditions`  | At least one positive supported stop condition.                   |
+| `agents`           | Flow-compatible model, persona, and role assignments.             |
+| `output_contract`  | Generic `text`, `json`, or `files` output description.            |
 
-Each model binding contains a non-empty `role` and `model_id`. Referenced
-models must exist, be available in the workspace, and cover the council roles.
+Agents require `model_id`, `persona_id`, and a `generator`, `reviewer`, or
+`aggregator` role. Their `id` is optional and generated when omitted. Agents do
+not accept skills. `direct` requires at least one agent and at most one
+aggregator. `refinement` requires exactly one generator and at least one
+reviewer. `roundtable` requires at least two generators and exactly one
+aggregator.
 
-### Update Loop Request
-
-`expected_version` is required. Include at least one of `name`, `description`,
-`council_id`, `max_iterations`, or `model_bindings`. When supplied,
-`model_bindings` replaces the complete binding list.
+`stop_conditions` supports optional positive `max_iterations`, `max_tokens`,
+and `timeout_seconds` values, with at least one configured. A `files` output
+requires at least one path; a `json` output requires a JSON object in `schema`.
 
 ### Create Loop Example
 
 ```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/loops/create \
+curl -s -X POST http://127.0.0.1:8000/api/v1/loops \
   -H "Content-Type: application/json" \
   -H "X-Workspace-ID: workspace-id" \
   -d '{
-    "name": "Implementation loop",
+    "title": "Implementation loop",
     "description": "One generator with an independent reviewer.",
-    "council_id": "council-id",
-    "max_iterations": 3,
-    "model_bindings": [
+    "flow": "refinement",
+    "stop_conditions": {
+      "max_iterations": 3,
+      "max_tokens": 50000
+    },
+    "agents": [
       {
-        "role": "generator",
-        "model_id": "gpt-5.6-terra"
+        "model_id": "gpt-5.6-terra",
+        "persona_id": "builtin:persona:tech_lead",
+        "role": "generator"
+      },
+      {
+        "model_id": "kimi-k2.6",
+        "persona_id": "builtin:persona:devils_advocate",
+        "role": "reviewer"
       }
-    ]
+    ],
+    "output_contract": {
+      "type": "files",
+      "description": "Produce the implementation plan.",
+      "files": ["plan.md"]
+    }
   }'
 ```
 
-Describe and write operations return the complete configuration, version, and
-timestamps. List items replace model bindings with `item_count`. A successful
-validation returns `{"valid": true, "loop": {...}}`; invalid configurations use
-the standard error envelope.
+The API generates the loop ID, missing agent IDs, `active` status, timestamps,
+and actor fields. PATCH replaces the complete agent array when supplied,
+preserves omitted fields, and rejects empty or ineffective changes. An archived
+loop is immutable except for a status-only reactivation to `active`.
+
+Every create, update, status transition, and delete writes an immutable
+changelog entry in the same transaction. Creation and deletion entries contain
+the complete loop representation; update entries contain only changed fields.
+The changelog remains available after deletion.
 
 ---
 

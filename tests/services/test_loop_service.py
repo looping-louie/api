@@ -1,459 +1,291 @@
+"""Unit tests for loop application behavior."""
+
+from __future__ import annotations
+
+from itertools import count
+
 import pytest
 
+from src.app.models.loop import LoopOutputContract, LoopStopConditions
 from src.app.services.loop_service import (
+    ArchivedLoopImmutableError,
+    LoopAgentInput,
     LoopCreate,
-    LoopModelBinding,
+    LoopPatch,
     LoopService,
-    LoopUpdate,
     LoopValidationError,
 )
-from src.app.services.shared.composition_service import CompositionService
-from src.app.services.shared.reference_resolver import (
-    ReferenceResolver,
-    ResourceNotFoundError,
-)
+from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant_service import TenantService
-from src.app.services.shared.validation_service import ValidationService
+from tests.conftest import IncrementingClock
+from tests.fakes.loop_repository import FakeLoopRepository
 from tests.fakes.reference_repository import FakeReferenceRepository
 
 
 def build_service(
     *,
+    repository: FakeLoopRepository,
     tenant_service: TenantService,
-    validation_service: ValidationService,
     reference_resolver: ReferenceResolver,
-    composition_service: CompositionService,
 ) -> LoopService:
+    """Build a deterministic service and seed selectable references."""
+
+    identifiers = count(1)
     return LoopService(
+        repository=repository,
         tenant_service=tenant_service,
-        validation_service=validation_service,
         reference_resolver=reference_resolver,
-        composition_service=composition_service,
+        id_factory=lambda: f"id-{next(identifiers)}",
+        clock=IncrementingClock(),
     )
 
 
-def seed_loop_references(
-    repository: FakeReferenceRepository,
-) -> None:
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="council",
-        resource_id="council-1",
-        value={
-            "items": [
-                {
-                    "role": "generator",
-                    "persona_id": "persona-generator",
-                    "skill_ids": ["skill-generator"],
-                },
-                {
-                    "role": "reviewer",
-                    "persona_id": "persona-reviewer",
-                    "skill_ids": ["skill-reviewer"],
-                },
-            ],
-        },
-    )
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="persona",
-        resource_id="persona-generator",
-        value={"id": "persona-generator"},
-    )
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="persona",
-        resource_id="persona-reviewer",
-        value={"id": "persona-reviewer"},
-    )
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="skill",
-        resource_id="skill-generator",
-        value={"id": "skill-generator"},
-    )
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="skill",
-        resource_id="skill-reviewer",
-        value={"id": "skill-reviewer"},
-    )
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="model",
-        resource_id="model-generator",
-        value={"id": "model-generator"},
-    )
-    repository.seed(
-        workspace_id="workspace-1",
-        resource_type="model",
-        resource_id="model-reviewer",
-        value={"id": "model-reviewer"},
+def seed_references(repository: FakeReferenceRepository) -> None:
+    """Seed every model and persona used by loop tests."""
+
+    for resource_type, resource_ids in {
+        "model": ("model-1", "model-2", "model-3"),
+        "persona": ("persona-1", "persona-2", "persona-3"),
+    }.items():
+        for resource_id in resource_ids:
+            repository.seed(
+                workspace_id="workspace-1",
+                resource_type=resource_type,
+                resource_id=resource_id,
+                value={"id": resource_id},
+            )
+
+
+def agent(
+    position: int,
+    role: str,
+    *,
+    agent_id: str | None = None,
+) -> LoopAgentInput:
+    """Build one agent input from a test position and role."""
+
+    return LoopAgentInput(
+        id=agent_id,
+        model_id=f"model-{position}",
+        persona_id=f"persona-{position}",
+        role=role,
     )
 
 
-@pytest.mark.asyncio
-async def test_create_loop(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
-) -> None:
-    seed_loop_references(reference_repository)
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
+def payload(
+    *,
+    flow: str = "direct",
+    agents: tuple[LoopAgentInput, ...] | None = None,
+    stop_conditions: LoopStopConditions | None = None,
+    output_contract: LoopOutputContract | None = None,
+) -> LoopCreate:
+    """Build a valid loop create input with overridable aggregate fields."""
 
-    created = await service.create(
-        user_id="user-1",
-        payload=LoopCreate(
-            name="Production Loop",
-            description="Production review",
-            council_id="council-1",
-            max_iterations=4,
-            model_bindings=[
-                LoopModelBinding(
-                    role="generator",
-                    model_id="model-generator",
-                ),
-                LoopModelBinding(
-                    role="reviewer",
-                    model_id="model-reviewer",
-                ),
-            ],
+    return LoopCreate(
+        title="Idea shaping",
+        description="Shape one idea.",
+        flow=flow,
+        stop_conditions=stop_conditions or LoopStopConditions(
+            max_iterations=3
+        ),
+        agents=(
+            agents
+            if agents is not None
+            else (agent(1, "generator"),)
+        ),
+        output_contract=output_contract or LoopOutputContract(
+            type="text",
+            description="Human-readable answer.",
+            files=(),
+            schema=None,
         ),
     )
 
-    assert created.workspace_id == "workspace-1"
-    assert created.council_id == "council-1"
-    assert created.max_iterations == 4
-    assert len(created.model_bindings) == 2
+
+@pytest.fixture
+def repository() -> FakeLoopRepository:
+    """Return an empty loop repository."""
+
+    return FakeLoopRepository()
+
+
+@pytest.fixture
+def service(
+    repository: FakeLoopRepository,
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> LoopService:
+    """Return a service with all common references available."""
+
+    seed_references(reference_repository)
+    return build_service(
+        repository=repository,
+        tenant_service=tenant_service,
+        reference_resolver=reference_resolver,
+    )
 
 
 @pytest.mark.asyncio
-async def test_create_loop_rejects_missing_model(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
-) -> None:
-    seed_loop_references(reference_repository)
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
-
-    with pytest.raises(ResourceNotFoundError):
-        await service.create(
-            user_id="user-1",
-            payload=LoopCreate(
-                name="Loop",
-                description="Description",
-                council_id="council-1",
-                max_iterations=3,
-                model_bindings=[
-                    LoopModelBinding(
-                        role="generator",
-                        model_id="model-generator",
-                    ),
-                    LoopModelBinding(
-                        role="reviewer",
-                        model_id="missing-model",
-                    ),
-                ],
+@pytest.mark.parametrize(
+    ("flow", "agents"),
+    [
+        ("direct", (agent(1, "reviewer"),)),
+        (
+            "refinement",
+            (agent(1, "generator"), agent(2, "reviewer")),
+        ),
+        (
+            "roundtable",
+            (
+                agent(1, "generator"),
+                agent(2, "generator"),
+                agent(3, "aggregator"),
             ),
-        )
-
-
-@pytest.mark.asyncio
-async def test_loop_new_use_rejects_retired_council_instruction(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
+        ),
+    ],
+)
+async def test_create_supports_each_flow(
+    service: LoopService,
+    repository: FakeLoopRepository,
+    flow: str,
+    agents: tuple[LoopAgentInput, ...],
 ) -> None:
-    seed_loop_references(reference_repository)
-    reference_repository.set_historical_only(
-        workspace_id="workspace-1",
-        resource_type="skill",
-        resource_id="skill-reviewer",
-    )
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
-
-    with pytest.raises(ResourceNotFoundError):
-        await service.create(
-            user_id="user-1",
-            payload=LoopCreate(
-                name="Loop",
-                description="Description",
-                council_id="council-1",
-                max_iterations=3,
-                model_bindings=[
-                    LoopModelBinding(
-                        role="generator",
-                        model_id="model-generator",
-                    ),
-                    LoopModelBinding(
-                        role="reviewer",
-                        model_id="model-reviewer",
-                    ),
-                ],
-            ),
-        )
-
-
-@pytest.mark.asyncio
-async def test_create_loop_rejects_missing_role_binding(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
-) -> None:
-    seed_loop_references(reference_repository)
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
-
-    with pytest.raises(LoopValidationError) as error:
-        await service.create(
-            user_id="user-1",
-            payload=LoopCreate(
-                name="Loop",
-                description="Description",
-                council_id="council-1",
-                max_iterations=3,
-                model_bindings=[
-                    LoopModelBinding(
-                        role="generator",
-                        model_id="model-generator",
-                    ),
-                ],
-            ),
-        )
-
-    assert "reviewer" in str(error.value)
-
-
-@pytest.mark.asyncio
-async def test_create_loop_rejects_unused_role_binding(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
-) -> None:
-    seed_loop_references(reference_repository)
-    reference_repository.seed(
-        workspace_id="workspace-1",
-        resource_type="model",
-        resource_id="model-challenger",
-        value={"id": "model-challenger"},
-    )
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
-
-    with pytest.raises(LoopValidationError) as error:
-        await service.create(
-            user_id="user-1",
-            payload=LoopCreate(
-                name="Loop",
-                description="Description",
-                council_id="council-1",
-                max_iterations=3,
-                model_bindings=[
-                    LoopModelBinding(
-                        role="generator",
-                        model_id="model-generator",
-                    ),
-                    LoopModelBinding(
-                        role="reviewer",
-                        model_id="model-reviewer",
-                    ),
-                    LoopModelBinding(
-                        role="challenger",
-                        model_id="model-challenger",
-                    ),
-                ],
-            ),
-        )
-
-    assert "challenger" in str(error.value)
-
-
-@pytest.mark.asyncio
-async def test_update_loop_iterations_preserves_configuration(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
-) -> None:
-    seed_loop_references(reference_repository)
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
+    """Each supported role combination creates an active audited loop."""
 
     created = await service.create(
         user_id="user-1",
-        payload=LoopCreate(
-            name="Loop",
-            description="Description",
-            council_id="council-1",
-            max_iterations=3,
-            model_bindings=[
-                LoopModelBinding(
-                    role="generator",
-                    model_id="model-generator",
-                ),
-                LoopModelBinding(
-                    role="reviewer",
-                    model_id="model-reviewer",
-                ),
-            ],
-        ),
+        payload=payload(flow=flow, agents=agents),
     )
 
-    updated = await service.update(
+    assert created.flow == flow
+    assert created.status == "active"
+    assert all(created_agent.id for created_agent in created.agents)
+    assert repository.entries[-1].change_type == "created"
+    assert repository.entries[-1].actor_id == "user-1"
+    assert repository.entries[-1].content["id"] == created.id
+
+
+@pytest.mark.asyncio
+async def test_patch_replaces_agents_and_records_only_changed_field(
+    service: LoopService,
+    repository: FakeLoopRepository,
+) -> None:
+    """Agent replacement preserves omitted fields and writes a concise diff."""
+
+    created = await service.create(
+        user_id="user-1",
+        payload=payload(),
+    )
+    replacement = (agent(2, "reviewer", agent_id="agent-explicit"),)
+
+    updated = await service.patch(
         user_id="user-1",
         loop_id=created.id,
-        payload=LoopUpdate(
-            expected_version=1,
-            max_iterations=6,
+        payload=LoopPatch(
+            provided_fields=frozenset({"agents"}),
+            agents=replacement,
         ),
     )
 
-    assert updated.max_iterations == 6
-    assert updated.council_id == created.council_id
-    assert updated.model_bindings == created.model_bindings
-    assert updated.version == 2
+    assert updated.title == created.title
+    assert updated.agents[0].id == "agent-explicit"
+    assert set(repository.entries[-1].diff) == {"agents"}
+    assert repository.entries[-1].content is None
 
 
 @pytest.mark.asyncio
-async def test_validate_detects_reference_removed_after_creation(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
+async def test_status_transitions_include_archive_reactivation(
+    service: LoopService,
+    repository: FakeLoopRepository,
 ) -> None:
-    seed_loop_references(reference_repository)
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
+    """Disabled, archived, and reactivated transitions use specific events."""
 
-    created = await service.create(
-        user_id="user-1",
-        payload=LoopCreate(
-            name="Loop",
-            description="Description",
-            council_id="council-1",
-            max_iterations=3,
-            model_bindings=[
-                LoopModelBinding(
-                    role="generator",
-                    model_id="model-generator",
-                ),
-                LoopModelBinding(
-                    role="reviewer",
-                    model_id="model-reviewer",
-                ),
-            ],
-        ),
-    )
-
-    reference_repository.remove(
-        workspace_id="workspace-1",
-        resource_type="model",
-        resource_id="model-reviewer",
-    )
-
-    with pytest.raises(ResourceNotFoundError):
-        await service.validate(
+    current = await service.create(user_id="user-1", payload=payload())
+    expected = [
+        ("disabled", "disabled"),
+        ("active", "enabled"),
+        ("archived", "archived"),
+        ("active", "enabled"),
+    ]
+    for status, event in expected:
+        current = await service.patch(
             user_id="user-1",
-            loop_id=created.id,
+            loop_id=current.id,
+            payload=LoopPatch(
+                provided_fields=frozenset({"status"}),
+                status=status,
+            ),
         )
+        assert current.status == status
+        assert repository.entries[-1].change_type == event
 
 
 @pytest.mark.asyncio
-async def test_validate_existing_loop_allows_retired_instruction(
-    tenant_service: TenantService,
-    validation_service: ValidationService,
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-    composition_service: CompositionService,
+async def test_archived_loop_rejects_non_reactivation_change(
+    service: LoopService,
 ) -> None:
-    seed_loop_references(reference_repository)
-    service = build_service(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
-    created = await service.create(
+    """An archived loop accepts only a status-only reactivation."""
+
+    created = await service.create(user_id="user-1", payload=payload())
+    await service.patch(
         user_id="user-1",
-        payload=LoopCreate(
-            name="Loop",
-            description="Description",
-            council_id="council-1",
-            max_iterations=3,
-            model_bindings=[
-                LoopModelBinding(
-                    role="generator",
-                    model_id="model-generator",
-                ),
-                LoopModelBinding(
-                    role="reviewer",
-                    model_id="model-reviewer",
-                ),
-            ],
+        loop_id=created.id,
+        payload=LoopPatch(
+            provided_fields=frozenset({"status"}),
+            status="archived",
         ),
     )
-    reference_repository.set_historical_only(
-        workspace_id="workspace-1",
-        resource_type="skill",
-        resource_id="skill-reviewer",
-    )
 
-    with pytest.raises(ResourceNotFoundError):
-        await service.update(
+    with pytest.raises(ArchivedLoopImmutableError):
+        await service.patch(
             user_id="user-1",
             loop_id=created.id,
-            payload=LoopUpdate(
-                expected_version=1,
-                max_iterations=4,
+            payload=LoopPatch(
+                provided_fields=frozenset({"title"}),
+                title="Changed",
             ),
         )
 
-    validated = await service.validate(
+
+@pytest.mark.asyncio
+async def test_patch_rejects_no_effective_change(
+    service: LoopService,
+) -> None:
+    """Supplying the current value does not create a changelog entry."""
+
+    created = await service.create(user_id="user-1", payload=payload())
+
+    with pytest.raises(LoopValidationError):
+        await service.patch(
+            user_id="user-1",
+            loop_id=created.id,
+            payload=LoopPatch(
+                provided_fields=frozenset({"title"}),
+                title=created.title,
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_delete_retains_final_snapshot(
+    service: LoopService,
+    repository: FakeLoopRepository,
+) -> None:
+    """Deletion removes the loop but leaves a final audited representation."""
+
+    created = await service.create(user_id="user-1", payload=payload())
+    await service.delete(user_id="user-1", loop_id=created.id)
+    entries, total = await service.list_changelog(
         user_id="user-1",
         loop_id=created.id,
+        offset=0,
     )
 
-    assert validated.id == created.id
+    assert await repository.get(
+        workspace_id="workspace-1",
+        loop_id=created.id,
+    ) is None
+    assert total == 2
+    assert entries[0].change_type == "deleted"
+    assert entries[0].content["id"] == created.id

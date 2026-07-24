@@ -1,3 +1,5 @@
+"""FastAPI dependencies for request context and controllers."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,7 +7,6 @@ from typing import Annotated, TypeVar
 
 from fastapi import Header, HTTPException, Request, status
 
-from src.app.controllers.council import CouncilController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -112,18 +113,6 @@ def get_skill_controller(
         request,
         attribute_name="skill_controller",
         expected_type=SkillController,
-    )
-
-
-def get_council_controller(
-    request: Request,
-) -> CouncilController:
-    """Return the configured council controller."""
-
-    return _get_controller(
-        request,
-        attribute_name="council_controller",
-        expected_type=CouncilController,
     )
 
 

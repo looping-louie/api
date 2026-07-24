@@ -1,3 +1,5 @@
+"""REST routes for loop definitions and changelog entries."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -7,11 +9,11 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from src.app.controllers.loop import LoopController
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.loop import (
+    LoopChangelogListResponse,
     LoopCreateRequest,
     LoopListResponse,
+    LoopPatchRequest,
     LoopResponse,
-    LoopUpdateRequest,
-    LoopValidationResponse,
 )
 
 from .dependencies import (
@@ -21,71 +23,39 @@ from .dependencies import (
 )
 
 
-router = APIRouter(
-    prefix="/loops",
-    tags=["Loops"],
-)
-
+router = APIRouter(prefix="/loops", tags=["Loops"])
 ContextDependency = Annotated[
     RequestContext,
     Depends(get_request_context),
 ]
-
 ControllerDependency = Annotated[
     LoopController,
     Depends(get_loop_controller),
 ]
+OffsetQuery = Annotated[
+    int,
+    Query(ge=0, description="Number of records to skip."),
+]
+LoopIdPath = Annotated[str, Path(min_length=1)]
 
 
-@router.get(
-    "/list",
-    response_model=LoopListResponse,
-    summary="List loops",
-)
+@router.get("", response_model=LoopListResponse, summary="List loops")
 async def list_loops(
     context: ContextDependency,
     controller: ControllerDependency,
-    search: Annotated[
-        str | None,
-        Query(
-            min_length=1,
-            max_length=200,
-        ),
-    ] = None,
+    offset: OffsetQuery = 0,
 ) -> LoopListResponse:
-    """List loop metadata and configuration summaries."""
+    """Return ten loops after the requested offset."""
 
     return await controller.list(
         user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
-        search=search,
-    )
-
-
-@router.get(
-    "/describe/{loop_id}",
-    response_model=LoopResponse,
-    summary="Describe loop",
-)
-async def describe_loop(
-    context: ContextDependency,
-    controller: ControllerDependency,
-    loop_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
-) -> LoopResponse:
-    """Return a loop including council, models and iteration limit."""
-
-    return await controller.describe(
-        user_id=context.user_id,
-        loop_id=loop_id,
+        offset=offset,
         requested_workspace_id=context.requested_workspace_id,
     )
 
 
 @router.post(
-    "/create",
+    "",
     response_model=LoopResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create loop",
@@ -95,7 +65,7 @@ async def create_loop(
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> LoopResponse:
-    """Create a loop in the selected workspace."""
+    """Create an active loop."""
 
     return await controller.create(
         user_id=context.user_id,
@@ -104,23 +74,39 @@ async def create_loop(
     )
 
 
-@router.post(
-    "/update/{loop_id}",
+@router.get(
+    "/{loop_id}",
+    response_model=LoopResponse,
+    summary="Get loop",
+)
+async def get_loop(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    loop_id: LoopIdPath,
+) -> LoopResponse:
+    """Return one complete loop."""
+
+    return await controller.get(
+        user_id=context.user_id,
+        loop_id=loop_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.patch(
+    "/{loop_id}",
     response_model=LoopResponse,
     summary="Update loop",
 )
-async def update_loop(
-    payload: LoopUpdateRequest,
+async def patch_loop(
+    payload: LoopPatchRequest,
     context: ContextDependency,
     controller: ControllerDependency,
-    loop_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
+    loop_id: LoopIdPath,
 ) -> LoopResponse:
-    """Update a loop configuration."""
+    """Update supplied mutable loop fields."""
 
-    return await controller.update(
+    return await controller.patch(
         user_id=context.user_id,
         loop_id=loop_id,
         payload=payload,
@@ -129,19 +115,16 @@ async def update_loop(
 
 
 @router.delete(
-    "/delete/{loop_id}",
+    "/{loop_id}",
     response_model=DeleteResponse,
     summary="Delete loop",
 )
 async def delete_loop(
     context: ContextDependency,
     controller: ControllerDependency,
-    loop_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
+    loop_id: LoopIdPath,
 ) -> DeleteResponse:
-    """Delete a loop without deleting historical run snapshots."""
+    """Delete a loop while preserving its changelog."""
 
     return await controller.delete(
         user_id=context.user_id,
@@ -150,23 +133,22 @@ async def delete_loop(
     )
 
 
-@router.post(
-    "/validate/{loop_id}",
-    response_model=LoopValidationResponse,
-    summary="Validate loop",
+@router.get(
+    "/{loop_id}/changelog",
+    response_model=LoopChangelogListResponse,
+    summary="List loop changelog",
 )
-async def validate_loop(
+async def list_loop_changelog(
     context: ContextDependency,
     controller: ControllerDependency,
-    loop_id: Annotated[
-        str,
-        Path(min_length=1),
-    ],
-) -> LoopValidationResponse:
-    """Validate council roles and model references for a stored loop."""
+    loop_id: LoopIdPath,
+    offset: OffsetQuery = 0,
+) -> LoopChangelogListResponse:
+    """Return ten newest changelog entries after the requested offset."""
 
-    return await controller.validate(
+    return await controller.list_changelog(
         user_id=context.user_id,
         loop_id=loop_id,
+        offset=offset,
         requested_workspace_id=context.requested_workspace_id,
     )

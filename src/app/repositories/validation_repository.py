@@ -18,14 +18,6 @@ _RESOURCE_LOCATIONS: dict[str, tuple[str, str]] = {
         "instructions",
         "instruction_type",
     ),
-    "council": (
-        "compositions",
-        "composition_type",
-    ),
-    "loop": (
-        "compositions",
-        "composition_type",
-    ),
 }
 
 
@@ -36,6 +28,8 @@ class SqliteValidationRepository:
         self,
         database_path: str | Path,
     ) -> None:
+        """Store the SQLite database path."""
+
         self._database_path = Path(database_path)
 
     async def find_resource_id_by_name(
@@ -56,16 +50,8 @@ class SqliteValidationRepository:
 
         table_name, type_column = location
         name_key = normalized_name
-        workspace_column = (
-            "owner_workspace_id"
-            if table_name == "instructions"
-            else "workspace_id"
-        )
-        origin_clause = (
-            "AND origin = 'custom'"
-            if table_name == "instructions"
-            else ""
-        )
+        workspace_column = "owner_workspace_id"
+        origin_clause = "AND origin = 'custom'"
 
         query = f"""
             SELECT id
@@ -101,6 +87,8 @@ class SqliteValidationRepository:
     async def _connect(
         self,
     ) -> AsyncIterator[aiosqlite.Connection]:
+        """Open one configured read connection."""
+
         connection = await aiosqlite.connect(
             self._database_path,
         )
@@ -116,6 +104,8 @@ class SqliteValidationRepository:
 
     @staticmethod
     def _normalize_name(name: str) -> str:
+        """Normalize display text for case-insensitive matching."""
+
         return " ".join(
             name.strip().casefold().split()
         )

@@ -43,27 +43,20 @@ from src.app.schemas.task import (
 )
 
 from .common import (
-    CompositionSummaryResponse,
     DeleteResponse,
     ListResponse,
     ResourceSummaryResponse,
 )
-from .council import (
-    CouncilAssignmentSchema,
-    CouncilCreateRequest,
-    CouncilListResponse,
-    CouncilResponse,
-    CouncilSummaryResponse,
-    CouncilUpdateRequest,
-)
 from .loop import (
+    LoopAgentSchema,
+    LoopChangelogEntryResponse,
+    LoopChangelogListResponse,
     LoopCreateRequest,
     LoopListResponse,
-    LoopModelBindingSchema,
+    LoopOutputContractSchema,
+    LoopPatchRequest,
     LoopResponse,
-    LoopSummaryResponse,
-    LoopUpdateRequest,
-    LoopValidationResponse,
+    LoopStopConditionsSchema,
 )
 from .persona import (
     PersonaCreateRequest,
@@ -91,22 +84,17 @@ from .model import (
 )
 
 __all__ = [
-    "CompositionSummaryResponse",
-    "CouncilAssignmentSchema",
-    "CouncilCreateRequest",
-    "CouncilListResponse",
-    "CouncilResponse",
-    "CouncilSummaryResponse",
-    "CouncilUpdateRequest",
     "DeleteResponse",
     "ListResponse",
+    "LoopAgentSchema",
+    "LoopChangelogEntryResponse",
+    "LoopChangelogListResponse",
     "LoopCreateRequest",
     "LoopListResponse",
-    "LoopModelBindingSchema",
+    "LoopOutputContractSchema",
+    "LoopPatchRequest",
     "LoopResponse",
-    "LoopSummaryResponse",
-    "LoopUpdateRequest",
-    "LoopValidationResponse",
+    "LoopStopConditionsSchema",
     "PersonaCreateRequest",
     "PersonaListResponse",
     "PersonaPatchRequest",

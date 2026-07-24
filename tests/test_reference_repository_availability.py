@@ -1,3 +1,5 @@
+"""Tests for effective instruction reference availability."""
+
 from datetime import UTC, datetime
 
 import pytest
@@ -10,7 +12,6 @@ from src.app.services.shared.instruction_service import (
     AvailableInstructionDocument,
     InstructionDocument,
 )
-from tests.fakes.composition_repository import FakeCompositionRepository
 from tests.fakes.instruction_repository import FakeInstructionRepository
 
 
@@ -31,7 +32,6 @@ def build_repository(
 ) -> CompositeReferenceRepository:
     return CompositeReferenceRepository(
         instruction_repository=instruction_repository,
-        composition_repository=FakeCompositionRepository(),
         model_catalog_service=UnusedModelCatalog(),  # type: ignore[arg-type]
     )
 

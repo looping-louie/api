@@ -15,7 +15,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
-from src.app.controllers.council import CouncilController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -30,9 +29,9 @@ EXPECTED_TABLES = {
     "workspaces",
     "workspace_memberships",
     "instructions",
-    "compositions",
-    "composition_items",
-    "resource_dependencies",
+    "loops",
+    "loop_agents",
+    "loop_changelog_entries",
     "provider_credentials",
     "workspace_instruction_settings",
 }
@@ -71,6 +70,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
     async def lifespan(
         app: FastAPI,
     ) -> AsyncIterator[None]:
+        """Configure the application for the duration of this test."""
+
         await configure_application(
             app,
             settings=settings,
@@ -91,10 +92,6 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.skill_controller,
             SkillController,
-        )
-        assert isinstance(
-            app.state.council_controller,
-            CouncilController,
         )
         assert isinstance(
             app.state.loop_controller,
@@ -142,12 +139,18 @@ def test_bootstrap_configures_application_and_runs_migrations(
     ]
 
     assert EXPECTED_TABLES <= table_names
+    assert {
+        "compositions",
+        "composition_items",
+        "resource_dependencies",
+    }.isdisjoint(table_names)
     assert migration_versions == [
         "0001_tenants",
         "0002_instructions",
         "0003_compositions",
         "0004_provider_credentials",
         "0005_instruction_catalog",
+        "0006_loops",
     ]
 
 

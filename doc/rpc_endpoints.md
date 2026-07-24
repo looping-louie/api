@@ -13,7 +13,6 @@ recursos conservan temporalmente estas rutas de acción:
 
 Y verbos específicos para operaciones particulares:
 
-/loops/validate
 /meetings/run
 /runs/cancel
 
@@ -55,26 +54,16 @@ Todas las rutas empiezan por el prefijo: `/api/v1`.
 | `PATCH` | `/skills/{skill_id}` | Modifica contenido o el estado `enabled`. |
 | `DELETE` | `/skills/{skill_id}` | Elimina una skill si no está siendo utilizada. |
 
-## Councils
-
-| Método | Ruta | Descripción |
-| ------ | ---- | ----------- |
-| `GET` | `/councils/list` | Lista los councils guardados. |
-| `GET` | `/councils/describe/{council_id}` | Devuelve personas, roles y skills asignadas. |
-| `POST` | `/councils/create` | Crea un council. |
-| `POST` | `/councils/update/{council_id}` | Modifica sus asignaciones. |
-| `DELETE` | `/councils/delete/{council_id}` | Elimina el council si ningún loop lo utiliza. |
-
 ## Loops
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ----------- |
-| `GET` | `/loops/list` | Lista los loops y si actualmente son ejecutables. |
-| `GET` | `/loops/describe/{loop_id}` | Devuelve council, modelos e iteraciones configuradas. |
-| `POST` | `/loops/create` | Crea un loop. |
-| `POST` | `/loops/update/{loop_id}` | Modifica council, modelos o iteraciones. |
-| `DELETE` | `/loops/delete/{loop_id}` | Elimina el loop sin borrar runs históricos. |
-| `POST` | `/loops/validate/{loop_id}` | Comprueba que council, roles y modelos son válidos. |
+| `GET` | `/loops` | Lista diez definiciones desde el `offset` indicado. |
+| `POST` | `/loops` | Crea un loop activo. |
+| `GET` | `/loops/{loop_id}` | Devuelve la definición completa. |
+| `PATCH` | `/loops/{loop_id}` | Modifica campos o estado. |
+| `DELETE` | `/loops/{loop_id}` | Elimina la definición y conserva su changelog. |
+| `GET` | `/loops/{loop_id}/changelog` | Lista diez cambios desde el `offset` indicado. |
 
 ## Meetings
 

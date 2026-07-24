@@ -1,64 +1,72 @@
+"""Controller for loop HTTP operations."""
+
 from __future__ import annotations
 
+from src.app.models.loop import LoopOutputContract, LoopStopConditions
 from src.app.schemas.common import DeleteResponse
 from src.app.schemas.loop import (
+    LoopAgentSchema,
+    LoopChangelogEntryResponse,
+    LoopChangelogListResponse,
     LoopCreateRequest,
     LoopListResponse,
+    LoopOutputContractSchema,
+    LoopPatchRequest,
     LoopResponse,
-    LoopSummaryResponse,
-    LoopUpdateRequest,
-    LoopValidationResponse,
+    LoopStopConditionsSchema,
 )
 from src.app.services.loop_service import (
+    LoopAgentInput,
     LoopCreate,
-    LoopModelBinding,
+    LoopPatch,
     LoopService,
-    LoopUpdate,
 )
 
 
 class LoopController:
-    """Coordinates loop requests and delegates business logic."""
+    """Translate loop HTTP schemas to and from application values."""
 
     def __init__(self, *, loop_service: LoopService) -> None:
+        """Store the loop application service."""
+
         self._loop_service = loop_service
 
     async def list(
         self,
         *,
         user_id: str,
+        offset: int,
         requested_workspace_id: str | None = None,
-        search: str | None = None,
     ) -> LoopListResponse:
-        summaries = await self._loop_service.list(
+        """Return one loop page."""
+
+        documents, total = await self._loop_service.list(
             user_id=user_id,
+            offset=offset,
             requested_workspace_id=requested_workspace_id,
-            search=search,
         )
-
-        items = [
-            LoopSummaryResponse.model_validate(summary)
-            for summary in summaries
-        ]
-
         return LoopListResponse(
-            items=items,
-            total=len(items),
+            items=[
+                LoopResponse.model_validate(document)
+                for document in documents
+            ],
+            total=total,
         )
 
-    async def describe(
+    async def get(
         self,
         *,
         user_id: str,
         loop_id: str,
         requested_workspace_id: str | None = None,
     ) -> LoopResponse:
-        document = await self._loop_service.describe(
+        """Return one loop."""
+
+        document = await self._loop_service.get(
             user_id=user_id,
             loop_id=loop_id,
             requested_workspace_id=requested_workspace_id,
         )
-
         return LoopResponse.model_validate(document)
 
     async def create(
@@ -68,59 +76,63 @@ class LoopController:
         payload: LoopCreateRequest,
         requested_workspace_id: str | None = None,
     ) -> LoopResponse:
+        """Create one loop."""
+
         document = await self._loop_service.create(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
             payload=LoopCreate(
-                name=payload.name,
+                title=payload.title,
                 description=payload.description,
-                council_id=payload.council_id,
-                max_iterations=payload.max_iterations,
-                model_bindings=tuple(
-                    LoopModelBinding(
-                        role=binding.role,
-                        model_id=binding.model_id,
-                    )
-                    for binding in payload.model_bindings
+                flow=payload.flow,
+                stop_conditions=self._stop_conditions(
+                    payload.stop_conditions
+                ),
+                agents=self._agents(payload.agents),
+                output_contract=self._output_contract(
+                    payload.output_contract
                 ),
             ),
         )
-
         return LoopResponse.model_validate(document)
 
-    async def update(
+    async def patch(
         self,
         *,
         user_id: str,
         loop_id: str,
-        payload: LoopUpdateRequest,
+        payload: LoopPatchRequest,
         requested_workspace_id: str | None = None,
     ) -> LoopResponse:
-        model_bindings = None
+        """Apply supplied fields to one loop."""
 
-        if payload.model_bindings is not None:
-            model_bindings = tuple(
-                LoopModelBinding(
-                    role=binding.role,
-                    model_id=binding.model_id,
-                )
-                for binding in payload.model_bindings
-            )
-
-        document = await self._loop_service.update(
+        document = await self._loop_service.patch(
             user_id=user_id,
             loop_id=loop_id,
             requested_workspace_id=requested_workspace_id,
-            payload=LoopUpdate(
-                expected_version=payload.expected_version,
-                name=payload.name,
+            payload=LoopPatch(
+                provided_fields=frozenset(payload.model_fields_set),
+                title=payload.title,
                 description=payload.description,
-                council_id=payload.council_id,
-                max_iterations=payload.max_iterations,
-                model_bindings=model_bindings,
+                flow=payload.flow,
+                status=payload.status,
+                stop_conditions=(
+                    self._stop_conditions(payload.stop_conditions)
+                    if payload.stop_conditions is not None
+                    else None
+                ),
+                agents=(
+                    self._agents(payload.agents)
+                    if payload.agents is not None
+                    else None
+                ),
+                output_contract=(
+                    self._output_contract(payload.output_contract)
+                    if payload.output_contract is not None
+                    else None
+                ),
             ),
         )
-
         return LoopResponse.model_validate(document)
 
     async def delete(
@@ -130,27 +142,74 @@ class LoopController:
         loop_id: str,
         requested_workspace_id: str | None = None,
     ) -> DeleteResponse:
+        """Delete one loop definition."""
+
         await self._loop_service.delete(
             user_id=user_id,
             loop_id=loop_id,
             requested_workspace_id=requested_workspace_id,
         )
-
         return DeleteResponse()
 
-    async def validate(
+    async def list_changelog(
         self,
         *,
         user_id: str,
         loop_id: str,
+        offset: int,
         requested_workspace_id: str | None = None,
-    ) -> LoopValidationResponse:
-        document = await self._loop_service.validate(
+    ) -> LoopChangelogListResponse:
+        """Return one newest-first changelog page."""
+
+        entries, total = await self._loop_service.list_changelog(
             user_id=user_id,
             loop_id=loop_id,
+            offset=offset,
             requested_workspace_id=requested_workspace_id,
         )
+        return LoopChangelogListResponse(
+            items=[
+                LoopChangelogEntryResponse.model_validate(entry)
+                for entry in entries
+            ],
+            total=total,
+        )
 
-        return LoopValidationResponse(
-            loop=LoopResponse.model_validate(document),
+    @staticmethod
+    def _agents(values: list[LoopAgentSchema]) -> tuple[LoopAgentInput, ...]:
+        """Translate agent request schemas."""
+
+        return tuple(
+            LoopAgentInput(
+                id=value.id,
+                model_id=value.model_id,
+                persona_id=value.persona_id,
+                role=value.role,
+            )
+            for value in values
+        )
+
+    @staticmethod
+    def _stop_conditions(
+        value: LoopStopConditionsSchema,
+    ) -> LoopStopConditions:
+        """Translate a stop-condition request schema."""
+
+        return LoopStopConditions(
+            max_iterations=value.max_iterations,
+            max_tokens=value.max_tokens,
+            timeout_seconds=value.timeout_seconds,
+        )
+
+    @staticmethod
+    def _output_contract(
+        value: LoopOutputContractSchema,
+    ) -> LoopOutputContract:
+        """Translate an output-contract request schema."""
+
+        return LoopOutputContract(
+            type=value.type,
+            description=value.description,
+            files=tuple(value.files),
+            schema=value.schema_,
         )

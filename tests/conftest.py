@@ -1,3 +1,5 @@
+"""Shared deterministic fixtures for unit and controller tests."""
+
 from datetime import UTC, datetime, timedelta
 from itertools import count
 from typing import Callable
@@ -13,7 +15,6 @@ from src.app.services.model_service import (
     ModelAvailabilityService,
     ModelCatalogService,
 )
-from src.app.services.shared.composition_service import CompositionService
 from src.app.services.shared.instruction_service import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant_service import (
@@ -21,7 +22,6 @@ from src.app.services.shared.tenant_service import (
     WorkspaceMembership,
 )
 from src.app.services.shared.validation_service import ValidationService
-from tests.fakes.composition_repository import FakeCompositionRepository
 from tests.fakes.dependency_checker import FakeDependencyChecker
 from tests.fakes.dependency_repository import FakeDependencyRepository
 from tests.fakes.instruction_repository import FakeInstructionRepository
@@ -63,11 +63,6 @@ class IncrementingClock:
 @pytest.fixture
 def instruction_repository() -> FakeInstructionRepository:
     return FakeInstructionRepository()
-
-
-@pytest.fixture
-def composition_repository() -> FakeCompositionRepository:
-    return FakeCompositionRepository()
 
 
 @pytest.fixture
@@ -115,11 +110,9 @@ def tenant_service(
 @pytest.fixture
 def validation_service(
     instruction_repository: FakeInstructionRepository,
-    composition_repository: FakeCompositionRepository,
 ) -> ValidationService:
     repository = FakeValidationRepository(
         instruction_repository=instruction_repository,
-        composition_repository=composition_repository,
     )
 
     return ValidationService(
@@ -151,28 +144,6 @@ def instruction_service(
 
     return InstructionService(
         repository=instruction_repository,
-        validation_service=validation_service,
-        dependency_checker=dependency_checker,
-        id_factory=create_identifier,
-        clock=clock,
-    )
-
-
-@pytest.fixture
-def composition_service(
-    composition_repository: FakeCompositionRepository,
-    validation_service: ValidationService,
-    dependency_checker: FakeDependencyChecker,
-) -> CompositionService:
-    identifier_counter = count(1)
-
-    def create_identifier() -> str:
-        return f"composition-{next(identifier_counter)}"
-
-    clock: Callable[[], datetime] = IncrementingClock()
-
-    return CompositionService(
-        repository=composition_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
         id_factory=create_identifier,

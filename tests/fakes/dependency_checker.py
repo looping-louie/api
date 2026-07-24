@@ -1,3 +1,5 @@
+"""In-memory dependency checker fake for service tests."""
+
 from dataclasses import dataclass
 
 from src.app.services.shared.dependency_checker import DependencyUsage
@@ -45,8 +47,8 @@ class FakeDependencyChecker:
         *,
         workspace_id: str,
         target: ResourceReference,
-        source_type: str = "council",
-        source_id: str = "council-1",
+        source_type: str = "loop",
+        source_id: str = "loop-1",
         relation: str = "assignment",
     ) -> None:
         """Convenience helper for adding one blocking dependency."""

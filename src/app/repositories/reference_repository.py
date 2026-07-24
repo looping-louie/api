@@ -1,13 +1,10 @@
-"""Reference lookup adapter for instructions, compositions and models."""
+"""Reference lookup adapter for instructions and models."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from src.app.services.shared.composition_service import (
-    CompositionRepository,
-)
 from src.app.services.shared.instruction_service import (
     InstructionRepository,
 )
@@ -21,16 +18,8 @@ _INSTRUCTION_TYPES = frozenset(
     }
 )
 
-_COMPOSITION_TYPES = frozenset(
-    {
-        "council",
-        "loop",
-    }
-)
-
 _SUPPORTED_RESOURCE_TYPES = (
     _INSTRUCTION_TYPES
-    | _COMPOSITION_TYPES
     | {"model"}
 )
 
@@ -42,11 +31,11 @@ class CompositeReferenceRepository:
         self,
         *,
         instruction_repository: InstructionRepository,
-        composition_repository: CompositionRepository,
         model_catalog_service: ModelCatalogService,
     ) -> None:
+        """Store the instruction and model lookup dependencies."""
+
         self._instruction_repository = instruction_repository
-        self._composition_repository = composition_repository
         self._model_catalog_service = model_catalog_service
 
     async def get_many(
@@ -74,13 +63,6 @@ class CompositeReferenceRepository:
                 include_historical=include_historical,
             )
 
-        if resource_type in _COMPOSITION_TYPES:
-            return await self._get_compositions(
-                workspace_id=workspace_id,
-                composition_type=resource_type,
-                composition_ids=unique_ids,
-            )
-
         return self._model_catalog_service.get_many(
             model_ids=unique_ids,
         )
@@ -93,6 +75,8 @@ class CompositeReferenceRepository:
         instruction_ids: Sequence[str],
         include_historical: bool,
     ) -> dict[str, Any]:
+        """Return selectable or historical instructions by identifier."""
+
         resources: dict[str, Any] = {}
         get_available = (
             self._instruction_repository.get_available_for_workspace
@@ -114,31 +98,12 @@ class CompositeReferenceRepository:
 
         return resources
 
-    async def _get_compositions(
-        self,
-        *,
-        workspace_id: str,
-        composition_type: str,
-        composition_ids: Sequence[str],
-    ) -> dict[str, Any]:
-        resources: dict[str, Any] = {}
-
-        for composition_id in composition_ids:
-            document = await self._composition_repository.get(
-                workspace_id=workspace_id,
-                composition_type=composition_type,
-                composition_id=composition_id,
-            )
-
-            if document is not None:
-                resources[composition_id] = document
-
-        return resources
-
     @staticmethod
     def _unique_ids(
         resource_ids: Sequence[str],
     ) -> tuple[str, ...]:
+        """Strip and deduplicate identifiers while preserving order."""
+
         unique_ids: list[str] = []
         seen: set[str] = set()
 

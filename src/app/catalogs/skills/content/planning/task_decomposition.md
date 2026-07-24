@@ -149,7 +149,7 @@ The commit message should describe the completed outcome.
 Prefer imperative messages such as:
 
 - Add ideas empty state
-- Persist council selections
+- Persist loop definitions
 - Validate idea creation form
 - Add task planning endpoint
 

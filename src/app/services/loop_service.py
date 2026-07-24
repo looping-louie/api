@@ -1,141 +1,104 @@
+"""Application service for loop definitions and changelog access."""
+
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from datetime import datetime
+from typing import Callable
 
-from .shared.composition_service import (
-    CompositionCreate,
-    CompositionDocument,
-    CompositionService,
-    CompositionSummary,
-    CompositionUpdate,
+from src.app.models.loop import (
+    LoopChangelogEntry,
+    LoopDocument,
 )
-from .shared.reference_resolver import (
+from src.app.repositories.loop_repository import LoopRepository
+from src.app.services.loop_mutation import (
+    apply_patch,
+    build_entry,
+    change_type,
+    changed_fields,
+    normalize_flow,
+    require_offset,
+    require_patch_allowed,
+)
+from src.app.services.loop_types import (
+    ArchivedLoopImmutableError,
+    LoopAgentInput,
+    LoopCreate,
+    LoopNotFoundError,
+    LoopPatch,
+    LoopServiceError,
+    LoopValidationError,
+)
+from src.app.services.loop_validation import (
+    document_content,
+    normalize_agents,
+    normalize_description,
+    normalize_output_contract,
+    normalize_stop_conditions,
+    require_text,
+    validate_loop,
+)
+from src.app.services.shared.reference_resolver import (
     ReferenceResolver,
     ResourceReference,
 )
-from .shared.tenant_service import TenantService
-from .shared.validation_service import ValidationService
+from src.app.services.shared.tenant_service import TenantService
 
 
-@dataclass(frozen=True, slots=True)
-class LoopModelBinding:
-    """Model assigned to one role inside a loop."""
-
-    role: str
-    model_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class LoopCreate:
-    """Data required to create a loop."""
-
-    name: str
-    description: str
-    council_id: str
-    max_iterations: int
-    model_bindings: Sequence[LoopModelBinding]
-
-
-@dataclass(frozen=True, slots=True)
-class LoopUpdate:
-    """Partial changes applied to an existing loop."""
-
-    expected_version: int
-    name: str | None = None
-    description: str | None = None
-    council_id: str | None = None
-    max_iterations: int | None = None
-    model_bindings: Sequence[LoopModelBinding] | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class LoopDocument:
-    """Complete loop representation."""
-
-    id: str
-    workspace_id: str
-    name: str
-    description: str
-    council_id: str
-    max_iterations: int
-    model_bindings: tuple[LoopModelBinding, ...]
-    version: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class LoopServiceError(Exception):
-    """Base error raised by LoopService."""
-
-
-class LoopValidationError(LoopServiceError):
-    """Raised when loop-specific data is invalid."""
-
-    def __init__(self, *, field_name: str, message: str) -> None:
-        super().__init__(f"Invalid loop field '{field_name}': {message}")
-        self.field_name = field_name
-        self.message = message
+LOOP_PAGE_SIZE = 10
 
 
 class LoopService:
-    """Application service for loop operations."""
+    """Coordinate validated loop operations for one resolved workspace."""
 
     def __init__(
         self,
         *,
+        repository: LoopRepository,
         tenant_service: TenantService,
-        validation_service: ValidationService,
         reference_resolver: ReferenceResolver,
-        composition_service: CompositionService,
+        id_factory: Callable[[], str],
+        clock: Callable[[], datetime],
     ) -> None:
+        """Store persistence, tenancy, reference, and generation dependencies."""
+
+        self._repository = repository
         self._tenant_service = tenant_service
-        self._validation_service = validation_service
         self._reference_resolver = reference_resolver
-        self._composition_service = composition_service
+        self._id_factory = id_factory
+        self._clock = clock
 
     async def list(
         self,
         *,
         user_id: str,
+        offset: int,
         requested_workspace_id: str | None = None,
-        search: str | None = None,
-    ) -> list[CompositionSummary]:
-        """List loops available in the resolved workspace."""
+    ) -> tuple[list[LoopDocument], int]:
+        """Return one fixed-size page of loops."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        workspace_id = await self._workspace_id(
+            user_id, requested_workspace_id
         )
-
-        return await self._composition_service.list(
+        documents, total = await self._repository.list(
             workspace_id=workspace_id,
-            composition_type="loop",
-            search=search,
+            offset=require_offset(offset),
+            limit=LOOP_PAGE_SIZE,
         )
+        return list(documents), total
 
-    async def describe(
+    async def get(
         self,
         *,
         user_id: str,
         loop_id: str,
         requested_workspace_id: str | None = None,
     ) -> LoopDocument:
-        """Return a complete loop."""
+        """Return one loop or raise the standard loop not-found error."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        workspace_id = await self._workspace_id(
+            user_id, requested_workspace_id
         )
-
-        document = await self._composition_service.describe(
-            workspace_id=workspace_id,
-            composition_type="loop",
-            composition_id=loop_id,
-        )
-
-        return self._to_loop_document(document)
+        return await self._require_loop(workspace_id, loop_id)
 
     async def create(
         self,
@@ -144,109 +107,93 @@ class LoopService:
         payload: LoopCreate,
         requested_workspace_id: str | None = None,
     ) -> LoopDocument:
-        """Create a loop after validating its council and models."""
+        """Create a validated active loop and its initial changelog entry."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        workspace_id = await self._workspace_id(
+            user_id, requested_workspace_id
         )
-        normalized = self._normalize_create(payload)
-
-        await self._validate_configuration(
+        actor_id = require_text(user_id, "user_id")
+        now = self._clock()
+        document = LoopDocument(
+            id=self._id_factory(),
             workspace_id=workspace_id,
-            council_id=normalized.council_id,
-            model_bindings=normalized.model_bindings,
-        )
-
-        created = await self._composition_service.create(
-            workspace_id=workspace_id,
-            composition_type="loop",
-            payload=CompositionCreate(
-                name=normalized.name,
-                description=normalized.description,
-                attributes={
-                    "council_id": normalized.council_id,
-                    "max_iterations": normalized.max_iterations,
-                },
-                items=self._serialize_bindings(
-                    normalized.model_bindings,
-                ),
+            title=require_text(payload.title, "title"),
+            description=normalize_description(payload.description),
+            flow=normalize_flow(payload.flow),
+            status="active",
+            stop_conditions=normalize_stop_conditions(
+                payload.stop_conditions
             ),
+            agents=normalize_agents(payload.agents, self._id_factory),
+            output_contract=normalize_output_contract(
+                payload.output_contract
+            ),
+            created_at=now,
+            created_by=actor_id,
+            updated_at=now,
+            updated_by=actor_id,
+        )
+        validate_loop(document)
+        await self._validate_references(document)
+        entry = build_entry(
+            document=document,
+            actor_id=actor_id,
+            change_type="created",
+            changed_at=now,
+            entry_id=self._id_factory(),
+            content=document_content(document),
+        )
+        return await self._repository.create(
+            document=document,
+            changelog_entry=entry,
         )
 
-        return self._to_loop_document(created)
-
-    async def update(
+    async def patch(
         self,
         *,
         user_id: str,
         loop_id: str,
-        payload: LoopUpdate,
+        payload: LoopPatch,
         requested_workspace_id: str | None = None,
     ) -> LoopDocument:
-        """Update a loop using optimistic concurrency."""
+        """Apply supplied loop fields and append one precise changelog entry."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        workspace_id = await self._workspace_id(
+            user_id, requested_workspace_id
         )
-        normalized = self._normalize_update(payload)
+        current = await self._require_loop(workspace_id, loop_id)
+        require_patch_allowed(current, payload)
+        actor_id = require_text(user_id, "user_id")
+        updated = apply_patch(
+            current,
+            payload,
+            actor_id=actor_id,
+            id_factory=self._id_factory,
+            changed_at=self._clock(),
+        )
+        validate_loop(updated)
+        await self._validate_references(updated)
+        diff = changed_fields(current, updated, payload.provided_fields)
+        if not diff:
+            raise LoopValidationError(
+                field_name="body",
+                message="must produce at least one effective change",
+            )
 
-        current_document = await self._composition_service.describe(
-            workspace_id=workspace_id,
-            composition_type="loop",
-            composition_id=loop_id,
+        entry = build_entry(
+            document=updated,
+            actor_id=actor_id,
+            change_type=change_type(current.status, updated.status),
+            changed_at=updated.updated_at,
+            entry_id=self._id_factory(),
+            diff=diff,
         )
-        current = self._to_loop_document(current_document)
-
-        final_council_id = normalized.council_id or current.council_id
-        final_iterations = (
-            normalized.max_iterations
-            if normalized.max_iterations is not None
-            else current.max_iterations
-        )
-        final_bindings = (
-            normalized.model_bindings
-            if normalized.model_bindings is not None
-            else current.model_bindings
-        )
-
-        await self._validate_configuration(
-            workspace_id=workspace_id,
-            council_id=final_council_id,
-            model_bindings=final_bindings,
-        )
-
-        attributes_changed = (
-            normalized.council_id is not None
-            or normalized.max_iterations is not None
-        )
-
-        updated = await self._composition_service.update(
-            workspace_id=workspace_id,
-            composition_type="loop",
-            composition_id=loop_id,
-            payload=CompositionUpdate(
-                expected_version=normalized.expected_version,
-                name=normalized.name,
-                description=normalized.description,
-                attributes=(
-                    {
-                        "council_id": final_council_id,
-                        "max_iterations": final_iterations,
-                    }
-                    if attributes_changed
-                    else None
-                ),
-                items=(
-                    self._serialize_bindings(final_bindings)
-                    if normalized.model_bindings is not None
-                    else None
-                ),
-            ),
-        )
-
-        return self._to_loop_document(updated)
+        if not await self._repository.update(
+            document=updated,
+            changelog_entry=entry,
+        ):
+            raise LoopNotFoundError(loop_id=loop_id)
+        return updated
 
     async def delete(
         self,
@@ -255,536 +202,92 @@ class LoopService:
         loop_id: str,
         requested_workspace_id: str | None = None,
     ) -> None:
-        """Delete a loop without removing historical run snapshots."""
+        """Permanently delete a loop while retaining its final snapshot."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        workspace_id = await self._workspace_id(
+            user_id, requested_workspace_id
         )
-
-        await self._composition_service.delete(
+        current = await self._require_loop(workspace_id, loop_id)
+        actor_id = require_text(user_id, "user_id")
+        entry = build_entry(
+            document=current,
+            actor_id=actor_id,
+            change_type="deleted",
+            changed_at=self._clock(),
+            entry_id=self._id_factory(),
+            content=document_content(current),
+        )
+        if not await self._repository.delete(
             workspace_id=workspace_id,
-            composition_type="loop",
-            composition_id=loop_id,
-        )
+            loop_id=current.id,
+            changelog_entry=entry,
+        ):
+            raise LoopNotFoundError(loop_id=loop_id)
 
-    async def validate(
+    async def list_changelog(
         self,
         *,
         user_id: str,
         loop_id: str,
+        offset: int,
         requested_workspace_id: str | None = None,
-    ) -> LoopDocument:
-        """Validate that a stored loop still has valid references."""
+    ) -> tuple[list[LoopChangelogEntry], int]:
+        """Return retained changelog entries, including after loop deletion."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        workspace_id = await self._workspace_id(
+            user_id, requested_workspace_id
         )
-
-        document = await self._composition_service.describe(
+        entries, total = await self._repository.list_changelog(
             workspace_id=workspace_id,
-            composition_type="loop",
-            composition_id=loop_id,
+            loop_id=require_text(loop_id, "loop_id"),
+            offset=require_offset(offset),
+            limit=LOOP_PAGE_SIZE,
         )
-        loop = self._to_loop_document(document)
+        if total == 0:
+            raise LoopNotFoundError(loop_id=loop_id)
+        return list(entries), total
 
-        await self._validate_configuration(
-            workspace_id=workspace_id,
-            council_id=loop.council_id,
-            model_bindings=loop.model_bindings,
-            include_historical_instructions=True,
-        )
+    async def _validate_references(self, document: LoopDocument) -> None:
+        """Require every selected persona and model to exist."""
 
-        return loop
-
-    async def _validate_configuration(
-        self,
-        *,
-        workspace_id: str,
-        council_id: str,
-        model_bindings: Sequence[LoopModelBinding],
-        include_historical_instructions: bool = False,
-    ) -> None:
-        self._validation_service.require_distinct(
-            values=[
-                binding.role
-                for binding in model_bindings
-            ],
-            field_name="model_bindings.roles",
-        )
-
-        resolved_council = await self._reference_resolver.require_one(
-            workspace_id=workspace_id,
-            reference=ResourceReference(
-                resource_type="council",
-                resource_id=council_id,
-            ),
-        )
-
+        references = [
+            reference
+            for agent in document.agents
+            for reference in (
+                ResourceReference("model", agent.model_id),
+                ResourceReference("persona", agent.persona_id),
+            )
+        ]
         await self._reference_resolver.require_many(
-            workspace_id=workspace_id,
-            references=[
-                ResourceReference(
-                    resource_type="model",
-                    resource_id=binding.model_id,
-                )
-                for binding in model_bindings
-            ],
-        )
-
-        instruction_references = (
-            self._extract_council_instruction_references(
-                resolved_council.value,
-            )
-        )
-        instruction_resolver = (
-            self._reference_resolver.require_many_historical
-            if include_historical_instructions
-            else self._reference_resolver.require_many
-        )
-        await instruction_resolver(
-            workspace_id=workspace_id,
-            references=instruction_references,
-        )
-
-        council_roles = self._extract_council_roles(
-            resolved_council.value,
-        )
-        binding_roles = {
-            binding.role
-            for binding in model_bindings
-        }
-
-        missing_roles = council_roles - binding_roles
-        extra_roles = binding_roles - council_roles
-
-        if missing_roles:
-            raise LoopValidationError(
-                field_name="model_bindings",
-                message=(
-                    "missing model bindings for roles: "
-                    f"{', '.join(sorted(missing_roles))}"
-                ),
-            )
-
-        if extra_roles:
-            raise LoopValidationError(
-                field_name="model_bindings",
-                message=(
-                    "contains bindings for unused roles: "
-                    f"{', '.join(sorted(extra_roles))}"
-                ),
-            )
-
-    def _extract_council_roles(self, value: object) -> set[str]:
-        items = self._extract_council_items(value)
-        roles: set[str] = set()
-
-        for index, item in enumerate(items):
-            if not isinstance(item, Mapping):
-                raise LoopValidationError(
-                    field_name=f"council.items[{index}]",
-                    message="must be an object",
-                )
-
-            role = item.get("role")
-
-            if not isinstance(role, str) or not role.strip():
-                raise LoopValidationError(
-                    field_name=f"council.items[{index}].role",
-                    message="must be a non-empty string",
-                )
-
-            roles.add(role.strip().casefold())
-
-        if not roles:
-            raise LoopValidationError(
-                field_name="council",
-                message="must contain at least one assigned role",
-            )
-
-        return roles
-
-    def _extract_council_instruction_references(
-        self,
-        value: object,
-    ) -> tuple[ResourceReference, ...]:
-        references: list[ResourceReference] = []
-
-        for index, item in enumerate(
-            self._extract_council_items(value)
-        ):
-            persona_id = item.get("persona_id")
-
-            if persona_id is not None:
-                if not isinstance(persona_id, str) or not persona_id.strip():
-                    raise LoopValidationError(
-                        field_name=(
-                            f"council.items[{index}].persona_id"
-                        ),
-                        message="must be a non-empty string",
-                    )
-
-                references.append(
-                    ResourceReference(
-                        resource_type="persona",
-                        resource_id=persona_id,
-                    )
-                )
-
-            skill_ids = item.get("skill_ids")
-
-            if skill_ids is None:
-                continue
-
-            if not self._is_sequence(skill_ids):
-                raise LoopValidationError(
-                    field_name=f"council.items[{index}].skill_ids",
-                    message="must be a sequence",
-                )
-
-            for skill_index, skill_id in enumerate(skill_ids):
-                if not isinstance(skill_id, str) or not skill_id.strip():
-                    raise LoopValidationError(
-                        field_name=(
-                            f"council.items[{index}]."
-                            f"skill_ids[{skill_index}]"
-                        ),
-                        message="must be a non-empty string",
-                    )
-
-                references.append(
-                    ResourceReference(
-                        resource_type="skill",
-                        resource_id=skill_id,
-                    )
-                )
-
-        return tuple(references)
-
-    def _extract_council_items(
-        self,
-        value: object,
-    ) -> Sequence[Mapping[str, object]]:
-        if isinstance(value, CompositionDocument):
-            if value.composition_type != "council":
-                raise LoopValidationError(
-                    field_name="council",
-                    message="resolved resource is not a council",
-                )
-
-            return value.items
-
-        assignments = getattr(value, "assignments", None)
-
-        if self._is_sequence(assignments):
-            return tuple(
-                {
-                    "role": getattr(assignment, "role", None),
-                    "persona_id": getattr(
-                        assignment,
-                        "persona_id",
-                        None,
-                    ),
-                    "skill_ids": getattr(
-                        assignment,
-                        "skill_ids",
-                        None,
-                    ),
-                }
-                for assignment in assignments
-            )
-
-        if isinstance(value, Mapping):
-            items = value.get("items")
-
-            if self._is_sequence(items):
-                return tuple(items)
-
-        raise LoopValidationError(
-            field_name="council",
-            message="resolved council has an unsupported representation",
-        )
-
-    def _normalize_create(
-        self,
-        payload: LoopCreate,
-    ) -> LoopCreate:
-        if not isinstance(payload, LoopCreate):
-            raise LoopValidationError(
-                field_name="payload",
-                message="must be a LoopCreate",
-            )
-
-        return LoopCreate(
-            name=self._require_text(payload.name, "name"),
-            description=self._normalize_description(
-                payload.description,
-            ),
-            council_id=self._require_text(
-                payload.council_id,
-                "council_id",
-            ),
-            max_iterations=self._require_positive_integer(
-                payload.max_iterations,
-                "max_iterations",
-            ),
-            model_bindings=self._normalize_bindings(
-                payload.model_bindings,
-            ),
-        )
-
-    def _normalize_update(
-        self,
-        payload: LoopUpdate,
-    ) -> LoopUpdate:
-        if not isinstance(payload, LoopUpdate):
-            raise LoopValidationError(
-                field_name="payload",
-                message="must be a LoopUpdate",
-            )
-
-        self._require_positive_integer(
-            payload.expected_version,
-            "expected_version",
-        )
-
-        return LoopUpdate(
-            expected_version=payload.expected_version,
-            name=(
-                self._require_text(payload.name, "name")
-                if payload.name is not None
-                else None
-            ),
-            description=(
-                self._normalize_description(payload.description)
-                if payload.description is not None
-                else None
-            ),
-            council_id=(
-                self._require_text(
-                    payload.council_id,
-                    "council_id",
-                )
-                if payload.council_id is not None
-                else None
-            ),
-            max_iterations=(
-                self._require_positive_integer(
-                    payload.max_iterations,
-                    "max_iterations",
-                )
-                if payload.max_iterations is not None
-                else None
-            ),
-            model_bindings=(
-                self._normalize_bindings(payload.model_bindings)
-                if payload.model_bindings is not None
-                else None
-            ),
-        )
-
-    def _normalize_bindings(
-        self,
-        bindings: Sequence[LoopModelBinding],
-    ) -> tuple[LoopModelBinding, ...]:
-        if not self._is_sequence(bindings):
-            raise LoopValidationError(
-                field_name="model_bindings",
-                message="must be a sequence",
-            )
-
-        if not bindings:
-            raise LoopValidationError(
-                field_name="model_bindings",
-                message="must contain at least one binding",
-            )
-
-        normalized = tuple(
-            self._normalize_binding(binding, index=index)
-            for index, binding in enumerate(bindings)
-        )
-
-        self._validation_service.require_distinct(
-            values=[
-                binding.role
-                for binding in normalized
-            ],
-            field_name="model_bindings.roles",
-        )
-
-        return normalized
-
-    def _normalize_binding(
-        self,
-        binding: LoopModelBinding,
-        *,
-        index: int,
-    ) -> LoopModelBinding:
-        if not isinstance(binding, LoopModelBinding):
-            raise LoopValidationError(
-                field_name=f"model_bindings[{index}]",
-                message="must be a LoopModelBinding",
-            )
-
-        return LoopModelBinding(
-            role=self._require_text(
-                binding.role,
-                f"model_bindings[{index}].role",
-            ).casefold(),
-            model_id=self._require_text(
-                binding.model_id,
-                f"model_bindings[{index}].model_id",
-            ),
-        )
-
-    def _to_loop_document(
-        self,
-        document: CompositionDocument,
-    ) -> LoopDocument:
-        if document.composition_type != "loop":
-            raise LoopValidationError(
-                field_name="document.composition_type",
-                message="must be 'loop'",
-            )
-
-        council_id = document.attributes.get("council_id")
-        max_iterations = document.attributes.get("max_iterations")
-
-        if not isinstance(council_id, str):
-            raise LoopValidationError(
-                field_name="document.attributes.council_id",
-                message="must be a string",
-            )
-
-        max_iterations = self._require_positive_integer(
-            max_iterations,
-            "document.attributes.max_iterations",
-        )
-
-        bindings = tuple(
-            self._binding_from_item(item, index=index)
-            for index, item in enumerate(document.items)
-        )
-
-        return LoopDocument(
-            id=document.id,
             workspace_id=document.workspace_id,
-            name=document.name,
-            description=document.description,
-            council_id=council_id,
-            max_iterations=max_iterations,
-            model_bindings=bindings,
-            version=document.version,
-            created_at=document.created_at,
-            updated_at=document.updated_at,
+            references=references,
         )
 
-    def _binding_from_item(
+    async def _require_loop(
         self,
-        item: Mapping[str, object],
-        *,
-        index: int,
-    ) -> LoopModelBinding:
-        if not isinstance(item, Mapping):
-            raise LoopValidationError(
-                field_name=f"document.items[{index}]",
-                message="must be an object",
-            )
+        workspace_id: str,
+        loop_id: str,
+    ) -> LoopDocument:
+        """Load one loop or raise a domain not-found error."""
 
-        role = item.get("role")
-        model_id = item.get("model_id")
-
-        if not isinstance(role, str):
-            raise LoopValidationError(
-                field_name=f"document.items[{index}].role",
-                message="must be a string",
-            )
-
-        if not isinstance(model_id, str):
-            raise LoopValidationError(
-                field_name=f"document.items[{index}].model_id",
-                message="must be a string",
-            )
-
-        return self._normalize_binding(
-            LoopModelBinding(
-                role=role,
-                model_id=model_id,
-            ),
-            index=index,
+        normalized_id = require_text(loop_id, "loop_id")
+        document = await self._repository.get(
+            workspace_id=workspace_id,
+            loop_id=normalized_id,
         )
+        if document is None:
+            raise LoopNotFoundError(loop_id=normalized_id)
+        return document
 
-    @staticmethod
-    def _serialize_bindings(
-        bindings: Sequence[LoopModelBinding],
-    ) -> tuple[dict[str, object], ...]:
-        return tuple(
-            {
-                "role": binding.role,
-                "model_id": binding.model_id,
-            }
-            for binding in bindings
-        )
-
-    async def _resolve_workspace_id(
+    async def _workspace_id(
         self,
-        *,
         user_id: str,
         requested_workspace_id: str | None,
     ) -> str:
+        """Resolve the workspace available to the authenticated user."""
+
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-
         return tenant.workspace_id
-
-    @staticmethod
-    def _normalize_description(value: str) -> str:
-        if not isinstance(value, str):
-            raise LoopValidationError(
-                field_name="description",
-                message="must be a string",
-            )
-
-        return value.strip()
-
-    @staticmethod
-    def _require_positive_integer(
-        value: object,
-        field_name: str,
-    ) -> int:
-        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-            raise LoopValidationError(
-                field_name=field_name,
-                message="must be an integer greater than zero",
-            )
-
-        return value
-
-    @staticmethod
-    def _require_text(value: str, field_name: str) -> str:
-        if not isinstance(value, str):
-            raise LoopValidationError(
-                field_name=field_name,
-                message="must be a string",
-            )
-
-        normalized = value.strip()
-
-        if not normalized:
-            raise LoopValidationError(
-                field_name=field_name,
-                message="must not be empty",
-            )
-
-        return normalized
-
-    @staticmethod
-    def _is_sequence(value: object) -> bool:
-        return isinstance(value, Sequence) and not isinstance(
-            value,
-            (str, bytes, bytearray),
-        )

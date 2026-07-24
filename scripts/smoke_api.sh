@@ -20,7 +20,6 @@ SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
 
 PERSONA_ID=""
 SKILL_ID=""
-COUNCIL_ID=""
 LOOP_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
@@ -239,11 +238,7 @@ cleanup() {
     log "Cleaning smoke-test resources"
 
     if [[ -n "${LOOP_ID}" ]]; then
-        request DELETE "/loops/delete/${LOOP_ID}" >/dev/null
-    fi
-
-    if [[ -n "${COUNCIL_ID}" ]]; then
-        request DELETE "/councils/delete/${COUNCIL_ID}" >/dev/null
+        request DELETE "/loops/${LOOP_ID}" >/dev/null
     fi
 
     if [[ -n "${SKILL_ID}" ]]; then
@@ -421,112 +416,65 @@ request \
     '{"enabled": true}' \
     >/dev/null
 
-log "Creating council"
-
-council_response="$(
-    request POST "/councils/create" "$(
-        cat <<JSON
-{
-    "name": "Smoke Council ${SMOKE_RUN_ID}",
-    "description": "Created by scripts/smoke_api.sh",
-    "assignments": [
-        {
-            "role": "generator",
-            "persona_id": "${PERSONA_ID}",
-            "skill_ids": [
-                "${SKILL_ID}"
-            ]
-        }
-    ]
-}
-JSON
-    )"
-)"
-
-COUNCIL_ID="$(printf '%s' "${council_response}" | json_field "id")"
-council_version="$(printf '%s' "${council_response}" | json_field "version")"
-
-request GET "/councils/describe/${COUNCIL_ID}" >/dev/null
-request GET "/councils/list" >/dev/null
-
-council_response="$(
-    request POST "/councils/update/${COUNCIL_ID}" "$(
-        cat <<JSON
-{
-    "expected_version": ${council_version},
-    "description": "Updated by scripts/smoke_api.sh"
-}
-JSON
-    )"
-)"
-
-log "Checking council dependency protection"
-
-request_expect_status \
-    DELETE \
-    "/personas/${PERSONA_ID}" \
-    409
-
-request_expect_status \
-    DELETE \
-    "/skills/${SKILL_ID}" \
-    409
-
 log "Creating loop"
 
 loop_response="$(
-    request POST "/loops/create" "$(
+    request POST "/loops" "$(
         cat <<JSON
 {
-    "name": "Smoke Loop ${SMOKE_RUN_ID}",
+    "title": "Smoke Loop ${SMOKE_RUN_ID}",
     "description": "Created by scripts/smoke_api.sh",
-    "council_id": "${COUNCIL_ID}",
-    "max_iterations": 2,
-    "model_bindings": [
+    "flow": "direct",
+    "stop_conditions": {
+        "max_iterations": 2
+    },
+    "agents": [
         {
-            "role": "generator",
-            "model_id": "${model_id}"
+            "model_id": "${model_id}",
+            "persona_id": "${PERSONA_ID}",
+            "role": "generator"
         }
-    ]
+    ],
+    "output_contract": {
+        "type": "text",
+        "description": "Produce a smoke-test answer."
+    }
 }
 JSON
     )"
 )"
 
 LOOP_ID="$(printf '%s' "${loop_response}" | json_field "id")"
-loop_version="$(printf '%s' "${loop_response}" | json_field "version")"
 
-request GET "/loops/describe/${LOOP_ID}" >/dev/null
-request GET "/loops/list" >/dev/null
+request GET "/loops/${LOOP_ID}" >/dev/null
+request GET "/loops?offset=0" >/dev/null
 
 loop_response="$(
-    request POST "/loops/update/${LOOP_ID}" "$(
+    request PATCH "/loops/${LOOP_ID}" "$(
         cat <<JSON
 {
-    "expected_version": ${loop_version},
     "description": "Updated by scripts/smoke_api.sh",
-    "max_iterations": 3
+    "stop_conditions": {
+        "max_iterations": 3
+    }
 }
 JSON
     )"
 )"
 
-request POST "/loops/validate/${LOOP_ID}" >/dev/null
+request GET "/loops/${LOOP_ID}/changelog?offset=0" >/dev/null
 
 log "Checking loop dependency protection"
 
 request_expect_status \
     DELETE \
-    "/councils/delete/${COUNCIL_ID}" \
+    "/personas/${PERSONA_ID}" \
     409
 
 log "Deleting resources in dependency order"
 
-request DELETE "/loops/delete/${LOOP_ID}" >/dev/null
+request DELETE "/loops/${LOOP_ID}" >/dev/null
 LOOP_ID=""
-
-request DELETE "/councils/delete/${COUNCIL_ID}" >/dev/null
-COUNCIL_ID=""
 
 request DELETE "/skills/${SKILL_ID}" >/dev/null
 SKILL_ID=""
@@ -534,8 +482,7 @@ SKILL_ID=""
 request DELETE "/personas/${PERSONA_ID}" >/dev/null
 PERSONA_ID=""
 
-request GET "/loops/list" >/dev/null
-request GET "/councils/list" >/dev/null
+request GET "/loops" >/dev/null
 request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null
 

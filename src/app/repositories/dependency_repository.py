@@ -13,18 +13,14 @@ from src.app.services.shared.reference_resolver import ResourceReference
 
 
 class SqliteDependencyRepository:
-    """Reads workspace-scoped composition dependencies from SQLite.
-
-    ``workspace_id`` belongs to the referencing composition, not necessarily
-    to the target. This lets several workspaces safely reference the same
-    global builtin instruction ID while custom deletion remains isolated to
-    its owning workspace.
-    """
+    """Read loop-to-persona dependencies from SQLite."""
 
     def __init__(
         self,
         database_path: str | Path,
     ) -> None:
+        """Store the SQLite database path."""
+
         self._database_path = Path(database_path)
 
     async def find_usages(
@@ -35,29 +31,19 @@ class SqliteDependencyRepository:
     ) -> list[DependencyUsage]:
         """Return resources currently referencing the target."""
 
+        if target.resource_type != "persona":
+            return []
+
         async with self._connect() as connection:
             cursor = await connection.execute(
                 """
-                SELECT DISTINCT
-                    source_type,
-                    source_id,
-                    relation
-                FROM resource_dependencies
-                WHERE workspace_id = ?
-                  AND target_type = ?
-                  AND target_id = ?
-                ORDER BY
-                    source_type ASC,
-                    source_id ASC,
-                    relation ASC
+                SELECT DISTINCT loop_id
+                FROM loop_agents
+                WHERE workspace_id = ? AND persona_id = ?
+                ORDER BY loop_id ASC
                 """,
-                (
-                    workspace_id,
-                    target.resource_type,
-                    target.resource_id,
-                ),
+                (workspace_id, target.resource_id),
             )
-
             try:
                 rows = await cursor.fetchall()
             finally:
@@ -66,10 +52,10 @@ class SqliteDependencyRepository:
         return [
             DependencyUsage(
                 source=ResourceReference(
-                    resource_type=str(row["source_type"]),
-                    resource_id=str(row["source_id"]),
+                    resource_type="loop",
+                    resource_id=str(row["loop_id"]),
                 ),
-                relation=str(row["relation"]),
+                relation="persona",
             )
             for row in rows
         ]
@@ -78,6 +64,8 @@ class SqliteDependencyRepository:
     async def _connect(
         self,
     ) -> AsyncIterator[aiosqlite.Connection]:
+        """Open one configured read connection."""
+
         connection = await aiosqlite.connect(
             self._database_path,
         )

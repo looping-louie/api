@@ -7,19 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.composition_repository import (
-    SqliteCompositionRepository,
-)
 from src.app.repositories.instruction_repository import (
     SqliteInstructionRepository,
 )
 from src.app.repositories.validation_repository import (
     SqliteValidationRepository,
 )
-from tests.integration.factories import (
-    build_composition,
-    build_instruction,
-)
+from tests.integration.factories import build_instruction
 
 
 WorkspaceFactory = Callable[..., Awaitable[None]]
@@ -30,6 +24,8 @@ async def test_finds_instruction_by_normalized_name(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Find a custom instruction using its normalized display name."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )
@@ -57,41 +53,12 @@ async def test_finds_instruction_by_normalized_name(
 
 
 @pytest.mark.asyncio
-async def test_finds_composition_by_normalized_name(
-    sqlite_database_path: Path,
-    create_workspace: WorkspaceFactory,
-) -> None:
-    await create_workspace(
-        workspace_id="workspace-1",
-    )
-    composition_repository = SqliteCompositionRepository(
-        sqlite_database_path,
-    )
-    validation_repository = SqliteValidationRepository(
-        sqlite_database_path,
-    )
-
-    await composition_repository.create(
-        build_composition(
-            composition_id="council-1",
-            name="Architecture Council",
-        )
-    )
-
-    resource_id = await validation_repository.find_resource_id_by_name(
-        workspace_id="workspace-1",
-        resource_type="council",
-        normalized_name="architecture council",
-    )
-
-    assert resource_id == "council-1"
-
-
-@pytest.mark.asyncio
 async def test_name_lookup_isolated_by_workspace_and_type(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Keep normalized name lookups isolated by workspace and type."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )

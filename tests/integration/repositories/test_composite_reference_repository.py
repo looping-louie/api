@@ -8,9 +8,6 @@ from pathlib import Path
 import pytest
 
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.repositories.composition_repository import (
-    SqliteCompositionRepository,
-)
 from src.app.repositories.instruction_repository import (
     SqliteInstructionRepository,
 )
@@ -32,10 +29,7 @@ from src.app.services.model_service import (
     ModelCatalogService,
 )
 from src.app.services.shared.tenant_service import TenantService
-from tests.integration.factories import (
-    build_composition,
-    build_instruction,
-)
+from tests.integration.factories import build_instruction
 
 
 WorkspaceFactory = Callable[..., Awaitable[None]]
@@ -49,9 +43,6 @@ def build_repository(
     """Build the real reference adapter and its dependencies."""
 
     instruction_repository = SqliteInstructionRepository(
-        database_path,
-    )
-    composition_repository = SqliteCompositionRepository(
         database_path,
     )
     provider_repository = SqliteProviderRepository(
@@ -76,24 +67,22 @@ def build_repository(
 
     return CompositeReferenceRepository(
         instruction_repository=instruction_repository,
-        composition_repository=composition_repository,
         model_catalog_service=catalog_service,
     )
 
 
 @pytest.mark.asyncio
-async def test_resolves_instruction_and_composition_references(
+async def test_resolves_instruction_references(
     sqlite_database_path: Path,
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Resolve visible instructions while omitting missing identifiers."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )
     instruction_repository = SqliteInstructionRepository(
-        sqlite_database_path,
-    )
-    composition_repository = SqliteCompositionRepository(
         sqlite_database_path,
     )
 
@@ -102,12 +91,6 @@ async def test_resolves_instruction_and_composition_references(
             instruction_id="persona-1",
         )
     )
-    await composition_repository.create(
-        build_composition(
-            composition_id="council-1",
-        )
-    )
-
     repository = build_repository(
         database_path=sqlite_database_path,
         database=sqlite_database,
@@ -121,30 +104,18 @@ async def test_resolves_instruction_and_composition_references(
             "missing-persona",
         ],
     )
-    councils = await repository.get_many(
-        workspace_id="workspace-1",
-        resource_type="council",
-        resource_ids=[
-            "council-1",
-        ],
-    )
-
     assert list(personas) == [
         "persona-1",
     ]
     assert personas["persona-1"].name == "Security Reviewer"
-
-    assert list(councils) == [
-        "council-1",
-    ]
-    assert councils["council-1"].name == "Security Council"
-
 
 @pytest.mark.asyncio
 async def test_resolves_curated_models(
     sqlite_database_path: Path,
     sqlite_database: SqliteDatabase,
 ) -> None:
+    """Resolve curated model identifiers without duplicates."""
+
     repository = build_repository(
         database_path=sqlite_database_path,
         database=sqlite_database,
@@ -172,6 +143,8 @@ async def test_reference_lookup_isolated_by_workspace(
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Do not expose custom instructions owned by another workspace."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )

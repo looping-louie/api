@@ -13,14 +13,13 @@ from src.app.catalogs.loader import (
     load_instruction_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.council import CouncilController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
-from src.app.repositories.composition_repository import (
-    SqliteCompositionRepository,
+from src.app.repositories.sqlite_loop_repository import (
+    SqliteLoopRepository,
 )
 from src.app.repositories.dependency_repository import (
     SqliteDependencyRepository,
@@ -50,7 +49,6 @@ from src.app.services.app_settings_service import (
     AppSettings,
     get_app_settings,
 )
-from src.app.services.council_service import CouncilService
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
 )
@@ -72,7 +70,6 @@ from src.app.services.providers.provider_connection_service import (
 )
 from src.app.services.providers.provider_service import ProviderService
 from src.app.services.providers.secret_service import FernetSecretService
-from src.app.services.shared.composition_service import CompositionService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.instruction_service import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
@@ -148,7 +145,7 @@ async def configure_application(
     instruction_repository = SqliteInstructionRepository(
         resolved_settings.database_path,
     )
-    composition_repository = SqliteCompositionRepository(
+    loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
     provider_repository = SqliteProviderRepository(
@@ -192,7 +189,6 @@ async def configure_application(
 
     reference_repository = CompositeReferenceRepository(
         instruction_repository=instruction_repository,
-        composition_repository=composition_repository,
         model_catalog_service=model_catalog_service,
     )
     reference_resolver = ReferenceResolver(
@@ -206,14 +202,6 @@ async def configure_application(
         id_factory=_create_identifier,
         clock=_utc_now,
     )
-    composition_service = CompositionService(
-        repository=composition_repository,
-        validation_service=validation_service,
-        dependency_checker=dependency_checker,
-        id_factory=_create_identifier,
-        clock=_utc_now,
-    )
-
     persona_service = PersonaService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
@@ -222,17 +210,12 @@ async def configure_application(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
     )
-    council_service = CouncilService(
-        tenant_service=tenant_service,
-        validation_service=validation_service,
-        reference_resolver=reference_resolver,
-        composition_service=composition_service,
-    )
     loop_service = LoopService(
+        repository=loop_repository,
         tenant_service=tenant_service,
-        validation_service=validation_service,
         reference_resolver=reference_resolver,
-        composition_service=composition_service,
+        id_factory=_create_identifier,
+        clock=_utc_now,
     )
     provider_service = ProviderService(
         repository=provider_repository,
@@ -252,9 +235,6 @@ async def configure_application(
     )
     app.state.skill_controller = SkillController(
         skill_service=skill_service,
-    )
-    app.state.council_controller = CouncilController(
-        council_service=council_service,
     )
     app.state.loop_controller = LoopController(
         loop_service=loop_service,

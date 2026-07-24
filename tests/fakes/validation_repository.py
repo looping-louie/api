@@ -1,6 +1,7 @@
+"""In-memory validation lookup adapter for tests."""
+
 from src.app.services.shared.validation_service import ValidationService
 
-from .composition_repository import FakeCompositionRepository
 from .instruction_repository import FakeInstructionRepository
 
 
@@ -11,10 +12,8 @@ class FakeValidationRepository:
         self,
         *,
         instruction_repository: FakeInstructionRepository | None = None,
-        composition_repository: FakeCompositionRepository | None = None,
     ) -> None:
         self._instruction_repository = instruction_repository
-        self._composition_repository = composition_repository
 
     async def find_resource_id_by_name(
         self,
@@ -51,17 +50,6 @@ class FakeValidationRepository:
                     document.name,
                 )
                 for document in self._instruction_repository.documents
-            )
-
-        if self._composition_repository is not None:
-            resources.extend(
-                (
-                    document.id,
-                    document.workspace_id,
-                    document.composition_type,
-                    document.name,
-                )
-                for document in self._composition_repository.documents
             )
 
         return resources
