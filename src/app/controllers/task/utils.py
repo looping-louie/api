@@ -274,10 +274,15 @@ async def _handle_collect_snapshot(
             'output_tokens': 0,
             'duration_ms': 0,
         }
-        state.message = (
-            'Generator/operations step failed, continuing with empty operations: '
-            f'{exc}'
+        _close_state(
+            state,
+            status='failed',
+            message=(
+                'Generator/operations step failed during collect_snapshot: '
+                f'{exc}'
+            ),
         )
+        return
 
     _advance_state(
         state,

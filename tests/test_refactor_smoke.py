@@ -390,6 +390,58 @@ def test_task_checkpoint_continue_replays_idempotent_response(monkeypatch):
     assert first.continuation_token == second.continuation_token
 
 
+def test_task_checkpoint_collect_snapshot_failure_is_terminal(monkeypatch):
+    task._TASK_RUNS.clear()  # pylint: disable=protected-access
+
+    async def fake_create_execution_plan(**_kwargs):
+        raise RuntimeError('planner boom')
+
+    monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
+
+    start_result = asyncio.run(
+        task.start_task(
+            StartRequest(
+                repo_path='/tmp/repo',
+                constitution='Implement only the requested task.',
+                project_profile=VALID_PROJECT_PROFILE,
+                task={
+                    'id': 'task-checkpoint-003b',
+                    'status': 'pending',
+                    'prompt': 'Trigger planner failure',
+                    'run_id': None,
+                    'commit_message': 'feat: planner failure handling',
+                },
+            )
+        )
+    )
+
+    response = asyncio.run(
+        task.continue_task(
+            ContinueRequest(
+                run_id=start_result.run_id,
+                continuation_token=start_result.continuation_token,
+                idempotency_key='idem-fail-fast',
+                action_result={
+                    'action': 'collect_snapshot',
+                    'repo_context': 'snapshot',
+                    'workspace_metadata': {
+                        'workspace_path': '/tmp/workspace',
+                        'source_commit_sha': 'abc123',
+                    },
+                },
+            )
+        )
+    )
+
+    assert response.ok is True
+    assert response.status == 'failed'
+    assert response.next_action == 'none'
+    assert response.continuation_token is None
+    assert response.message is not None
+    assert 'collect_snapshot' in response.message
+    assert 'planner boom' in response.message
+
+
 
 def test_task_checkpoint_get_returns_latest_state():
     task._TASK_RUNS.clear()  # pylint: disable=protected-access
