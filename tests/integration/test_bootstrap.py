@@ -31,6 +31,7 @@ EXPECTED_TABLES = {
     "instructions",
     "loops",
     "loop_agents",
+    "loop_catalog_installations",
     "loop_changelog_entries",
     "provider_credentials",
     "persona_skills",
@@ -129,6 +130,14 @@ def test_bootstrap_configures_application_and_runs_migrations(
             ORDER BY version ASC
             """
         ).fetchall()
+        loop_rows = connection.execute(
+            """
+            SELECT title
+            FROM loops
+            WHERE workspace_id = 'local-workspace'
+            ORDER BY title
+            """
+        ).fetchall()
 
     table_names = {
         str(row[0])
@@ -153,6 +162,11 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0005_instruction_catalog",
         "0006_loops",
         "0007_persona_skills",
+        "0008_loop_catalog_installations",
+    ]
+    assert [str(row[0]) for row in loop_rows] == [
+        "plan implementation",
+        "shape ideas",
     ]
 
 

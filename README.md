@@ -161,7 +161,7 @@ Looping Louie currently exposes these endpoints.
 | `/task/start` | Start one checkpoint-based task execution. |
 | `/task/continue` | Advance one checkpoint transition. |
 | `/task/{run_id}` | Read latest checkpoint state for a task run. |
-| `/meeting/run` | Run a structured multi-persona meeting. |
+| `/api/v1/loops` | Manage persisted multi-agent loop definitions. |
 
 See the complete API documentation:
 

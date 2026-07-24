@@ -114,8 +114,8 @@ async def call_together(
             Complete prompt.
 
         system_prompt:
-            Optional provider-level instruction. Existing generator calls use
-            the file-operation contract by default; meetings pass ``None``.
+            Optional provider-level instruction. Generator calls use the
+            file-operation contract by default.
 
     Returns:
         A provider-normalised dictionary containing:

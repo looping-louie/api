@@ -3,14 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from src.app.schemas import (
     GetTaskResponse,
-    RunMeetingRequest,
-    RunMeetingResponse,
     TaskContinueRequest,
     TaskContinueResponse,
     TaskStartRequest,
     TaskStartResponse,
 )
-from src.app.controllers.meeting import run_meeting
 from src.app.controllers.task import continue_task, get_task, start_task
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
@@ -38,32 +35,6 @@ InstructionLibraryDependency = Annotated[
     ExecutionInstructionLibraryService,
     Depends(get_execution_instruction_library_service),
 ]
-
-
-@router.post("/meeting/run", response_model=RunMeetingResponse)
-async def meeting_run_endpoint(
-    req: RunMeetingRequest,
-    context: ContextDependency,
-    instruction_library_service: InstructionLibraryDependency,
-) -> RunMeetingResponse:
-    """
-    Execute one structured multi-persona meeting.
-
-    Participants contribute proposals, challengers identify blocking issues,
-    and the loop iterates until approval or the maximum number of rounds is
-    reached.
-
-    Returns the final generated artifact together with the complete meeting
-    trace and execution metrics.
-    """
-    instruction_library = await instruction_library_service.load(
-        user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-    return await run_meeting(
-        req,
-        instruction_library=instruction_library,
-    )
 
 
 @router.post('/task/start', response_model=TaskStartResponse)

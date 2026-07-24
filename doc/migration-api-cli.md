@@ -43,10 +43,6 @@ Implemented task-related endpoints:
 - `POST /task/continue`: advances checkpoint task execution.
 - `GET /task/{run_id}`: returns current run checkpoint state.
 
-Additional active endpoints:
-
-- `POST /meeting/run`.
-
 Removed endpoints:
 
 - `POST /task/run`.
@@ -75,8 +71,7 @@ Use schema names consistently to preserve clear boundaries:
 Example applied now:
 
 - Internal checkpoint planning/review flow uses `RunHarnessRequest`.
-- API endpoints keep task checkpoint request/response models and
-    `RunMeetingRequest`/`RunMeetingResponse`.
+- API endpoints keep task checkpoint request/response models.
 
 ---
 

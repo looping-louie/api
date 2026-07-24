@@ -18,26 +18,10 @@ EXECUTION_PLANNER_OUTPUT_INSTRUCTIONS = _load_instruction(
 )
 GENERATOR_SYSTEM_PROMPT = _load_instruction("generator.md")
 REVIEWER_OUTPUT_INSTRUCTIONS = _load_instruction("reviewer.md")
-MEETING_PLANNER_INSTRUCTIONS = _load_instruction("meeting_planner.md")
-FACILITATOR_BRIEF_INSTRUCTIONS = _load_instruction(
-    "facilitator_brief.md"
-)
-PARTICIPANT_INSTRUCTIONS = _load_instruction("participant.md")
-FACILITATOR_AGGREGATION_INSTRUCTIONS = _load_instruction(
-    "facilitator_aggregation.md"
-)
-CHALLENGER_INSTRUCTIONS = _load_instruction("challenger.md")
-VALIDATOR_INSTRUCTIONS = _load_instruction("validator.md")
 
 
 __all__ = [
     "EXECUTION_PLANNER_OUTPUT_INSTRUCTIONS",
     "GENERATOR_SYSTEM_PROMPT",
     "REVIEWER_OUTPUT_INSTRUCTIONS",
-    "MEETING_PLANNER_INSTRUCTIONS",
-    "FACILITATOR_BRIEF_INSTRUCTIONS",
-    "PARTICIPANT_INSTRUCTIONS",
-    "FACILITATOR_AGGREGATION_INSTRUCTIONS",
-    "CHALLENGER_INSTRUCTIONS",
-    "VALIDATOR_INSTRUCTIONS",
 ]

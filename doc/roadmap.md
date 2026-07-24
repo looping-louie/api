@@ -46,8 +46,4 @@
 
 [x] Meter `/src/app/skills` y `/src/app/personas` en `/src/app/catalogs`.
 
-[ ] Eliminar el concepto de `Meeting`.
-
-
-
 ***

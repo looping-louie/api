@@ -13,7 +13,6 @@ recursos conservan temporalmente estas rutas de acción:
 
 Y verbos específicos para operaciones particulares:
 
-/meetings/run
 /runs/cancel
 
 Todas las rutas empiezan por el prefijo: `/api/v1`.
@@ -64,17 +63,6 @@ Todas las rutas empiezan por el prefijo: `/api/v1`.
 | `PATCH` | `/loops/{loop_id}` | Modifica campos o estado. |
 | `DELETE` | `/loops/{loop_id}` | Elimina la definición y conserva su changelog. |
 | `GET` | `/loops/{loop_id}/changelog` | Lista diez cambios desde el `offset` indicado. |
-
-## Meetings
-
-| Método | Ruta | Descripción |
-| ------ | ---- | ----------- |
-| `POST` | `/meeting/run` | Ejecuta una reunión usando un prompt, tipo y loop. |
-
-Tipos iniciales:
-
-- shape_idea
-- plan_implementation
 
 ## Workflows
 

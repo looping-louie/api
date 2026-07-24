@@ -12,6 +12,7 @@ APP_DIR = ROOT / "src" / "app"
 sys.path.insert(0, str(ROOT))
 
 from src.app.catalogs.loader import load_instruction_catalog  # noqa: E402
+from src.app.catalogs.loops import LOOP_CATALOG  # noqa: E402
 from src.app.catalogs.models import MODEL_CATALOG  # noqa: E402
 from src.app.catalogs.providers import PROVIDER_CATALOG  # noqa: E402
 
@@ -49,6 +50,7 @@ def main() -> None:
         f"{len(PROVIDER_CATALOG)} providers, "
         f"{len(MODEL_CATALOG)} models, "
         f"{deployment_count} deployments, "
+        f"{len(LOOP_CATALOG)} loops, "
         f"{len(catalog.skills)} skills, "
         f"{len(catalog.personas)} personas."
     )

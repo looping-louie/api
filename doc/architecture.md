@@ -47,11 +47,8 @@ services/execution_planner/
 services/task_plan/
     Task list loading, selection and persistence
 
-services/meeting/
-    Multi-persona meeting orchestration
-
 catalogs/
-    Curated providers, models and builtin instructions
+    Curated providers, models, loops and builtin instructions
 
 catalogs/personas/
     Versioned persona manifest and Markdown content

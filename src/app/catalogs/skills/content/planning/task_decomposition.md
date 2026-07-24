@@ -10,7 +10,7 @@ or automated coding harnesses.
 
 A good task must be:
 
-- understandable without the meeting transcript;
+- understandable without the prior discussion;
 - small enough for one focused implementation run;
 - independently reviewable;
 - ordered by dependency;

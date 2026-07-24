@@ -27,11 +27,6 @@ from src.app.schemas.plan import ExecutionPlan, ProjectPhase
 from src.app.schemas.harness import (
     RunRequest as RunHarnessRequest,
 )
-from src.app.schemas.meeting import (
-    MeetingType,
-    RunRequest as RunMeetingRequest,
-    RunResponse as RunMeetingResponse,
-)
 from src.app.schemas.task import (
     CheckpointResponse as TaskCheckpointResponse,
     ContinueActionResult as TaskContinueActionResult,
@@ -119,7 +114,6 @@ __all__ = [
 __all__ = [
     'ExecutionPlan',
     'GeneratorAssignment',
-    'MeetingType',
     'ModelMetrics',
     'ProjectProfile',
     'ProjectProfileMarkers',
@@ -130,8 +124,6 @@ __all__ = [
     'ReviewerResult',
     'GetTaskResponse',
     'RunHarnessRequest',
-    'RunMeetingRequest',
-    'RunMeetingResponse',
     'TaskCheckpointResponse',
     'TaskContinueActionResult',
     'TaskContinueRequest',

@@ -18,6 +18,11 @@ from .loader import (
     InstructionCatalog,
     load_instruction_catalog,
 )
+from .loops import (
+    LOOP_CATALOG,
+    LoopCatalogAgent,
+    LoopCatalogEntry,
+)
 from .models import (
     MODEL_CATALOG,
     MODEL_CATALOG_BY_ID,
@@ -47,6 +52,9 @@ __all__ = [
     "InstructionCatalogMetadata",
     "InstructionCatalog",
     "InstructionOrigin",
+    "LOOP_CATALOG",
+    "LoopCatalogAgent",
+    "LoopCatalogEntry",
     "MODEL_CATALOG",
     "MODEL_CATALOG_BY_ID",
     "ModelCapability",

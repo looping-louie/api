@@ -59,6 +59,7 @@ from src.app.services.instruction_catalog_synchronizer import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
+from src.app.services.loop_catalog_seeder import seed_loop_catalog
 from src.app.services.loop_service import LoopService
 from src.app.services.model_service import (
     ModelAvailabilityService,
@@ -132,6 +133,13 @@ async def configure_application(
         workspace_id="local-workspace",
         workspace_name="Local workspace",
         user_id="local-user",
+    )
+    installed_loops = await seed_loop_catalog(
+        database_path=resolved_settings.database_path,
+    )
+    LOGGER.info(
+        "Loop catalog installed: inserted=%d",
+        installed_loops,
     )
 
     encryption_key = _require_encryption_key(
