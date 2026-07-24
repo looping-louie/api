@@ -1,7 +1,8 @@
-"""HTTP tests for provider RPC routes."""
+"""HTTP contract tests for provider routes."""
 
 from collections.abc import Awaitable, Callable
 
+import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
@@ -34,188 +35,102 @@ def build_app(
             request: Request,
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
+            """Inject the user expected by the request-context dependency."""
+
             request.state.user_id = "user-1"
             return await call_next(request)
 
     register_exception_handlers(app)
-    app.include_router(
-        providers_router,
-        prefix="/api/v1",
-    )
-
+    app.include_router(providers_router, prefix="/api/v1")
     return app
 
 
-def test_list_providers_route(
+def test_provider_collection_and_item_routes(
     provider_controller: ProviderController,
 ) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
-    )
+    """Collection and item GETs use the REST paths."""
 
-    response = client.get(
-        "/api/v1/providers/list",
-    )
+    client = TestClient(build_app(controller=provider_controller))
 
-    assert response.status_code == 200
+    listed = client.get("/api/v1/providers")
+    described = client.get("/api/v1/providers/ollama")
 
-    body = response.json()
-
-    assert [
-        provider["provider"]
-        for provider in body
-    ] == [
+    assert listed.status_code == 200
+    assert [item["provider"] for item in listed.json()] == [
         "anthropic",
         "nvidia",
         "ollama",
         "openai",
         "together",
     ]
+    assert described.status_code == 200
+    assert described.json()["provider"] == "ollama"
 
 
-def test_describe_provider_route(
+def test_patch_configures_provider_without_returning_secret(
     provider_controller: ProviderController,
 ) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
-    )
+    """PATCH stores configuration while keeping plaintext secrets private."""
 
-    response = client.get(
-        "/api/v1/providers/describe/ollama",
+    client = TestClient(build_app(controller=provider_controller))
+
+    response = client.patch(
+        "/api/v1/providers/openai",
+        json={"api_key": "sk-test-secret"},
     )
 
     assert response.status_code == 200
-    assert response.json()["provider"] == "ollama"
-    assert response.json()["requires_api_key"] is False
-
-
-def test_configure_provider_route_never_returns_secret(
-    provider_controller: ProviderController,
-) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
-    )
-
-    response = client.post(
-        "/api/v1/providers/configure/openai",
-        json={
-            "api_key": "sk-test-secret",
-            "base_url": None,
-        },
-    )
-
-    assert response.status_code == 200
-
     body = response.json()
-    serialized = response.text
-
-    assert body["provider"] == "openai"
     assert body["configured"] is True
     assert body["enabled"] is True
     assert body["key_trimmed"] == "sk-te***************"
-    assert "sk-test-secret" not in serialized
+    assert "sk-test-secret" not in response.text
     assert "key_ciphertext" not in body
 
 
-def test_disable_and_enable_provider_routes(
+def test_patch_changes_enabled_state(
     provider_controller: ProviderController,
 ) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
+    """PATCH disables and re-enables an existing configuration."""
+
+    client = TestClient(build_app(controller=provider_controller))
+    configured = client.patch(
+        "/api/v1/providers/openai",
+        json={"api_key": "sk-test-secret"},
     )
 
-    configured = client.post(
-        "/api/v1/providers/configure/openai",
-        json={
-            "api_key": "sk-test-secret",
-        },
+    disabled = client.patch(
+        "/api/v1/providers/openai",
+        json={"enabled": False},
+    )
+    enabled = client.patch(
+        "/api/v1/providers/openai",
+        json={"enabled": True},
     )
 
     assert configured.status_code == 200
-
-    disabled = client.post(
-        "/api/v1/providers/disable/openai",
-    )
-
     assert disabled.status_code == 200
-    assert disabled.json()["configured"] is True
     assert disabled.json()["enabled"] is False
-
-    enabled = client.post(
-        "/api/v1/providers/enable/openai",
-    )
-
     assert enabled.status_code == 200
-    assert enabled.json()["configured"] is True
     assert enabled.json()["enabled"] is True
 
 
-def test_provider_connection_test_route(
+def test_delete_removes_only_workspace_configuration(
     provider_controller: ProviderController,
 ) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
+    """DELETE resets workspace state while retaining the catalog provider."""
+
+    client = TestClient(build_app(controller=provider_controller))
+    client.patch(
+        "/api/v1/providers/openai",
+        json={"api_key": "sk-test-secret"},
     )
 
-    configured = client.post(
-        "/api/v1/providers/configure/openai",
-        json={
-            "api_key": "sk-test-secret",
-        },
-    )
-
-    assert configured.status_code == 200
-
-    response = client.post(
-        "/api/v1/providers/test/openai",
-    )
-
-    assert response.status_code == 200
-    assert response.json()["provider"] == "openai"
-    assert response.json()["success"] is True
-
-
-def test_delete_provider_route(
-    provider_controller: ProviderController,
-) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
-    )
-
-    configured = client.post(
-        "/api/v1/providers/configure/openai",
-        json={
-            "api_key": "sk-test-secret",
-        },
-    )
-
-    assert configured.status_code == 200
-
-    deleted = client.delete(
-        "/api/v1/providers/delete/openai",
-    )
+    deleted = client.delete("/api/v1/providers/openai")
+    described = client.get("/api/v1/providers/openai")
 
     assert deleted.status_code == 200
-    assert deleted.json() == {
-        "deleted": True,
-    }
-
-    described = client.get(
-        "/api/v1/providers/describe/openai",
-    )
-
+    assert deleted.json() == {"deleted": True}
     assert described.status_code == 200
     assert described.json()["configured"] is False
 
@@ -223,68 +138,118 @@ def test_delete_provider_route(
 def test_unknown_provider_returns_404(
     provider_controller: ProviderController,
 ) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
-    )
+    """Catalog validation rejects unknown provider identifiers."""
 
-    response = client.get(
-        "/api/v1/providers/describe/unknown",
-    )
+    client = TestClient(build_app(controller=provider_controller))
+
+    response = client.get("/api/v1/providers/unknown")
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "provider_not_found"
 
 
-def test_unconfigured_provider_test_returns_409(
+def test_empty_patch_returns_422(
     provider_controller: ProviderController,
 ) -> None:
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
+    """PATCH requires at least one explicitly supplied field."""
+
+    client = TestClient(build_app(controller=provider_controller))
+
+    response = client.patch("/api/v1/providers/openai", json={})
+
+    assert response.status_code == 422
+
+
+def test_patch_rejects_null_enabled(
+    provider_controller: ProviderController,
+) -> None:
+    """The enabled field accepts only explicit boolean values."""
+
+    client = TestClient(build_app(controller=provider_controller))
+
+    response = client.patch(
+        "/api/v1/providers/openai",
+        json={"enabled": None},
     )
 
-    response = client.post(
-        "/api/v1/providers/test/openai",
-    )
-
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == (
-        "provider_not_configured"
-    )
+    assert response.status_code == 422
 
 
-def test_connection_failure_returns_502(
+def test_connection_failure_does_not_configure_provider(
     provider_controller: ProviderController,
     provider_connection_service: FakeProviderConnectionService,
 ) -> None:
+    """Connection errors retain the established gateway error contract."""
+
     provider_connection_service.error = ProviderConnectionError(
         "Connection failed."
     )
-    client = TestClient(
-        build_app(
-            controller=provider_controller,
-        )
-    )
+    client = TestClient(build_app(controller=provider_controller))
 
-    response = client.post(
-        "/api/v1/providers/configure/openai",
-        json={
-            "api_key": "sk-test-secret",
-        },
+    response = client.patch(
+        "/api/v1/providers/openai",
+        json={"api_key": "sk-test-secret"},
     )
 
     assert response.status_code == 502
-    assert response.json()["error"]["code"] == (
-        "provider_connection_error"
-    )
+    assert response.json()["error"]["code"] == "provider_connection_error"
+    described = client.get("/api/v1/providers/openai")
+    assert described.json()["configured"] is False
+
+
+def test_only_new_provider_routes_are_published(
+    provider_controller: ProviderController,
+) -> None:
+    """OpenAPI excludes all legacy provider action endpoints."""
+
+    client = TestClient(build_app(controller=provider_controller))
+    paths = {
+        path: set(methods)
+        for path, methods in client.get("/openapi.json").json()["paths"].items()
+    }
+
+    assert paths == {
+        "/api/v1/providers": {"get"},
+        "/api/v1/providers/{provider_id}": {
+            "get",
+            "patch",
+            "delete",
+        },
+    }
+    assert client.post("/api/v1/providers").status_code == 405
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/v1/providers/list"),
+        ("GET", "/api/v1/providers/describe/openai"),
+        ("POST", "/api/v1/providers/configure/openai"),
+        ("POST", "/api/v1/providers/enable/openai"),
+        ("POST", "/api/v1/providers/disable/openai"),
+        ("POST", "/api/v1/providers/test/openai"),
+        ("DELETE", "/api/v1/providers/delete/openai"),
+    ],
+)
+def test_legacy_routes_are_unavailable(
+    provider_controller: ProviderController,
+    method: str,
+    path: str,
+) -> None:
+    """Legacy RPC paths no longer expose successful operations."""
+
+    client = TestClient(build_app(controller=provider_controller))
+
+    response = client.request(method, path)
+
+    assert response.status_code in {404, 405}
 
 
 def test_provider_routes_require_authentication(
     provider_controller: ProviderController,
 ) -> None:
+    """Provider routes reject requests without an authenticated user."""
+
     client = TestClient(
         build_app(
             controller=provider_controller,
@@ -292,11 +257,7 @@ def test_provider_routes_require_authentication(
         )
     )
 
-    response = client.get(
-        "/api/v1/providers/list",
-    )
+    response = client.get("/api/v1/providers")
 
     assert response.status_code == 401
-    assert response.json()["detail"]["code"] == (
-        "authentication_required"
-    )
+    assert response.json()["detail"]["code"] == "authentication_required"

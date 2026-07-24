@@ -32,12 +32,8 @@
 
 [x] Mover el `/src/app/http` a `/src/app/utils`.
 
-[ ] Modificar las llamadas de la API para que:
-
-- En vez de `/providers/list` use `/providers`,
-- En vez de `/providers/describe/{provider_id}` use un GET a `/providers/{provider_id}`.
-- En vez de `/providers/configure/{provider_id}` use un POST a `/providers/{provider_id}`.
-- En vez de `/providers/edit/{provider_id}` use un PUT a `/providers/{provider_id}`.
+[x] Simplificar la API de proveedores a `GET /providers`,
+`GET/PATCH/DELETE /providers/{provider_id}`.
 
 [x] Meter `/src/app/skills` y `/src/app/personas` en `/src/app/catalogs`.
 

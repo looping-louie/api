@@ -141,37 +141,6 @@ request_expect_status() {
     rm -f "${response_file}"
 }
 
-request_external_test() {
-    local provider_id="$1"
-    local response_file
-    local status
-
-    response_file="$(mktemp)"
-    status="$(
-        curl \
-            --silent \
-            --show-error \
-            --output "${response_file}" \
-            --write-out "%{http_code}" \
-            --request POST \
-            "${CURL_HEADERS[@]}" \
-            "${API_ROOT}/providers/test/${provider_id}"
-    )"
-
-    log "→ POST ${API_ROOT}/providers/test/${provider_id} [got ${status}]"
-    cat "${response_file}"
-    rm -f "${response_file}"
-
-    case "${status}" in
-        200|502|503|504)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
 json_field() {
     local field="$1"
 
@@ -286,9 +255,13 @@ cleanup() {
     fi
 
     if [[ "${PROVIDER_CREATED}" == "1" ]]; then
-        request DELETE "/providers/delete/${SMOKE_PROVIDER_ID}" >/dev/null
+        request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
     elif [[ "${PROVIDER_WAS_ENABLED}" == "0" ]]; then
-        request POST "/providers/disable/${SMOKE_PROVIDER_ID}" >/dev/null
+        request \
+            PATCH \
+            "/providers/${SMOKE_PROVIDER_ID}" \
+            '{"enabled": false}' \
+            >/dev/null
     fi
 
     if [[ "${exit_code}" != "0" ]]; then
@@ -302,7 +275,7 @@ trap cleanup EXIT
 
 log "Checking provider catalog"
 
-providers_response="$(request GET "/providers/list")"
+providers_response="$(request GET "/providers")"
 
 IFS=$'\t' read -r \
     provider_configured \
@@ -315,7 +288,7 @@ IFS=$'\t' read -r \
 
 PROVIDER_WAS_ENABLED="${provider_enabled}"
 
-request GET "/providers/describe/${SMOKE_PROVIDER_ID}" >/dev/null
+request GET "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
 
 if [[ "${provider_configured}" == "0" ]]; then
     if [[ "${provider_requires_key}" == "1" \
@@ -325,17 +298,24 @@ if [[ "${provider_configured}" == "0" ]]; then
     fi
 
     request \
-        POST \
-        "/providers/configure/${SMOKE_PROVIDER_ID}" \
+        PATCH \
+        "/providers/${SMOKE_PROVIDER_ID}" \
         "$(provider_payload)" \
         >/dev/null
 
     PROVIDER_CREATED=1
 fi
 
-request POST "/providers/disable/${SMOKE_PROVIDER_ID}" >/dev/null
-request POST "/providers/enable/${SMOKE_PROVIDER_ID}" >/dev/null
-request_external_test "${SMOKE_PROVIDER_ID}" >/dev/null
+request \
+    PATCH \
+    "/providers/${SMOKE_PROVIDER_ID}" \
+    '{"enabled": false}' \
+    >/dev/null
+request \
+    PATCH \
+    "/providers/${SMOKE_PROVIDER_ID}" \
+    '{"enabled": true}' \
+    >/dev/null
 
 log "Checking model catalog"
 
@@ -546,13 +526,17 @@ request GET "/skills/list" >/dev/null
 request GET "/personas/list" >/dev/null
 
 if [[ "${PROVIDER_CREATED}" == "1" ]]; then
-    request DELETE "/providers/delete/${SMOKE_PROVIDER_ID}" >/dev/null
+    request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
     PROVIDER_CREATED=0
 elif [[ "${PROVIDER_WAS_ENABLED}" == "0" ]]; then
-    request POST "/providers/disable/${SMOKE_PROVIDER_ID}" >/dev/null
+    request \
+        PATCH \
+        "/providers/${SMOKE_PROVIDER_ID}" \
+        '{"enabled": false}' \
+        >/dev/null
 fi
 
-request GET "/providers/list" >/dev/null
+request GET "/providers" >/dev/null
 
 trap - EXIT
 log "✓ API smoke test passed"

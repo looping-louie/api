@@ -1,22 +1,14 @@
 """Thin controller for model provider configuration."""
 
 from src.app.schemas.common import DeleteResponse
-from src.app.schemas.providers import (
-    ProviderResponse,
-    ProviderSetRequest,
-    ProviderTestResponse,
-)
+from src.app.schemas.providers import ProviderPatchRequest, ProviderResponse
 from src.app.services.providers.provider_service import ProviderService
 
 
 class ProviderController:
-    """Transforms provider schemas and delegates business logic."""
+    """Transform provider schemas and delegate business logic."""
 
-    def __init__(
-        self,
-        *,
-        provider_service: ProviderService,
-    ) -> None:
+    def __init__(self, *, provider_service: ProviderService) -> None:
         self._provider_service = provider_service
 
     async def list(
@@ -25,93 +17,55 @@ class ProviderController:
         user_id: str,
         requested_workspace_id: str | None = None,
     ) -> list[ProviderResponse]:
+        """List providers visible in the selected workspace."""
+
         providers = await self._provider_service.list(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-
         return [
             ProviderResponse.model_validate(provider)
             for provider in providers
         ]
 
-    async def describe(
+    async def get(
         self,
         *,
         user_id: str,
         provider_id: str,
         requested_workspace_id: str | None = None,
     ) -> ProviderResponse:
-        provider = await self._provider_service.describe(
+        """Get one catalog provider and its workspace state."""
+
+        provider = await self._provider_service.get(
             user_id=user_id,
             provider_id=provider_id,
             requested_workspace_id=requested_workspace_id,
         )
-
         return ProviderResponse.model_validate(provider)
 
-    async def configure(
+    async def patch(
         self,
         *,
         user_id: str,
         provider_id: str,
-        payload: ProviderSetRequest,
+        payload: ProviderPatchRequest,
         requested_workspace_id: str | None = None,
     ) -> ProviderResponse:
-        provider = await self._provider_service.configure(
+        """Patch one provider configuration."""
+
+        supplied_fields = payload.model_fields_set
+        provider = await self._provider_service.patch(
             user_id=user_id,
             provider_id=provider_id,
             api_key=payload.api_key,
+            api_key_supplied="api_key" in supplied_fields,
             base_url=payload.base_url,
+            base_url_supplied="base_url" in supplied_fields,
+            enabled=payload.enabled,
             requested_workspace_id=requested_workspace_id,
         )
-
         return ProviderResponse.model_validate(provider)
-
-    async def enable(
-        self,
-        *,
-        user_id: str,
-        provider_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> ProviderResponse:
-        provider = await self._provider_service.enable(
-            user_id=user_id,
-            provider_id=provider_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-
-        return ProviderResponse.model_validate(provider)
-
-    async def disable(
-        self,
-        *,
-        user_id: str,
-        provider_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> ProviderResponse:
-        provider = await self._provider_service.disable(
-            user_id=user_id,
-            provider_id=provider_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-
-        return ProviderResponse.model_validate(provider)
-
-    async def test(
-        self,
-        *,
-        user_id: str,
-        provider_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> ProviderTestResponse:
-        result = await self._provider_service.test(
-            user_id=user_id,
-            provider_id=provider_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-
-        return ProviderTestResponse.model_validate(result)
 
     async def delete(
         self,
@@ -120,10 +74,11 @@ class ProviderController:
         provider_id: str,
         requested_workspace_id: str | None = None,
     ) -> DeleteResponse:
+        """Delete one provider's workspace configuration."""
+
         await self._provider_service.delete(
             user_id=user_id,
             provider_id=provider_id,
             requested_workspace_id=requested_workspace_id,
         )
-
         return DeleteResponse()

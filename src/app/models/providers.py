@@ -45,13 +45,3 @@ class ProviderState:
     base_url: str | None
     model_count: int
     model_catalog_note: str | None
-
-
-@dataclass(frozen=True)
-class ProviderTestResult:
-    """Result of testing one provider configuration."""
-
-    provider: str
-    success: bool
-    message: str
-    latency_ms: int

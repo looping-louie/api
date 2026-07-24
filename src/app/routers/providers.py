@@ -1,4 +1,4 @@
-"""RPC routes for model provider configuration."""
+"""REST routes for model provider configuration."""
 
 from typing import Annotated
 
@@ -6,11 +6,7 @@ from fastapi import APIRouter, Depends, Path
 
 from src.app.controllers.provider import ProviderController
 from src.app.schemas.common import DeleteResponse
-from src.app.schemas.providers import (
-    ProviderResponse,
-    ProviderSetRequest,
-    ProviderTestResponse,
-)
+from src.app.schemas.providers import ProviderPatchRequest, ProviderResponse
 
 from .dependencies import (
     RequestContext,
@@ -19,32 +15,24 @@ from .dependencies import (
 )
 
 
-router = APIRouter(
-    prefix="/providers",
-    tags=["Providers"],
-)
+router = APIRouter(prefix="/providers", tags=["Providers"])
 
 ContextDependency = Annotated[
     RequestContext,
     Depends(get_request_context),
 ]
-
 ControllerDependency = Annotated[
     ProviderController,
     Depends(get_provider_controller),
 ]
-
 ProviderIdPath = Annotated[
     str,
-    Path(
-        min_length=1,
-        description="Curated provider identifier.",
-    ),
+    Path(min_length=1, description="Curated provider identifier."),
 ]
 
 
 @router.get(
-    "/list",
+    "",
     response_model=list[ProviderResponse],
     summary="List providers",
 )
@@ -61,38 +49,38 @@ async def list_providers(
 
 
 @router.get(
-    "/describe/{provider_id}",
+    "/{provider_id}",
     response_model=ProviderResponse,
-    summary="Describe provider",
+    summary="Get provider",
 )
-async def describe_provider(
+async def get_provider(
     provider_id: ProviderIdPath,
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> ProviderResponse:
     """Return provider metadata and configuration state."""
 
-    return await controller.describe(
+    return await controller.get(
         user_id=context.user_id,
         provider_id=provider_id,
         requested_workspace_id=context.requested_workspace_id,
     )
 
 
-@router.post(
-    "/configure/{provider_id}",
+@router.patch(
+    "/{provider_id}",
     response_model=ProviderResponse,
     summary="Configure provider",
 )
-async def configure_provider(
+async def patch_provider(
     provider_id: ProviderIdPath,
-    payload: ProviderSetRequest,
+    payload: ProviderPatchRequest,
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> ProviderResponse:
-    """Store or replace provider credentials and configuration."""
+    """Update provider credentials, base URL, or enabled state."""
 
-    return await controller.configure(
+    return await controller.patch(
         user_id=context.user_id,
         provider_id=provider_id,
         payload=payload,
@@ -100,65 +88,8 @@ async def configure_provider(
     )
 
 
-@router.post(
-    "/enable/{provider_id}",
-    response_model=ProviderResponse,
-    summary="Enable provider",
-)
-async def enable_provider(
-    provider_id: ProviderIdPath,
-    context: ContextDependency,
-    controller: ControllerDependency,
-) -> ProviderResponse:
-    """Enable a previously configured provider."""
-
-    return await controller.enable(
-        user_id=context.user_id,
-        provider_id=provider_id,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
-@router.post(
-    "/disable/{provider_id}",
-    response_model=ProviderResponse,
-    summary="Disable provider",
-)
-async def disable_provider(
-    provider_id: ProviderIdPath,
-    context: ContextDependency,
-    controller: ControllerDependency,
-) -> ProviderResponse:
-    """Disable a provider without deleting its credentials."""
-
-    return await controller.disable(
-        user_id=context.user_id,
-        provider_id=provider_id,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
-@router.post(
-    "/test/{provider_id}",
-    response_model=ProviderTestResponse,
-    summary="Test provider",
-)
-async def test_provider(
-    provider_id: ProviderIdPath,
-    context: ContextDependency,
-    controller: ControllerDependency,
-) -> ProviderTestResponse:
-    """Test the stored provider configuration."""
-
-    return await controller.test(
-        user_id=context.user_id,
-        provider_id=provider_id,
-        requested_workspace_id=context.requested_workspace_id,
-    )
-
-
 @router.delete(
-    "/delete/{provider_id}",
+    "/{provider_id}",
     response_model=DeleteResponse,
     summary="Delete provider configuration",
 )

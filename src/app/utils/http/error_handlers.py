@@ -54,9 +54,8 @@ from src.app.services.model_service import (
 from src.app.services.providers.provider_connection_service import (
     ProviderConnectionError,
 )
-from src.app.services.providers.provider_service import (
+from src.app.services.providers.provider_errors import (
     ProviderConfigurationError,
-    ProviderNotConfiguredError,
     UnknownProviderError,
 )
 
@@ -92,16 +91,6 @@ def _provider_configuration_details(
     return {
         "provider_id": error.provider_id,
         "reason": error.reason,
-    }
-
-
-def _provider_not_configured_details(
-    error: Exception,
-) -> ErrorDetails:
-    assert isinstance(error, ProviderNotConfiguredError)
-
-    return {
-        "provider_id": error.provider_id,
     }
 
 
@@ -391,11 +380,6 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_404_NOT_FOUND,
         code="provider_not_found",
         details_builder=_unknown_provider_details,
-    ),
-    ProviderNotConfiguredError: ErrorDefinition(
-        status_code=status.HTTP_409_CONFLICT,
-        code="provider_not_configured",
-        details_builder=_provider_not_configured_details,
     ),
     ProviderConfigurationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

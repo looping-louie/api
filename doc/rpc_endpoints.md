@@ -12,7 +12,6 @@ Para las operaciones comunes se usa esta regla consistente:
 
 Y verbos específicos para operaciones particulares:
 
-/providers/test
 /loops/validate
 /meetings/run
 /runs/cancel
@@ -23,13 +22,10 @@ Todas las rutas empiezan por el prefijo: `/api/v1`.
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ----------- |
-| `GET` | `/providers/list` | Lista los proveedores soportados y su estado. |
-| `GET` | `/providers/describe/{provider_id}` | Devuelve configuración y estado del proveedor. |
-| `POST` | `/providers/configure/{provider_id}` | Guarda o sustituye sus credenciales. |
-| `POST` | `/providers/enable/{provider_id}` | Habilita un proveedor configurado. |
-| `POST` | `/providers/disable/{provider_id}` | Deshabilita el proveedor sin borrar credenciales. |
-| `POST` | `/providers/test/{provider_id}` | Comprueba la conexión y credenciales. |
-| `DELETE` | `/providers/delete/{provider_id}` | Elimina las credenciales almacenadas. |
+| `GET` | `/providers` | Lista los proveedores del catálogo y su estado. |
+| `GET` | `/providers/{provider_id}` | Devuelve configuración y estado del proveedor. |
+| `PATCH` | `/providers/{provider_id}` | Configura credenciales, URL o estado habilitado. |
+| `DELETE` | `/providers/{provider_id}` | Elimina la configuración del workspace. |
 
 ## Models
 

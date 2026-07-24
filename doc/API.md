@@ -32,7 +32,7 @@ If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 
 List operations return an object with `items` and `total`, except
-`GET /api/v1/providers/list`, which returns a JSON array. The optional `search`
+`GET /api/v1/providers`, which returns a JSON array. The optional `search`
 query parameter accepted by resource lists is case-insensitive and must contain
 between 1 and 200 characters.
 
@@ -71,30 +71,30 @@ The supported `provider_id` values are `anthropic`, `nvidia`, `ollama`,
 
 ### Provider calls
 
-| Method   | Path                                              | Description                                                        |
-| -------- | ------------------------------------------------- | ------------------------------------------------------------------ |
-| `GET`    | `/api/v1/providers/list`                          | Lists supported providers and their state in the workspace.        |
-| `GET`    | `/api/v1/providers/describe/{provider_id}`        | Returns one provider's metadata and configuration state.           |
-| `POST`   | `/api/v1/providers/configure/{provider_id}`       | Stores or replaces credentials and an optional base URL.           |
-| `POST`   | `/api/v1/providers/enable/{provider_id}`          | Enables a previously configured provider.                          |
-| `POST`   | `/api/v1/providers/disable/{provider_id}`         | Disables a provider without deleting its credentials.              |
-| `POST`   | `/api/v1/providers/test/{provider_id}`            | Tests the stored provider configuration.                           |
-| `DELETE` | `/api/v1/providers/delete/{provider_id}`          | Deletes the stored configuration and encrypted credentials.        |
+| Method   | Path                                      | Description                                                   |
+| -------- | ----------------------------------------- | ------------------------------------------------------------- |
+| `GET`    | `/api/v1/providers`                       | Lists catalog providers and their workspace state.            |
+| `GET`    | `/api/v1/providers/{provider_id}`         | Returns provider metadata and configuration state.            |
+| `PATCH`  | `/api/v1/providers/{provider_id}`         | Updates credentials, base URL, or enabled state.              |
+| `DELETE` | `/api/v1/providers/{provider_id}`         | Deletes workspace configuration and encrypted credentials.    |
 
-### Configure Provider Request
+### Patch Provider Request
 
-| Field      | Description                                                        |
-| ---------- | ------------------------------------------------------------------ |
-| `api_key`  | Optional non-empty API key. It may be omitted for Ollama.           |
-| `base_url` | Optional non-empty custom API base URL.                             |
+| Field      | Description                                                            |
+| ---------- | ---------------------------------------------------------------------- |
+| `api_key`  | New API key. Null clears it when keys are optional; omitted preserves.  |
+| `base_url` | Custom base URL. Null restores the catalog default; omitted preserves.  |
+| `enabled`  | Enables or disables the workspace configuration.                        |
 
-At least the values required by the selected provider must be present. The API
-never returns the complete key: provider responses contain only `key_trimmed`.
+At least one field must be present. Initial configuration is enabled unless
+`enabled` is false. Updated credentials and URLs, and configurations being
+enabled, are tested before storage. The API never returns the complete key:
+provider responses contain only `key_trimmed`.
 
 ### Configure Provider Example
 
 ```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/providers/configure/openai \
+curl -s -X PATCH http://127.0.0.1:8000/api/v1/providers/openai \
   -H "Content-Type: application/json" \
   -H "X-Workspace-ID: workspace-id" \
   -d '{
@@ -102,10 +102,8 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/providers/configure/openai \
   }'
 ```
 
-`list`, `describe`, `configure`, `enable`, and `disable` return provider
-metadata and the fields `configured`, `enabled`, `key_trimmed`, `base_url`,
-`model_count`, and `model_catalog_note`. `test` returns `provider`, `success`,
-`message`, and `latency_ms`.
+Provider GET and PATCH responses contain metadata plus `configured`, `enabled`,
+`key_trimmed`, `base_url`, `model_count`, and `model_catalog_note`.
 
 ---
 

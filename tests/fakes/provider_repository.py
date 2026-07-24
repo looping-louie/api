@@ -1,7 +1,6 @@
 """In-memory provider credential repository."""
 
 from copy import deepcopy
-from dataclasses import replace
 from datetime import datetime
 
 from src.app.models.providers import ProviderCredential
@@ -79,40 +78,6 @@ class FakeProviderRepository:
         self._credentials[key] = deepcopy(credential)
 
         return deepcopy(credential)
-
-    async def set_enabled(
-        self,
-        *,
-        workspace_id: str,
-        provider: str,
-        enabled: bool,
-        enabled_by: str | None,
-        enabled_on: datetime | None,
-        updated_at: datetime,
-    ) -> ProviderCredential:
-        """Change the enabled state of a stored credential."""
-
-        key = self._build_key(
-            workspace_id=workspace_id,
-            provider=provider,
-        )
-        current = self._credentials.get(key)
-
-        if current is None:
-            raise AssertionError(
-                f"Provider '{provider}' is not stored for '{workspace_id}'."
-            )
-
-        updated = replace(
-            current,
-            enabled=enabled,
-            enabled_by=enabled_by,
-            enabled_on=enabled_on,
-            updated_at=updated_at,
-        )
-        self._credentials[key] = deepcopy(updated)
-
-        return deepcopy(updated)
 
     async def unset(
         self,

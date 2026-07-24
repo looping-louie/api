@@ -23,6 +23,8 @@ async def test_upsert_get_and_list_provider(
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """A stored configuration can be read individually and in a list."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )
@@ -54,6 +56,8 @@ async def test_upsert_replaces_provider_configuration(
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Upsert replaces mutable provider configuration values."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )
@@ -84,42 +88,12 @@ async def test_upsert_replaces_provider_configuration(
 
 
 @pytest.mark.asyncio
-async def test_set_enabled_preserves_credentials(
-    sqlite_database: SqliteDatabase,
-    create_workspace: WorkspaceFactory,
-) -> None:
-    await create_workspace(
-        workspace_id="workspace-1",
-    )
-    repository = SqliteProviderRepository(
-        sqlite_database,
-    )
-    credential = build_provider_credential()
-
-    await repository.upsert(
-        credential,
-    )
-
-    disabled = await repository.set_enabled(
-        workspace_id="workspace-1",
-        provider="openai",
-        enabled=False,
-        enabled_by=None,
-        enabled_on=None,
-        updated_at=credential.updated_at + timedelta(minutes=5),
-    )
-
-    assert disabled.enabled is False
-    assert disabled.enabled_by is None
-    assert disabled.enabled_on is None
-    assert disabled.key_ciphertext == credential.key_ciphertext
-
-
-@pytest.mark.asyncio
 async def test_repository_isolates_workspaces(
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Provider configurations never cross workspace boundaries."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )
@@ -156,6 +130,8 @@ async def test_unset_deletes_provider(
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
+    """Unset removes the selected workspace provider configuration."""
+
     await create_workspace(
         workspace_id="workspace-1",
     )
