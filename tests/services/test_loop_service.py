@@ -7,12 +7,12 @@ from itertools import count
 import pytest
 
 from src.app.models.loop import LoopOutputContract, LoopStopConditions
-from src.app.services.loop_service import (
+from src.app.services.loop_service import LoopService
+from src.app.services.loop_types import (
     ArchivedLoopImmutableError,
     LoopAgentInput,
     LoopCreate,
     LoopPatch,
-    LoopService,
     LoopValidationError,
 )
 from src.app.services.shared.reference_resolver import ReferenceResolver

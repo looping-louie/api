@@ -1,3 +1,5 @@
+"""Dependency lookup and deletion guards."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -41,6 +43,8 @@ class DependencyValidationError(DependencyCheckerError):
     """Raised when dependency data is invalid."""
 
     def __init__(self, *, field_name: str, message: str) -> None:
+        """Store the invalid dependency field and reason."""
+
         super().__init__(f"Invalid '{field_name}': {message}")
         self.field_name = field_name
         self.message = message
@@ -56,6 +60,8 @@ class ResourceInUseError(DependencyCheckerError):
         target: ResourceReference,
         usages: Sequence[DependencyUsage],
     ) -> None:
+        """Describe the references preventing resource deletion."""
+
         dependencies = ", ".join(
             (
                 f"{usage.source.resource_type} "
@@ -79,6 +85,8 @@ class DependencyChecker:
     """Finds dependencies and prevents unsafe resource deletion."""
 
     def __init__(self, *, repository: DependencyRepository) -> None:
+        """Store the dependency lookup adapter."""
+
         self._repository = repository
 
     async def find_usages(
@@ -144,25 +152,12 @@ class DependencyChecker:
                 usages=blocking_usages,
             )
 
-    async def has_blocking_usages(
-        self,
-        *,
-        workspace_id: str,
-        target: ResourceReference,
-    ) -> bool:
-        """Return whether a resource currently has blocking dependencies."""
-
-        usages = await self.find_usages(
-            workspace_id=workspace_id,
-            target=target,
-        )
-
-        return any(usage.blocking for usage in usages)
-
     def _normalize_usage(
         self,
         usage: DependencyUsage,
     ) -> DependencyUsage:
+        """Validate and normalize one dependency usage."""
+
         if not isinstance(usage, DependencyUsage):
             raise DependencyValidationError(
                 field_name="usage",
@@ -194,6 +189,8 @@ class DependencyChecker:
         *,
         field_name: str,
     ) -> ResourceReference:
+        """Validate and normalize one resource reference."""
+
         if not isinstance(reference, ResourceReference):
             raise DependencyValidationError(
                 field_name=field_name,
@@ -215,6 +212,8 @@ class DependencyChecker:
     def _remove_duplicates(
         usages: Sequence[DependencyUsage],
     ) -> list[DependencyUsage]:
+        """Deduplicate usages while preserving repository order."""
+
         unique_usages: list[DependencyUsage] = []
         seen: set[tuple[ResourceReference, str, bool]] = set()
 
@@ -235,6 +234,8 @@ class DependencyChecker:
 
     @staticmethod
     def _require_text(value: str, field_name: str) -> str:
+        """Return stripped non-empty dependency text."""
+
         if not isinstance(value, str):
             raise DependencyValidationError(
                 field_name=field_name,

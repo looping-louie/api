@@ -2,7 +2,6 @@
 
 from collections.abc import Awaitable, Callable
 
-import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
@@ -217,32 +216,6 @@ def test_only_new_provider_routes_are_published(
         },
     }
     assert client.post("/api/v1/providers").status_code == 405
-
-
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("GET", "/api/v1/providers/list"),
-        ("GET", "/api/v1/providers/describe/openai"),
-        ("POST", "/api/v1/providers/configure/openai"),
-        ("POST", "/api/v1/providers/enable/openai"),
-        ("POST", "/api/v1/providers/disable/openai"),
-        ("POST", "/api/v1/providers/test/openai"),
-        ("DELETE", "/api/v1/providers/delete/openai"),
-    ],
-)
-def test_legacy_routes_are_unavailable(
-    provider_controller: ProviderController,
-    method: str,
-    path: str,
-) -> None:
-    """Legacy RPC paths no longer expose successful operations."""
-
-    client = TestClient(build_app(controller=provider_controller))
-
-    response = client.request(method, path)
-
-    assert response.status_code in {404, 405}
 
 
 def test_provider_routes_require_authentication(

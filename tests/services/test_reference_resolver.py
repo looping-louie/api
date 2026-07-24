@@ -1,3 +1,5 @@
+"""Tests for grouped workspace reference resolution."""
+
 import pytest
 
 from src.app.services.shared.reference_resolver import (
@@ -9,37 +11,12 @@ from tests.fakes.reference_repository import FakeReferenceRepository
 
 
 @pytest.mark.asyncio
-async def test_require_one_resolves_resource(
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-) -> None:
-    reference_repository.seed(
-        workspace_id="workspace-1",
-        resource_type="persona",
-        resource_id="persona-1",
-        value={"name": "Tech Lead"},
-    )
-
-    resolved = await reference_resolver.require_one(
-        workspace_id="workspace-1",
-        reference=ResourceReference(
-            resource_type="PERSONA",
-            resource_id="persona-1",
-        ),
-    )
-
-    assert resolved.reference == ResourceReference(
-        resource_type="persona",
-        resource_id="persona-1",
-    )
-    assert resolved.value == {"name": "Tech Lead"}
-
-
-@pytest.mark.asyncio
 async def test_require_many_preserves_order_and_duplicates(
     reference_resolver: ReferenceResolver,
     reference_repository: FakeReferenceRepository,
 ) -> None:
+    """Resolution preserves request order while deduplicating lookups."""
+
     reference_repository.seed(
         workspace_id="workspace-1",
         resource_type="skill",
@@ -89,6 +66,8 @@ async def test_require_many_preserves_order_and_duplicates(
 async def test_require_many_reports_all_missing_references(
     reference_resolver: ReferenceResolver,
 ) -> None:
+    """Missing references are reported once in request order."""
+
     references = [
         ResourceReference("persona", "persona-missing"),
         ResourceReference("skill", "skill-missing"),
@@ -112,6 +91,8 @@ async def test_resolver_does_not_cross_workspace_boundaries(
     reference_resolver: ReferenceResolver,
     reference_repository: FakeReferenceRepository,
 ) -> None:
+    """References cannot resolve resources from another workspace."""
+
     reference_repository.seed(
         workspace_id="workspace-2",
         resource_type="persona",
@@ -120,41 +101,12 @@ async def test_resolver_does_not_cross_workspace_boundaries(
     )
 
     with pytest.raises(ResourceNotFoundError):
-        await reference_resolver.require_one(
+        await reference_resolver.require_many(
             workspace_id="workspace-1",
-            reference=ResourceReference(
-                resource_type="persona",
-                resource_id="persona-1",
-            ),
+            references=[
+                ResourceReference(
+                    resource_type="persona",
+                    resource_id="persona-1",
+                )
+            ],
         )
-
-
-@pytest.mark.asyncio
-async def test_historical_resolution_keeps_retired_reference_available(
-    reference_resolver: ReferenceResolver,
-    reference_repository: FakeReferenceRepository,
-) -> None:
-    reference = ResourceReference(
-        resource_type="skill",
-        resource_id="retired-skill",
-    )
-    reference_repository.seed(
-        workspace_id="workspace-1",
-        resource_type="skill",
-        resource_id="retired-skill",
-        value={"name": "Retired skill"},
-        historical_only=True,
-    )
-
-    with pytest.raises(ResourceNotFoundError):
-        await reference_resolver.require_one(
-            workspace_id="workspace-1",
-            reference=reference,
-        )
-
-    resolved = await reference_resolver.require_one_historical(
-        workspace_id="workspace-1",
-        reference=reference,
-    )
-
-    assert resolved.value == {"name": "Retired skill"}

@@ -20,21 +20,4 @@ class ModelMetrics(BaseModel):
     tokens_per_second: float = 0
 
 
-class RunMetrics(BaseModel):
-    """
-    Aggregated metrics for the complete harness execution.
-
-    Includes generator and every reviewer across every iteration.
-    """
-
-    iterations: int
-    input_tokens: int
-    output_tokens: int
-    cached_input_tokens: int = 0
-    reasoning_tokens: int = 0
-    duration_ms: int
-    tokens_per_second: float
-    estimated_cost_eur: float = 0
-
-
-__all__ = ['ModelMetrics', 'RunMetrics']
+__all__ = ['ModelMetrics']

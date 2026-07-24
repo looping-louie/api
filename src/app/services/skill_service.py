@@ -12,12 +12,8 @@ from .shared.instruction_service import (
 )
 from .shared.tenant_service import TenantService
 from .skill_metadata_validator import (
-    SkillValidationError,
     validate_skill_metadata,
 )
-
-
-__all__ = ["SkillService", "SkillValidationError"]
 
 
 class SkillService:
@@ -120,25 +116,6 @@ class SkillService:
             instruction_type="skill",
             instruction_id=source_skill_id,
             name=name,
-        )
-
-    async def resolve_for_selection(
-        self,
-        *,
-        user_id: str,
-        skill_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> AvailableInstructionDocument:
-        """Resolve an enabled skill for a new composition."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return await self._instruction_service.resolve_for_selection(
-            workspace_id=workspace_id,
-            instruction_type="skill",
-            instruction_id=skill_id,
         )
 
     async def create(

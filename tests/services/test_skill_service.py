@@ -3,7 +3,6 @@
 import pytest
 
 from src.app.services.shared.instruction_service import (
-    InstructionDisabledError,
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
@@ -12,10 +11,8 @@ from src.app.services.shared.tenant_service import (
     TenantService,
     WorkspaceMembership,
 )
-from src.app.services.skill_service import (
-    SkillService,
-    SkillValidationError,
-)
+from src.app.services.skill_metadata_validator import SkillValidationError
+from src.app.services.skill_service import SkillService
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
@@ -218,12 +215,6 @@ async def test_skill_service_sets_enabled_and_creates_from_source(
         skill_id=builtin.id,
         enabled=False,
     )
-
-    with pytest.raises(InstructionDisabledError):
-        await service.resolve_for_selection(
-            user_id="user-1",
-            skill_id=builtin.id,
-        )
 
     await service.set_enabled(
         user_id="user-1",

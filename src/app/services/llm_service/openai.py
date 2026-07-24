@@ -28,61 +28,6 @@ from .utils import (
 _openai_client = None
 
 
-async def call_openai(
-    *,
-    model: str,
-    prompt: str,
-) -> dict[str, Any]:
-    """
-    Execute one generic OpenAI model call.
-
-    This function is intended for prompts whose output may be Markdown, JSON,
-    or plain text. Unlike reviewer-specific calls, it does not enforce a JSON
-    response format or apply a reviewer output contract.
-
-    The synchronous OpenAI SDK runs in a worker thread so the call does not
-    block the application's asynchronous event loop.
-
-    Args:
-        model:
-            OpenAI model identifier.
-
-        prompt:
-            Complete prompt containing all persona, skill, task, and output
-            instructions required for the invocation.
-
-    Returns:
-        A provider-normalised dictionary containing the generated text, token
-        usage, reasoning usage, cache usage, and request duration.
-    """
-    start = time.perf_counter()
-    client = _get_openai_client()
-
-    response = await asyncio.to_thread(
-        client.chat.completions.create,
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        temperature=0,
-    )
-
-    text = extract_response_text(
-        response=response,
-        provider_name="OpenAI",
-    )
-    usage = getattr(response, "usage", None)
-
-    return {
-        "text": text,
-        **normalise_usage(usage),
-        "duration_ms": elapsed_milliseconds(start),
-    }
-
-
 def _get_openai_client():
     """
     Return the shared OpenAI client.

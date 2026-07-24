@@ -15,11 +15,11 @@ from src.app.schemas.loop import (
     LoopResponse,
     LoopStopConditionsSchema,
 )
-from src.app.services.loop_service import (
+from src.app.services.loop_service import LoopService
+from src.app.services.loop_types import (
     LoopAgentInput,
     LoopCreate,
     LoopPatch,
-    LoopService,
 )
 
 

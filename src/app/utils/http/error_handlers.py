@@ -1,3 +1,5 @@
+"""Translate domain exceptions into stable HTTP error responses."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -10,7 +12,7 @@ from fastapi.responses import JSONResponse
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionNotFoundError,
 )
-from src.app.services.loop_service import (
+from src.app.services.loop_types import (
     ArchivedLoopImmutableError,
     LoopNotFoundError,
     LoopValidationError,
@@ -43,7 +45,7 @@ from src.app.services.shared.validation_service import (
     DuplicateResourceError,
     ResourceVersionConflictError,
 )
-from src.app.services.skill_service import SkillValidationError
+from src.app.services.skill_metadata_validator import SkillValidationError
 from src.app.services.model_service import (
     ModelNotFoundError,
     ModelValidationError,
@@ -72,6 +74,8 @@ class ErrorDefinition:
 
 
 def _unknown_provider_details(error: Exception) -> ErrorDetails:
+    """Return the unknown provider identity."""
+
     assert isinstance(error, UnknownProviderError)
 
     return {
@@ -83,6 +87,8 @@ def _unknown_provider_details(error: Exception) -> ErrorDetails:
 def _provider_configuration_details(
     error: Exception,
 ) -> ErrorDetails:
+    """Return invalid provider configuration details."""
+
     assert isinstance(error, ProviderConfigurationError)
 
     return {
@@ -92,6 +98,8 @@ def _provider_configuration_details(
 
 
 def _model_not_found_details(error: Exception) -> ErrorDetails:
+    """Return the missing model identity."""
+
     assert isinstance(error, ModelNotFoundError)
 
     return {
@@ -101,6 +109,8 @@ def _model_not_found_details(error: Exception) -> ErrorDetails:
 
 
 def _validation_details(error: Exception) -> ErrorDetails:
+    """Return field-oriented validation details."""
+
     return {
         "field": getattr(error, "field_name", None),
         "reason": getattr(error, "message", str(error)),
@@ -108,6 +118,8 @@ def _validation_details(error: Exception) -> ErrorDetails:
 
 
 def _instruction_not_found_details(error: Exception) -> ErrorDetails:
+    """Return the missing instruction identity."""
+
     assert isinstance(error, InstructionNotFoundError)
 
     return {
@@ -117,6 +129,8 @@ def _instruction_not_found_details(error: Exception) -> ErrorDetails:
 
 
 def _instruction_access_details(error: Exception) -> ErrorDetails:
+    """Return the instruction rejected by an access rule."""
+
     return {
         "resource_type": getattr(error, "instruction_type"),
         "resource_id": getattr(error, "instruction_id"),
@@ -126,6 +140,8 @@ def _instruction_access_details(error: Exception) -> ErrorDetails:
 def _execution_instruction_not_found_details(
     error: Exception,
 ) -> ErrorDetails:
+    """Return the missing execution instruction identity."""
+
     assert isinstance(error, ExecutionInstructionNotFoundError)
 
     return {
@@ -144,6 +160,8 @@ def _loop_details(error: Exception) -> ErrorDetails:
 
 
 def _referenced_resources_details(error: Exception) -> ErrorDetails:
+    """Return every unresolved resource reference."""
+
     assert isinstance(error, ResourceNotFoundError)
 
     return {
@@ -158,6 +176,8 @@ def _referenced_resources_details(error: Exception) -> ErrorDetails:
 
 
 def _duplicate_resource_details(error: Exception) -> ErrorDetails:
+    """Return the conflicting resource name and identity."""
+
     assert isinstance(error, DuplicateResourceError)
 
     return {
@@ -168,6 +188,8 @@ def _duplicate_resource_details(error: Exception) -> ErrorDetails:
 
 
 def _version_conflict_details(error: Exception) -> ErrorDetails:
+    """Return optimistic-concurrency versions and resource identity."""
+
     details: ErrorDetails = {
         "expected_version": getattr(error, "expected_version", None),
         "current_version": getattr(error, "current_version", None),
@@ -186,6 +208,8 @@ def _version_conflict_details(error: Exception) -> ErrorDetails:
 
 
 def _resource_in_use_details(error: Exception) -> ErrorDetails:
+    """Return blocking dependency usages."""
+
     assert isinstance(error, ResourceInUseError)
 
     return {
@@ -204,6 +228,8 @@ def _resource_in_use_details(error: Exception) -> ErrorDetails:
 
 
 def _workspace_selection_details(error: Exception) -> ErrorDetails:
+    """Return the workspaces available for explicit selection."""
+
     assert isinstance(error, TenantSelectionRequiredError)
 
     return {
@@ -212,6 +238,8 @@ def _workspace_selection_details(error: Exception) -> ErrorDetails:
 
 
 def _invalid_instruction_type_details(error: Exception) -> ErrorDetails:
+    """Return the unsupported instruction type."""
+
     assert isinstance(error, InvalidInstructionTypeError)
 
     return {

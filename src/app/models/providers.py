@@ -4,14 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 
 
-@dataclass(frozen=True)
-class RequestActor:
-    """Organisation and user associated with the current request."""
-
-    workspace_id: str
-    user_id: str
-
-
 @dataclass
 class ProviderCredential:
     """Encrypted provider configuration persisted by the repository."""

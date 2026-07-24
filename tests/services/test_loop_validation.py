@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from src.app.models.loop import LoopOutputContract, LoopStopConditions
-from src.app.services.loop_service import (
+from src.app.services.loop_service import LoopService
+from src.app.services.loop_types import (
     LoopAgentInput,
-    LoopService,
     LoopValidationError,
 )
 from src.app.services.shared.reference_resolver import ReferenceResolver

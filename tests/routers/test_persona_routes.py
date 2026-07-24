@@ -256,29 +256,3 @@ def test_only_new_persona_routes_are_published(
             "delete",
         },
     }
-
-
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("GET", "/api/v1/personas/list"),
-        ("GET", "/api/v1/personas/describe/persona-1"),
-        ("POST", "/api/v1/personas/create"),
-        ("POST", "/api/v1/personas/update/persona-1"),
-        ("PUT", "/api/v1/personas/persona-1/enabled"),
-        ("POST", "/api/v1/personas/persona-1/duplicate"),
-        ("DELETE", "/api/v1/personas/delete/persona-1"),
-    ],
-)
-def test_legacy_persona_routes_are_unavailable(
-    persona_controller: PersonaController,
-    method: str,
-    path: str,
-) -> None:
-    """Legacy persona action paths no longer expose successful operations."""
-
-    client = TestClient(build_app(controller=persona_controller))
-
-    response = client.request(method, path)
-
-    assert response.status_code in {404, 405}

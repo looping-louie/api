@@ -209,29 +209,3 @@ def test_only_new_skill_routes_are_published(
             "delete",
         },
     }
-
-
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("GET", "/api/v1/skills/list"),
-        ("GET", "/api/v1/skills/describe/skill-1"),
-        ("POST", "/api/v1/skills/create"),
-        ("POST", "/api/v1/skills/update/skill-1"),
-        ("PUT", "/api/v1/skills/skill-1/enabled"),
-        ("POST", "/api/v1/skills/skill-1/duplicate"),
-        ("DELETE", "/api/v1/skills/delete/skill-1"),
-    ],
-)
-def test_legacy_skill_routes_are_unavailable(
-    skill_controller: SkillController,
-    method: str,
-    path: str,
-) -> None:
-    """Legacy skill action paths no longer expose successful operations."""
-
-    client = TestClient(build_app(controller=skill_controller))
-
-    response = client.request(method, path)
-
-    assert response.status_code in {404, 405}

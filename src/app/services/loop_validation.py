@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import cast
 
 from src.app.models.loop import (
     JsonObject,

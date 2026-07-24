@@ -1,3 +1,5 @@
+"""Cross-resource reference resolution and validation."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -30,15 +32,12 @@ class ReferenceRepository(Protocol):
         workspace_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
-        include_historical: bool = False,
     ) -> Mapping[str, object]:
         """
         Return resources indexed by their identifier.
 
         Missing resources must simply be omitted from the returned mapping.
         Every returned resource must be visible to the requested workspace.
-        Historical lookup may include resources that cannot be selected for
-        new compositions, such as deprecated instructions.
         """
         ...
 
@@ -51,6 +50,8 @@ class ReferenceValidationError(ReferenceResolverError):
     """Raised when a reference or workspace identifier is invalid."""
 
     def __init__(self, *, field_name: str, message: str) -> None:
+        """Store the invalid reference field and reason."""
+
         super().__init__(f"Invalid '{field_name}': {message}")
         self.field_name = field_name
         self.message = message
@@ -65,6 +66,8 @@ class ResourceNotFoundError(ReferenceResolverError):
         workspace_id: str,
         references: Sequence[ResourceReference],
     ) -> None:
+        """Describe every reference missing from the workspace."""
+
         missing = ", ".join(
             f"{reference.resource_type} '{reference.resource_id}'"
             for reference in references
@@ -81,37 +84,9 @@ class ReferenceResolver:
     """Resolves and validates references between workspace resources."""
 
     def __init__(self, *, repository: ReferenceRepository) -> None:
+        """Store the reference lookup adapter."""
+
         self._repository = repository
-
-    async def require_one(
-        self,
-        *,
-        workspace_id: str,
-        reference: ResourceReference,
-    ) -> ResolvedReference:
-        """Resolve one resource reference or raise ResourceNotFoundError."""
-
-        resolved = await self.require_many(
-            workspace_id=workspace_id,
-            references=[reference],
-        )
-
-        return resolved[0]
-
-    async def require_one_historical(
-        self,
-        *,
-        workspace_id: str,
-        reference: ResourceReference,
-    ) -> ResolvedReference:
-        """Resolve one existing reference, including historical resources."""
-
-        resolved = await self.require_many_historical(
-            workspace_id=workspace_id,
-            references=[reference],
-        )
-
-        return resolved[0]
 
     async def require_many(
         self,
@@ -126,33 +101,6 @@ class ReferenceResolver:
         references are only fetched once.
         """
 
-        return await self._require_many(
-            workspace_id=workspace_id,
-            references=references,
-            include_historical=False,
-        )
-
-    async def require_many_historical(
-        self,
-        *,
-        workspace_id: str,
-        references: Sequence[ResourceReference],
-    ) -> list[ResolvedReference]:
-        """Resolve stored references, including deprecated instructions."""
-
-        return await self._require_many(
-            workspace_id=workspace_id,
-            references=references,
-            include_historical=True,
-        )
-
-    async def _require_many(
-        self,
-        *,
-        workspace_id: str,
-        references: Sequence[ResourceReference],
-        include_historical: bool,
-    ) -> list[ResolvedReference]:
         workspace_id = self._require_text(
             workspace_id,
             "workspace_id",
@@ -169,7 +117,6 @@ class ReferenceResolver:
         values_by_reference = await self._load_references(
             workspace_id=workspace_id,
             grouped_ids=grouped_ids,
-            include_historical=include_historical,
         )
 
         missing = self._find_missing_references(
@@ -196,8 +143,9 @@ class ReferenceResolver:
         *,
         workspace_id: str,
         grouped_ids: Mapping[str, Sequence[str]],
-        include_historical: bool,
     ) -> dict[ResourceReference, object]:
+        """Load grouped resource identifiers from their owning adapters."""
+
         values_by_reference: dict[ResourceReference, object] = {}
 
         for resource_type, resource_ids in grouped_ids.items():
@@ -205,7 +153,6 @@ class ReferenceResolver:
                 workspace_id=workspace_id,
                 resource_type=resource_type,
                 resource_ids=resource_ids,
-                include_historical=include_historical,
             )
 
             for resource_id, value in resources.items():
@@ -221,6 +168,8 @@ class ReferenceResolver:
     def _group_reference_ids(
         references: Sequence[ResourceReference],
     ) -> dict[str, list[str]]:
+        """Group unique identifiers by normalized resource type."""
+
         grouped_ids: dict[str, list[str]] = defaultdict(list)
         seen: set[ResourceReference] = set()
 
@@ -241,6 +190,8 @@ class ReferenceResolver:
         references: Sequence[ResourceReference],
         values_by_reference: Mapping[ResourceReference, object],
     ) -> list[ResourceReference]:
+        """Return unique missing references in request order."""
+
         missing: list[ResourceReference] = []
         seen: set[ResourceReference] = set()
 
@@ -258,6 +209,8 @@ class ReferenceResolver:
         cls,
         reference: ResourceReference,
     ) -> ResourceReference:
+        """Validate and normalize one requested reference."""
+
         if not isinstance(reference, ResourceReference):
             raise ReferenceValidationError(
                 field_name="reference",
@@ -277,6 +230,8 @@ class ReferenceResolver:
 
     @staticmethod
     def _require_text(value: str, field_name: str) -> str:
+        """Return stripped non-empty reference text."""
+
         if not isinstance(value, str):
             raise ReferenceValidationError(
                 field_name=field_name,

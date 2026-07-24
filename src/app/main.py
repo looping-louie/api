@@ -1,26 +1,9 @@
-"""
-Looping Louie HTTP API.
-
-This module exposes the public FastAPI endpoints.
-
-Endpoints
----------
-POST /task/start
-    Starts one checkpoint-based task run.
-POST /task/continue
-    Advances one checkpoint transition for a run.
-GET /task/{run_id}
-    Returns the latest checkpoint state for one run.
-
-The API layer is intentionally thin.
-Business logic lives in services and concise controller modules.
-"""
+"""Looping Louie FastAPI application and lifespan configuration."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from src.app.bootstrap import configure_application
 from src.app.routers import api_v1_router, router

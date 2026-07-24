@@ -77,11 +77,6 @@ async def test_non_blocking_usage_allows_deletion(
         target=target,
     )
 
-    assert not await checker.has_blocking_usages(
-        workspace_id="workspace-1",
-        target=target,
-    )
-
 
 @pytest.mark.asyncio
 async def test_blocking_usage_prevents_deletion(

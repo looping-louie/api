@@ -16,7 +16,7 @@ The hierarchy is intentionally split into:
 
 from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.project import ProjectProfile, ProjectProfileMarkers
-from src.app.schemas.metrics import ModelMetrics, RunMetrics
+from src.app.schemas.metrics import ModelMetrics
 from src.app.schemas.reviewer import (
     ReviewerAssignment,
     ReviewerIssue,
@@ -37,80 +37,6 @@ from src.app.schemas.task import (
     StartResponse as TaskStartResponse,
 )
 
-from .common import (
-    DeleteResponse,
-    ListResponse,
-    ResourceSummaryResponse,
-)
-from .loop import (
-    LoopAgentSchema,
-    LoopChangelogEntryResponse,
-    LoopChangelogListResponse,
-    LoopCreateRequest,
-    LoopListResponse,
-    LoopOutputContractSchema,
-    LoopPatchRequest,
-    LoopResponse,
-    LoopStopConditionsSchema,
-)
-from .persona import (
-    PersonaCreateRequest,
-    PersonaListResponse,
-    PersonaPatchRequest,
-    PersonaResponse,
-    PersonaSummaryResponse,
-)
-from .skill import (
-    SkillCreateRequest,
-    SkillDefaultStrictness,
-    SkillListResponse,
-    SkillMetadata,
-    SkillPatchRequest,
-    SkillResponse,
-    SkillSummaryResponse,
-)
-from .model import (
-    ModelDeploymentResponse,
-    ModelListResponse,
-    ModelPricingResponse,
-    ModelProviderAvailabilityResponse,
-    ModelResponse,
-    ModelSummaryResponse,
-)
-
-__all__ = [
-    "DeleteResponse",
-    "ListResponse",
-    "LoopAgentSchema",
-    "LoopChangelogEntryResponse",
-    "LoopChangelogListResponse",
-    "LoopCreateRequest",
-    "LoopListResponse",
-    "LoopOutputContractSchema",
-    "LoopPatchRequest",
-    "LoopResponse",
-    "LoopStopConditionsSchema",
-    "PersonaCreateRequest",
-    "PersonaListResponse",
-    "PersonaPatchRequest",
-    "PersonaResponse",
-    "PersonaSummaryResponse",
-    "ResourceSummaryResponse",
-    "SkillCreateRequest",
-    "SkillDefaultStrictness",
-    "SkillListResponse",
-    "SkillMetadata",
-    "SkillPatchRequest",
-    "SkillResponse",
-    "SkillSummaryResponse",
-    "ModelDeploymentResponse",
-    "ModelListResponse",
-    "ModelPricingResponse",
-    "ModelProviderAvailabilityResponse",
-    "ModelResponse",
-    "ModelSummaryResponse",
-]
-
 __all__ = [
     'ExecutionPlan',
     'GeneratorAssignment',
@@ -130,5 +56,4 @@ __all__ = [
     'TaskContinueResponse',
     'TaskStartRequest',
     'TaskStartResponse',
-    'RunMetrics',
 ]

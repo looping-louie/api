@@ -192,26 +192,6 @@ class PersonaService:
             skill_ids=skill_ids,
         )
 
-    async def resolve_for_selection(
-        self,
-        *,
-        user_id: str,
-        persona_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> AvailablePersonaDocument:
-        """Resolve an enabled persona for a new composition."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        document = await self._instruction_service.resolve_for_selection(
-            workspace_id=workspace_id,
-            instruction_type="persona",
-            instruction_id=persona_id,
-        )
-        return await self._with_skill_ids(document)
-
     async def create(
         self,
         *,

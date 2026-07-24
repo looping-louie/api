@@ -33,7 +33,7 @@ services/harness/
     Planning and reviewer decision helpers
 
 services/model_context/
-    Repository snapshot and prompt context construction
+    Generator and reviewer prompt construction
 
 services/task_checkpoint/
     Checkpoint run path and operation contract parsing
@@ -43,9 +43,6 @@ services/llm_service/
 
 services/execution_planner/
     Planner strategy for task execution
-
-services/task_plan/
-    Task list loading, selection and persistence
 
 catalogs/
     Curated providers, models, loops and builtin instructions

@@ -1,6 +1,6 @@
-"""Decision helpers for harness orchestration."""
+"""Generator prompt selection for harness orchestration."""
 
-from src.app.schemas import ReviewerResult, RunHarnessRequest
+from src.app.schemas import RunHarnessRequest
 from src.app.services.model_context import (
     build_initial_generator_prompt,
     build_retry_generator_prompt,
@@ -28,8 +28,3 @@ def build_generator_base_prompt(
         previous_generator_output=previous_generator_output,
         reviewer_feedback=reviewer_feedback,
     )
-
-
-def is_iteration_approved(reviewer_results: list[ReviewerResult]) -> bool:
-    """Return whether every reviewer approved the current iteration."""
-    return all(result.approved for result in reviewer_results)

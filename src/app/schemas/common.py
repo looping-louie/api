@@ -49,7 +49,7 @@ class ResponseSchema(BaseModel):
 
 
 class ResourceSummaryResponse(ResponseSchema):
-    """Fields shared by instruction and composition summaries."""
+    """Fields shared by instruction resource summaries."""
 
     id: str
     name: str

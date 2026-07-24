@@ -5,10 +5,8 @@ import pytest
 from src.app.services.providers.provider_connection_service import (
     ProviderConnectionError,
 )
-from src.app.services.providers.provider_service import (
-    ProviderService,
-    UnknownProviderError,
-)
+from src.app.services.providers.provider_errors import UnknownProviderError
+from src.app.services.providers.provider_service import ProviderService
 from tests.factories.providers import build_provider_credential
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,

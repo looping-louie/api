@@ -20,12 +20,9 @@ from src.app.services.loop_mutation import (
     require_patch_allowed,
 )
 from src.app.services.loop_types import (
-    ArchivedLoopImmutableError,
-    LoopAgentInput,
     LoopCreate,
     LoopNotFoundError,
     LoopPatch,
-    LoopServiceError,
     LoopValidationError,
 )
 from src.app.services.loop_validation import (

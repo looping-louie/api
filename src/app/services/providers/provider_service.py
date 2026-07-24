@@ -4,7 +4,7 @@ from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
+from src.app.catalogs.providers import ProviderCatalogEntry
 from src.app.models.providers import ProviderCredential, ProviderState
 from src.app.repositories.provider_repository import ProviderRepository
 from src.app.services.shared.tenant_service import TenantService
@@ -18,10 +18,7 @@ from .provider_configuration import (
     validate_configuration,
 )
 from .provider_connection_service import ProviderConnectionService
-from .provider_errors import (
-    ProviderConfigurationError,
-    UnknownProviderError,
-)
+from .provider_errors import UnknownProviderError
 from .secret_service import SecretService
 
 
@@ -44,6 +41,8 @@ class ProviderService:
         clock: Clock | None = None,
         id_factory: IdFactory | None = None,
     ) -> None:
+        """Store provider infrastructure and curated definitions."""
+
         self._repository = repository
         self._tenant_service = tenant_service
         self._secret_service = secret_service

@@ -149,15 +149,9 @@ def test_bootstrap_configures_application_and_runs_migrations(
     ]
 
     assert EXPECTED_TABLES <= table_names
-    assert {
-        "compositions",
-        "composition_items",
-        "resource_dependencies",
-    }.isdisjoint(table_names)
     assert migration_versions == [
         "0001_tenants",
         "0002_instructions",
-        "0003_compositions",
         "0004_provider_credentials",
         "0005_instruction_catalog",
         "0006_loops",

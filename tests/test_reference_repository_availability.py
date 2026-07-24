@@ -15,7 +15,7 @@ from src.app.services.shared.instruction_service import (
 from tests.fakes.instruction_repository import FakeInstructionRepository
 
 
-class UnusedModelCatalog:
+class FakeModelCatalog:
     """Minimal model lookup required by CompositeReferenceRepository."""
 
     def get_many(
@@ -23,6 +23,8 @@ class UnusedModelCatalog:
         *,
         model_ids: tuple[str, ...],
     ) -> dict[str, object]:
+        """Return no models for instruction-only tests."""
+
         del model_ids
         return {}
 
@@ -30,9 +32,11 @@ class UnusedModelCatalog:
 def build_repository(
     instruction_repository: FakeInstructionRepository,
 ) -> CompositeReferenceRepository:
+    """Build an instruction-backed composite repository."""
+
     return CompositeReferenceRepository(
         instruction_repository=instruction_repository,
-        model_catalog_service=UnusedModelCatalog(),  # type: ignore[arg-type]
+        model_catalog_service=FakeModelCatalog(),  # type: ignore[arg-type]
     )
 
 
@@ -41,6 +45,8 @@ def build_builtin(
     instruction_id: str,
     deprecated: bool = False,
 ) -> AvailableInstructionDocument:
+    """Build one builtin skill definition."""
+
     now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
     return AvailableInstructionDocument(
         id=instruction_id,
@@ -69,6 +75,8 @@ def build_custom(
     instruction_id: str,
     workspace_id: str,
 ) -> InstructionDocument:
+    """Build one workspace-owned skill definition."""
+
     now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
     return InstructionDocument(
         id=instruction_id,
@@ -88,6 +96,8 @@ def build_custom(
 async def test_effective_reference_lookup_enforces_workspace_and_selection(
     instruction_repository: FakeInstructionRepository,
 ) -> None:
+    """Only selectable instructions in the workspace can be referenced."""
+
     builtin = build_builtin(
         instruction_id="builtin:skill:security",
     )
@@ -135,15 +145,5 @@ async def test_effective_reference_lookup_enforces_workspace_and_selection(
         resource_type="skill",
         resource_ids=[builtin.id],
     )
-    historical = await repository.get_many(
-        workspace_id="workspace-1",
-        resource_type="skill",
-        resource_ids=[builtin.id, deprecated.id],
-        include_historical=True,
-    )
 
     assert selectable == {}
-    assert set(historical) == {
-        builtin.id,
-        deprecated.id,
-    }

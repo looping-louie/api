@@ -2,7 +2,6 @@ aiosqlite==0.22.*
 cryptography==44.0.*
 fastapi==0.138.*
 httpx==0.28.*
-httpx2==2.5.*
 openai==2.*
 pytest==9.1.*
 pytest-asyncio==1.4.*

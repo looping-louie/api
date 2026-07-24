@@ -44,7 +44,6 @@ class CompositeReferenceRepository:
         workspace_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
-        include_historical: bool = False,
     ) -> Mapping[str, Any]:
         """Return existing resources indexed by their requested IDs."""
 
@@ -60,7 +59,6 @@ class CompositeReferenceRepository:
                 workspace_id=workspace_id,
                 instruction_type=resource_type,
                 instruction_ids=unique_ids,
-                include_historical=include_historical,
             )
 
         return self._model_catalog_service.get_many(
@@ -73,9 +71,8 @@ class CompositeReferenceRepository:
         workspace_id: str,
         instruction_type: str,
         instruction_ids: Sequence[str],
-        include_historical: bool,
     ) -> dict[str, Any]:
-        """Return selectable or historical instructions by identifier."""
+        """Return selectable instructions by identifier."""
 
         resources: dict[str, Any] = {}
         get_available = (
@@ -87,13 +84,9 @@ class CompositeReferenceRepository:
                 workspace_id=workspace_id,
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
-                include_deprecated=include_historical,
             )
 
-            if (
-                document is not None
-                and (include_historical or document.selectable)
-            ):
+            if document is not None and document.selectable:
                 resources[instruction_id] = document
 
         return resources

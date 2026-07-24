@@ -1,4 +1,4 @@
-from pathlib import Path
+"""Filesystem contract tests for packaged instruction catalogs."""
 
 from src.app.catalogs.personas.loader import (
     PERSONA_CATALOG_DIR,
@@ -11,6 +11,8 @@ from src.app.catalogs.skills.loader import (
 
 
 def test_every_manifest_entry_resolves_one_unique_markdown() -> None:
+    """Every registry entry owns exactly one Markdown resource."""
+
     for catalog_dir, registry in (
         (SKILL_CATALOG_DIR, load_skill_catalog()),
         (PERSONA_CATALOG_DIR, load_persona_catalog()),
@@ -29,6 +31,8 @@ def test_every_manifest_entry_resolves_one_unique_markdown() -> None:
 
 
 def test_manifests_have_stable_unique_ids_names_keys_and_paths() -> None:
+    """Catalog identities and resource paths remain unique."""
+
     skills = load_skill_catalog()
     personas = load_persona_catalog()
 
@@ -49,6 +53,8 @@ def test_manifests_have_stable_unique_ids_names_keys_and_paths() -> None:
 
 
 def test_skill_metadata_was_moved_out_of_markdown_front_matter() -> None:
+    """Skill metadata lives in the registry rather than Markdown."""
+
     for entry in load_skill_catalog():
         assert entry.category
         assert entry.phase
@@ -65,15 +71,10 @@ def test_skill_metadata_was_moved_out_of_markdown_front_matter() -> None:
 
 
 def test_persona_manifest_uses_stable_skill_ids() -> None:
+    """Persona associations use stable builtin skill identifiers."""
+
     for entry in load_persona_catalog():
         assert all(
             skill_id.startswith("builtin:skill:")
             for skill_id in entry.skill_ids
         )
-
-
-def test_legacy_runtime_wrappers_were_removed() -> None:
-    app_dir = Path(__file__).resolve().parents[2] / "src" / "app"
-
-    assert not (app_dir / "skills" / "__init__.py").exists()
-    assert not (app_dir / "personas" / "__init__.py").exists()

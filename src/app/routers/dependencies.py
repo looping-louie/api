@@ -39,7 +39,7 @@ async def get_request_context(
     ] = None,
 ) -> RequestContext:
     """
-    Build the context shared by every authenticated RPC endpoint.
+    Build the context shared by every authenticated API endpoint.
 
     Authentication middleware must set request.state.user_id.
     """
@@ -72,6 +72,8 @@ def _get_controller(
     attribute_name: str,
     expected_type: type[ControllerType],
 ) -> ControllerType:
+    """Return a configured controller or a service-unavailable response."""
+
     controller = getattr(
         request.app.state,
         attribute_name,

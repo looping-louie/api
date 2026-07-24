@@ -1,9 +1,5 @@
 PRAGMA foreign_keys = ON;
 
-DROP TABLE IF EXISTS resource_dependencies;
-DROP TABLE IF EXISTS composition_items;
-DROP TABLE IF EXISTS compositions;
-
 CREATE TABLE loops (
     id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
