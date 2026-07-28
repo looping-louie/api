@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.app.bootstrap import configure_application
-from src.app.routers import api_v1_router, router
+from src.app.routers import api_v1_router
 from src.app.middleware import DevelopmentAuthMiddleware
 from src.app.services.app_settings_service import get_app_settings
 from src.app.utils.http import register_exception_handlers
@@ -39,4 +39,3 @@ if settings.dev_auth_enabled:
     )
 
 app.include_router(api_v1_router)
-app.include_router(router)
