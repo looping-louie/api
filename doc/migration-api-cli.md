@@ -1,5 +1,9 @@
 # API-CLI Migration Plan
 
+Status: the checkpoint task ownership migration is complete. This document is
+retained for historical design context. The active protocol is specified in
+[`task-checkpoint-protocol-v1.md`](task-checkpoint-protocol-v1.md).
+
 This document defines the migration from the current single-repo execution
 model into a split architecture with two repositories.
 
@@ -35,7 +39,7 @@ change when they improve boundary clarity.
 - Defer authentication and authorization design.
 - Keep code operational in API now so selected modules can later move to CLI.
 
-## Current State Snapshot (2026-07-17)
+## Current State Snapshot (2026-07-27)
 
 Implemented task-related endpoints:
 
@@ -153,7 +157,7 @@ join traces and debug complete runs.
 
 ## Step Protocol V1
 
-Status: proposed, not currently adopted as the active migration path.
+Status: superseded by the active checkpoint task protocol.
 
 Each synchronous exchange uses these envelope fields:
 

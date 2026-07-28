@@ -23,7 +23,7 @@ async def lifespan(
 
 app = FastAPI(
     title="Looping Louie",
-    description="Harness-as-a-Service runtime for iterative LLM development.",
+    description="Decision engine for checkpoint-based iterative LLM development.",
     version="0.1.0",
     lifespan=lifespan,
 )

@@ -101,9 +101,9 @@ Response:
 - returns latest checkpoint and terminal result if available;
 - supports crash recovery and operator debugging.
 
-### 4) Cancel Run (Optional)
+### 4) Cancel Run (Optional, Not Implemented)
 
-`POST /task/{run_id}/cancel`
+Proposed endpoint: `POST /task/{run_id}/cancel`.
 
 Response:
 
