@@ -12,15 +12,15 @@ CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 - `/api/v1/skills/*` manages skill instructions.
 - `/api/v1/loops/*` manages stored multi-agent loop definitions.
 - `/api/v1/pipelines/*` manages ordered loop and human-gate definitions.
-- `/task/start` starts one task run and returns the first checkpoint action.
-- `/task/continue` advances one checkpoint transition.
-- `/task/{run_id}` returns the latest checkpoint state for one run.
+- `/api/v1/tasks/start` starts one task run and returns the first checkpoint action.
+- `/api/v1/tasks/continue` advances one checkpoint transition.
+- `/api/v1/tasks/{run_id}` returns the latest checkpoint state for one run.
 
 ---
 
 ## Versioned API conventions
 
-All provider, model, persona, skill, loop, and pipeline routes use the
+All task, provider, model, persona, skill, loop, and pipeline routes use the
 `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
@@ -469,14 +469,14 @@ step structures use `invalid_pipeline_steps`.
 
 ---
 
-## POST /task/start
+## POST /api/v1/tasks/start
 
 Starts checkpoint-based task execution.
 
 The API returns `status=in_progress` with `next_action=collect_snapshot` and
 an opaque `continuation_token`.
 
-## POST /task/continue
+## POST /api/v1/tasks/continue
 
 Advances one checkpoint transition for an existing task run.
 
@@ -489,7 +489,7 @@ The CLI must send:
 
 The API returns the next action or a terminal state.
 
-## GET /task/{run_id}
+## GET /api/v1/tasks/{run_id}
 
 Returns the latest checkpoint state for one task run identifier.
 

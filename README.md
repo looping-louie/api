@@ -158,9 +158,9 @@ Looping Louie currently exposes these endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/task/start` | Start one checkpoint-based task execution. |
-| `/task/continue` | Advance one checkpoint transition. |
-| `/task/{run_id}` | Read latest checkpoint state for a task run. |
+| `/api/v1/tasks/start` | Start one checkpoint-based task execution. |
+| `/api/v1/tasks/continue` | Advance one checkpoint transition. |
+| `/api/v1/tasks/{run_id}` | Read latest checkpoint state for a task run. |
 | `/api/v1/loops` | Manage persisted multi-agent loop definitions. |
 
 See the complete API documentation:
@@ -201,13 +201,13 @@ Project documentation is organised under `doc/`.
 task request
       │
       ▼
-/task/start
+/api/v1/tasks/start
       │
       ▼
 CLI builds snapshot and runs local action
       │
       ▼
-/task/continue
+/api/v1/tasks/continue
       │
       ▼
 Planner and reviewer services

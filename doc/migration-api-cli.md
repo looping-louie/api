@@ -43,9 +43,9 @@ change when they improve boundary clarity.
 
 Implemented task-related endpoints:
 
-- `POST /task/start`: starts checkpoint task execution.
-- `POST /task/continue`: advances checkpoint task execution.
-- `GET /task/{run_id}`: returns current run checkpoint state.
+- `POST /api/v1/tasks/start`: starts checkpoint task execution.
+- `POST /api/v1/tasks/continue`: advances checkpoint task execution.
+- `GET /api/v1/tasks/{run_id}`: returns current run checkpoint state.
 
 Removed endpoints:
 
@@ -258,7 +258,8 @@ Shared trace fields:
 
 Continue task-focused migration with clear boundaries:
 
-1. Keep task execution on checkpoint endpoints (`/task/start`, `/task/continue`).
+1. Keep task execution on checkpoint endpoints (`/api/v1/tasks/start`,
+   `/api/v1/tasks/continue`).
 2. Keep LLM calls in API services; avoid moving model calls into controllers.
 3. Keep workflow orchestration in CLI by reusing checkpoint task execution per
     workflow task.

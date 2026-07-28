@@ -24,7 +24,8 @@ at every iteration without losing run continuity.
 This protocol is the canonical task execution contract.
 
 Workflow execution in CLI reuses this task envelope by executing each workflow
-task through `POST /task/start` and `POST /task/continue`.
+task through `POST /api/v1/tasks/start` and
+`POST /api/v1/tasks/continue`.
 
 ## Core Ideas
 
@@ -58,7 +59,7 @@ Every response and continuation request includes these fields:
 
 ### 1) Start Run
 
-`POST /task/start`
+`POST /api/v1/tasks/start`
 
 Request fields:
 
@@ -76,7 +77,7 @@ Response:
 
 ### 2) Continue Run
 
-`POST /task/continue`
+`POST /api/v1/tasks/continue`
 
 Request fields:
 
@@ -94,7 +95,7 @@ Response:
 
 ### 3) Get Run (Optional but Recommended)
 
-`GET /task/{run_id}`
+`GET /api/v1/tasks/{run_id}`
 
 Response:
 
@@ -103,7 +104,7 @@ Response:
 
 ### 4) Cancel Run (Optional, Not Implemented)
 
-Proposed endpoint: `POST /task/{run_id}/cancel`.
+Proposed endpoint: `POST /api/v1/tasks/{run_id}/cancel`.
 
 Response:
 
@@ -227,7 +228,7 @@ Valid transitions:
 
 - `continuation_token` includes expiration.
 - Expired token returns `410 token_expired` with latest run state.
-- CLI can recover by calling `GET /task/{run_id}`.
+- CLI can recover by calling `GET /api/v1/tasks/{run_id}`.
 
 ## Error Model
 
@@ -256,7 +257,8 @@ Every error includes:
 
 ## Implementation Status
 
-1. `POST /task/start` and `POST /task/continue` are the canonical task
+1. `POST /api/v1/tasks/start` and `POST /api/v1/tasks/continue` are the
+   canonical task
   execution path.
 2. API run-state persistence for checkpoint fields is active.
 3. CLI `task run` uses checkpoint continuation as the default execution path.

@@ -16,8 +16,8 @@ Y verbos específicos para operaciones particulares:
 /loops/validate
 /runs/cancel
 
-Los recursos de catálogo usan el prefijo `/api/v1`. Los endpoints de ejecución
-canónicos (`/task/*`) se publican en la raíz.
+Los recursos de catálogo y los endpoints de ejecución canónicos usan el
+prefijo `/api/v1`.
 
 ## Providers
 
@@ -83,9 +83,9 @@ canónicos (`/task/*`) se publican en la raíz.
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ----------- |
-| `POST` | `/task/start` | Inicia una ejecución checkpoint de una tarea. |
-| `POST` | `/task/continue` | Avanza una transición checkpoint. |
-| `GET` | `/task/{run_id}` | Devuelve el estado checkpoint más reciente. |
+| `POST` | `/api/v1/tasks/start` | Inicia una ejecución checkpoint de una tarea. |
+| `POST` | `/api/v1/tasks/continue` | Avanza una transición checkpoint. |
+| `GET` | `/api/v1/tasks/{run_id}` | Devuelve el estado checkpoint más reciente. |
 
 ## Runs
 

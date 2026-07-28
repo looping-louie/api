@@ -328,7 +328,7 @@ first pending task
 
 ↓
 
-call /task/start then iterate /task/continue
+call `/api/v1/tasks/start` then iterate `/api/v1/tasks/continue`
 
 ↓
 

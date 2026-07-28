@@ -62,7 +62,7 @@ TaskErrorCode = Literal[
 
 
 class StartRequest(BaseModel):
-    """Request model for POST /task/start."""
+    """Request model for POST /api/v1/tasks/start."""
 
     model_config = ConfigDict(extra='forbid')
 
@@ -130,7 +130,7 @@ ContinueActionResult = (
 
 
 class ContinueRequest(BaseModel):
-    """Request model for POST /task/continue."""
+    """Request model for POST /api/v1/tasks/continue."""
 
     model_config = ConfigDict(extra='forbid')
 
@@ -173,15 +173,15 @@ class CheckpointResponse(BaseModel):
 
 
 class StartResponse(CheckpointResponse):
-    """Response model for POST /task/start."""
+    """Response model for POST /api/v1/tasks/start."""
 
 
 class ContinueResponse(CheckpointResponse):
-    """Response model for POST /task/continue."""
+    """Response model for POST /api/v1/tasks/continue."""
 
 
 class GetResponse(CheckpointResponse):
-    """Response model for GET /task/{run_id}."""
+    """Response model for GET /api/v1/tasks/{run_id}."""
 
 
 __all__ = [
