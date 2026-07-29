@@ -9,14 +9,15 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from .instructions import (
+from .types import (
     CatalogInstructionType,
     build_builtin_instruction_id,
 )
-
-
-class CatalogLoadError(RuntimeError):
-    """Raised when a packaged instruction catalog is invalid."""
+from .resource_validation import (
+    require_boolean,
+    require_positive_integer,
+)
+from .errors import CatalogLoadError
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,103 +188,6 @@ def require_text(
     return value.strip()
 
 
-def require_string_tuple(
-    entry: Mapping[str, Any],
-    field_name: str,
-    *,
-    allow_empty: bool,
-) -> tuple[str, ...]:
-    """Return a required list of unique non-empty strings."""
-
-    value = entry.get(field_name)
-
-    if not isinstance(value, list):
-        raise CatalogLoadError(
-            f"Catalog field '{field_name}' must be an array."
-        )
-
-    if not allow_empty and not value:
-        raise CatalogLoadError(
-            f"Catalog field '{field_name}' must not be empty."
-        )
-
-    result: list[str] = []
-    seen: set[str] = set()
-
-    for item in value:
-        if not isinstance(item, str) or not item.strip():
-            raise CatalogLoadError(
-                f"Catalog field '{field_name}' must contain non-empty "
-                "strings."
-            )
-
-        normalized = item.strip()
-        comparison_key = normalized.casefold()
-
-        if comparison_key in seen:
-            raise CatalogLoadError(
-                f"Catalog field '{field_name}' contains duplicate value "
-                f"'{normalized}'."
-            )
-
-        seen.add(comparison_key)
-        result.append(normalized)
-
-    return tuple(result)
-
-
-def require_mapping(
-    entry: Mapping[str, Any],
-    field_name: str,
-) -> Mapping[str, Any]:
-    """Return one required JSON object."""
-
-    value = entry.get(field_name)
-
-    if not isinstance(value, dict):
-        raise CatalogLoadError(
-            f"Catalog field '{field_name}' must be an object."
-        )
-
-    return value
-
-
-def require_positive_integer(
-    entry: Mapping[str, Any],
-    field_name: str,
-) -> int:
-    """Return one required positive integer."""
-
-    value = entry.get(field_name)
-
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, int)
-        or value < 1
-    ):
-        raise CatalogLoadError(
-            f"Catalog field '{field_name}' must be a positive integer."
-        )
-
-    return value
-
-
-def require_boolean(
-    entry: Mapping[str, Any],
-    field_name: str,
-) -> bool:
-    """Return one required boolean."""
-
-    value = entry.get(field_name)
-
-    if not isinstance(value, bool):
-        raise CatalogLoadError(
-            f"Catalog field '{field_name}' must be a boolean."
-        )
-
-    return value
-
-
 def require_heading(
     *,
     resource: LoadedCatalogResource,
@@ -350,6 +254,8 @@ def _require_unique(
     seen: set[str],
     label: str,
 ) -> None:
+    """Record a catalog identity or reject an identity already observed."""
+
     if value in seen:
         raise CatalogLoadError(
             f"Duplicate catalog {label}: {value}"

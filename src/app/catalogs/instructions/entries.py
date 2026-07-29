@@ -1,156 +1,21 @@
-"""Domain contract shared by the skill and persona catalogs.
-
-Catalog entries describe instruction definitions distributed by Looping Louie
-or, in the future, by its marketplace. They are deliberately independent from
-HTTP schemas, application services and persistence adapters.
-
-Origins have explicit ownership semantics:
-
-* ``builtin`` definitions are shipped with Looping Louie. Their stable ID uses
-  ``builtin:{instruction_type}:{key}`` and they are immutable through the API.
-* ``custom`` definitions belong to a workspace. They may point to the
-  definition they were copied from through ``source_instruction_id``.
-* ``marketplace`` definitions are externally distributed catalog entries.
-
-``enabled_by_default`` is only the fallback used when a workspace has no
-explicit enablement setting. ``catalog_version`` versions distributed catalog
-content, while ``deprecated`` keeps an existing definition resolvable without
-offering it for new compositions.
-"""
-
-from __future__ import annotations
+"""Immutable skill and persona entries in the instruction catalog."""
 
 import re
 from dataclasses import dataclass, field
-from enum import StrEnum
 
-
-_CATALOG_KEY_PATTERN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
-
-
-class InstructionOrigin(StrEnum):
-    """Ownership and distribution source of an instruction definition."""
-
-    BUILTIN = "builtin"
-    CUSTOM = "custom"
-    MARKETPLACE = "marketplace"
-
-
-class CatalogInstructionType(StrEnum):
-    """Instruction kinds supported by the curated catalog."""
-
-    SKILL = "skill"
-    PERSONA = "persona"
-
-
-class AgentRole(StrEnum):
-    """Roles that may consume catalog instructions."""
-
-    GENERATOR = "generator"
-    REVIEWER = "reviewer"
-
-
-class ProjectPhase(StrEnum):
-    """Project phases for which a skill may provide strictness defaults."""
-
-    PROTOTYPE = "prototype"
-    MVP = "mvp"
-    PRODUCTION = "production"
-
-
-class SkillPhase(StrEnum):
-    """Workflow phases in which packaged skills participate."""
-
-    CODE_REVIEW = "code_review"
-    DELIBERATION = "deliberation"
-    REVIEW = "review"
-
-
-class SkillArtifact(StrEnum):
-    """Artifacts a packaged skill may inspect."""
-
-    CHANGED_FILES = "changed_files"
-    CONTRIBUTIONS = "contributions"
-    CURRENT_ARTIFACT = "current_artifact"
-    GIT_DIFF = "git_diff"
-    PROMPT = "prompt"
-
-
-class SkillOutput(StrEnum):
-    """Output contracts requested by packaged skills."""
-
-    JSON = "json"
-
-
-def build_builtin_instruction_id(
-    instruction_type: CatalogInstructionType,
-    key: str,
-) -> str:
-    """Build the stable identifier of one Looping Louie builtin."""
-
-    normalized_key = key.strip()
-
-    if not _CATALOG_KEY_PATTERN.fullmatch(normalized_key):
-        raise ValueError(
-            "Builtin instruction keys must use lowercase letters, numbers "
-            "and single underscores."
-        )
-
-    return (
-        f"{InstructionOrigin.BUILTIN.value}:"
-        f"{instruction_type.value}:"
-        f"{normalized_key}"
-    )
-
-
-@dataclass(frozen=True, slots=True)
-class InstructionCatalogMetadata:
-    """Metadata shared by skills and personas."""
-
-    applies_when: tuple[str, ...]
-    applies_to: frozenset[AgentRole]
-
-    def __post_init__(self) -> None:
-        _require_unique_non_empty_strings(
-            self.applies_when,
-            field_name="metadata.applies_when",
-            allow_empty=False,
-        )
-
-        if not self.applies_to:
-            raise ValueError("metadata.applies_to must not be empty.")
-
-        if any(
-            not isinstance(role, AgentRole)
-            for role in self.applies_to
-        ):
-            raise ValueError(
-                "metadata.applies_to must contain only AgentRole values."
-            )
-
-
-@dataclass(frozen=True, slots=True)
-class ReviewerStrictnessDefaults:
-    """Default reviewer strictness for each supported project phase."""
-
-    prototype: int
-    mvp: int
-    production: int
-
-    def __post_init__(self) -> None:
-        for phase in ProjectPhase:
-            value = getattr(self, phase.value)
-
-            if (
-                isinstance(value, bool)
-                or not isinstance(value, int)
-                or value < 0
-                or value > 100
-            ):
-                raise ValueError(
-                    f"{phase.value} strictness must be an integer "
-                    "between 0 and 100."
-                )
+from .types import (
+    AgentRole,
+    CatalogInstructionType,
+    InstructionCatalogMetadata,
+    InstructionOrigin,
+    ReviewerStrictnessDefaults,
+    SkillArtifact,
+    SkillOutput,
+    SkillPhase,
+    build_builtin_instruction_id,
+    require_non_empty_text,
+    require_unique_non_empty_strings,
+)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -189,6 +54,8 @@ class CatalogInstructionEntry:
         return self.origin == InstructionOrigin.CUSTOM
 
     def __post_init__(self) -> None:
+        """Validate fields shared by every instruction origin and type."""
+
         if not isinstance(self.metadata, InstructionCatalogMetadata):
             raise ValueError(
                 "metadata must be InstructionCatalogMetadata."
@@ -197,13 +64,13 @@ class CatalogInstructionEntry:
         if not isinstance(self.origin, InstructionOrigin):
             raise ValueError("origin must be an InstructionOrigin.")
 
-        _require_non_empty_text(self.id, field_name="id")
-        _require_non_empty_text(self.name, field_name="name")
-        _require_non_empty_text(
+        require_non_empty_text(self.id, field_name="id")
+        require_non_empty_text(self.name, field_name="name")
+        require_non_empty_text(
             self.description,
             field_name="description",
         )
-        _require_non_empty_text(
+        require_non_empty_text(
             self.instructions,
             field_name="instructions",
         )
@@ -215,10 +82,10 @@ class CatalogInstructionEntry:
             raise ValueError("deprecated must be a boolean.")
 
         if self.key is not None:
-            _require_non_empty_text(self.key, field_name="key")
+            require_non_empty_text(self.key, field_name="key")
 
         if self.content_path is not None:
-            _require_non_empty_text(
+            require_non_empty_text(
                 self.content_path,
                 field_name="content_path",
             )
@@ -234,6 +101,8 @@ class CatalogInstructionEntry:
         self._validate_origin_contract()
 
     def _validate_origin_contract(self) -> None:
+        """Enforce ownership, identity, and version rules for the origin."""
+
         if self.origin == InstructionOrigin.BUILTIN:
             catalog_key = (
                 self.key
@@ -262,7 +131,7 @@ class CatalogInstructionEntry:
             )
 
         if self.source_instruction_id is not None:
-            _require_non_empty_text(
+            require_non_empty_text(
                 self.source_instruction_id,
                 field_name="source_instruction_id",
             )
@@ -302,13 +171,17 @@ class SkillCatalogEntry(CatalogInstructionEntry):
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
+        """Identify this entry as a reusable skill."""
+
         return CatalogInstructionType.SKILL
 
     def __post_init__(self) -> None:
+        """Validate skill-specific metadata after shared catalog fields."""
+
         super(SkillCatalogEntry, self).__post_init__()
 
         if self.category is not None:
-            _require_non_empty_text(
+            require_non_empty_text(
                 self.category,
                 field_name="category",
             )
@@ -343,11 +216,15 @@ class PersonaCatalogEntry(CatalogInstructionEntry):
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
+        """Identify this entry as a persona."""
+
         return CatalogInstructionType.PERSONA
 
     def __post_init__(self) -> None:
+        """Validate persona skill associations and default roles."""
+
         super(PersonaCatalogEntry, self).__post_init__()
-        _require_unique_non_empty_strings(
+        require_unique_non_empty_strings(
             self.skill_ids,
             field_name="skill_ids",
             allow_empty=True,
@@ -366,34 +243,3 @@ class PersonaCatalogEntry(CatalogInstructionEntry):
                 "default_for roles must also be present in "
                 "metadata.applies_to."
             )
-
-
-def _require_non_empty_text(value: str, *, field_name: str) -> None:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{field_name} must be a non-empty string.")
-
-
-def _require_unique_non_empty_strings(
-    values: tuple[str, ...],
-    *,
-    field_name: str,
-    allow_empty: bool,
-) -> None:
-    if not isinstance(values, tuple):
-        raise ValueError(f"{field_name} must be a tuple.")
-
-    if not allow_empty and not values:
-        raise ValueError(f"{field_name} must not be empty.")
-
-    seen: set[str] = set()
-
-    for value in values:
-        _require_non_empty_text(value, field_name=field_name)
-        comparison_key = value.strip().casefold()
-
-        if comparison_key in seen:
-            raise ValueError(
-                f"{field_name} must not contain duplicate values."
-            )
-
-        seen.add(comparison_key)

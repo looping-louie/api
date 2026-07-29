@@ -5,17 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from src.app.catalogs._resource_loader import (
-    CatalogLoadError,
+from ..entries import SkillCatalogEntry
+from ..errors import CatalogLoadError
+from ..resource_loader import (
     load_catalog_resources,
-    require_boolean,
     require_heading,
+    require_text,
+)
+from ..resource_validation import (
+    require_boolean,
     require_mapping,
     require_positive_integer,
     require_string_tuple,
-    require_text,
 )
-from src.app.catalogs.instructions import (
+from ..types import (
     AgentRole,
     CatalogInstructionType,
     InstructionCatalogMetadata,
@@ -23,7 +26,6 @@ from src.app.catalogs.instructions import (
     ProjectPhase,
     ReviewerStrictnessDefaults,
     SkillArtifact,
-    SkillCatalogEntry,
     SkillOutput,
     SkillPhase,
 )
@@ -120,6 +122,8 @@ def _load_roles(
     manifest: Mapping[str, object],
     field_name: str,
 ) -> frozenset[AgentRole]:
+    """Parse and validate role names from skill manifest metadata."""
+
     values = require_string_tuple(
         manifest,
         field_name,
@@ -140,6 +144,8 @@ def _load_roles(
 def _load_strictness(
     manifest: Mapping[str, object],
 ) -> ReviewerStrictnessDefaults:
+    """Parse reviewer strictness defaults from a skill manifest."""
+
     field_name = "reviewer_default_strictness"
     values = require_mapping(manifest, field_name)
     expected_phases = {

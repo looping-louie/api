@@ -10,7 +10,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.app.catalogs.loader import load_instruction_catalog  # noqa: E402
+from src.app.catalogs.instructions.loader import load_instruction_catalog  # noqa: E402
 from src.app.catalogs.loops import LOOP_CATALOG  # noqa: E402
 from src.app.catalogs.models import MODEL_CATALOG  # noqa: E402
 from src.app.catalogs.providers import PROVIDER_CATALOG  # noqa: E402

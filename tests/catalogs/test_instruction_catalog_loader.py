@@ -9,18 +9,18 @@ from typing import Any, cast
 import pytest
 from fastapi import FastAPI
 
-import src.app.bootstrap as bootstrap
-from src.app.catalogs._resource_loader import CatalogLoadError
+import src.app.bootstrap.application as bootstrap
+from src.app.catalogs.instructions.resource_loader import CatalogLoadError
 from src.app.catalogs.instructions import (
     PersonaCatalogEntry,
     SkillCatalogEntry,
 )
-from src.app.catalogs.loader import load_instruction_catalog
-from src.app.catalogs.personas.loader import (
+from src.app.catalogs.instructions.loader import load_instruction_catalog
+from src.app.catalogs.instructions.personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
 )
-from src.app.catalogs.skills.loader import (
+from src.app.catalogs.instructions.skills.loader import (
     SKILL_CATALOG_DIR,
     load_skill_catalog,
 )

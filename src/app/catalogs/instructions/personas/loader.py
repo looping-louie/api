@@ -5,21 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from src.app.catalogs._resource_loader import (
-    CatalogLoadError,
+from ..entries import PersonaCatalogEntry
+from ..errors import CatalogLoadError
+from ..resource_loader import (
     load_catalog_resources,
-    require_boolean,
     require_heading,
-    require_positive_integer,
-    require_string_tuple,
     require_text,
 )
-from src.app.catalogs.instructions import (
+from ..resource_validation import (
+    require_boolean,
+    require_positive_integer,
+    require_string_tuple,
+)
+from ..types import (
     AgentRole,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
-    PersonaCatalogEntry,
 )
 
 
@@ -109,6 +111,8 @@ def _load_roles(
     *,
     allow_empty: bool,
 ) -> frozenset[AgentRole]:
+    """Parse and validate role names from persona manifest metadata."""
+
     values = require_string_tuple(
         manifest,
         field_name,

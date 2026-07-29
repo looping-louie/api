@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ._resource_loader import CatalogLoadError
-from .instructions import (
+from .entries import (
     CatalogInstructionEntry,
     PersonaCatalogEntry,
     SkillCatalogEntry,
 )
+from .errors import CatalogLoadError
 from .personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,

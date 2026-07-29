@@ -81,7 +81,7 @@ async def test_execution_library_reads_sql_not_packaged_markdown(
 ) -> None:
     """Runtime content comes from synchronized SQL rather than source files."""
 
-    import src.app.catalogs.skills.loader as skill_loader
+    import src.app.catalogs.instructions.skills.loader as skill_loader
 
     service = ExecutionInstructionLibraryService(
         repository=SqliteInstructionRepository(library_database),

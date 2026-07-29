@@ -6,8 +6,8 @@ import logging
 
 from fastapi import FastAPI
 
-from src.app.bootstrap_pipeline import build_pipeline_controller
-from src.app.catalogs.loader import (
+from src.app.bootstrap.pipeline import build_pipeline_controller
+from src.app.catalogs.instructions.loader import (
     InstructionCatalog,
     load_instruction_catalog,
 )

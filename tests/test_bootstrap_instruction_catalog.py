@@ -12,9 +12,9 @@ import pytest
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
 
-import src.app.bootstrap as bootstrap
+import src.app.bootstrap.application as bootstrap
 from src.app.catalogs import load_instruction_catalog
-from src.app.catalogs.loader import InstructionCatalog
+from src.app.catalogs.instructions.loader import InstructionCatalog
 from src.app.services.shared.settings import AppSettings
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
