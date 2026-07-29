@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from src.app.controllers.task import continue_task, get_task, start_task
+from src.app.controllers.task import describe_task, resume_task, start_task
 from src.app.schemas import (
     GetTaskResponse,
     TaskContinueRequest,
@@ -58,14 +58,14 @@ async def start_task_endpoint(
 
 
 @router.post("/continue", response_model=TaskContinueResponse)
-async def continue_task_endpoint(
+async def resume_task_endpoint(
     req: TaskContinueRequest,
 ) -> TaskContinueResponse:
     """Advance one checkpoint transition for an existing task run."""
-    return await continue_task(req)
+    return await resume_task(req)
 
 
 @router.get("/{run_id}", response_model=GetTaskResponse)
-async def get_task_endpoint(run_id: str) -> GetTaskResponse:
+async def describe_task_endpoint(run_id: str) -> GetTaskResponse:
     """Return latest checkpoint state for one task run identifier."""
-    return await get_task(run_id)
+    return await describe_task(run_id)

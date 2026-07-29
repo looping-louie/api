@@ -5,7 +5,7 @@ from src.app.schemas.task import GetResponse
 from . import utils
 
 
-async def get_task(run_id: str) -> GetResponse:
+async def describe_task(run_id: str) -> GetResponse:
     """Return latest checkpoint state for one run identifier."""
     state = utils.TASK_RUNS.get(run_id)
     if state is None:

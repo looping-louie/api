@@ -208,7 +208,7 @@ def test_task_checkpoint_continue_rejects_token_conflict():
     )
 
     result = asyncio.run(
-        task.continue_task(
+        task.resume_task(
             ContinueRequest(
                 run_id=start_result.run_id,
                 continuation_token='wrong-token',
@@ -264,8 +264,8 @@ def test_task_checkpoint_continue_replays_token_conflict_with_same_idempotency_k
         },
     )
 
-    first = asyncio.run(task.continue_task(request))
-    second = asyncio.run(task.continue_task(request))
+    first = asyncio.run(task.resume_task(request))
+    second = asyncio.run(task.resume_task(request))
 
     assert first.ok is False
     assert first.error_code == 'token_conflict'
@@ -294,7 +294,7 @@ def test_task_checkpoint_continue_rejects_invalid_transition():
     )
 
     result = asyncio.run(
-        task.continue_task(
+        task.resume_task(
             ContinueRequest(
                 run_id=start_result.run_id,
                 continuation_token=start_result.continuation_token,
@@ -379,8 +379,8 @@ def test_task_checkpoint_continue_replays_idempotent_response(monkeypatch):
         },
     )
 
-    first = asyncio.run(task.continue_task(request))
-    second = asyncio.run(task.continue_task(request))
+    first = asyncio.run(task.resume_task(request))
+    second = asyncio.run(task.resume_task(request))
 
     assert first.ok is True
     assert second.ok is True
@@ -416,7 +416,7 @@ def test_task_checkpoint_collect_snapshot_failure_is_terminal(monkeypatch):
     )
 
     response = asyncio.run(
-        task.continue_task(
+        task.resume_task(
             ContinueRequest(
                 run_id=start_result.run_id,
                 continuation_token=start_result.continuation_token,
@@ -463,13 +463,13 @@ def test_task_checkpoint_get_returns_latest_state():
         )
     )
 
-    get_result = asyncio.run(task.get_task(start_result.run_id))
+    get_result = asyncio.run(task.describe_task(start_result.run_id))
 
     assert get_result.ok is True
     assert get_result.run_id == start_result.run_id
     assert get_result.next_action == 'collect_snapshot'
 
-    missing_result = asyncio.run(task.get_task('missing-run-id'))
+    missing_result = asyncio.run(task.describe_task('missing-run-id'))
 
     assert missing_result.ok is False
     assert missing_result.error_code == 'run_not_found'

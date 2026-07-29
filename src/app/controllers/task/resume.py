@@ -1,9 +1,9 @@
-"""Controller for continuing a single-task execution."""
+"""Controller for resuming a single-task execution."""
 
-from src.app.schemas.task import ContinueRequest, ContinueResponse
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from src.app.schemas.task import ContinueRequest, ContinueResponse
 from src.app.services.execution_planner import create_execution_plan
 from src.app.services.harness.decision import build_generator_base_prompt
 from src.app.services.harness.reviewers import (
@@ -21,7 +21,7 @@ from src.app.services.task_checkpoint import parse_file_operations
 from . import utils
 
 
-async def continue_task(
+async def resume_task(
     req: ContinueRequest,
     *,
     create_execution_plan_fn: Callable[..., Awaitable[Any]] = (
