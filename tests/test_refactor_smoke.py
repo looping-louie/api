@@ -399,7 +399,7 @@ def test_task_checkpoint_collect_snapshot_failure_is_terminal(monkeypatch):
     monkeypatch.setattr(task, 'create_execution_plan', fake_create_execution_plan)
 
     start_result = asyncio.run(
-        task.start_task(
+        start_task_with_library(
             StartRequest(
                 repo_path='/tmp/repo',
                 constitution='Implement only the requested task.',
