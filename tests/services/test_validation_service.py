@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.services.shared.instruction_service import InstructionDocument
-from src.app.services.shared.validation_service import (
+from src.app.services.shared.instruction import InstructionDocument
+from src.app.services.shared.validation import (
     DomainValidationError,
     DuplicateResourceError,
     ResourceVersionConflictError,

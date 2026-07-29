@@ -1,6 +1,6 @@
 """Controllers for loop HTTP operations."""
 
-from src.app.services.loop_service import LoopService
+from src.app.services.loops.service import LoopService
 
 from .create import LoopCreateController
 from .delete import LoopDeleteController

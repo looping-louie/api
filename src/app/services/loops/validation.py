@@ -19,7 +19,7 @@ from src.app.models.loop import (
 def require_text(value: object, field_name: str) -> str:
     """Return stripped non-empty text or raise loop validation."""
 
-    from src.app.services.loop_types import LoopValidationError
+    from src.app.services.loops.types import LoopValidationError
 
     if not isinstance(value, str) or not value.strip():
         raise LoopValidationError(
@@ -32,7 +32,7 @@ def require_text(value: object, field_name: str) -> str:
 def normalize_description(value: object) -> str:
     """Return stripped description text."""
 
-    from src.app.services.loop_types import LoopValidationError
+    from src.app.services.loops.types import LoopValidationError
 
     if not isinstance(value, str):
         raise LoopValidationError(
@@ -45,7 +45,7 @@ def normalize_description(value: object) -> str:
 def normalize_stop_conditions(value: object) -> LoopStopConditions:
     """Validate positive supplied stop conditions and require one."""
 
-    from src.app.services.loop_types import LoopValidationError
+    from src.app.services.loops.types import LoopValidationError
 
     if not isinstance(value, LoopStopConditions):
         raise LoopValidationError(
@@ -79,7 +79,7 @@ def normalize_agents(
 ) -> tuple[LoopAgent, ...]:
     """Normalize agent inputs and generate omitted identifiers."""
 
-    from src.app.services.loop_types import (
+    from src.app.services.loops.types import (
         LoopAgentInput,
         LoopValidationError,
     )
@@ -130,7 +130,7 @@ def normalize_agents(
 def normalize_output_contract(value: object) -> LoopOutputContract:
     """Validate the generic output contract."""
 
-    from src.app.services.loop_types import LoopValidationError
+    from src.app.services.loops.types import LoopValidationError
 
     if not isinstance(value, LoopOutputContract):
         raise LoopValidationError(
@@ -176,7 +176,7 @@ def normalize_output_contract(value: object) -> LoopOutputContract:
 def validate_loop(document: LoopDocument) -> None:
     """Validate role cardinality for the loop's selected flow."""
 
-    from src.app.services.loop_types import LoopValidationError
+    from src.app.services.loops.types import LoopValidationError
 
     counts = {
         role: sum(agent.role == role for agent in document.agents)

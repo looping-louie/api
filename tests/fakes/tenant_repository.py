@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from src.app.services.shared.tenant_service import WorkspaceMembership
+from src.app.services.shared.tenant import WorkspaceMembership
 
 
 class FakeTenantRepository:

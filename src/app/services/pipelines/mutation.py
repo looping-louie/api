@@ -9,12 +9,12 @@ from datetime import datetime
 
 from src.app.models.changelog import JsonObject
 from src.app.models.pipeline import PipelineDocument, PipelineStep
-from src.app.services.pipeline_types import (
+from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelinePatch,
 )
-from src.app.services.pipeline_validation import (
+from src.app.services.pipelines.validation import (
     document_content,
     normalize_description,
     normalize_steps,

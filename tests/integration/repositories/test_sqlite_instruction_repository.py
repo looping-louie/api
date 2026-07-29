@@ -14,7 +14,7 @@ import pytest
 from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     InstructionDocument,
     InstructionType,
 )

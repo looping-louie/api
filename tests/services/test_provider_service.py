@@ -4,9 +4,9 @@ import pytest
 
 from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
 from src.app.models.providers import ProviderState
-from src.app.services.providers.provider_errors import ProviderConfigurationError
-from src.app.services.providers.provider_service import ProviderService
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.providers.errors import ProviderConfigurationError
+from src.app.services.providers.service import ProviderService
+from src.app.services.shared.tenant import TenantService
 from tests.factories.providers import build_provider_credential
 from tests.fakes.model_registry_service import FakeModelRegistryService
 from tests.fakes.provider_connection_service import (

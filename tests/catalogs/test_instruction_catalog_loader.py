@@ -24,7 +24,7 @@ from src.app.catalogs.skills.loader import (
     SKILL_CATALOG_DIR,
     load_skill_catalog,
 )
-from src.app.services.app_settings_service import AppSettings
+from src.app.services.shared.settings import AppSettings
 
 
 def copy_catalogs(tmp_path: Path) -> tuple[Path, Path]:

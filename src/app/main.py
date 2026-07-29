@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from src.app.bootstrap import configure_application
 from src.app.routers import api_v1_router
 from src.app.middleware import DevelopmentAuthMiddleware
-from src.app.services.app_settings_service import get_app_settings
+from src.app.services.shared.settings import get_app_settings
 from src.app.utils.http import register_exception_handlers
 
 

@@ -4,17 +4,17 @@ from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
 )
 from src.app.services.instructions import build_assignment_instructions
-from src.app.services.persona_service import (
+from src.app.services.personas.service import (
     PersonaCreate,
     PersonaService,
 )
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
 )
-from src.app.services.shared.tenant_service import TenantService
-from src.app.services.skill_service import SkillService
+from src.app.services.shared.tenant import TenantService
+from src.app.services.skills.service import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,

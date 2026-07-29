@@ -1,3 +1,5 @@
+"""Shared instruction resource operations and application values."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -10,7 +12,7 @@ from src.app.catalogs.instructions import InstructionOrigin
 
 from .dependency_checker import DependencyChecker
 from .reference_resolver import ResourceReference
-from .validation_service import ValidationService
+from .validation import ValidationService
 
 
 InstructionType = Literal["persona", "skill"]

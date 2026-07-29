@@ -11,7 +11,7 @@ import pytest
 from src.app.repositories.loops.sqlite_loop_repository import (
     SqliteLoopRepository,
 )
-from src.app.services.loop_catalog_seeder import seed_loop_catalog
+from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from tests.integration.conftest import WorkspaceFactory
 
 

@@ -13,12 +13,12 @@ from src.app.models.loop import (
     LoopFlow,
     LoopStatus,
 )
-from src.app.services.loop_types import (
+from src.app.services.loops.types import (
     ArchivedLoopImmutableError,
     LoopPatch,
     LoopValidationError,
 )
-from src.app.services.loop_validation import (
+from src.app.services.loops.validation import (
     document_content,
     normalize_agents,
     normalize_description,

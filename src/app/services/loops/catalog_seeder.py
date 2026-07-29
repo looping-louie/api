@@ -22,7 +22,7 @@ from src.app.repositories.loops.loop_repository_mapping import (
     insert_changelog,
     insert_loop,
 )
-from src.app.services.loop_validation import document_content
+from src.app.services.loops.validation import document_content
 
 
 CATALOG_ACTOR_ID = "system:catalog"

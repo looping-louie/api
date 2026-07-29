@@ -6,7 +6,7 @@ from src.app.schemas.loop import (
     LoopChangelogEntryResponse,
     LoopChangelogListResponse,
 )
-from src.app.services.loop_service import LoopService
+from src.app.services.loops.service import LoopService
 
 
 class LoopListChangelogController:

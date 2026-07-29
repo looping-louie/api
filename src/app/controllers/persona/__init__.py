@@ -1,6 +1,6 @@
 """Controllers for persona HTTP operations."""
 
-from src.app.services.persona_service import PersonaService
+from src.app.services.personas.service import PersonaService
 
 from .create import PersonaCreateController
 from .delete import PersonaDeleteController

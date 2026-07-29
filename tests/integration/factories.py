@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.app.models.providers import ProviderCredential
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     InstructionDocument,
     InstructionType,
 )

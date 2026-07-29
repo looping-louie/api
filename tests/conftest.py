@@ -11,17 +11,15 @@ from src.app.catalogs.providers import (
     ProviderId,
 )
 from src.app.controllers.model import ModelController
-from src.app.services.model_service import (
-    ModelAvailabilityService,
-    ModelCatalogService,
-)
-from src.app.services.shared.instruction_service import InstructionService
+from src.app.services.models.availability import ModelAvailabilityService
+from src.app.services.models.service import ModelCatalogService
+from src.app.services.shared.instruction import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant_service import (
+from src.app.services.shared.tenant import (
     TenantService,
     WorkspaceMembership,
 )
-from src.app.services.shared.validation_service import ValidationService
+from src.app.services.shared.validation import ValidationService
 from tests.fakes.dependency_checker import FakeDependencyChecker
 from tests.fakes.dependency_repository import FakeDependencyRepository
 from tests.fakes.instruction_repository import FakeInstructionRepository
@@ -33,7 +31,7 @@ from tests.fakes.reference_repository import FakeReferenceRepository
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.validation_repository import FakeValidationRepository
 from src.app.controllers.provider import ProviderController
-from src.app.services.providers.provider_service import ProviderService
+from src.app.services.providers.service import ProviderService
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
 )

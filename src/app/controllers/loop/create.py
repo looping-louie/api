@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from src.app.schemas.loop import LoopCreateRequest, LoopResponse
-from src.app.services.loop_service import LoopService
-from src.app.services.loop_types import LoopCreate
+from src.app.services.loops.service import LoopService
+from src.app.services.loops.types import LoopCreate
 
 from .utils import loop_agents, loop_output_contract, loop_stop_conditions
 

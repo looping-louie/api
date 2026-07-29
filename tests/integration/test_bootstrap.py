@@ -24,7 +24,7 @@ from src.app.controllers.skill import SkillController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
-from src.app.services.app_settings_service import AppSettings
+from src.app.services.shared.settings import AppSettings
 
 
 EXPECTED_TABLES = {

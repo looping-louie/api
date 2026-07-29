@@ -26,11 +26,9 @@ from src.app.repositories.infrastructure.sqlite_database import (
 from src.app.repositories.shared.tenant_repository import (
     SqliteTenantRepository,
 )
-from src.app.services.model_service import (
-    ModelAvailabilityService,
-    ModelCatalogService,
-)
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.models.availability import ModelAvailabilityService
+from src.app.services.models.service import ModelCatalogService
+from src.app.services.shared.tenant import TenantService
 from tests.integration.factories import build_instruction
 
 

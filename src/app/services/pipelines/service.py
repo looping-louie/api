@@ -14,7 +14,7 @@ from src.app.repositories.loops.loop_repository import LoopRepository
 from src.app.repositories.pipelines.pipeline_repository import (
     PipelineRepository,
 )
-from src.app.services.pipeline_operations import (
+from src.app.services.pipelines.operations import (
     build_entry,
     change_type,
     normalize_offset,
@@ -22,18 +22,18 @@ from src.app.services.pipeline_operations import (
     require_pipeline,
     validate_loop_references,
 )
-from src.app.services.pipeline_mutation import (
+from src.app.services.pipelines.mutation import (
     apply_patch,
     changed_fields,
 )
-from src.app.services.pipeline_types import (
+from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelineCreate,
     PipelineNotFoundError,
     PipelinePatch,
 )
-from src.app.services.pipeline_validation import (
+from src.app.services.pipelines.validation import (
     document_content,
     normalize_description,
     normalize_status,
@@ -42,7 +42,7 @@ from src.app.services.pipeline_validation import (
 )
 from src.app.services.shared.changelog import changed_field_diff
 from src.app.services.shared.pagination import PAGE_SIZE
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 
 
 class PipelineService:

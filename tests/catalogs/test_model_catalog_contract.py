@@ -12,7 +12,7 @@ from src.app.catalogs.providers import (
     PROVIDER_CATALOG_BY_ID,
     ProviderId,
 )
-from src.app.services.providers.model_registry_service import (
+from src.app.services.providers.model_registry import (
     CatalogModelRegistryService,
 )
 from tests.factories.models import (

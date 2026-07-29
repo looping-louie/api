@@ -1,3 +1,5 @@
+"""Shared validation operations for referenced resources."""
+
 from typing import Protocol
 from unicodedata import normalize
 

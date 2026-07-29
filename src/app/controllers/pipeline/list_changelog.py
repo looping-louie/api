@@ -6,7 +6,7 @@ from src.app.schemas.pipeline import (
     PipelineChangelogEntryResponse,
     PipelineChangelogListResponse,
 )
-from src.app.services.pipeline_service import PipelineService
+from src.app.services.pipelines.service import PipelineService
 
 
 class PipelineListChangelogController:

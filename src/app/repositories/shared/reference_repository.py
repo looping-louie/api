@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     InstructionRepository,
 )
-from src.app.services.model_service import ModelCatalogService
+from src.app.services.models.service import ModelCatalogService
 
 
 _INSTRUCTION_TYPES = frozenset(

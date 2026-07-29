@@ -1,6 +1,6 @@
 """In-memory validation lookup adapter for tests."""
 
-from src.app.services.shared.validation_service import ValidationService
+from src.app.services.shared.validation import ValidationService
 
 from .instruction_repository import FakeInstructionRepository
 

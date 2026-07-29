@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     AvailableInstructionDocument,
     BuiltinInstructionImmutableError,
     InstructionCreate,
@@ -15,7 +15,7 @@ from src.app.services.shared.instruction_service import (
     InstructionUpdate,
 )
 from src.app.services.shared.reference_resolver import ResourceReference
-from src.app.services.shared.validation_service import (
+from src.app.services.shared.validation import (
     DuplicateResourceError,
     ResourceVersionConflictError,
 )

@@ -2,7 +2,7 @@
 
 from src.app.catalogs.models import ModelStatus
 from src.app.catalogs.providers import ProviderId
-from src.app.services.providers.model_registry_service import (
+from src.app.services.providers.model_registry import (
     CatalogModelRegistryService,
 )
 from tests.factories.models import (

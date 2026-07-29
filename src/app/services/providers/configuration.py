@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
 from src.app.models.providers import ProviderCredential, ProviderState
 
-from .provider_errors import ProviderConfigurationError
+from .errors import ProviderConfigurationError
 
 
 def clean_optional_value(value: str | None) -> str | None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.common import DeleteResponse
-from src.app.services.skill_service import SkillService
+from src.app.services.skills.service import SkillService
 
 
 class SkillDeleteController:

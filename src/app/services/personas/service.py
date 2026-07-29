@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, fields
 from typing import Protocol, TypeVar
 
-from .shared.instruction_service import (
+from ..shared.instruction import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionCreate,
@@ -14,7 +14,7 @@ from .shared.instruction_service import (
     InstructionService,
     InstructionUpdate,
 )
-from .shared.tenant_service import TenantService
+from ..shared.tenant import TenantService
 
 
 @dataclass(frozen=True, slots=True)

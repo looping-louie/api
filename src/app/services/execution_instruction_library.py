@@ -9,13 +9,13 @@ from typing import Mapping, Sequence
 
 from src.app.catalogs.instructions import InstructionOrigin
 
-from .shared.instruction_service import (
+from .shared.instruction import (
     AvailableInstructionDocument,
     InstructionRepository,
     InstructionType,
 )
-from .shared.tenant_service import TenantService
-from .persona_service import PersonaSkillRepository
+from .shared.tenant import TenantService
+from .personas.service import PersonaSkillRepository
 
 
 DEFAULT_AGENT_ROLES = ("generator", "reviewer")

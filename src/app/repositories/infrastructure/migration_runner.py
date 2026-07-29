@@ -10,7 +10,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from src.app.services.app_settings_service import get_app_settings
+from src.app.services.shared.settings import get_app_settings
 
 
 DEFAULT_MIGRATIONS_PATH = (

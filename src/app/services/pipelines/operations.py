@@ -17,12 +17,12 @@ from src.app.repositories.loops.loop_repository import LoopRepository
 from src.app.repositories.pipelines.pipeline_repository import (
     PipelineRepository,
 )
-from src.app.services.loop_types import LoopNotFoundError
-from src.app.services.pipeline_types import (
+from src.app.services.loops.types import LoopNotFoundError
+from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineNotFoundError,
 )
-from src.app.services.pipeline_validation import require_text
+from src.app.services.pipelines.validation import require_text
 from src.app.services.shared.changelog import build_changelog_metadata
 from src.app.services.shared.pagination import require_offset
 

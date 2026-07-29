@@ -51,39 +51,37 @@ from src.app.repositories.shared.tenant_repository import (
 from src.app.repositories.shared.validation_repository import (
     SqliteValidationRepository,
 )
-from src.app.services.app_settings_service import (
+from src.app.services.shared.settings import (
     AppSettings,
     get_app_settings,
 )
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instruction_catalog_synchronizer import (
+from src.app.services.shared.instruction_catalog_synchronizer import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
-from src.app.services.loop_catalog_seeder import seed_loop_catalog
-from src.app.services.loop_service import LoopService
-from src.app.services.model_service import (
-    ModelAvailabilityService,
-    ModelCatalogService,
-)
-from src.app.services.persona_service import PersonaService
-from src.app.services.providers.model_registry_service import (
+from src.app.services.loops.catalog_seeder import seed_loop_catalog
+from src.app.services.loops.service import LoopService
+from src.app.services.models.availability import ModelAvailabilityService
+from src.app.services.models.service import ModelCatalogService
+from src.app.services.personas.service import PersonaService
+from src.app.services.providers.model_registry import (
     CatalogModelRegistryService,
 )
-from src.app.services.providers.provider_connection_service import (
+from src.app.services.providers.connection import (
     HttpProviderConnectionService,
 )
-from src.app.services.providers.provider_service import ProviderService
-from src.app.services.providers.secret_service import FernetSecretService
+from src.app.services.providers.service import ProviderService
+from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
-from src.app.services.shared.instruction_service import InstructionService
+from src.app.services.shared.instruction import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant_service import TenantService
-from src.app.services.shared.validation_service import ValidationService
-from src.app.services.skill_service import SkillService
+from src.app.services.shared.tenant import TenantService
+from src.app.services.shared.validation import ValidationService
+from src.app.services.skills.service import SkillService
 
 
 LOGGER = logging.getLogger(__name__)

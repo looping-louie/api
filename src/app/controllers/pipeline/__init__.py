@@ -1,6 +1,6 @@
 """Controllers for pipeline HTTP operations."""
 
-from src.app.services.pipeline_service import PipelineService
+from src.app.services.pipelines.service import PipelineService
 
 from .create import PipelineCreateController
 from .delete import PipelineDeleteController

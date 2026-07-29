@@ -7,7 +7,7 @@ import pytest
 from src.app.services.shared.dependency_checker import DependencyUsage
 from src.app.services.shared.reference_resolver import ResourceReference
 from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 from tests.fakes.dependency_checker import (
     FakeDependencyChecker,
     FakeResourceInUseError,

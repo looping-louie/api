@@ -7,9 +7,9 @@ from itertools import count
 import pytest
 
 from src.app.models.pipeline import PipelineHumanGateStep
-from src.app.services.loop_types import LoopNotFoundError
-from src.app.services.pipeline_service import PipelineService
-from src.app.services.pipeline_types import (
+from src.app.services.loops.types import LoopNotFoundError
+from src.app.services.pipelines.service import PipelineService
+from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelineCreate,
@@ -17,7 +17,7 @@ from src.app.services.pipeline_types import (
     PipelineQuizConfigInput,
     PipelineStepInput,
 )
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.factories.pipelines import build_loop
 from tests.fakes.loop_repository import FakeLoopRepository

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.common import DeleteResponse
-from src.app.services.persona_service import PersonaService
+from src.app.services.personas.service import PersonaService
 
 
 class PersonaDeleteController:

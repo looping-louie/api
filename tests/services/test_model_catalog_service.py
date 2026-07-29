@@ -5,13 +5,13 @@ from src.app.catalogs.models import (
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.services.model_service import (
+from src.app.services.models.availability import (
     ModelAvailabilityService,
-    ModelCatalogService,
     ModelNotFoundError,
     ProviderConnectionState,
 )
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.models.service import ModelCatalogService
+from src.app.services.shared.tenant import TenantService
 from tests.factories.models import (
     build_deployment,
     build_model,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from src.app.catalogs.models import ModelCapability, ModelStatus
 from src.app.catalogs.providers import ProviderId
 from src.app.schemas.model import ModelListResponse, ModelSummaryResponse
-from src.app.services.model_service import ModelCatalogService
+from src.app.services.models.service import ModelCatalogService
 
 
 class ModelListController:

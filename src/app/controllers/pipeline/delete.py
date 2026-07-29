@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.common import DeleteResponse
-from src.app.services.pipeline_service import PipelineService
+from src.app.services.pipelines.service import PipelineService
 
 
 class PipelineDeleteController:

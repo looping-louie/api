@@ -2,17 +2,17 @@
 
 import pytest
 
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
 )
-from src.app.services.shared.tenant_service import (
+from src.app.services.shared.tenant import (
     TenantService,
     WorkspaceMembership,
 )
-from src.app.services.skill_metadata_validator import SkillValidationError
-from src.app.services.skill_service import SkillService
+from src.app.services.skills.metadata_validator import SkillValidationError
+from src.app.services.skills.service import SkillService
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,

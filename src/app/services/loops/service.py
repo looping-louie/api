@@ -10,7 +10,7 @@ from src.app.models.loop import (
     LoopDocument,
 )
 from src.app.repositories.loops.loop_repository import LoopRepository
-from src.app.services.loop_mutation import (
+from src.app.services.loops.mutation import (
     apply_patch,
     build_entry,
     change_type,
@@ -19,13 +19,13 @@ from src.app.services.loop_mutation import (
     normalize_offset,
     require_patch_allowed,
 )
-from src.app.services.loop_types import (
+from src.app.services.loops.types import (
     LoopCreate,
     LoopNotFoundError,
     LoopPatch,
     LoopValidationError,
 )
-from src.app.services.loop_validation import (
+from src.app.services.loops.validation import (
     document_content,
     normalize_agents,
     normalize_description,
@@ -39,7 +39,7 @@ from src.app.services.shared.reference_resolver import (
     ResourceReference,
 )
 from src.app.services.shared.dependency_checker import DependencyChecker
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.pagination import PAGE_SIZE
 
 

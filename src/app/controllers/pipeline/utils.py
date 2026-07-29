@@ -5,7 +5,7 @@ from src.app.schemas.pipeline import (
     PipelineLoopStepRequest,
     PipelineStepRequest,
 )
-from src.app.services.pipeline_types import PipelineQuizConfigInput, PipelineStepInput
+from src.app.services.pipelines.types import PipelineQuizConfigInput, PipelineStepInput
 
 
 def pipeline_steps(

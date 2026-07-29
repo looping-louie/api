@@ -6,7 +6,7 @@ from src.app.schemas.loop import (
     LoopOutputContractSchema,
     LoopStopConditionsSchema,
 )
-from src.app.services.loop_types import LoopAgentInput
+from src.app.services.loops.types import LoopAgentInput
 
 
 def loop_agents(values: list[LoopAgentSchema]) -> tuple[LoopAgentInput, ...]:

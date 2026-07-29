@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.loop import LoopResponse
-from src.app.services.loop_service import LoopService
+from src.app.services.loops.service import LoopService
 
 
 class LoopDescribeController:

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     InstructionDocument,
     InstructionSummary,
     InstructionType,

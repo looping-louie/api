@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionNotFoundError,
 )
-from src.app.services.loop_types import (
+from src.app.services.loops.types import (
     ArchivedLoopImmutableError,
     LoopNotFoundError,
     LoopValidationError,
@@ -21,7 +21,7 @@ from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
     ResourceInUseError,
 )
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     BuiltinInstructionImmutableError,
     InstructionDisabledError,
     InstructionNotFoundError,
@@ -34,33 +34,33 @@ from src.app.services.shared.reference_resolver import (
     ReferenceValidationError,
     ResourceNotFoundError,
 )
-from src.app.services.shared.tenant_service import (
+from src.app.services.shared.tenant import (
     TenantAccessDeniedError,
     TenantNotFoundError,
     TenantSelectionRequiredError,
     TenantValidationError,
 )
-from src.app.services.shared.validation_service import (
+from src.app.services.shared.validation import (
     DomainValidationError,
     DuplicateResourceError,
     ResourceVersionConflictError,
 )
-from src.app.services.skill_metadata_validator import SkillValidationError
-from src.app.services.model_service import (
+from src.app.services.skills.metadata_validator import SkillValidationError
+from src.app.services.models.availability import (
     ModelNotFoundError,
     ModelValidationError,
 )
-from src.app.services.pipeline_types import (
+from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelineNotFoundError,
     UnsupportedHumanGateTypeError,
     UnsupportedPipelineStepError,
 )
-from src.app.services.providers.provider_connection_service import (
+from src.app.services.providers.connection import (
     ProviderConnectionError,
 )
-from src.app.services.providers.provider_errors import (
+from src.app.services.providers.errors import (
     ProviderConfigurationError,
     UnknownProviderError,
 )

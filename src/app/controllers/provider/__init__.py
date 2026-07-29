@@ -1,6 +1,6 @@
 """Controllers for model provider HTTP operations."""
 
-from src.app.services.providers.provider_service import ProviderService
+from src.app.services.providers.service import ProviderService
 
 from .delete import ProviderDeleteController
 from .describe import ProviderDescribeController

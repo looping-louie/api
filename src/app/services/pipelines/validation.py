@@ -11,7 +11,7 @@ from src.app.models.pipeline import (
     PipelineStatus,
     PipelineStep,
 )
-from src.app.services.pipeline_types import (
+from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineQuizConfigInput,
     PipelineStepInput,

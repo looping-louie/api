@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.provider import ProviderController
 from src.app.routers.providers import router as providers_router
-from src.app.services.providers.provider_connection_service import (
+from src.app.services.providers.connection import (
     ProviderConnectionError,
 )
 from src.app.utils.http import register_exception_handlers

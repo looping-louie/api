@@ -3,7 +3,7 @@ import pytest
 from src.app.catalogs.models import ModelCapability
 from src.app.catalogs.providers import ProviderId
 from src.app.controllers.model import ModelController
-from src.app.services.model_service import ProviderConnectionState
+from src.app.services.models.availability import ProviderConnectionState
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )

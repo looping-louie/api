@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.services.shared.instruction_service import (
+from src.app.services.shared.instruction import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionType,

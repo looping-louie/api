@@ -7,8 +7,8 @@ from itertools import count
 import pytest
 
 from src.app.models.loop import LoopOutputContract, LoopStopConditions
-from src.app.services.loop_service import LoopService
-from src.app.services.loop_types import (
+from src.app.services.loops.service import LoopService
+from src.app.services.loops.types import (
     ArchivedLoopImmutableError,
     LoopAgentInput,
     LoopCreate,
@@ -16,7 +16,7 @@ from src.app.services.loop_types import (
     LoopValidationError,
 )
 from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.loop_repository import FakeLoopRepository
 from tests.fakes.dependency_checker import FakeDependencyChecker

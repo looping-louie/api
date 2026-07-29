@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from src.app.controllers.loop import LoopController
 from src.app.routers.loops import router as loops_router
 from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.loop_repository import FakeLoopRepository
 from tests.fakes.reference_repository import FakeReferenceRepository

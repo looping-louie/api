@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from src.app.schemas.pipeline import PipelinePatchRequest, PipelineResponse
-from src.app.services.pipeline_service import PipelineService
-from src.app.services.pipeline_types import PipelinePatch
+from src.app.services.pipelines.service import PipelineService
+from src.app.services.pipelines.types import PipelinePatch
 
 from .utils import pipeline_steps
 

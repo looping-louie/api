@@ -11,8 +11,8 @@ from src.app.repositories.loops.loop_repository import LoopRepository
 from src.app.repositories.pipelines.sqlite_pipeline_repository import (
     SqlitePipelineRepository,
 )
-from src.app.services.pipeline_service import PipelineService
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.pipelines.service import PipelineService
+from src.app.services.shared.tenant import TenantService
 
 
 def build_pipeline_controller(

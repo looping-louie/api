@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .shared.instruction_service import (
+from ..shared.instruction import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionCreate,
@@ -10,8 +10,8 @@ from .shared.instruction_service import (
     InstructionService,
     InstructionUpdate,
 )
-from .shared.tenant_service import TenantService
-from .skill_metadata_validator import (
+from ..shared.tenant import TenantService
+from .metadata_validator import (
     validate_skill_metadata,
 )
 

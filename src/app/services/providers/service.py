@@ -9,19 +9,19 @@ from src.app.models.providers import ProviderCredential, ProviderState
 from src.app.repositories.providers.provider_repository import (
     ProviderRepository,
 )
-from src.app.services.shared.tenant_service import TenantService
+from src.app.services.shared.tenant import TenantService
 
-from .model_registry_service import ModelRegistryService
-from .provider_configuration import (
+from .model_registry import ModelRegistryService
+from .configuration import (
     build_provider_state,
     clean_optional_value,
     find_provider_definition,
     resolve_base_url,
     validate_configuration,
 )
-from .provider_connection_service import ProviderConnectionService
-from .provider_errors import UnknownProviderError
-from .secret_service import SecretService
+from .connection import ProviderConnectionService
+from .errors import UnknownProviderError
+from .secret import SecretService
 
 
 Clock = Callable[[], datetime]

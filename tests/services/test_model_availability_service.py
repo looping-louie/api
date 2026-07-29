@@ -2,7 +2,7 @@ import pytest
 
 from src.app.catalogs.models import ModelStatus
 from src.app.catalogs.providers import ProviderId
-from src.app.services.model_service import (
+from src.app.services.models.availability import (
     ModelAvailabilityService,
     ModelUnavailableReason,
     ProviderConnectionState,

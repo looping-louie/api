@@ -1,6 +1,6 @@
 """Controllers for skill HTTP operations."""
 
-from src.app.services.skill_service import SkillService
+from src.app.services.skills.service import SkillService
 
 from .create import SkillCreateController
 from .delete import SkillDeleteController

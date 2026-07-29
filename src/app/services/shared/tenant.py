@@ -1,3 +1,5 @@
+"""Workspace tenant resolution and membership operations."""
+
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 

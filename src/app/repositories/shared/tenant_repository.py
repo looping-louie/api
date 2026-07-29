@@ -8,7 +8,7 @@ from typing import Any
 
 import aiosqlite
 
-from src.app.services.shared.tenant_service import WorkspaceMembership
+from src.app.services.shared.tenant import WorkspaceMembership
 
 
 class SqliteTenantRepository:
