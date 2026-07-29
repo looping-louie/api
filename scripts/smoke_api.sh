@@ -21,8 +21,10 @@ SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
 PERSONA_ID=""
 SKILL_ID=""
 LOOP_ID=""
+PIPELINE_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
+PROVIDER_STATE_CAPTURED=0
 CLEANUP_STARTED=0
 
 CURL_HEADERS=(
@@ -237,6 +239,15 @@ cleanup() {
 
     log "Cleaning smoke-test resources"
 
+    if [[ -n "${PIPELINE_ID}" ]]; then
+        request \
+            PATCH \
+            "/pipelines/${PIPELINE_ID}" \
+            '{"steps":[{"type":"human_gate","gate_type":"approval"},{"type":"human_gate","gate_type":"approval"}]}' \
+            >/dev/null
+        request DELETE "/pipelines/${PIPELINE_ID}" >/dev/null
+    fi
+
     if [[ -n "${LOOP_ID}" ]]; then
         request DELETE "/loops/${LOOP_ID}" >/dev/null
     fi
@@ -251,7 +262,10 @@ cleanup() {
 
     if [[ "${PROVIDER_CREATED}" == "1" ]]; then
         request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
-    elif [[ "${PROVIDER_WAS_ENABLED}" == "0" ]]; then
+    elif [[
+        "${PROVIDER_STATE_CAPTURED}" == "1"
+        && "${PROVIDER_WAS_ENABLED}" == "0"
+    ]]; then
         request \
             PATCH \
             "/providers/${SMOKE_PROVIDER_ID}" \
@@ -282,6 +296,7 @@ IFS=$'\t' read -r \
     )"
 
 PROVIDER_WAS_ENABLED="${provider_enabled}"
+PROVIDER_STATE_CAPTURED=1
 
 request GET "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
 
@@ -464,6 +479,45 @@ JSON
 
 request GET "/loops/${LOOP_ID}/changelog?offset=0" >/dev/null
 
+log "Creating pipeline"
+
+pipeline_response="$(
+    request POST "/pipelines" "$(
+        cat <<JSON
+{
+    "title": "Smoke Pipeline ${SMOKE_RUN_ID}",
+    "description": "Created by scripts/smoke_api.sh",
+    "steps": [
+        {
+            "type": "loop",
+            "loop_id": "${LOOP_ID}"
+        },
+        {
+            "type": "human_gate",
+            "gate_type": "approval"
+        }
+    ]
+}
+JSON
+    )"
+)"
+
+PIPELINE_ID="$(
+    printf '%s' "${pipeline_response}" | json_field "id"
+)"
+
+request GET "/pipelines/${PIPELINE_ID}" >/dev/null
+request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
+request \
+    PATCH \
+    "/pipelines/${PIPELINE_ID}" \
+    '{"description":"Updated by scripts/smoke_api.sh"}' \
+    >/dev/null
+request \
+    GET \
+    "/pipelines/${PIPELINE_ID}/changelog?offset=0" \
+    >/dev/null
+
 log "Checking loop dependency protection"
 
 request_expect_status \
@@ -472,6 +526,14 @@ request_expect_status \
     409
 
 log "Deleting resources in dependency order"
+
+request \
+    PATCH \
+    "/pipelines/${PIPELINE_ID}" \
+    '{"steps":[{"type":"human_gate","gate_type":"approval"},{"type":"human_gate","gate_type":"approval"}]}' \
+    >/dev/null
+request DELETE "/pipelines/${PIPELINE_ID}" >/dev/null
+PIPELINE_ID=""
 
 request DELETE "/loops/${LOOP_ID}" >/dev/null
 LOOP_ID=""
@@ -483,6 +545,7 @@ request DELETE "/personas/${PERSONA_ID}" >/dev/null
 PERSONA_ID=""
 
 request GET "/loops" >/dev/null
+request GET "/pipelines" >/dev/null
 request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null
 
