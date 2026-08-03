@@ -10,6 +10,10 @@ from src.app.services.loops.types import (
     LoopNotFoundError,
     LoopValidationError,
 )
+from src.app.services.loop_runs.service import (
+    LoopRunNotFoundError,
+    LoopRunUnavailableError,
+)
 from src.app.services.models.availability import (
     ModelNotFoundError,
     ModelValidationError,
@@ -141,6 +145,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_404_NOT_FOUND,
         code="loop_not_found",
         details_builder=_loop_details,
+    ),
+    LoopRunNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="loop_run_not_found",
+    ),
+    LoopRunUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="loop_run_unavailable",
     ),
     PipelineNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

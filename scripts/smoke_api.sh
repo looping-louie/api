@@ -21,6 +21,7 @@ SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
 PERSONA_ID=""
 SKILL_ID=""
 LOOP_ID=""
+LOOP_RUN_ID=""
 PIPELINE_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
@@ -478,6 +479,18 @@ JSON
 )"
 
 request GET "/loops/${LOOP_ID}/changelog?offset=0" >/dev/null
+
+log "Creating loop run"
+
+loop_run_response="$(
+    request POST "/loops/${LOOP_ID}/runs" \
+        '{"input":"Produce a smoke-test answer."}'
+)"
+
+LOOP_RUN_ID="$(printf '%s' "${loop_run_response}" | json_field "id")"
+
+request GET "/loops/${LOOP_ID}/runs?offset=0" >/dev/null
+request GET "/loops/${LOOP_ID}/runs/${LOOP_RUN_ID}" >/dev/null
 
 log "Creating pipeline"
 

@@ -13,12 +13,16 @@ from src.app.catalogs.instructions.loader import (
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.loop import LoopController
+from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.loops.sqlite_loop_repository import (
     SqliteLoopRepository,
+)
+from src.app.repositories.loop_runs.sqlite_loop_run_repository import (
+    SqliteLoopRunRepository,
 )
 from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
@@ -64,6 +68,7 @@ from src.app.services.shared.instruction_catalog_synchronizer import (
 )
 from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from src.app.services.loops.service import LoopService
+from src.app.services.loop_runs.service import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.personas.service import PersonaService
@@ -164,6 +169,9 @@ async def configure_application(
     loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
+    loop_run_repository = SqliteLoopRunRepository(
+        resolved_settings.database_path,
+    )
     provider_repository = SqliteProviderRepository(
         database,
     )
@@ -236,6 +244,13 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    loop_run_service = LoopRunService(
+        repository=loop_run_repository,
+        loop_service=loop_service,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
     provider_service = ProviderService(
         repository=provider_repository,
         tenant_service=tenant_service,
@@ -257,6 +272,9 @@ async def configure_application(
     )
     app.state.loop_controller = LoopController(
         loop_service=loop_service,
+    )
+    app.state.loop_run_controller = LoopRunController(
+        loop_run_service=loop_run_service,
     )
     app.state.pipeline_controller = build_pipeline_controller(
         database_path=resolved_settings.database_path,
