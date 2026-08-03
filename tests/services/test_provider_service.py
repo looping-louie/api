@@ -3,7 +3,7 @@
 import pytest
 
 from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
-from src.app.models.providers import ProviderState
+from src.app.models.provider import ProviderState
 from src.app.services.providers.errors import ProviderConfigurationError
 from src.app.services.providers.service import ProviderService
 from src.app.services.shared.tenant import TenantService

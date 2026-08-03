@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.controllers.loop import LoopController
-from src.app.schemas.common import DeleteResponse
+from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.loop import (
     LoopChangelogListResponse,
     LoopCreateRequest,

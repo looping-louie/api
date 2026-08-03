@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.controllers.pipeline import PipelineController
-from src.app.schemas.common import DeleteResponse
+from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,
     PipelineCreateRequest,

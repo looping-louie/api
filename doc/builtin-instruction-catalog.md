@@ -44,3 +44,36 @@ executions remain reproducible because each run owns an
 Remove its manifest entry, but never reuse its ID. Synchronization marks the
 SQL row as deprecated; it does not delete it. New loops cannot select a
 deprecated instruction, while historical references can still resolve it.
+
+## A brief note on catalog synchronization
+
+Also called
+
+- Seeded reference data
+- Catalog synchronization
+- Bootstrap or migration-managed data
+- Materialized runtime catalog
+
+this pattern is common, especially when an application has version-controlled
+reference content that must become runtime-queryable, workspace-aware data.
+
+In this case, the design is:
+
+```txt
+Git-tracked manifest + Markdown
+        -> validate and synchronize at startup
+SQL runtime projection
+        -> API, availability resolution, task execution
+```
+
+The important distinction is that the files are still the authored source of truth for builtins, while SQL is the operational source of truth once the application is running.
+
+This is a good fit here because SQL enables things that repository files do not provide cleanly:
+
+Workspace-specific enablement and availability.
+Custom copies of immutable builtins.
+Ownership and access control.
+Deprecation without losing historical references.
+Atomic updates and consistency constraints.
+Fast, uniform runtime queries.
+Reproducible execution snapshots based on the exact effective library.

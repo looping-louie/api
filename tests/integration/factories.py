@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from src.app.models.providers import ProviderCredential
+from src.app.models.provider import ProviderCredential
 from src.app.services.shared.instruction import (
     InstructionDocument,
     InstructionType,

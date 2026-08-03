@@ -5,8 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path
 
 from src.app.controllers.provider import ProviderController
-from src.app.schemas.common import DeleteResponse
-from src.app.schemas.providers import ProviderPatchRequest, ProviderResponse
+from src.app.schemas.provider import ProviderPatchRequest, ProviderResponse
+from src.app.schemas.shared import DeleteResponse
 
 from .dependencies import (
     RequestContext,
