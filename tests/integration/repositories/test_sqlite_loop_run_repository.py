@@ -10,6 +10,7 @@ import aiosqlite
 import pytest
 
 from src.app.models.loop_run import LoopRunDocument
+from src.app.repositories.loop_runs.errors import LoopRunTokenConflictError
 from src.app.repositories.loop_runs.sqlite_loop_run_repository import (
     SqliteLoopRunRepository,
 )
@@ -69,7 +70,9 @@ async def test_loop_run_persists_snapshot_and_parent_scope(
         next_action='collect_snapshot',
         iteration=1,
         token_revision=0,
+        continuation_token='token-0',
         loop_snapshot={'id': 'loop-1', 'flow': 'direct'},
+        execution_context={},
         created_at=datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
         created_by='user-1',
         updated_at=datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
@@ -94,8 +97,52 @@ async def test_loop_run_persists_snapshot_and_parent_scope(
         run_id='run-1',
     )
 
+    context = {
+        'repo_context': 'Repository context.',
+        'workspace_metadata': {
+            'workspace_path': '/workspace/project',
+            'source_commit_sha': 'abc123',
+        },
+        'constitution': 'Keep changes small.',
+        'project_profile': {'source_file_count': 1},
+    }
+    continued = await repository.continue_collect_snapshot(
+        workspace_id='workspace-1',
+        loop_id='loop-1',
+        run_id='run-1',
+        continuation_token='token-0',
+        idempotency_key='snapshot-1',
+        execution_context=context,
+        updated_at=datetime(2026, 8, 3, 12, 1, tzinfo=UTC),
+    )
+    replayed = await repository.continue_collect_snapshot(
+        workspace_id='workspace-1',
+        loop_id='loop-1',
+        run_id='run-1',
+        continuation_token='token-0',
+        idempotency_key='snapshot-1',
+        execution_context=context,
+        updated_at=datetime(2026, 8, 3, 12, 2, tzinfo=UTC),
+    )
+
     assert created == document
     assert stored == document
     assert listed == [document]
     assert total == 1
     assert wrong_parent is None
+    assert continued.state == 'awaiting_generation'
+    assert continued.execution_context == context
+    assert continued.token_revision == 1
+    assert continued.continuation_token is None
+    assert replayed == continued
+
+    with pytest.raises(LoopRunTokenConflictError):
+        await repository.continue_collect_snapshot(
+            workspace_id='workspace-1',
+            loop_id='loop-1',
+            run_id='run-1',
+            continuation_token='token-0',
+            idempotency_key='snapshot-2',
+            execution_context=context,
+            updated_at=datetime(2026, 8, 3, 12, 3, tzinfo=UTC),
+        )

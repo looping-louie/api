@@ -10,6 +10,15 @@ from src.app.models.loop_run import LoopRunDocument
 class LoopRunRepository(Protocol):
     """Persistence operations required by the loop-run service."""
 
+    async def has_runs(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+    ) -> bool:
+        """Return whether a loop has retained execution history."""
+        raise NotImplementedError
+
     async def create(self, *, document: LoopRunDocument) -> LoopRunDocument:
         """Persist one newly created loop run."""
         raise NotImplementedError
@@ -33,4 +42,18 @@ class LoopRunRepository(Protocol):
         limit: int,
     ) -> tuple[Sequence[LoopRunDocument], int]:
         """Return one page of loop runs and its unpaginated total."""
+        raise NotImplementedError
+
+    async def continue_collect_snapshot(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        execution_context: dict[str, object],
+        updated_at: object,
+    ) -> LoopRunDocument:
+        """Persist one collect-snapshot continuation or return its replay."""
         raise NotImplementedError

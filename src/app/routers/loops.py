@@ -18,6 +18,7 @@ from src.app.schemas.loop import (
 )
 from src.app.schemas.loop_run import (
     LoopRunCreateRequest,
+    LoopRunContinueRequest,
     LoopRunListResponse,
     LoopRunResponse,
 )
@@ -145,6 +146,29 @@ async def get_loop_run(
         user_id=context.user_id,
         loop_id=loop_id,
         run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    "/{loop_id}/runs/{run_id}/continue",
+    response_model=LoopRunResponse,
+    summary="Continue loop run",
+)
+async def continue_loop_run(
+    payload: LoopRunContinueRequest,
+    context: ContextDependency,
+    controller: RunControllerDependency,
+    loop_id: LoopIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> LoopRunResponse:
+    """Persist CLI repository context before API generation begins."""
+
+    return await controller.continue_collect_snapshot(
+        user_id=context.user_id,
+        loop_id=loop_id,
+        run_id=run_id,
+        payload=payload,
         requested_workspace_id=context.requested_workspace_id,
     )
 

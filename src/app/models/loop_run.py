@@ -8,8 +8,8 @@ from typing import Literal, Mapping
 
 
 LoopRunStatus = Literal['in_progress', 'failed', 'completed', 'stopped']
-LoopRunState = Literal['awaiting_snapshot']
-LoopRunAction = Literal['collect_snapshot']
+LoopRunState = Literal['awaiting_snapshot', 'awaiting_generation']
+LoopRunAction = Literal['collect_snapshot', 'none']
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +25,9 @@ class LoopRunDocument:
     next_action: LoopRunAction
     iteration: int
     token_revision: int
+    continuation_token: str | None
     loop_snapshot: Mapping[str, object]
+    execution_context: Mapping[str, object]
     created_at: datetime
     created_by: str
     updated_at: datetime

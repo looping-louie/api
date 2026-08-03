@@ -2,6 +2,7 @@
 
 from src.app.schemas.loop_run import (
     LoopRunCreateRequest,
+    LoopRunContinueRequest,
     LoopRunListResponse,
     LoopRunResponse,
 )
@@ -48,6 +49,36 @@ class LoopRunController:
             user_id=user_id,
             loop_id=loop_id,
             run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return LoopRunResponse.model_validate(document)
+
+    async def continue_collect_snapshot(
+        self,
+        *,
+        user_id: str,
+        loop_id: str,
+        run_id: str,
+        payload: LoopRunContinueRequest,
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunResponse:
+        """Record the CLI snapshot required before generation can begin."""
+
+        document = await self._loop_run_service.continue_collect_snapshot(
+            user_id=user_id,
+            loop_id=loop_id,
+            run_id=run_id,
+            continuation_token=payload.continuation_token,
+            idempotency_key=payload.idempotency_key,
+            repo_context=payload.result.repo_context,
+            workspace_path=payload.result.workspace_metadata.workspace_path,
+            source_commit_sha=(
+                payload.result.workspace_metadata.source_commit_sha
+            ),
+            constitution=payload.result.constitution,
+            project_profile=payload.result.project_profile.model_dump(
+                mode='json',
+            ),
             requested_workspace_id=requested_workspace_id,
         )
         return LoopRunResponse.model_validate(document)

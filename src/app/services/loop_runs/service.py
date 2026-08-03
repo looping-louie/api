@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime
+from secrets import token_urlsafe
 from typing import Callable
 
 from src.app.models.loop import LoopDocument
@@ -47,6 +48,7 @@ class LoopRunService:
         loop_service: LoopService,
         tenant_service: TenantService,
         id_factory: Callable[[], str],
+        token_factory: Callable[[], str] = lambda: token_urlsafe(32),
         clock: Callable[[], datetime],
     ) -> None:
         """Store dependencies used to own and persist loop runs."""
@@ -55,6 +57,7 @@ class LoopRunService:
         self._loop_service = loop_service
         self._tenant_service = tenant_service
         self._id_factory = id_factory
+        self._token_factory = token_factory
         self._clock = clock
 
     async def create(
@@ -93,12 +96,66 @@ class LoopRunService:
             next_action='collect_snapshot',
             iteration=1,
             token_revision=0,
+            continuation_token=self._token_factory(),
             loop_snapshot=self._snapshot(loop),
+            execution_context={},
             created_at=now,
             created_by=self._require_text(user_id, 'user_id'),
             updated_at=now,
         )
         return await self._repository.create(document=document)
+
+    async def continue_collect_snapshot(
+        self,
+        *,
+        user_id: str,
+        loop_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        repo_context: str,
+        workspace_path: str,
+        source_commit_sha: str,
+        constitution: str,
+        project_profile: dict[str, object],
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunDocument:
+        """Persist CLI local context and advance to API generation readiness."""
+
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        context = {
+            'repo_context': self._require_text(repo_context, 'repo_context'),
+            'workspace_metadata': {
+                'workspace_path': self._require_text(
+                    workspace_path,
+                    'workspace_path',
+                ),
+                'source_commit_sha': self._require_text(
+                    source_commit_sha,
+                    'source_commit_sha',
+                ),
+            },
+            'constitution': constitution,
+            'project_profile': project_profile,
+        }
+        return await self._repository.continue_collect_snapshot(
+            workspace_id=workspace.workspace_id,
+            loop_id=self._require_text(loop_id, 'loop_id'),
+            run_id=self._require_text(run_id, 'run_id'),
+            continuation_token=self._require_text(
+                continuation_token,
+                'continuation_token',
+            ),
+            idempotency_key=self._require_text(
+                idempotency_key,
+                'idempotency_key',
+            ),
+            execution_context=context,
+            updated_at=self._clock(),
+        )
 
     async def get(
         self,

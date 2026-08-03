@@ -54,10 +54,14 @@ class SqliteDependencyRepository:
         async with self._connect() as connection:
             cursor = await connection.execute(
                 """
-                SELECT DISTINCT loop_id
+                SELECT DISTINCT loop_agents.loop_id, loops.status
                 FROM loop_agents
-                WHERE workspace_id = ? AND persona_id = ?
-                ORDER BY loop_id ASC
+                JOIN loops
+                    ON loops.workspace_id = loop_agents.workspace_id
+                    AND loops.id = loop_agents.loop_id
+                WHERE loop_agents.workspace_id = ?
+                    AND loop_agents.persona_id = ?
+                ORDER BY loop_agents.loop_id ASC
                 """,
                 (workspace_id, persona_id),
             )
@@ -73,6 +77,7 @@ class SqliteDependencyRepository:
                     resource_id=str(row["loop_id"]),
                 ),
                 relation="persona",
+                blocking=str(row["status"]) != "archived",
             )
             for row in rows
         ]

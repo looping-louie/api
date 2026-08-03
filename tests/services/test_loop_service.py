@@ -19,6 +19,9 @@ from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.loop_repository import FakeLoopRepository
+from tests.fakes.loop_run_retention_repository import (
+    FakeLoopRunRetentionRepository,
+)
 from tests.fakes.dependency_checker import FakeDependencyChecker
 from tests.fakes.reference_repository import FakeReferenceRepository
 
@@ -29,6 +32,7 @@ def build_service(
     tenant_service: TenantService,
     reference_resolver: ReferenceResolver,
     dependency_checker: FakeDependencyChecker | None = None,
+    loop_run_repository: FakeLoopRunRetentionRepository | None = None,
 ) -> LoopService:
     """Build a deterministic service and seed selectable references."""
 
@@ -38,6 +42,9 @@ def build_service(
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
         dependency_checker=dependency_checker or FakeDependencyChecker(),
+        loop_run_repository=(
+            loop_run_repository or FakeLoopRunRetentionRepository()
+        ),
         id_factory=lambda: f"id-{next(identifiers)}",
         clock=IncrementingClock(),
     )
@@ -292,3 +299,34 @@ async def test_delete_retains_final_snapshot(
     assert total == 2
     assert entries[0].change_type == "deleted"
     assert entries[0].content["id"] == created.id
+
+
+@pytest.mark.asyncio
+async def test_delete_archives_loop_with_retained_runs(
+    repository: FakeLoopRepository,
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """Deletion archives a loop when its execution history must be retained."""
+
+    run_repository = FakeLoopRunRetentionRepository()
+    seed_references(reference_repository)
+    service = build_service(
+        repository=repository,
+        tenant_service=tenant_service,
+        reference_resolver=reference_resolver,
+        loop_run_repository=run_repository,
+    )
+    created = await service.create(user_id="user-1", payload=payload())
+    run_repository.loop_ids.add(("workspace-1", created.id))
+
+    await service.delete(user_id="user-1", loop_id=created.id)
+
+    retained = await repository.get(
+        workspace_id="workspace-1",
+        loop_id=created.id,
+    )
+    assert retained is not None
+    assert retained.status == "archived"
+    assert repository.entries[-1].change_type == "archived"

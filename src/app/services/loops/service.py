@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from typing import Callable
 
@@ -10,6 +11,7 @@ from src.app.models.loop import (
     LoopDocument,
 )
 from src.app.repositories.loops.loop_repository import LoopRepository
+from src.app.repositories.loop_runs.loop_run_repository import LoopRunRepository
 from src.app.services.loops.mutation import (
     apply_patch,
     build_entry,
@@ -53,6 +55,7 @@ class LoopService:
         tenant_service: TenantService,
         reference_resolver: ReferenceResolver,
         dependency_checker: DependencyChecker,
+        loop_run_repository: LoopRunRepository,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
     ) -> None:
@@ -62,6 +65,7 @@ class LoopService:
         self._tenant_service = tenant_service
         self._reference_resolver = reference_resolver
         self._dependency_checker = dependency_checker
+        self._loop_run_repository = loop_run_repository
         self._id_factory = id_factory
         self._clock = clock
 
@@ -200,7 +204,7 @@ class LoopService:
         loop_id: str,
         requested_workspace_id: str | None = None,
     ) -> None:
-        """Permanently delete a loop while retaining its final snapshot."""
+        """Archive loops with executions or delete unused loop definitions."""
 
         workspace_id = await self._workspace_id(
             user_id, requested_workspace_id
@@ -211,11 +215,37 @@ class LoopService:
             target=ResourceReference("loop", current.id),
         )
         actor_id = require_text(user_id, "user_id")
+        changed_at = self._clock()
+        if await self._loop_run_repository.has_runs(
+            workspace_id=workspace_id,
+            loop_id=current.id,
+        ):
+            archived = replace(
+                current,
+                status="archived",
+                updated_at=changed_at,
+                updated_by=actor_id,
+            )
+            entry = build_entry(
+                document=archived,
+                actor_id=actor_id,
+                change_type="archived",
+                changed_at=changed_at,
+                entry_id=self._id_factory(),
+                diff=changed_fields(current, archived, frozenset({"status"})),
+            )
+            if not await self._repository.update(
+                document=archived,
+                changelog_entry=entry,
+            ):
+                raise LoopNotFoundError(loop_id=loop_id)
+            return
+
         entry = build_entry(
             document=current,
             actor_id=actor_id,
             change_type="deleted",
-            changed_at=self._clock(),
+            changed_at=changed_at,
             entry_id=self._id_factory(),
             content=document_content(current),
         )

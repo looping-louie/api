@@ -29,6 +29,9 @@ class FakeLoopRunRepository:
         """Initialize the empty in-memory run collection."""
 
         self.documents: dict[str, LoopRunDocument] = {}
+        self.idempotency_responses: dict[
+            tuple[str, str], LoopRunDocument
+        ] = {}
 
     async def create(
         self,
@@ -39,6 +42,19 @@ class FakeLoopRunRepository:
 
         self.documents[document.id] = document
         return document
+
+    async def has_runs(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+    ) -> bool:
+        """Return whether the selected loop has an in-memory run."""
+
+        return any(
+            document.workspace_id == workspace_id and document.loop_id == loop_id
+            for document in self.documents.values()
+        )
 
     async def get(
         self,
@@ -79,6 +95,52 @@ class FakeLoopRunRepository:
         documents.sort(key=lambda document: document.created_at, reverse=True)
         return documents[offset : offset + limit], len(documents)
 
+    async def continue_collect_snapshot(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        execution_context: dict[str, object],
+        updated_at: datetime,
+    ) -> LoopRunDocument:
+        """Advance one initial snapshot transition with replay protection."""
+
+        replay_key = (run_id, idempotency_key)
+        replay = self.idempotency_responses.get(replay_key)
+        if replay is not None:
+            return replay
+
+        document = await self.get(
+            workspace_id=workspace_id,
+            loop_id=loop_id,
+            run_id=run_id,
+        )
+        assert document is not None
+        assert document.continuation_token == continuation_token
+        updated = LoopRunDocument(
+            id=document.id,
+            workspace_id=document.workspace_id,
+            loop_id=document.loop_id,
+            input=document.input,
+            status=document.status,
+            state='awaiting_generation',
+            next_action='none',
+            iteration=document.iteration,
+            token_revision=document.token_revision + 1,
+            continuation_token=None,
+            loop_snapshot=document.loop_snapshot,
+            execution_context=execution_context,
+            created_at=document.created_at,
+            created_by=document.created_by,
+            updated_at=updated_at,
+        )
+        self.documents[run_id] = updated
+        self.idempotency_responses[replay_key] = updated
+        return updated
+
 
 def build_app(
     *,
@@ -116,13 +178,15 @@ def build_client(
     """Build a client backed by deterministic in-memory dependencies."""
 
     seed_references(reference_repository)
+    run_repository = FakeLoopRunRepository()
     service = build_service(
         repository=repository or FakeLoopRepository(),
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
+        loop_run_repository=run_repository,
     )
     run_service = LoopRunService(
-        repository=FakeLoopRunRepository(),
+        repository=run_repository,
         loop_service=service,
         tenant_service=tenant_service,
         id_factory=lambda: 'loop-run-1',
@@ -313,6 +377,94 @@ def test_loop_run_routes_reject_inactive_or_unknown_parents(
     assert blank.status_code == 422
 
 
+def test_loop_run_snapshot_continuation_accepts_only_cli_context(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A snapshot continuation advances the run without accepting repo paths."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+    )
+    loop_id = client.post('/api/v1/loops', json=direct_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Improve validation errors.'},
+    ).json()
+    payload = {
+        'continuation_token': created['continuation_token'],
+        'idempotency_key': 'snapshot-1',
+        'result': {
+            'action': 'collect_snapshot',
+            'repo_context': 'Repository context.',
+            'workspace_metadata': {
+                'workspace_path': '/workspace/project',
+                'source_commit_sha': 'abc123',
+            },
+            'constitution': 'Keep changes small.',
+            'project_profile': {
+                'source_file_count': 1,
+                'approximate_source_chars': 42,
+                'extension_counts': {'.py': 1},
+                'top_level_entries': ['src'],
+                'markers': {
+                    'nuxt': False,
+                    'package_json': False,
+                    'fastapi': True,
+                    'docker': False,
+                    'tests': True,
+                },
+            },
+        },
+    }
+
+    continued = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=payload,
+    )
+    invalid = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={**payload, 'repo_path': '/workspace/project'},
+    )
+
+    assert continued.status_code == 200
+    assert continued.json()['state'] == 'awaiting_generation'
+    assert continued.json()['next_action'] == 'none'
+    assert continued.json()['continuation_token'] is None
+    assert continued.json()['token_revision'] == 1
+    assert invalid.status_code == 422
+
+
+def test_deleting_loop_with_runs_archives_its_definition(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A loop with retained executions remains available as archived history."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+    )
+    loop_id = client.post('/api/v1/loops', json=direct_payload()).json()['id']
+    run_id = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Preserve this execution.'},
+    ).json()['id']
+
+    deleted = client.delete(f'/api/v1/loops/{loop_id}')
+    archived = client.get(f'/api/v1/loops/{loop_id}')
+    retained_run = client.get(f'/api/v1/loops/{loop_id}/runs/{run_id}')
+
+    assert deleted.status_code == 200
+    assert archived.json()['status'] == 'archived'
+    assert retained_run.status_code == 200
+
+
 def test_loop_payload_rejects_skills_and_invalid_contracts(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
@@ -411,4 +563,5 @@ def test_only_new_loop_routes_are_published(
         "/api/v1/loops/{loop_id}/changelog",
         "/api/v1/loops/{loop_id}/runs",
         "/api/v1/loops/{loop_id}/runs/{run_id}",
+        "/api/v1/loops/{loop_id}/runs/{run_id}/continue",
     }

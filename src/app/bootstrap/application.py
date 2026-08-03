@@ -241,6 +241,7 @@ async def configure_application(
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
         dependency_checker=dependency_checker,
+        loop_run_repository=loop_run_repository,
         id_factory=create_identifier,
         clock=utc_now,
     )

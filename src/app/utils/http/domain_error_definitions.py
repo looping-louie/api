@@ -14,6 +14,10 @@ from src.app.services.loop_runs.service import (
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )
+from src.app.repositories.loop_runs.errors import (
+    LoopRunInvalidTransitionError,
+    LoopRunTokenConflictError,
+)
 from src.app.services.models.availability import (
     ModelNotFoundError,
     ModelValidationError,
@@ -153,6 +157,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     LoopRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code="loop_run_unavailable",
+    ),
+    LoopRunTokenConflictError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="loop_run_token_conflict",
+    ),
+    LoopRunInvalidTransitionError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="loop_run_invalid_transition",
     ),
     PipelineNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

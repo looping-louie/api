@@ -22,6 +22,7 @@ PERSONA_ID=""
 SKILL_ID=""
 LOOP_ID=""
 LOOP_RUN_ID=""
+LOOP_RUN_TOKEN=""
 PIPELINE_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
@@ -488,9 +489,42 @@ loop_run_response="$(
 )"
 
 LOOP_RUN_ID="$(printf '%s' "${loop_run_response}" | json_field "id")"
+LOOP_RUN_TOKEN="$(
+    printf '%s' "${loop_run_response}" | json_field "continuation_token"
+)"
 
 request GET "/loops/${LOOP_ID}/runs?offset=0" >/dev/null
 request GET "/loops/${LOOP_ID}/runs/${LOOP_RUN_ID}" >/dev/null
+request POST "/loops/${LOOP_ID}/runs/${LOOP_RUN_ID}/continue" "$(
+    cat <<JSON
+{
+    "continuation_token": "${LOOP_RUN_TOKEN}",
+    "idempotency_key": "smoke-snapshot-${SMOKE_RUN_ID}",
+    "result": {
+        "action": "collect_snapshot",
+        "repo_context": "Smoke-test repository context.",
+        "workspace_metadata": {
+            "workspace_path": "/workspace/smoke",
+            "source_commit_sha": "smoke-${SMOKE_RUN_ID}"
+        },
+        "constitution": "Keep smoke-test changes small.",
+        "project_profile": {
+            "source_file_count": 1,
+            "approximate_source_chars": 1,
+            "extension_counts": {},
+            "top_level_entries": [],
+            "markers": {
+                "nuxt": false,
+                "package_json": false,
+                "fastapi": false,
+                "docker": false,
+                "tests": true
+            }
+        }
+    }
+}
+JSON
+)" >/dev/null
 
 log "Creating pipeline"
 

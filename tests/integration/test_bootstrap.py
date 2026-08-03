@@ -38,6 +38,8 @@ EXPECTED_TABLES = {
     "loop_catalog_installations",
     "loop_changelog_entries",
     "loop_runs",
+    "loop_run_checkpoints",
+    "loop_run_idempotency",
     "pipelines",
     "pipeline_steps",
     "pipeline_changelog_entries",
@@ -175,6 +177,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0008_loop_catalog_installations",
         "0009_pipelines",
         "0010_loop_runs",
+        "0011_loop_run_checkpoints",
     ]
     assert [str(row[0]) for row in loop_rows] == [
         "plan implementation",
