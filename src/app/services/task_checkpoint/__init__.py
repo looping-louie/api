@@ -19,7 +19,11 @@ def build_execution_run_path(run_id: str) -> Path:
     return run_path
 
 
-def parse_file_operations(raw: str) -> list[dict]:
+def parse_file_operations(
+    raw: str,
+    *,
+    require_non_empty: bool = False,
+) -> list[dict]:
     """Parse and validate generator output operations."""
     cleaned = _extract_json_object(raw)
 
@@ -35,6 +39,8 @@ def parse_file_operations(raw: str) -> list[dict]:
 
     if not isinstance(operations, list):
         raise ValueError('Generator JSON must contain an operations list')
+    if require_non_empty and not operations:
+        raise ValueError('Generator JSON must contain at least one operation')
 
     for operation in operations:
         _validate_operation(operation)

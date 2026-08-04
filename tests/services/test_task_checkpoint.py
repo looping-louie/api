@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from src.app.services.task_checkpoint import parse_file_operations
 
 
@@ -28,3 +30,13 @@ def test_parse_file_operations_normalizes_model_file_entries() -> None:
             'content': '# Product brief\n',
         },
     ]
+
+
+def test_parse_file_operations_rejects_empty_operations() -> None:
+    """A successful generator plan must request at least one file change."""
+
+    with pytest.raises(ValueError, match='at least one operation'):
+        parse_file_operations(
+            '{"operations": []}',
+            require_non_empty=True,
+        )

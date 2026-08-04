@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Mapping
 
 from src.app.services.execution_instruction_library import (
@@ -15,6 +16,11 @@ from src.app.services.model_execution import (
     ModelExecutionService,
 )
 from src.app.services.task_checkpoint import parse_file_operations
+
+
+LOGGER = logging.getLogger(__name__)
+MAX_JSON_RESPONSE_ATTEMPTS = 2
+
 
 class LoopRunGenerationService:
     """Generate one final CLI operation plan from a loop snapshot."""
@@ -54,10 +60,10 @@ class LoopRunGenerationService:
                 instruction_library=instruction_library,
             )
         generators = self._agents_for_role(loop_snapshot, 'generator')
-        generated = await self._execute_agent(
-            workspace_id,
-            generators[0],
-            self._agent_prompt(
+        return await self._generate_operation_context(
+            workspace_id=workspace_id,
+            agent=generators[0],
+            prompt=self._agent_prompt(
                 agent=generators[0],
                 prompt=self._operation_prompt(
                     input_text=input_text,
@@ -66,8 +72,8 @@ class LoopRunGenerationService:
                 ),
                 instruction_library=instruction_library,
             ),
+            context=context,
         )
-        return self._with_runtime_artifacts(context, generated)
     async def _generate_roundtable_context(
         self,
         *,
@@ -130,16 +136,45 @@ class LoopRunGenerationService:
             f'\n\nGenerator proposals:\n{json.dumps(proposals)}'
             f'\n\nReviewer critique:\n{json.dumps(critiques)}'
         )
-        aggregated = await self._execute_agent(
-            workspace_id,
-            aggregators[0],
-            self._agent_prompt(
+        return await self._generate_operation_context(
+            workspace_id=workspace_id,
+            agent=aggregators[0],
+            prompt=self._agent_prompt(
                 agent=aggregators[0],
                 prompt=aggregation_prompt,
                 instruction_library=instruction_library,
             ),
+            context=context,
         )
-        return self._with_runtime_artifacts(context, aggregated)
+
+    async def _generate_operation_context(
+        self,
+        *,
+        workspace_id: str,
+        agent: Mapping[str, object],
+        prompt: str,
+        context: dict[str, object],
+    ) -> dict[str, object]:
+        """Generate one non-empty CLI operation plan with one corrective retry."""
+
+        retry_prompt = prompt
+        for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
+            generated = await self._execute_agent(
+                workspace_id,
+                agent,
+                retry_prompt,
+            )
+            try:
+                return self._with_runtime_artifacts(context, generated)
+            except ModelExecutionError:
+                if attempt + 1 == MAX_JSON_RESPONSE_ATTEMPTS:
+                    raise
+                retry_prompt = (
+                    f'{prompt}\n\nReturn a non-empty operations array with the '
+                    'file changes required to complete the task.'
+                )
+
+        raise AssertionError('Operation plan retry attempts were exhausted.')
     @staticmethod
     def require_executable_flow(snapshot: Mapping[str, object]) -> None:
         """Require a direct or selected roundtable role configuration."""
@@ -203,19 +238,57 @@ class LoopRunGenerationService:
     ) -> dict[str, object]:
         """Execute one configured agent and require a JSON object response."""
 
-        result = await self._model_execution_service.execute(
-            workspace_id=workspace_id,
-            model_id=str(agent['model_id']),
-            prompt=prompt,
-            json_mode=True,
-        )
-        try:
-            payload = json.loads(result.text)
-        except json.JSONDecodeError as error:
-            raise ModelExecutionError('Loop agent returned invalid JSON.') from error
-        if not isinstance(payload, dict):
-            raise ModelExecutionError('Loop agent response must be a JSON object.')
-        return payload
+        role = str(agent['role'])
+        model_id = str(agent['model_id'])
+        retry_prompt = prompt
+        for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
+            try:
+                result = await self._model_execution_service.execute(
+                    workspace_id=workspace_id,
+                    model_id=model_id,
+                    prompt=retry_prompt,
+                    json_mode=True,
+                )
+            except ModelExecutionError as error:
+                LOGGER.warning(
+                    'Loop agent execution failed: role=%s model_id=%s error=%s',
+                    role,
+                    model_id,
+                    error,
+                )
+                raise ModelExecutionError(
+                    f'Loop {role} agent execution failed.'
+                ) from error
+            try:
+                payload = json.loads(result.text)
+            except json.JSONDecodeError as error:
+                if attempt + 1 == MAX_JSON_RESPONSE_ATTEMPTS:
+                    LOGGER.warning(
+                        'Loop agent returned invalid JSON: role=%s model_id=%s',
+                        role,
+                        model_id,
+                    )
+                    raise ModelExecutionError(
+                        f'Loop {role} agent returned invalid JSON.'
+                    ) from error
+                retry_prompt = (
+                    f'{prompt}\n\nReturn a complete JSON object only; do not '
+                    'include Markdown or explanatory text.'
+                )
+                continue
+            if isinstance(payload, dict):
+                return payload
+            LOGGER.warning(
+                'Loop agent returned a non-object JSON response: '
+                'role=%s model_id=%s',
+                role,
+                model_id,
+            )
+            raise ModelExecutionError(
+                f'Loop {role} agent response must be a JSON object.'
+            )
+
+        raise AssertionError('JSON response retry attempts were exhausted.')
 
     @staticmethod
     def _agents(snapshot: Mapping[str, object]) -> list[Mapping[str, object]]:
@@ -296,7 +369,10 @@ class LoopRunGenerationService:
         """Validate and expose the final operation plan to the CLI."""
 
         try:
-            operations = parse_file_operations(json.dumps(generated))
+            operations = parse_file_operations(
+                json.dumps(generated),
+                require_non_empty=True,
+            )
         except ValueError as error:
             raise ModelExecutionError(
                 'Loop agent returned an invalid operation plan.'
