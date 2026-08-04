@@ -14,7 +14,10 @@ from src.app.controllers.loop_run import LoopRunController
 from src.app.catalogs.providers import ProviderId
 from src.app.models.loop_run import LoopRunDocument
 from src.app.routers.loops import router as loops_router
-from src.app.services.model_execution import ModelExecutionResult
+from src.app.services.model_execution import (
+    ModelExecutionError,
+    ModelExecutionResult,
+)
 from src.app.services.loop_runs.service import LoopRunService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
@@ -210,6 +213,7 @@ class FakeModelExecutionService:
         model_id: str,
         prompt: str,
         system_prompt: str | None = None,
+        json_mode: bool = False,
     ) -> ModelExecutionResult:
         """Return stage-specific JSON without contacting a provider."""
 
@@ -217,6 +221,7 @@ class FakeModelExecutionService:
         assert model_id == 'model-1'
         assert 'Repository context.' in prompt
         assert system_prompt is None
+        assert json_mode is True
         self.prompts.append(prompt)
         if 'Propose a solution' in prompt:
             text = '{"proposal":"candidate solution"}'
@@ -259,6 +264,18 @@ class FakeInstructionLibraryService:
 
         assert persona_id == 'persona-1'
         return 'Use this assigned persona.'
+
+
+class FailingModelExecutionService:
+    """Raise a deterministic model execution failure for route coverage."""
+
+    async def execute(
+        self,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Simulate an unavailable completion provider."""
+
+        raise ModelExecutionError('Model provider returned HTTP 503.')
 
 
 def build_app(
@@ -699,6 +716,33 @@ def test_roundtable_loop_aggregates_proposals_and_critique(
         prompt.startswith('Persona instructions:\nUse this assigned persona.')
         for prompt in model_execution_service.prompts
     )
+
+
+def test_loop_run_returns_structured_model_execution_error(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A provider failure does not escape as an opaque internal error."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+        model_execution_service=FailingModelExecutionService(),
+    )
+    loop_id = client.post('/api/v1/loops', json=direct_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Create an output file.'},
+    ).json()
+    response = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=_snapshot_payload(created['continuation_token']),
+    )
+
+    assert response.status_code == 502
+    assert response.json()['error']['code'] == 'model_execution_error'
 
 
 def _snapshot_payload(continuation_token: str) -> dict[str, object]:

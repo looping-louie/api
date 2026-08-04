@@ -168,6 +168,41 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
 
 
 @pytest.mark.asyncio
+async def test_executes_chat_completion_in_json_mode() -> None:
+    """JSON mode requests an OpenAI-compatible structured response."""
+
+    deployment = ModelDeployment(
+        provider_id=ProviderId.TOGETHER,
+        provider_model_id='vendor/model-1',
+        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Assert the structured-output request option."""
+
+        assert json.loads(request.content)['response_format'] == {
+            'type': 'json_object',
+        }
+        return httpx.Response(
+            200,
+            json={'choices': [{'message': {'content': '{"ok": true}'}}]},
+        )
+
+    result = await service(
+        model_entry=model(deployment),
+        credentials=[credential(ProviderId.TOGETHER)],
+        handler=handler,
+    ).execute(
+        workspace_id='workspace-1',
+        model_id='model-1',
+        prompt='Return JSON.',
+        json_mode=True,
+    )
+
+    assert result.text == '{"ok": true}'
+
+
+@pytest.mark.asyncio
 async def test_executes_anthropic_messages_deployment() -> None:
     """Configured Anthropic deployment uses the native messages protocol."""
 

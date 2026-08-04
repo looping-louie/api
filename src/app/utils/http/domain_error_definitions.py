@@ -22,6 +22,7 @@ from src.app.services.models.availability import (
     ModelNotFoundError,
     ModelValidationError,
 )
+from src.app.services.model_execution import ModelExecutionError
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
@@ -255,6 +256,11 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="model_validation_error",
         details_builder=_validation_details,
+    ),
+    ModelExecutionError: ErrorDefinition(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        code="model_execution_error",
+        public_message="The model provider could not complete the request.",
     ),
     UnknownProviderError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

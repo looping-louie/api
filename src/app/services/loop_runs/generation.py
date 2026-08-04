@@ -85,6 +85,7 @@ class LoopRunGenerationService:
         output_contract = self._output_contract(loop_snapshot)
         proposal_prompt = (
             'Return only a JSON object proposing a solution for this task.\n\n'
+            'Keep the proposal under 600 words; do not draft the output file.\n\n'
             f'Task:\n{input_text}\n\n'
             f'Output contract:\n{json.dumps(output_contract)}\n\n'
             f'Repository context:\n{context["repo_context"]}'
@@ -103,7 +104,7 @@ class LoopRunGenerationService:
         ]
         review_prompt = (
             'Return only a JSON object critiquing these candidate proposals '
-            f'for the task.\n\nTask:\n{input_text}\n\n'
+            f'for the task. Keep the critique under 400 words.\n\nTask:\n{input_text}\n\n'
             f'Output contract:\n{json.dumps(output_contract)}\n\n'
             f'Repository context:\n{context["repo_context"]}'
             f'\n\nProposals:\n{json.dumps(proposals)}'
@@ -206,6 +207,7 @@ class LoopRunGenerationService:
             workspace_id=workspace_id,
             model_id=str(agent['model_id']),
             prompt=prompt,
+            json_mode=True,
         )
         try:
             payload = json.loads(result.text)
@@ -254,7 +256,10 @@ class LoopRunGenerationService:
         return (
             'Return only a JSON object with an operations array and an optional '
             'commit_message. Operations must use create, replace, replace_text, '
-            f'or delete.\n\nTask:\n{input_text}\n\nOutput contract:\n'
+            'or delete. Use this shape: '
+            '{"operations":[{"operation":"create","path":"ideas.md",'
+            '"content":"..."}],"commit_message":"docs: add ideas"}. '
+            f'\n\nTask:\n{input_text}\n\nOutput contract:\n'
             f'{json.dumps(output_contract)}\n\nRepository context:\n{repo_context}'
         )
 
@@ -290,7 +295,12 @@ class LoopRunGenerationService:
     ) -> dict[str, object]:
         """Validate and expose the final operation plan to the CLI."""
 
-        operations = parse_file_operations(json.dumps(generated))
+        try:
+            operations = parse_file_operations(json.dumps(generated))
+        except ValueError as error:
+            raise ModelExecutionError(
+                'Loop agent returned an invalid operation plan.'
+            ) from error
         return {
             **context,
             'runtime_artifacts': {

@@ -69,6 +69,7 @@ class ModelExecutionService:
         model_id: str,
         prompt: str,
         system_prompt: str | None = None,
+        json_mode: bool = False,
     ) -> ModelExecutionResult:
         """Invoke one enabled deployment for a logical catalog model."""
 
@@ -87,6 +88,7 @@ class ModelExecutionService:
                 api_key=api_key,
                 prompt=prompt,
                 system_prompt=system_prompt,
+                json_mode=json_mode,
             )
         finally:
             api_key = None
@@ -133,6 +135,7 @@ class ModelExecutionService:
         api_key: str | None,
         prompt: str,
         system_prompt: str | None,
+        json_mode: bool,
     ) -> Mapping[str, object]:
         """Send one request using the deployment's declared endpoint."""
 
@@ -142,6 +145,7 @@ class ModelExecutionService:
             api_key=api_key,
             prompt=prompt,
             system_prompt=system_prompt,
+            json_mode=json_mode,
         )
         response = await self._request_json(
             url=url,
@@ -158,6 +162,7 @@ class ModelExecutionService:
         api_key: str | None,
         prompt: str,
         system_prompt: str | None,
+        json_mode: bool,
     ) -> tuple[str, dict[str, str], dict[str, object]]:
         """Build provider-specific request parts from one deployment."""
 
@@ -191,10 +196,16 @@ class ModelExecutionService:
             messages.insert(0, {'role': 'system', 'content': system_prompt})
 
         if deployment.endpoint == ModelEndpoint.CHAT_COMPLETIONS:
+            payload: dict[str, object] = {
+                'model': deployment.provider_model_id,
+                'messages': messages,
+            }
+            if json_mode:
+                payload['response_format'] = {'type': 'json_object'}
             return (
                 f"{base_url.rstrip('/')}/chat/completions",
                 headers,
-                {'model': deployment.provider_model_id, 'messages': messages},
+                payload,
             )
 
         if deployment.endpoint == ModelEndpoint.RESPONSES:
