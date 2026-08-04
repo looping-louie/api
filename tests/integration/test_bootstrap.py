@@ -130,6 +130,12 @@ def test_bootstrap_configures_application_and_runs_migrations(
             SqliteDatabase,
         )
 
+    with TestClient(app):
+        assert isinstance(
+            app.state.loop_run_controller,
+            LoopRunController,
+        )
+
     assert database_path.exists() is True
 
     with sqlite3.connect(database_path) as connection:
