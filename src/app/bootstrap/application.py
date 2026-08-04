@@ -71,6 +71,7 @@ from src.app.services.loops.service import LoopService
 from src.app.services.loop_runs.service import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
+from src.app.services.model_execution import ModelExecutionService
 from src.app.services.personas.service import PersonaService
 from src.app.services.providers.model_registry import (
     CatalogModelRegistryService,
@@ -252,6 +253,11 @@ async def configure_application(
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
+        model_execution_service=ModelExecutionService(
+            model_catalog_service=model_catalog_service,
+            provider_repository=provider_repository,
+            secret_service=secret_service,
+        ),
     )
     provider_service = ProviderService(
         repository=provider_repository,

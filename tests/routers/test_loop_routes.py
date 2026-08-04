@@ -11,8 +11,10 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
+from src.app.catalogs.providers import ProviderId
 from src.app.models.loop_run import LoopRunDocument
 from src.app.routers.loops import router as loops_router
+from src.app.services.model_execution import ModelExecutionResult
 from src.app.services.loop_runs.service import LoopRunService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
@@ -141,6 +143,88 @@ class FakeLoopRunRepository:
         self.idempotency_responses[replay_key] = updated
         return updated
 
+    async def transition(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        expected_action: str,
+        status: str,
+        state: str,
+        next_action: str,
+        next_continuation_token: str | None,
+        execution_context: dict[str, object],
+        updated_at: datetime,
+    ) -> LoopRunDocument:
+        """Persist one generic checkpoint transition for route contracts."""
+
+        replay_key = (run_id, idempotency_key)
+        replay = self.idempotency_responses.get(replay_key)
+        if replay is not None:
+            return replay
+        document = await self.get(
+            workspace_id=workspace_id,
+            loop_id=loop_id,
+            run_id=run_id,
+        )
+        assert document is not None
+        assert document.continuation_token == continuation_token
+        assert document.next_action == expected_action
+        updated = LoopRunDocument(
+            id=document.id,
+            workspace_id=document.workspace_id,
+            loop_id=document.loop_id,
+            input=document.input,
+            status=status,
+            state=state,
+            next_action=next_action,
+            iteration=document.iteration,
+            token_revision=document.token_revision + 1,
+            continuation_token=next_continuation_token,
+            loop_snapshot=document.loop_snapshot,
+            execution_context=execution_context,
+            created_at=document.created_at,
+            created_by=document.created_by,
+            updated_at=updated_at,
+        )
+        self.documents[run_id] = updated
+        self.idempotency_responses[replay_key] = updated
+        return updated
+
+
+class FakeModelExecutionService:
+    """Return one valid direct-loop operation response."""
+
+    async def execute(
+        self,
+        *,
+        workspace_id: str,
+        model_id: str,
+        prompt: str,
+        system_prompt: str | None = None,
+    ) -> ModelExecutionResult:
+        """Return a JSON operation plan without contacting a provider."""
+
+        assert workspace_id == 'workspace-1'
+        assert model_id == 'model-1'
+        assert 'Repository context.' in prompt
+        assert system_prompt is None
+        return ModelExecutionResult(
+            text=(
+                '{"operations":[{"operation":"create",'
+                '"path":"output.txt","content":"created"}],'
+                '"commit_message":"feat: create output"}'
+            ),
+            provider_id=ProviderId.OPENAI,
+            model_id=model_id,
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
 
 def build_app(
     *,
@@ -174,6 +258,7 @@ def build_client(
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
     repository: FakeLoopRepository | None = None,
+    model_execution_service: FakeModelExecutionService | None = None,
 ) -> TestClient:
     """Build a client backed by deterministic in-memory dependencies."""
 
@@ -191,6 +276,7 @@ def build_client(
         tenant_service=tenant_service,
         id_factory=lambda: 'loop-run-1',
         clock=lambda: datetime(2026, 8, 3, tzinfo=UTC),
+        model_execution_service=model_execution_service,
     )
     return TestClient(
         build_app(
@@ -436,6 +522,92 @@ def test_loop_run_snapshot_continuation_accepts_only_cli_context(
     assert continued.json()['continuation_token'] is None
     assert continued.json()['token_revision'] == 1
     assert invalid.status_code == 422
+
+
+def test_direct_loop_run_generates_applies_and_commits(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A direct generator loop reaches commit handoff through checkpoints."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+        model_execution_service=FakeModelExecutionService(),
+    )
+    loop_id = client.post('/api/v1/loops', json=direct_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Create an output file.'},
+    ).json()
+    snapshot_response = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=_snapshot_payload(created['continuation_token']),
+    )
+    assert snapshot_response.status_code == 200, snapshot_response.json()
+    snapshot = snapshot_response.json()
+    applied = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': snapshot['continuation_token'],
+            'idempotency_key': 'apply-1',
+            'result': {'action': 'apply_operations', 'applied': True},
+        },
+    ).json()
+    completed = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': applied['continuation_token'],
+            'idempotency_key': 'commit-1',
+            'result': {
+                'action': 'commit_if_allowed',
+                'committed': True,
+                'commit_sha': 'abc123',
+                'commit_message': 'feat: create output',
+            },
+        },
+    )
+
+    assert snapshot['state'] == 'awaiting_apply'
+    assert snapshot['next_action'] == 'apply_operations'
+    assert snapshot['payload']['operations'][0]['path'] == 'output.txt'
+    assert applied['state'] == 'awaiting_commit'
+    assert applied['next_action'] == 'commit_if_allowed'
+    assert completed.json()['status'] == 'completed'
+    assert completed.json()['next_action'] == 'none'
+
+
+def _snapshot_payload(continuation_token: str) -> dict[str, object]:
+    """Build the standard direct-loop snapshot continuation request."""
+
+    return {
+        'continuation_token': continuation_token,
+        'idempotency_key': 'snapshot-1',
+        'result': {
+            'action': 'collect_snapshot',
+            'repo_context': 'Repository context.',
+            'workspace_metadata': {
+                'workspace_path': '/workspace/project',
+                'source_commit_sha': 'abc123',
+            },
+            'constitution': 'Keep changes small.',
+            'project_profile': {
+                'source_file_count': 1,
+                'approximate_source_chars': 42,
+                'extension_counts': {'.py': 1},
+                'top_level_entries': ['src'],
+                'markers': {
+                    'nuxt': False,
+                    'package_json': False,
+                    'fastapi': True,
+                    'docker': False,
+                    'tests': True,
+                },
+            },
+        },
+    }
 
 
 def test_deleting_loop_with_runs_archives_its_definition(
