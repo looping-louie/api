@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol, Sequence
 
 from src.app.models.loop_run import LoopRunDocument
@@ -44,7 +45,7 @@ class LoopRunRepository(Protocol):
         """Return one page of loop runs and its unpaginated total."""
         raise NotImplementedError
 
-    async def continue_collect_snapshot(
+    async def transition(
         self,
         *,
         workspace_id: str,
@@ -52,8 +53,13 @@ class LoopRunRepository(Protocol):
         run_id: str,
         continuation_token: str,
         idempotency_key: str,
+        expected_action: str,
+        status: str,
+        state: str,
+        next_action: str,
+        next_continuation_token: str | None,
         execution_context: dict[str, object],
-        updated_at: object,
+        updated_at: datetime,
     ) -> LoopRunDocument:
-        """Persist one collect-snapshot continuation or return its replay."""
+        """Persist one validated checkpoint transition or return its replay."""
         raise NotImplementedError

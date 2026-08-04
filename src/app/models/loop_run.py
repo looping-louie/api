@@ -8,8 +8,14 @@ from typing import Literal, Mapping
 
 
 LoopRunStatus = Literal['in_progress', 'failed', 'completed', 'stopped']
-LoopRunState = Literal['awaiting_snapshot', 'awaiting_generation']
-LoopRunAction = Literal['collect_snapshot', 'none']
+LoopRunState = Literal[
+    'awaiting_snapshot', 'awaiting_apply', 'awaiting_review_input',
+    'awaiting_commit', 'completed', 'failed',
+]
+LoopRunAction = Literal[
+    'collect_snapshot', 'apply_operations', 'submit_review_input',
+    'commit_if_allowed', 'none',
+]
 
 
 @dataclass(frozen=True, slots=True)

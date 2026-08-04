@@ -245,6 +245,7 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    secret_service = FernetSecretService(encryption_key)
     loop_run_service = LoopRunService(
         repository=loop_run_repository,
         loop_service=loop_service,
@@ -255,9 +256,7 @@ async def configure_application(
     provider_service = ProviderService(
         repository=provider_repository,
         tenant_service=tenant_service,
-        secret_service=FernetSecretService(
-            encryption_key,
-        ),
+        secret_service=secret_service,
         connection_service=HttpProviderConnectionService(),
         model_registry=CatalogModelRegistryService(),
         catalog=PROVIDER_CATALOG,

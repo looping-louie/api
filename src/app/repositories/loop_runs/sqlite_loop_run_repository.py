@@ -141,7 +141,6 @@ class SqliteLoopRunRepository:
         limit: int,
     ) -> tuple[list[LoopRunDocument], int]:
         """Return newest-first loop runs and their total count."""
-
         async with self._connect() as connection:
             count_cursor = await connection.execute(
                 '''
@@ -172,7 +171,7 @@ class SqliteLoopRunRepository:
         total = int(count_row['total']) if count_row is not None else 0
         return [self._to_document(row) for row in rows], total
 
-    async def continue_collect_snapshot(
+    async def transition(
         self,
         *,
         workspace_id: str,
@@ -180,10 +179,15 @@ class SqliteLoopRunRepository:
         run_id: str,
         continuation_token: str,
         idempotency_key: str,
+        expected_action: str,
+        status: str,
+        state: str,
+        next_action: str,
+        next_continuation_token: str | None,
         execution_context: dict[str, object],
         updated_at: datetime,
     ) -> LoopRunDocument:
-        """Persist the initial CLI context with token and replay protection."""
+        """Persist one checkpoint transition with token and replay protection."""
 
         async with self._connect() as connection:
             try:
@@ -221,34 +225,33 @@ class SqliteLoopRunRepository:
                 if int(row['token_revision']) != revision:
                     await connection.rollback()
                     raise LoopRunTokenConflictError()
-                if (
-                    str(row['state']) != 'awaiting_snapshot'
-                    or str(row['next_action']) != 'collect_snapshot'
-                ):
+                if str(row['next_action']) != expected_action:
                     await connection.rollback()
                     raise LoopRunInvalidTransitionError()
 
                 updated = self._to_document(
                     row,
-                    state='awaiting_generation',
-                    next_action='none',
+                    state=state,
+                    next_action=next_action,
                     token_revision=revision + 1,
-                    continuation_token=None,
+                    continuation_token=next_continuation_token,
                     execution_context=execution_context,
                     updated_at=updated_at,
                 )
                 await connection.execute(
                     '''
                     UPDATE loop_runs
-                    SET state = ?, next_action = ?, token_revision = ?,
-                        continuation_token = NULL, execution_context_json = ?,
+                    SET status = ?, state = ?, next_action = ?, token_revision = ?,
+                        continuation_token = ?, execution_context_json = ?,
                         updated_at = ?
                     WHERE workspace_id = ? AND loop_id = ? AND id = ?
                     ''',
                     (
+                        status,
                         updated.state,
                         updated.next_action,
                         updated.token_revision,
+                        updated.continuation_token,
                         json.dumps(execution_context, sort_keys=True),
                         self._serialize_datetime(updated.updated_at),
                         workspace_id,
@@ -263,12 +266,13 @@ class SqliteLoopRunRepository:
                         continuation_token, state, next_action,
                         context_json, created_at
                     )
-                    VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''',
                     (
                         workspace_id,
                         run_id,
                         updated.token_revision,
+                        updated.continuation_token,
                         updated.state,
                         updated.next_action,
                         json.dumps(execution_context, sort_keys=True),
@@ -289,6 +293,34 @@ class SqliteLoopRunRepository:
             except Exception:
                 await connection.rollback()
                 raise
+
+    async def continue_collect_snapshot(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        execution_context: dict[str, object],
+        updated_at: datetime,
+    ) -> LoopRunDocument:
+        """Preserve the initial checkpoint transition for existing callers."""
+
+        return await self.transition(
+            workspace_id=workspace_id,
+            loop_id=loop_id,
+            run_id=run_id,
+            continuation_token=continuation_token,
+            idempotency_key=idempotency_key,
+            expected_action='collect_snapshot',
+            status='in_progress',
+            state='awaiting_generation',
+            next_action='none',
+            next_continuation_token=None,
+            execution_context=execution_context,
+            updated_at=updated_at,
+        )
 
     @staticmethod
     def _to_document(
