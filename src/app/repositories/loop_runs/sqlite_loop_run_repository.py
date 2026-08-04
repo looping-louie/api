@@ -231,6 +231,7 @@ class SqliteLoopRunRepository:
 
                 updated = self._to_document(
                     row,
+                    status=status,
                     state=state,
                     next_action=next_action,
                     token_revision=revision + 1,
@@ -326,6 +327,7 @@ class SqliteLoopRunRepository:
     def _to_document(
         row: aiosqlite.Row,
         *,
+        status: str | None = None,
         state: str | None = None,
         next_action: str | None = None,
         token_revision: int | None = None,
@@ -340,7 +342,7 @@ class SqliteLoopRunRepository:
             workspace_id=str(row['workspace_id']),
             loop_id=str(row['loop_id']),
             input=str(row['input']),
-            status=str(row['status']),
+            status=status or str(row['status']),
             state=state or str(row['state']),
             next_action=next_action or str(row['next_action']),
             iteration=int(row['iteration']),

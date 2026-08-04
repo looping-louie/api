@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Mapping
 
 
 EXECUTION_RUNS_DIR = Path(__file__).resolve().parents[4] / 'runtime' / 'executions'
@@ -29,12 +30,42 @@ def parse_file_operations(raw: str) -> list[dict]:
 
     operations = data.get('operations')
 
+    if operations is None:
+        operations = _file_entries_as_create_operations(data)
+
     if not isinstance(operations, list):
         raise ValueError('Generator JSON must contain an operations list')
 
     for operation in operations:
         _validate_operation(operation)
 
+    return operations
+
+
+def _file_entries_as_create_operations(
+    data: Mapping[str, object],
+) -> list[dict[str, str]] | None:
+    """Normalize the observed model file-list response into create operations."""
+
+    files = data.get('files')
+    if not isinstance(files, list):
+        return None
+
+    operations: list[dict[str, str]] = []
+    for file_entry in files:
+        if not isinstance(file_entry, Mapping):
+            return None
+        name = file_entry.get('name')
+        content = file_entry.get('content')
+        if not isinstance(name, str) or not isinstance(content, str):
+            return None
+        operations.append(
+            {
+                'operation': 'create',
+                'path': name,
+                'content': content,
+            }
+        )
     return operations
 
 

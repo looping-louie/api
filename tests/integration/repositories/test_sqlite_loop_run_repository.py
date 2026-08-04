@@ -146,3 +146,101 @@ async def test_loop_run_persists_snapshot_and_parent_scope(
             execution_context=context,
             updated_at=datetime(2026, 8, 3, 12, 3, tzinfo=UTC),
         )
+
+
+@pytest.mark.asyncio
+async def test_loop_run_transition_persists_apply_checkpoint(
+    sqlite_database_path: Path,
+    create_workspace: object,
+) -> None:
+    """Executable loop generation advances the persisted run to apply work."""
+
+    await create_workspace(workspace_id='workspace-1')
+    timestamp = datetime(2026, 8, 3, 12, 0, tzinfo=UTC)
+    async with aiosqlite.connect(sqlite_database_path) as connection:
+        await connection.execute('PRAGMA foreign_keys = ON')
+        await connection.execute(
+            '''
+            INSERT INTO loops (
+                id, workspace_id, title, description, flow, status,
+                stop_conditions_json, output_contract_json, created_at,
+                created_by, updated_at, updated_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'loop-1',
+                'workspace-1',
+                'Loop',
+                '',
+                'direct',
+                'active',
+                json.dumps({'max_iterations': 1}),
+                json.dumps({'type': 'text', 'description': 'Output'}),
+                timestamp.isoformat(),
+                'user-1',
+                timestamp.isoformat(),
+                'user-1',
+            ),
+        )
+        await connection.commit()
+
+    repository = SqliteLoopRunRepository(sqlite_database_path)
+    await repository.create(
+        document=LoopRunDocument(
+            id='run-1',
+            workspace_id='workspace-1',
+            loop_id='loop-1',
+            input='Create an output file.',
+            status='in_progress',
+            state='awaiting_snapshot',
+            next_action='collect_snapshot',
+            iteration=1,
+            token_revision=0,
+            continuation_token='token-0',
+            loop_snapshot={'id': 'loop-1', 'flow': 'direct'},
+            execution_context={},
+            created_at=timestamp,
+            created_by='user-1',
+            updated_at=timestamp,
+        ),
+    )
+
+    updated = await repository.transition(
+        workspace_id='workspace-1',
+        loop_id='loop-1',
+        run_id='run-1',
+        continuation_token='token-0',
+        idempotency_key='snapshot-1',
+        expected_action='collect_snapshot',
+        status='in_progress',
+        state='awaiting_apply',
+        next_action='apply_operations',
+        next_continuation_token='token-1',
+        execution_context={'runtime_artifacts': {'operations': []}},
+        updated_at=datetime(2026, 8, 3, 12, 1, tzinfo=UTC),
+    )
+
+    assert updated.state == 'awaiting_apply'
+    assert updated.next_action == 'apply_operations'
+    assert updated.continuation_token == 'token-1'
+
+    completed = await repository.transition(
+        workspace_id='workspace-1',
+        loop_id='loop-1',
+        run_id='run-1',
+        continuation_token='token-1',
+        idempotency_key='commit-1',
+        expected_action='apply_operations',
+        status='completed',
+        state='completed',
+        next_action='none',
+        next_continuation_token=None,
+        execution_context={'commit_result': {'committed': True}},
+        updated_at=datetime(2026, 8, 3, 12, 2, tzinfo=UTC),
+    )
+
+    assert completed.status == 'completed'
+    assert completed.state == 'completed'
+    assert completed.next_action == 'none'
+    assert completed.continuation_token is None
