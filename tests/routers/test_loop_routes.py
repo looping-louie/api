@@ -196,7 +196,12 @@ class FakeLoopRunRepository:
 
 
 class FakeModelExecutionService:
-    """Return one valid direct-loop operation response."""
+    """Return deterministic direct and roundtable model responses."""
+
+    def __init__(self) -> None:
+        """Store prompts received during a route test."""
+
+        self.prompts: list[str] = []
 
     async def execute(
         self,
@@ -206,24 +211,54 @@ class FakeModelExecutionService:
         prompt: str,
         system_prompt: str | None = None,
     ) -> ModelExecutionResult:
-        """Return a JSON operation plan without contacting a provider."""
+        """Return stage-specific JSON without contacting a provider."""
 
         assert workspace_id == 'workspace-1'
         assert model_id == 'model-1'
         assert 'Repository context.' in prompt
         assert system_prompt is None
-        return ModelExecutionResult(
-            text=(
+        self.prompts.append(prompt)
+        if 'Propose a solution' in prompt:
+            text = '{"proposal":"candidate solution"}'
+        elif 'JSON object critiquing these candidate proposals' in prompt:
+            text = '{"critique":"address the main risk"}'
+        else:
+            text = (
                 '{"operations":[{"operation":"create",'
                 '"path":"output.txt","content":"created"}],'
                 '"commit_message":"feat: create output"}'
-            ),
+            )
+        return ModelExecutionResult(
+            text=text,
             provider_id=ProviderId.OPENAI,
             model_id=model_id,
             input_tokens=1,
             output_tokens=1,
             duration_ms=1,
         )
+
+
+class FakeInstructionLibraryService:
+    """Resolve deterministic persona content for loop-run route tests."""
+
+    async def load(
+        self,
+        *,
+        user_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> 'FakeInstructionLibraryService':
+        """Return this library for the authenticated workspace."""
+
+        assert user_id == 'user-1'
+        assert requested_workspace_id is None
+        return self
+
+    @staticmethod
+    def persona_content(persona_id: str) -> str:
+        """Return deterministic content for the configured test persona."""
+
+        assert persona_id == 'persona-1'
+        return 'Use this assigned persona.'
 
 
 def build_app(
@@ -259,6 +294,7 @@ def build_client(
     reference_resolver: ReferenceResolver,
     repository: FakeLoopRepository | None = None,
     model_execution_service: FakeModelExecutionService | None = None,
+    instruction_library_service: FakeInstructionLibraryService | None = None,
 ) -> TestClient:
     """Build a client backed by deterministic in-memory dependencies."""
 
@@ -277,6 +313,7 @@ def build_client(
         id_factory=lambda: 'loop-run-1',
         clock=lambda: datetime(2026, 8, 3, tzinfo=UTC),
         model_execution_service=model_execution_service,
+        instruction_library_service=instruction_library_service,
     )
     return TestClient(
         build_app(
@@ -306,6 +343,44 @@ def direct_payload(*, title: str = "Direct loop") -> dict[str, object]:
         "output_contract": {
             "type": "text",
             "description": "Human-readable answer.",
+        },
+    }
+
+
+def roundtable_payload() -> dict[str, object]:
+    """Return one valid roundtable request body."""
+
+    return {
+        'title': 'Roundtable loop',
+        'description': 'Synthesize competing proposals.',
+        'flow': 'roundtable',
+        'stop_conditions': {'max_tokens': 5000},
+        'agents': [
+            {
+                'model_id': 'model-1',
+                'persona_id': 'persona-1',
+                'role': 'generator',
+            },
+            {
+                'model_id': 'model-1',
+                'persona_id': 'persona-1',
+                'role': 'generator',
+            },
+            {
+                'model_id': 'model-1',
+                'persona_id': 'persona-1',
+                'role': 'reviewer',
+            },
+            {
+                'model_id': 'model-1',
+                'persona_id': 'persona-1',
+                'role': 'aggregator',
+            },
+        ],
+        'output_contract': {
+            'type': 'files',
+            'description': 'Create one output file.',
+            'files': ['output.txt'],
         },
     }
 
@@ -577,6 +652,53 @@ def test_direct_loop_run_generates_applies_and_commits(
     assert applied['next_action'] == 'commit_if_allowed'
     assert completed.json()['status'] == 'completed'
     assert completed.json()['next_action'] == 'none'
+
+
+def test_roundtable_loop_aggregates_proposals_and_critique(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A roundtable sends final aggregated operations to the CLI checkpoint."""
+
+    model_execution_service = FakeModelExecutionService()
+    instruction_library_service = FakeInstructionLibraryService()
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+        model_execution_service=model_execution_service,
+        instruction_library_service=instruction_library_service,
+    )
+    loop_id = client.post('/api/v1/loops', json=roundtable_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Create an output file.'},
+    ).json()
+    response = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=_snapshot_payload(created['continuation_token']),
+    )
+
+    assert response.status_code == 200, response.json()
+    assert response.json()['next_action'] == 'apply_operations'
+    assert response.json()['payload']['operations'][0]['path'] == 'output.txt'
+    assert len(model_execution_service.prompts) == 4
+    assert all(
+        'JSON object proposing a solution' in prompt
+        for prompt in model_execution_service.prompts[:2]
+    )
+    assert (
+        'JSON object critiquing these candidate proposals'
+        in model_execution_service.prompts[2]
+    )
+    assert 'Generator proposals' in model_execution_service.prompts[3]
+    assert 'Reviewer critique' in model_execution_service.prompts[3]
+    assert 'output.txt' in model_execution_service.prompts[3]
+    assert all(
+        prompt.startswith('Persona instructions:\nUse this assigned persona.')
+        for prompt in model_execution_service.prompts
+    )
 
 
 def _snapshot_payload(continuation_token: str) -> dict[str, object]:

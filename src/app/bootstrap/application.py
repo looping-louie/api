@@ -258,6 +258,7 @@ async def configure_application(
             provider_repository=provider_repository,
             secret_service=secret_service,
         ),
+        instruction_library_service=execution_instruction_library_service,
     )
     provider_service = ProviderService(
         repository=provider_repository,

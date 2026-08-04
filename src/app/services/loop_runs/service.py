@@ -5,21 +5,20 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime
 from secrets import token_urlsafe
-import json
 from typing import Callable, Mapping
 
 from src.app.models.loop import LoopDocument
 from src.app.models.loop_run import LoopRunDocument
 from src.app.repositories.loop_runs.loop_run_repository import LoopRunRepository
-from src.app.services.model_execution import (
-    ModelExecutionError,
-    ModelExecutionService,
+from src.app.services.execution_instruction_library import (
+    ExecutionInstructionLibraryService,
 )
+from src.app.services.loop_runs.generation import LoopRunGenerationService
+from src.app.services.model_execution import ModelExecutionService
 from src.app.services.loops.service import LoopService
 from src.app.services.loops.types import LoopValidationError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
-from src.app.services.task_checkpoint import parse_file_operations
 
 
 class LoopRunNotFoundError(Exception):
@@ -56,6 +55,7 @@ class LoopRunService:
         id_factory: Callable[[], str],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
         model_execution_service: ModelExecutionService | None = None,
+        instruction_library_service: ExecutionInstructionLibraryService | None = None,
         clock: Callable[[], datetime],
     ) -> None:
         """Store dependencies used to own and persist loop runs."""
@@ -66,7 +66,14 @@ class LoopRunService:
         self._id_factory = id_factory
         self._token_factory = token_factory
         self._clock = clock
-        self._model_execution_service = model_execution_service
+        self._generation_service = (
+            LoopRunGenerationService(
+                model_execution_service=model_execution_service,
+                instruction_library_service=instruction_library_service,
+            )
+            if model_execution_service is not None
+            else None
+        )
 
     async def create(
         self,
@@ -128,7 +135,7 @@ class LoopRunService:
         project_profile: dict[str, object],
         requested_workspace_id: str | None = None,
     ) -> LoopRunDocument:
-        """Generate direct-loop operations after receiving CLI context."""
+        """Generate loop operations after receiving CLI context."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
@@ -155,7 +162,7 @@ class LoopRunService:
             run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if self._model_execution_service is None:
+        if self._generation_service is None:
             return await self._repository.continue_collect_snapshot(
                 workspace_id=workspace.workspace_id,
                 loop_id=loop_id,
@@ -165,10 +172,13 @@ class LoopRunService:
                 execution_context=context,
                 updated_at=self._clock(),
             )
-        self._require_direct_flow(document.loop_snapshot)
-        context = await self._generate_context(
+        generation_service = self._require_generation_service()
+        generation_service.require_executable_flow(document.loop_snapshot)
+        context = await generation_service.generate_context(
             loop_snapshot=document.loop_snapshot,
             workspace_id=workspace.workspace_id,
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
             input_text=document.input,
             context=context,
         )
@@ -205,7 +215,7 @@ class LoopRunService:
         result: Mapping[str, object],
         requested_workspace_id: str | None = None,
     ) -> LoopRunDocument:
-        """Advance one direct-loop CLI checkpoint."""
+        """Advance one executable loop CLI checkpoint."""
 
         document = await self.get(
             user_id=user_id,
@@ -213,7 +223,9 @@ class LoopRunService:
             run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
-        self._require_direct_flow(document.loop_snapshot)
+        self._require_generation_service().require_executable_flow(
+            document.loop_snapshot,
+        )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
@@ -293,74 +305,6 @@ class LoopRunService:
             updated_at=self._clock(),
         )
 
-    async def _generate_context(self, *, loop_snapshot: Mapping[str, object], workspace_id: str, input_text: str, context: dict[str, object]) -> dict[str, object]:
-        """Run configured generators and store the operation plan for CLI application."""
-
-        generators = [
-            agent
-            for agent in self._agents(loop_snapshot)
-            if agent.get('role') == 'generator'
-        ]
-        if len(generators) != 1:
-            raise LoopValidationError(field_name='agents', message='requires a generator')
-        prompt = (
-            'Return only a JSON object with an operations array and an optional '
-            'commit_message. Operations must use create, replace, replace_text, '
-            f'or delete.\n\nTask:\n{input_text}\n\nRepository context:\n'
-            f'{context["repo_context"]}'
-        )
-        generated = await self._execute_agent(
-            workspace_id,
-            generators[0],
-            prompt,
-        )
-        operations = parse_file_operations(json.dumps(generated))
-        return {
-            **context,
-            'runtime_artifacts': {
-                'operations': operations,
-                'commit_message': generated.get('commit_message'),
-            },
-        }
-
-    async def _execute_agent(self, workspace_id: str, agent: Mapping[str, object], prompt: str) -> dict[str, object]:
-        """Execute one configured agent and require a JSON object response."""
-
-        if self._model_execution_service is None:
-            raise ModelExecutionError('Model execution is not configured.')
-        result = await self._model_execution_service.execute(workspace_id=workspace_id, model_id=str(agent['model_id']), prompt=prompt)
-        try:
-            payload = json.loads(result.text)
-        except json.JSONDecodeError as error:
-            raise ModelExecutionError('Loop agent returned invalid JSON.') from error
-        if not isinstance(payload, dict):
-            raise ModelExecutionError('Loop agent response must be a JSON object.')
-        return payload
-
-    @staticmethod
-    def _agents(snapshot: Mapping[str, object]) -> list[Mapping[str, object]]:
-        """Return serialized loop agents as mapping values only."""
-
-        agents = snapshot.get('agents')
-        if not isinstance(agents, (list, tuple)):
-            return []
-        return [agent for agent in agents if isinstance(agent, Mapping)]
-
-    @classmethod
-    def _require_direct_flow(cls, snapshot: Mapping[str, object]) -> None:
-        """Restrict this first orchestration slice to direct loops."""
-
-        if snapshot.get('flow') != 'direct':
-            raise LoopValidationError(
-                field_name='flow',
-                message='is not yet supported for execution',
-            )
-        if any(agent.get('role') == 'reviewer' for agent in cls._agents(snapshot)):
-            raise LoopValidationError(
-                field_name='agents',
-                message='direct execution currently requires no reviewers',
-            )
-
     async def get(
         self,
         *,
@@ -421,6 +365,13 @@ class LoopRunService:
         for field_name in ('created_at', 'updated_at'):
             snapshot[field_name] = snapshot[field_name].isoformat()
         return snapshot
+
+    def _require_generation_service(self) -> LoopRunGenerationService:
+        """Return model orchestration after confirming it is configured."""
+
+        if self._generation_service is None:
+            raise RuntimeError('Loop generation is not configured.')
+        return self._generation_service
 
     @staticmethod
     def _require_text(value: str, field_name: str) -> str:

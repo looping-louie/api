@@ -45,6 +45,20 @@ class LoopRunRepository(Protocol):
         """Return one page of loop runs and its unpaginated total."""
         raise NotImplementedError
 
+    async def continue_collect_snapshot(
+        self,
+        *,
+        workspace_id: str,
+        loop_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        execution_context: dict[str, object],
+        updated_at: datetime,
+    ) -> LoopRunDocument:
+        """Persist the legacy snapshot-only checkpoint transition."""
+        raise NotImplementedError
+
     async def transition(
         self,
         *,
