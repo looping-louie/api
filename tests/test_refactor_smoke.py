@@ -1,12 +1,10 @@
 import asyncio
-import json
 from types import MappingProxyType
 
 import pytest
 
 from src.app.controllers import task
 from src.app.catalogs.instructions import InstructionOrigin
-import src.app.services.task_checkpoint as task_checkpoint
 from src.app.schemas import (
     ExecutionPlan,
     GeneratorAssignment,
@@ -152,39 +150,6 @@ def test_task_checkpoint_start_returns_first_action():
     assert result.run_id
     assert result.continuation_token
     assert result.token_revision == 1
-    run_path = task._TASK_RUNS[result.run_id].run_path
-    snapshot = json.loads(
-        (run_path / 'instructions-snapshot.json').read_text(
-            encoding='utf-8'
-        )
-    )
-    entries = {
-        entry['id']: entry
-        for entry in snapshot['instructions']
-    }
-
-    assert snapshot['snapshot_version'] == 1
-    assert snapshot['workspace_id'] == 'workspace-1'
-    assert entries['builtin:skill:small_patch_quality'] == {
-        'id': 'builtin:skill:small_patch_quality',
-        'runtime_id': 'small_patch_quality',
-        'instruction_type': 'skill',
-        'origin': 'builtin',
-        'version': 1,
-        'catalog_version': 1,
-        'name': 'Small patch quality',
-        'description': 'Review a small patch.',
-        'content': 'Review the patch carefully.',
-        'metadata': {
-            'applies_when': ['code'],
-            'applies_to': ['generator', 'reviewer'],
-            'reviewer_default_strictness': {
-                'prototype': 50,
-                'mvp': 55,
-                'production': 70,
-            },
-        },
-    }
 
 
 def test_task_checkpoint_continue_rejects_token_conflict():
@@ -473,16 +438,3 @@ def test_task_checkpoint_get_returns_latest_state():
 
     assert missing_result.ok is False
     assert missing_result.error_code == 'run_not_found'
-
-def test_task_checkpoint_creates_execution_run_path_under_runtime(
-    monkeypatch,
-    tmp_path,
-):
-    executions_root = tmp_path / 'runtime' / 'executions'
-    monkeypatch.setattr(task_checkpoint, 'EXECUTION_RUNS_DIR', executions_root)
-
-    run_path = task_checkpoint.build_execution_run_path('run-abc123')
-
-    assert run_path == executions_root / 'run-abc123'
-    assert run_path.exists()
-    assert run_path.is_dir()

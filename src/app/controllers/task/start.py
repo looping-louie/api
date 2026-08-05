@@ -6,8 +6,6 @@ from src.app.schemas.task import StartRequest, StartResponse
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibrary,
 )
-from src.app.services.task_checkpoint import build_execution_run_path
-from src.app.utils.io import write_json
 
 from . import utils
 
@@ -47,29 +45,9 @@ async def start_task(
         required_reviewer_skills=list(req.required_reviewer_skills),
         generator_persona=req.generator_persona,
         instruction_library=instruction_library,
-        run_path=build_execution_run_path(run_id),
         max_iterations=req.max_iterations,
         continuation_token=utils.new_continuation_token(),
         message="Run started. Provide workspace snapshot for iteration 1.",
-    )
-
-    write_json(
-        state.run_path,
-        "request.json",
-        {
-            "repo_path": req.repo_path,
-            "task_id": task["id"],
-            "prompt": task["prompt"],
-            "constitution": req.constitution,
-            "max_iterations": req.max_iterations,
-            "generator_model": req.generator_model,
-            "reviewer_model": req.reviewer_model,
-        },
-    )
-    write_json(
-        state.run_path,
-        "instructions-snapshot.json",
-        instruction_library.snapshot(),
     )
     utils.TASK_RUNS[run_id] = state
     return StartResponse(**utils.checkpoint_payload(state))

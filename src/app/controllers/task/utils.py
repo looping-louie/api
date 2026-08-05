@@ -1,7 +1,6 @@
 """Private state and helper functions for task controllers."""
 
 from dataclasses import dataclass, field
-from pathlib import Path
 import uuid
 from typing import Any, cast
 
@@ -19,7 +18,6 @@ from src.app.schemas.task import (
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibrary,
 )
-from src.app.utils.io import write_json
 
 
 @dataclass
@@ -38,7 +36,6 @@ class _TaskRunState:
     required_reviewer_skills: list[str]
     generator_persona: str | None
     instruction_library: ExecutionInstructionLibrary
-    run_path: Path
     max_iterations: int
     iteration: int = 1
     status: TaskStatus = 'in_progress'
@@ -208,12 +205,6 @@ async def _handle_collect_snapshot(
                 ),
                 focus=created_execution_plan.generator.focus,
             )
-            write_json(
-                state.run_path,
-                'execution-plan.json',
-                created_execution_plan.model_dump(),
-            )
-
         execution_plan = state.execution_plan
         if execution_plan is None:
             raise RuntimeError('Execution plan must be available before generation.')
@@ -256,16 +247,6 @@ async def _handle_collect_snapshot(
             'output_tokens': generator_response.get('output_tokens', 0),
             'duration_ms': generator_response.get('duration_ms', 0),
         }
-        write_json(
-            state.run_path,
-            f'generator/iteration-{state.iteration}-response.json',
-            generator_response,
-        )
-        write_json(
-            state.run_path,
-            f'generator/iteration-{state.iteration}-operations.json',
-            {'operations': operations},
-        )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         state.pending_operations = []
         state.latest_generator_metrics = {
@@ -370,26 +351,12 @@ async def _handle_submit_review_input(
             review_input=review_input,
             iteration=state.iteration,
             run_id=state.run_id,
-            run_path=state.run_path,
             instruction_library=state.instruction_library,
         )
         reviewer_results.append(result)
 
     state.latest_reviewer_feedback = build_failed_feedback_fn(reviewer_results)
     approved = all(result.approved for result in reviewer_results)
-    write_json(
-        state.run_path,
-        f'reviewers/iteration-{state.iteration}-summary.json',
-        {
-            'approved': approved,
-            'reviewer_feedback': state.latest_reviewer_feedback,
-            'reviewers': [
-                reviewer.model_dump()
-                for reviewer in reviewer_results
-            ],
-        },
-    )
-
     if approved:
         state.commit_allowed = True
         state.completed = CompletedTask(

@@ -1,31 +1,12 @@
 """Reviewer execution helpers for harness service."""
 
-import re
-from pathlib import Path
-
 from src.app.schemas import ReviewerAssignment, ReviewerMetrics, ReviewerResult, RunHarnessRequest
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibrary,
 )
 from src.app.services.llm_service.openai import review_with_openai
 from src.app.services.instructions import build_assignment_instructions
-from src.app.utils.io import write_json, write_text
 from src.app.utils.metrics import tokens_per_second
-
-
-def reviewer_key(
-    *,
-    reviewer_index: int,
-    assignment: ReviewerAssignment,
-) -> str:
-    """Build a unique filesystem-safe identifier for one reviewer."""
-    persona_slug = re.sub(
-        r'[^a-zA-Z0-9_-]+',
-        '-',
-        assignment.persona,
-    ).strip('-')
-
-    return f"reviewer-{reviewer_index:02d}-{persona_slug or 'unknown'}"
 
 
 def build_reviewer_metrics(
@@ -56,19 +37,13 @@ async def run_single_reviewer(
     *,
     req: RunHarnessRequest,
     assignment: ReviewerAssignment,
-    reviewer_index: int,
     phase: str,
     review_input: str,
     iteration: int,
     run_id: str,
-    run_path: Path,
     instruction_library: ExecutionInstructionLibrary,
 ) -> ReviewerResult:
-    """Execute and persist one persona-plus-skills reviewer."""
-    current_reviewer_key = reviewer_key(
-        reviewer_index=reviewer_index,
-        assignment=assignment,
-    )
+    """Execute one persona-plus-skills reviewer."""
     reviewer_instructions = build_assignment_instructions(
         role='reviewer',
         persona_content=instruction_library.persona_content(
@@ -78,16 +53,6 @@ async def run_single_reviewer(
             assignment.skills
         ),
         focus=assignment.focus,
-    )
-
-    write_text(
-        run_path,
-        f'reviewers/{current_reviewer_key}/iteration-{iteration}-prompt.txt',
-        (
-            f"{reviewer_instructions}\n\n"
-            '# Candidate change\n\n'
-            f'{review_input}'
-        ),
     )
 
     review = await review_with_openai(
@@ -104,25 +69,6 @@ async def run_single_reviewer(
     approved = (
         review['score'] >= assignment.strictness
         and not review['blocking_issues']
-    )
-
-    persisted_review = {
-        'run_id': run_id,
-        'iteration': iteration,
-        'persona': assignment.persona,
-        'skills': assignment.skills,
-        'focus': assignment.focus,
-        'model': req.reviewer_model,
-        'phase': phase,
-        'strictness': assignment.strictness,
-        'approved': approved,
-        **review,
-    }
-
-    write_json(
-        run_path,
-        f'reviewers/{current_reviewer_key}/iteration-{iteration}-response.json',
-        persisted_review,
     )
 
     metrics = build_reviewer_metrics(

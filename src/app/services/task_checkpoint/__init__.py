@@ -7,16 +7,7 @@ from pathlib import Path
 from typing import Mapping
 
 
-EXECUTION_RUNS_DIR = Path(__file__).resolve().parents[4] / 'runtime' / 'executions'
-
 ALLOWED_OPERATIONS = {'create', 'replace', 'replace_text', 'delete'}
-
-
-def build_execution_run_path(run_id: str) -> Path:
-    """Resolve and create the API-owned execution directory for one run."""
-    run_path = EXECUTION_RUNS_DIR / run_id
-    run_path.mkdir(parents=True, exist_ok=False)
-    return run_path
 
 
 def parse_file_operations(
