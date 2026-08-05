@@ -1,4 +1,4 @@
-"""Helpers for checkpoint-based task execution contracts."""
+"""Helpers for persisted loop-run operation contracts."""
 
 from __future__ import annotations
 
