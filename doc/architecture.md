@@ -36,7 +36,7 @@ services/model_context/
     Generator and reviewer prompt construction
 
 services/task_checkpoint/
-    Checkpoint run path and operation contract parsing
+    Loop operation contract parsing
 
 services/llm_service/
     Provider-specific model integrations
@@ -328,7 +328,7 @@ first pending task
 
 ↓
 
-call `/api/v1/tasks/start` then iterate `/api/v1/tasks/continue`
+create a persisted loop run then iterate its `/continue` checkpoint
 
 ↓
 

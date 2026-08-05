@@ -2,7 +2,7 @@
 
 Status: the checkpoint task ownership migration is complete. This document is
 retained for historical design context. The active protocol is specified in
-[`task-checkpoint-protocol-v1.md`](task-checkpoint-protocol-v1.md).
+the persisted loop-run protocol.
 
 This document defines the migration from the current single-repo execution
 model into a split architecture with two repositories.
@@ -41,11 +41,11 @@ change when they improve boundary clarity.
 
 ## Current State Snapshot (2026-07-27)
 
-Implemented task-related endpoints:
+Implemented loop-run endpoints:
 
-- `POST /api/v1/tasks/start`: starts checkpoint task execution.
-- `POST /api/v1/tasks/continue`: advances checkpoint task execution.
-- `GET /api/v1/tasks/{run_id}`: returns current run checkpoint state.
+- `POST /api/v1/loops/{loop_id}/runs`: starts persisted loop execution.
+- `GET /api/v1/loops/{loop_id}/runs/{run_id}`: returns persisted run state.
+- `POST /api/v1/loops/{loop_id}/runs/{run_id}/continue`: advances execution.
 
 Removed endpoints:
 
@@ -258,8 +258,7 @@ Shared trace fields:
 
 Continue task-focused migration with clear boundaries:
 
-1. Keep task execution on checkpoint endpoints (`/api/v1/tasks/start`,
-   `/api/v1/tasks/continue`).
+1. Execute all work through persisted loop-run checkpoints.
 2. Keep LLM calls in API services; avoid moving model calls into controllers.
 3. Keep workflow orchestration in CLI by reusing checkpoint task execution per
     workflow task.

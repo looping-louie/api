@@ -27,15 +27,6 @@ from src.app.schemas.plan import ExecutionPlan, ProjectPhase
 from src.app.schemas.harness import (
     RunRequest as RunHarnessRequest,
 )
-from src.app.schemas.task import (
-    CheckpointResponse as TaskCheckpointResponse,
-    ContinueActionResult as TaskContinueActionResult,
-    ContinueRequest as TaskContinueRequest,
-    ContinueResponse as TaskContinueResponse,
-    GetResponse as GetTaskResponse,
-    StartRequest as TaskStartRequest,
-    StartResponse as TaskStartResponse,
-)
 
 __all__ = [
     'ExecutionPlan',
@@ -48,12 +39,5 @@ __all__ = [
     'ReviewerIssue',
     'ReviewerMetrics',
     'ReviewerResult',
-    'GetTaskResponse',
     'RunHarnessRequest',
-    'TaskCheckpointResponse',
-    'TaskContinueActionResult',
-    'TaskContinueRequest',
-    'TaskContinueResponse',
-    'TaskStartRequest',
-    'TaskStartResponse',
 ]

@@ -158,10 +158,10 @@ Looping Louie currently exposes these endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/api/v1/tasks/start` | Start one checkpoint-based task execution. |
-| `/api/v1/tasks/continue` | Advance one checkpoint transition. |
-| `/api/v1/tasks/{run_id}` | Read latest checkpoint state for a task run. |
 | `/api/v1/loops` | Manage persisted multi-agent loop definitions. |
+| `/api/v1/loops/{loop_id}/runs` | Start one persisted loop run. |
+| `/api/v1/loops/{loop_id}/runs/{run_id}` | Read one persisted loop run. |
+| `/api/v1/loops/{loop_id}/runs/{run_id}/continue` | Advance one loop-run checkpoint. |
 
 See the complete API documentation:
 
@@ -211,16 +211,16 @@ Project documentation is organised under `doc/`.
 ## High-Level Execution Flow
 
 ```
-task request
+loop input
       │
       ▼
-/api/v1/tasks/start
+/api/v1/loops/{loop_id}/runs
       │
       ▼
 CLI builds snapshot and runs local action
       │
       ▼
-/api/v1/tasks/continue
+/api/v1/loops/{loop_id}/runs/{run_id}/continue
       │
       ▼
 Planner and reviewer services
@@ -257,7 +257,7 @@ Looping Louie is currently an MVP focused on validating the execution runtime.
 
 The current implementation supports:
 
-- checkpoint task execution contracts;
+- persisted loop-run checkpoint contracts;
 - multi-skill review;
 - automatic commits;
 - execution traces;
