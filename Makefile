@@ -25,8 +25,6 @@ config: venv
 		ENCRYPTION_KEY="$$("$(VENV_PYTHON)" -c \
 			'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"; \
 		printf '%s\n' \
-			'TOGETHER_API_KEY=' \
-			'OPENAI_API_KEY=' \
 			"LOUIE_ENCRYPTION_KEY=$$ENCRYPTION_KEY" \
 			'LOUIE_DB_PATH=.looping-louie/data/looping-louie.db' \
 			'LOUIE_CATALOG_STRICT_VERSIONING=false' \
