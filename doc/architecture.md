@@ -29,20 +29,11 @@ routers/
 controllers/
     HTTP-level request orchestration
 
-services/harness/
-    Planning and reviewer decision helpers
-
-services/model_context/
-    Generator and reviewer prompt construction
-
 services/task_checkpoint/
     Loop operation contract parsing
 
 services/llm_service/
     Provider-specific model integrations
-
-services/execution_planner/
-    Planner strategy for task execution
 
 catalogs/
     Curated providers, models, loops and builtin instructions
