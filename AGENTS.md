@@ -135,6 +135,17 @@ Every behavior change MUST include or update corresponding tests.
 
 ## Development Workflow
 
+### SQLite Migrations
+
+SQLite migration files are immutable once committed. Do not edit an existing
+migration for any reason, including whitespace or terminal-newline changes.
+Create a new forward migration instead.
+
+Every new SQLite migration must be added to
+`tests/integration/test_sqlite_migration_checksums.py`. That test protects the
+exact bytes of committed migrations and must pass before the migration is
+committed.
+
 Before editing:
 
 1. Read the relevant implementation and tests.
