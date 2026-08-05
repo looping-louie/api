@@ -137,6 +137,7 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
         assert request.headers['authorization'] == 'Bearer test-key'
         assert json.loads(request.content) == {
             'model': 'vendor/model-1',
+            'max_tokens': 4096,
             'messages': [
                 {'role': 'system', 'content': 'System instructions.'},
                 {'role': 'user', 'content': 'User prompt.'},
@@ -165,6 +166,37 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
     assert result.provider_id == ProviderId.TOGETHER
     assert result.input_tokens == 3
     assert result.output_tokens == 2
+
+
+@pytest.mark.asyncio
+async def test_executes_chat_completion_with_deployment_output_limit() -> None:
+    """A catalog deployment overrides the chat completion output default."""
+
+    deployment = ModelDeployment(
+        provider_id=ProviderId.TOGETHER,
+        provider_model_id='vendor/model-1',
+        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+        max_output_tokens=8192,
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Assert the configured output limit reaches the provider request."""
+
+        assert json.loads(request.content)['max_tokens'] == 8192
+        return httpx.Response(
+            200,
+            json={'choices': [{'message': {'content': 'Generated text.'}}]},
+        )
+
+    await service(
+        model_entry=model(deployment),
+        credentials=[credential(ProviderId.TOGETHER)],
+        handler=handler,
+    ).execute(
+        workspace_id='workspace-1',
+        model_id='model-1',
+        prompt='User prompt.',
+    )
 
 
 @pytest.mark.asyncio

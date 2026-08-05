@@ -171,7 +171,8 @@ class LoopRunGenerationService:
                     raise
                 retry_prompt = (
                     f'{prompt}\n\nReturn a non-empty operations array with the '
-                    'file changes required to complete the task.'
+                    'file changes required to complete the task and a non-empty '
+                    'commit_message.'
                 )
 
         raise AssertionError('Operation plan retry attempts were exhausted.')
@@ -327,7 +328,7 @@ class LoopRunGenerationService:
         """Build the prompt that requires a CLI-compatible operation plan."""
 
         return (
-            'Return only a JSON object with an operations array and an optional '
+            'Return only a JSON object with a non-empty operations array and '
             'commit_message. Operations must use create, replace, replace_text, '
             'or delete. Use this shape: '
             '{"operations":[{"operation":"create","path":"ideas.md",'
@@ -377,10 +378,15 @@ class LoopRunGenerationService:
             raise ModelExecutionError(
                 'Loop agent returned an invalid operation plan.'
             ) from error
+        commit_message = generated.get('commit_message')
+        if not isinstance(commit_message, str) or not commit_message.strip():
+            raise ModelExecutionError(
+                'Loop agent returned an operation plan without a commit message.'
+            )
         return {
             **context,
             'runtime_artifacts': {
                 'operations': operations,
-                'commit_message': generated.get('commit_message'),
+                'commit_message': commit_message,
             },
         }

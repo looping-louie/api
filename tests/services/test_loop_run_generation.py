@@ -28,7 +28,7 @@ class InvalidThenValidModelExecutionService:
         self.prompts.append(prompt)
         text = (
             '{"operations":[{"operation":"create","path":"output.txt",'
-            '"content":"created"}]}'
+            '"content":"created"}],"commit_message":"feat: create output"}'
             if len(self.prompts) == 2
             else '{"operations":'
         )
@@ -102,7 +102,7 @@ class EmptyThenValidPlanExecutionService:
         self.prompts.append(prompt)
         text = (
             '{"operations":[{"operation":"create","path":"output.txt",'
-            '"content":"created"}]}'
+            '"content":"created"}],"commit_message":"feat: create output"}'
             if len(self.prompts) == 2
             else '{"operations": []}'
         )
@@ -149,3 +149,72 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
     assert context['runtime_artifacts']['operations'][0]['path'] == 'output.txt'
     assert len(model_execution_service.prompts) == 2
     assert 'Return a non-empty operations array' in model_execution_service.prompts[1]
+
+
+class MissingCommitThenValidPlanExecutionService:
+    """Return a plan without a commit message before a valid correction."""
+
+    def __init__(self) -> None:
+        """Track prompts supplied to the deterministic fake executor."""
+
+        self.prompts: list[str] = []
+
+    async def execute(
+        self,
+        *,
+        prompt: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return a commit message only after the correction request."""
+
+        self.prompts.append(prompt)
+        text = (
+            '{"operations":[{"operation":"create","path":"output.txt",'
+            '"content":"created"}],"commit_message":"feat: create output"}'
+            if len(self.prompts) == 2
+            else '{"operations":[{"operation":"create","path":"output.txt",'
+            '"content":"created"}]}'
+        )
+        return ModelExecutionResult(
+            text=text,
+            provider_id=ProviderId.TOGETHER,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_generation_retries_one_plan_without_commit_message() -> None:
+    """A final plan without a commit message gets one correction request."""
+
+    model_execution_service = MissingCommitThenValidPlanExecutionService()
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+
+    context = await service.generate_context(
+        loop_snapshot={
+            'flow': 'direct',
+            'agents': [
+                {
+                    'id': 'agent-1',
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+            'output_contract': {},
+        },
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert context['runtime_artifacts']['commit_message'] == 'feat: create output'
+    assert len(model_execution_service.prompts) == 2
+    assert 'a non-empty commit_message' in model_execution_service.prompts[1]

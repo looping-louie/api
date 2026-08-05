@@ -199,6 +199,7 @@ class ModelExecutionService:
             payload: dict[str, object] = {
                 'model': deployment.provider_model_id,
                 'messages': messages,
+                'max_tokens': deployment.max_output_tokens or 4096,
             }
             if json_mode:
                 payload['response_format'] = {'type': 'json_object'}
