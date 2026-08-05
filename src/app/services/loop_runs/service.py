@@ -162,6 +162,9 @@ class LoopRunService:
             run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
+        previous_review = document.execution_context.get('review_result')
+        if isinstance(previous_review, Mapping):
+            context['review_result'] = dict(previous_review)
         if self._generation_service is None:
             return await self._repository.continue_collect_snapshot(
                 workspace_id=workspace.workspace_id,
@@ -246,6 +249,19 @@ class LoopRunService:
                     context={**context, 'apply_result': dict(result)},
                 )
             context['apply_result'] = dict(result)
+            if self._has_reviewers(document.loop_snapshot):
+                return await self._transition(
+                    document=document,
+                    workspace_id=workspace.workspace_id,
+                    continuation_token=continuation_token,
+                    idempotency_key=idempotency_key,
+                    action=action,
+                    status='in_progress',
+                    state='awaiting_review_input',
+                    next_action='submit_review_input',
+                    next_token=self._token_factory(),
+                    context=context,
+                )
             return await self._transition(
                 document=document,
                 workspace_id=workspace.workspace_id,
@@ -257,6 +273,49 @@ class LoopRunService:
                 next_action='commit_if_allowed',
                 next_token=self._token_factory(),
                 context=context,
+            )
+        if action == 'submit_review_input':
+            review_context = await self._require_generation_service().generate_review_context(
+                loop_snapshot=document.loop_snapshot,
+                workspace_id=workspace.workspace_id,
+                input_text=document.input,
+                context=context,
+                final_diff=str(result.get('final_diff', '')),
+                changed_file_contents=self._changed_file_contents(result),
+            )
+            updated_context = {
+                **context,
+                'review_input': dict(result),
+                'review_result': review_context,
+            }
+            approved = review_context['approved'] is True
+            if not approved and document.iteration < self._max_iterations(
+                document.loop_snapshot,
+            ):
+                return await self._transition(
+                    document=document,
+                    workspace_id=workspace.workspace_id,
+                    continuation_token=continuation_token,
+                    idempotency_key=idempotency_key,
+                    action=action,
+                    status='in_progress',
+                    state='awaiting_snapshot',
+                    next_action='collect_snapshot',
+                    next_token=self._token_factory(),
+                    context=updated_context,
+                    iteration=document.iteration + 1,
+                )
+            return await self._transition(
+                document=document,
+                workspace_id=workspace.workspace_id,
+                continuation_token=continuation_token,
+                idempotency_key=idempotency_key,
+                action=action,
+                status='in_progress' if approved else 'failed',
+                state='awaiting_commit' if approved else 'failed',
+                next_action='commit_if_allowed' if approved else 'none',
+                next_token=self._token_factory() if approved else None,
+                context=updated_context,
             )
         if action == 'commit_if_allowed':
             committed = result.get('committed') is True
@@ -274,6 +333,43 @@ class LoopRunService:
             )
         raise LoopValidationError(field_name='result.action', message='is not supported')
 
+    @staticmethod
+    def _has_reviewers(snapshot: Mapping[str, object]) -> bool:
+        """Return whether the persisted loop includes post-apply reviewers."""
+
+        agents = snapshot.get('agents')
+        return isinstance(agents, (list, tuple)) and any(
+            isinstance(agent, Mapping) and agent.get('role') == 'reviewer'
+            for agent in agents
+        )
+
+    @staticmethod
+    def _changed_file_contents(
+        result: Mapping[str, object],
+    ) -> dict[str, str]:
+        """Keep only validated CLI file contents for reviewer prompts."""
+
+        contents = result.get('changed_file_contents')
+        if not isinstance(contents, Mapping):
+            return {}
+        return {
+            path: content
+            for path, content in contents.items()
+            if isinstance(path, str) and isinstance(content, str)
+        }
+
+    @staticmethod
+    def _max_iterations(snapshot: Mapping[str, object]) -> int:
+        """Return the validated loop iteration limit from its snapshot."""
+
+        stop_conditions = snapshot.get('stop_conditions')
+        max_iterations = (
+            stop_conditions.get('max_iterations')
+            if isinstance(stop_conditions, Mapping)
+            else None
+        )
+        return max_iterations if isinstance(max_iterations, int) else 1
+
     async def _transition(
         self,
         *,
@@ -287,6 +383,7 @@ class LoopRunService:
         next_action: str,
         next_token: str | None,
         context: dict[str, object],
+        iteration: int | None = None,
     ) -> LoopRunDocument:
         """Persist a token-guarded continuation with a new runtime context."""
 
@@ -303,6 +400,7 @@ class LoopRunService:
             next_continuation_token=next_token,
             execution_context=context,
             updated_at=self._clock(),
+            iteration=iteration,
         )
 
     async def get(

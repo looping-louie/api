@@ -69,6 +69,7 @@ class LoopRunGenerationService:
                     input_text=input_text,
                     repo_context=str(context['repo_context']),
                     output_contract=self._output_contract(loop_snapshot),
+                    reviewer_feedback=self._reviewer_feedback(context),
                 ),
                 instruction_library=instruction_library,
             ),
@@ -95,6 +96,7 @@ class LoopRunGenerationService:
             f'Task:\n{input_text}\n\n'
             f'Output contract:\n{json.dumps(output_contract)}\n\n'
             f'Repository context:\n{context["repo_context"]}'
+            f'{self._reviewer_feedback(context)}'
         )
         proposals = [
             await self._execute_agent(
@@ -132,6 +134,7 @@ class LoopRunGenerationService:
                 input_text=input_text,\
                 repo_context=str(context["repo_context"]),\
                 output_contract=output_contract,\
+                reviewer_feedback=self._reviewer_feedback(context),\
             )}'
             f'\n\nGenerator proposals:\n{json.dumps(proposals)}'
             f'\n\nReviewer critique:\n{json.dumps(critiques)}'
@@ -176,6 +179,62 @@ class LoopRunGenerationService:
                 )
 
         raise AssertionError('Operation plan retry attempts were exhausted.')
+
+    async def generate_review_context(
+        self,
+        *,
+        loop_snapshot: Mapping[str, object],
+        workspace_id: str,
+        input_text: str,
+        context: Mapping[str, object],
+        final_diff: str,
+        changed_file_contents: Mapping[str, str],
+    ) -> dict[str, object]:
+        """Return configured reviewer approval for locally applied changes."""
+
+        reviewers = [
+            agent
+            for agent in self._agents(loop_snapshot)
+            if agent.get('role') == 'reviewer'
+        ]
+        if not reviewers:
+            return {'approved': True, 'reviewers': []}
+
+        review_prompt = (
+            'Return only a JSON object with an approved boolean and feedback '
+            'string. Approve only when the applied change satisfies the task '
+            'and output contract.\n\n'
+            f'Task:\n{input_text}\n\n'
+            f'Output contract:\n{json.dumps(self._output_contract(loop_snapshot))}\n\n'
+            f'Repository context:\n{context["repo_context"]}\n\n'
+            f'Applied diff:\n{final_diff}\n\n'
+            f'Changed file contents:\n{json.dumps(changed_file_contents)}'
+        )
+        reviews: list[dict[str, object]] = []
+        for reviewer in reviewers:
+            review = await self._execute_agent(
+                workspace_id,
+                reviewer,
+                review_prompt,
+            )
+            approved = review.get('approved')
+            feedback = review.get('feedback')
+            if not isinstance(approved, bool) or not isinstance(feedback, str):
+                raise ModelExecutionError(
+                    'Loop reviewer returned an invalid review decision.'
+                )
+            reviews.append(
+                {
+                    'persona_id': reviewer['persona_id'],
+                    'approved': approved,
+                    'feedback': feedback,
+                }
+            )
+
+        return {
+            'approved': all(review['approved'] for review in reviews),
+            'reviewers': reviews,
+        }
     @staticmethod
     def require_executable_flow(snapshot: Mapping[str, object]) -> None:
         """Require a direct or selected roundtable role configuration."""
@@ -324,6 +383,7 @@ class LoopRunGenerationService:
         input_text: str,
         repo_context: str,
         output_contract: Mapping[str, object],
+        reviewer_feedback: str = '',
     ) -> str:
         """Build the prompt that requires a CLI-compatible operation plan."""
 
@@ -335,6 +395,28 @@ class LoopRunGenerationService:
             '"content":"..."}],"commit_message":"docs: add ideas"}. '
             f'\n\nTask:\n{input_text}\n\nOutput contract:\n'
             f'{json.dumps(output_contract)}\n\nRepository context:\n{repo_context}'
+            f'{reviewer_feedback}'
+        )
+
+    @staticmethod
+    def _reviewer_feedback(context: Mapping[str, object]) -> str:
+        """Format prior reviewer rejection feedback for a new iteration."""
+
+        review_result = context.get('review_result')
+        if not isinstance(review_result, Mapping) or review_result.get('approved') is True:
+            return ''
+        reviewers = review_result.get('reviewers')
+        if not isinstance(reviewers, list):
+            return ''
+        feedback = [
+            review.get('feedback')
+            for review in reviewers
+            if isinstance(review, Mapping) and isinstance(review.get('feedback'), str)
+        ]
+        return (
+            f'\n\nPrevious reviewer feedback to address:\n{json.dumps(feedback)}'
+            if feedback
+            else ''
         )
 
     @staticmethod

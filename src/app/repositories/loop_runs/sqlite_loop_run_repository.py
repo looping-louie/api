@@ -186,6 +186,7 @@ class SqliteLoopRunRepository:
         next_continuation_token: str | None,
         execution_context: dict[str, object],
         updated_at: datetime,
+        iteration: int | None = None,
     ) -> LoopRunDocument:
         """Persist one checkpoint transition with token and replay protection."""
 
@@ -234,6 +235,7 @@ class SqliteLoopRunRepository:
                     status=status,
                     state=state,
                     next_action=next_action,
+                    iteration=iteration if iteration is not None else int(row['iteration']),
                     token_revision=revision + 1,
                     continuation_token=next_continuation_token,
                     execution_context=execution_context,
@@ -242,7 +244,7 @@ class SqliteLoopRunRepository:
                 await connection.execute(
                     '''
                     UPDATE loop_runs
-                    SET status = ?, state = ?, next_action = ?, token_revision = ?,
+                    SET status = ?, state = ?, next_action = ?, iteration = ?, token_revision = ?,
                         continuation_token = ?, execution_context_json = ?,
                         updated_at = ?
                     WHERE workspace_id = ? AND loop_id = ? AND id = ?
@@ -251,6 +253,7 @@ class SqliteLoopRunRepository:
                         status,
                         updated.state,
                         updated.next_action,
+                        updated.iteration,
                         updated.token_revision,
                         updated.continuation_token,
                         json.dumps(execution_context, sort_keys=True),
@@ -330,6 +333,7 @@ class SqliteLoopRunRepository:
         status: str | None = None,
         state: str | None = None,
         next_action: str | None = None,
+        iteration: int | None = None,
         token_revision: int | None = None,
         continuation_token: str | None | object = ...,
         execution_context: dict[str, object] | None = None,
@@ -345,7 +349,7 @@ class SqliteLoopRunRepository:
             status=status or str(row['status']),
             state=state or str(row['state']),
             next_action=next_action or str(row['next_action']),
-            iteration=int(row['iteration']),
+            iteration=iteration if iteration is not None else int(row['iteration']),
             token_revision=(
                 token_revision
                 if token_revision is not None

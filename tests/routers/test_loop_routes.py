@@ -161,6 +161,7 @@ class FakeLoopRunRepository:
         next_continuation_token: str | None,
         execution_context: dict[str, object],
         updated_at: datetime,
+        iteration: int | None = None,
     ) -> LoopRunDocument:
         """Persist one generic checkpoint transition for route contracts."""
 
@@ -184,7 +185,7 @@ class FakeLoopRunRepository:
             status=status,
             state=state,
             next_action=next_action,
-            iteration=document.iteration,
+            iteration=iteration if iteration is not None else document.iteration,
             token_revision=document.token_revision + 1,
             continuation_token=next_continuation_token,
             loop_snapshot=document.loop_snapshot,
@@ -201,10 +202,11 @@ class FakeLoopRunRepository:
 class FakeModelExecutionService:
     """Return deterministic direct and roundtable model responses."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, review_approved: bool = True) -> None:
         """Store prompts received during a route test."""
 
         self.prompts: list[str] = []
+        self.review_approved = review_approved
 
     async def execute(
         self,
@@ -227,6 +229,12 @@ class FakeModelExecutionService:
             text = '{"proposal":"candidate solution"}'
         elif 'JSON object critiquing these candidate proposals' in prompt:
             text = '{"critique":"address the main risk"}'
+        elif 'approved boolean and feedback string' in prompt:
+            text = (
+                '{"approved":true,"feedback":"Approved."}'
+                if self.review_approved
+                else '{"approved":false,"feedback":"Add missing detail."}'
+            )
         else:
             text = (
                 '{"operations":[{"operation":"create",'
@@ -716,6 +724,104 @@ def test_roundtable_loop_aggregates_proposals_and_critique(
         prompt.startswith('Persona instructions:\nUse this assigned persona.')
         for prompt in model_execution_service.prompts
     )
+
+
+def test_roundtable_loop_reviews_applied_changes_before_commit(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A reviewer-configured loop requires post-apply approval before commit."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+        model_execution_service=FakeModelExecutionService(),
+    )
+    loop_id = client.post('/api/v1/loops', json=roundtable_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Create an output file.'},
+    ).json()
+    snapshot = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=_snapshot_payload(created['continuation_token']),
+    ).json()
+    applied = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': snapshot['continuation_token'],
+            'idempotency_key': 'apply-1',
+            'result': {'action': 'apply_operations', 'applied': True},
+        },
+    ).json()
+    reviewed = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': applied['continuation_token'],
+            'idempotency_key': 'review-1',
+            'result': {
+                'action': 'submit_review_input',
+                'final_diff': 'diff --git a/output.txt b/output.txt',
+                'changed_file_contents': {'output.txt': 'created'},
+            },
+        },
+    ).json()
+
+    assert applied['next_action'] == 'submit_review_input'
+    assert reviewed['state'] == 'awaiting_commit'
+    assert reviewed['next_action'] == 'commit_if_allowed'
+
+
+def test_roundtable_loop_retries_after_reviewer_rejection(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """A rejected review starts the next persisted loop iteration."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+        model_execution_service=FakeModelExecutionService(review_approved=False),
+    )
+    payload = roundtable_payload()
+    payload['stop_conditions']['max_iterations'] = 3
+    loop_id = client.post('/api/v1/loops', json=payload).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Create an output file.'},
+    ).json()
+    snapshot = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=_snapshot_payload(created['continuation_token']),
+    ).json()
+    applied = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': snapshot['continuation_token'],
+            'idempotency_key': 'apply-1',
+            'result': {'action': 'apply_operations', 'applied': True},
+        },
+    ).json()
+    reviewed = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': applied['continuation_token'],
+            'idempotency_key': 'review-1',
+            'result': {
+                'action': 'submit_review_input',
+                'final_diff': 'diff --git a/output.txt b/output.txt',
+                'changed_file_contents': {'output.txt': 'created'},
+            },
+        },
+    ).json()
+
+    assert reviewed['state'] == 'awaiting_snapshot'
+    assert reviewed['next_action'] == 'collect_snapshot'
+    assert reviewed['iteration'] == 2
 
 
 def test_loop_run_returns_structured_model_execution_error(

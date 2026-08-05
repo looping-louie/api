@@ -74,6 +74,7 @@ class LoopRunRepository(Protocol):
         next_continuation_token: str | None,
         execution_context: dict[str, object],
         updated_at: datetime,
+        iteration: int | None = None,
     ) -> LoopRunDocument:
         """Persist one validated checkpoint transition or return its replay."""
         raise NotImplementedError
