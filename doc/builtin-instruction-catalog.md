@@ -63,7 +63,7 @@ In this case, the design is:
 Git-tracked manifest + Markdown
         -> validate and synchronize at startup
 SQL runtime projection
-        -> API, availability resolution, task execution
+        -> API, availability resolution, loop-run execution
 ```
 
 The important distinction is that the files are still the authored source of truth for builtins, while SQL is the operational source of truth once the application is running.

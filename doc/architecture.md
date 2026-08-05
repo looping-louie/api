@@ -32,9 +32,6 @@ controllers/
 services/task_checkpoint/
     Loop operation contract parsing
 
-services/llm_service/
-    Provider-specific model integrations
-
 catalogs/
     Curated providers, models, loops and builtin instructions
 
@@ -59,13 +56,13 @@ utils/
 ## High-Level Architecture
 
 ```text
-                tasks.json
+              Loop definition
                      │
                      ▼
-            Task Checkpoint Controller
+          Persisted loop run
                      │
                      ▼
-        Planner + Generator
+       Generator and reviewers
                      │
                      ▼
     Operation Contract (JSON operations)
@@ -74,7 +71,7 @@ utils/
            CLI Executes Locally
                      │
                      ▼
-             Reviewer Skills
+             Reviewer agents
           │
           ▼
       Aggregator
@@ -85,29 +82,24 @@ utils/
       ▼        ▼
  Retry      Commit allowed
              (CLI commits)
-             Next task
+             Next workflow item
 ```
 
 ---
 
 ## Execution Lifecycle
 
-A single checkpoint task execution follows these steps.
+A persisted loop run follows these steps.
 
-### 1. Start run and persist API artefacts
+### 1. Create and persist a loop run
 
-Task execution artefacts (request, prompts, responses, operations,
-review summaries, metrics) are persisted under the API runtime root:
-
-```text
-runtime/executions/<run_id>/
-```
+The API persists the loop snapshot, run status, checkpoint action, iteration,
+and continuation revision in SQLite.
 
 The run also persists a versioned `instructions-snapshot.json`. It contains
-every selectable skill and persona presented to the planner: stable and
-runtime IDs, type, origin, instruction version, catalog version, effective
-content and relevant metadata. The same in-memory snapshot is used for the
-entire run; execution services do not resolve those definitions again.
+the instruction definitions available when the run starts. The same in-memory
+snapshot is used for the entire run; execution services do not resolve those
+definitions again.
 
 ---
 
@@ -121,7 +113,7 @@ API uses that context to build iteration prompts.
 
 ### 3. Build prompts
 
-The Prompt Builder creates:
+The loop-run generation service creates:
 
 - initial generator prompt
 - retry generator prompts
@@ -177,14 +169,14 @@ API uses this reviewer input as the decision source of truth.
 
 ### 7. Reviewer execution
 
-Each configured skill becomes one independent reviewer.
+Each configured reviewer agent produces one independent review.
 
 Reviewers receive:
 
 - original task
 - git diff
 - changed file contents
-- skill definition
+- persona and skill instructions
 
 Reviewers never receive the entire repository snapshot.
 
@@ -192,7 +184,7 @@ Reviewers never receive the entire repository snapshot.
 
 ### 8. Aggregate review results
 
-Every reviewer returns:
+Every reviewer agent returns:
 
 - approved
 - feedback
@@ -300,26 +292,26 @@ maintenance procedure.
 
 Workspace lifecycle is CLI-owned.
 
-API only persists orchestration artefacts under `runtime/executions/<run_id>/`.
+API persists loop-run orchestration state in SQLite.
 
 ---
 
-## Task Lifecycle
+## Workflow Lifecycle
 
-Multi-task backlog orchestration is CLI-owned.
+Multi-step workflow orchestration is CLI-owned.
 
 CLI workflow (conceptual):
 
 ```text
-tasks.json
+selected loop and input
 
 ↓
 
-first pending task
+create persisted loop run
 
 ↓
 
-create a persisted loop run then iterate its `/continue` checkpoint
+iterate its `/continue` checkpoint
 
 ↓
 
@@ -331,7 +323,7 @@ commit
 
 ↓
 
-mark done
+record workflow progress
 
 ↓
 
