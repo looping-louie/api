@@ -15,10 +15,8 @@ The hierarchy is intentionally split into:
 """
 
 from src.app.schemas.project import ProjectProfile, ProjectProfileMarkers
-from src.app.schemas.metrics import ModelMetrics
 
 __all__ = [
-    'ModelMetrics',
     'ProjectProfile',
     'ProjectProfileMarkers',
 ]
