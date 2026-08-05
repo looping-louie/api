@@ -14,30 +14,11 @@ The hierarchy is intentionally split into:
 - run response
 """
 
-from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.project import ProjectProfile, ProjectProfileMarkers
 from src.app.schemas.metrics import ModelMetrics
-from src.app.schemas.reviewer import (
-    ReviewerAssignment,
-    ReviewerIssue,
-    ReviewerMetrics,
-    ReviewerResult,
-)
-from src.app.schemas.plan import ExecutionPlan, ProjectPhase
-from src.app.schemas.harness import (
-    RunRequest as RunHarnessRequest,
-)
 
 __all__ = [
-    'ExecutionPlan',
-    'GeneratorAssignment',
     'ModelMetrics',
     'ProjectProfile',
     'ProjectProfileMarkers',
-    'ProjectPhase',
-    'ReviewerAssignment',
-    'ReviewerIssue',
-    'ReviewerMetrics',
-    'ReviewerResult',
-    'RunHarnessRequest',
 ]
