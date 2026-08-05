@@ -133,6 +133,16 @@ make run
 The Makefile always starts Uvicorn with the virtual environment interpreter and
 exports the values from `.env.local`.
 
+Start the development server from a normal VS Code integrated terminal, not a
+sandboxed agent terminal. Sandboxed terminal environments can create empty
+home-configuration placeholders such as `.bashrc`, `.gitconfig`, or `.vscode`
+in the current repository. These files are not created or used by Looping
+Louie and should be removed if they appear.
+
+The local SQLite database at `.looping-louie/data/looping-louie.db` is an
+intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in
+`.env.local` to store it outside the repository when preferred.
+
 The API is available at:
 
 ```text

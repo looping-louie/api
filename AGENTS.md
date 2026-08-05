@@ -159,6 +159,19 @@ During implementation:
 3. Keep production code, tests, schemas, and documentation synchronized.
 4. Avoid unrelated formatting, renames, cleanup, and import reordering.
 
+### Development Servers and Runtime Artifacts
+
+- MUST NOT start `make dev`, `make run`, Uvicorn, or another long-lived API
+  server through a sandboxed agent terminal. Sandboxed environments can create
+  empty home-configuration placeholders such as `.bashrc`, `.gitconfig`, or
+  `.vscode` in the repository root.
+- MUST ask the user to start long-lived servers from a normal integrated
+  terminal, or reuse an already-running local server for API/CLI validation.
+- MUST remove only verified empty sandbox placeholders if they appear; do not
+  add them to `.gitignore` because that hides the underlying execution issue.
+- `.looping-louie/data/looping-louie.db` is the intentional ignored local
+  SQLite runtime database. It is distinct from the unwanted placeholders.
+
 Before declaring the work complete:
 
 1. Review the diff for accidental scope expansion.
