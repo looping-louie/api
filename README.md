@@ -74,13 +74,8 @@ python-dotenv
 
 ## Configuration
 
-After installation, populate the provider API keys required by the execution
-runtime in `.env.local`:
-
-```text
-TOGETHER_API_KEY=
-OPENAI_API_KEY=
-```
+After installation, configure provider credentials through the versioned
+provider API. Credentials are encrypted before SQLite persistence.
 
 The installer also creates these local provider settings:
 
