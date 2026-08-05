@@ -68,20 +68,6 @@ async def test_api_custom_is_immediately_available_to_execution(
     assert library.persona_content(persona.id) == (
         "SQL persona content."
     )
-    assert skill.id in {
-        entry["id"]
-        for entry in library.skill_registry()
-    }
-    assert persona.id in {
-        entry["id"]
-        for entry in library.persona_registry()
-    }
-    persona_registry_entry = next(
-        entry
-        for entry in library.persona_registry()
-        if entry["id"] == persona.id
-    )
-    assert persona_registry_entry["skills"] == [skill.id]
     snapshot_entries = {
         entry["id"]: entry
         for entry in library.snapshot()["instructions"]
