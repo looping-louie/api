@@ -32,6 +32,30 @@ def test_parse_file_operations_normalizes_model_file_entries() -> None:
     ]
 
 
+def test_parse_file_operations_normalizes_single_replace_text_aliases() -> None:
+    """A standalone model operation uses the CLI replace-text field names."""
+
+    operations = parse_file_operations(
+        json.dumps(
+            {
+                'operation': 'replace_text',
+                'path': 'index.html',
+                'old_text': 'Old text',
+                'new_text': 'New text',
+            },
+        ),
+    )
+
+    assert operations == [
+        {
+            'operation': 'replace_text',
+            'path': 'index.html',
+            'old_content': 'Old text',
+            'new_content': 'New text',
+        },
+    ]
+
+
 def test_parse_file_operations_rejects_empty_operations() -> None:
     """A successful generator plan must request at least one file change."""
 

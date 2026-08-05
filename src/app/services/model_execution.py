@@ -32,6 +32,10 @@ class ModelExecutionResponseError(ModelExecutionError):
     """Raised when a provider response cannot be normalized."""
 
 
+class ModelOutputValidationError(ModelExecutionError):
+    """Raised when a successful model response violates an output contract."""
+
+
 @dataclass(frozen=True, slots=True)
 class ModelExecutionResult:
     """Normalized response from one configured catalog model."""

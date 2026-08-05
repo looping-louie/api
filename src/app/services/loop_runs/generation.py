@@ -14,12 +14,39 @@ from src.app.services.loops.types import LoopValidationError
 from src.app.services.model_execution import (
     ModelExecutionError,
     ModelExecutionService,
+    ModelOutputValidationError,
 )
 from src.app.services.task_checkpoint import parse_file_operations
 
 
 LOGGER = logging.getLogger(__name__)
 MAX_JSON_RESPONSE_ATTEMPTS = 2
+
+
+def _json_object_payload(text: str) -> object:
+    """Decode JSON output, accepting a fenced or prose-wrapped model object."""
+
+    candidate = text.strip()
+    lines = candidate.splitlines()
+    if (
+        len(lines) >= 2
+        and lines[0].strip().casefold() in {'```', '```json'}
+        and lines[-1].strip() == '```'
+    ):
+        candidate = '\n'.join(lines[1:-1]).strip()
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError as error:
+        decoder = json.JSONDecoder()
+        for index, character in enumerate(candidate):
+            if character != '{':
+                continue
+            try:
+                payload, _ = decoder.raw_decode(candidate[index:])
+            except json.JSONDecodeError:
+                continue
+            return payload
+        raise error
 
 
 class LoopRunGenerationService:
@@ -320,7 +347,7 @@ class LoopRunGenerationService:
                     f'Loop {role} agent execution failed.'
                 ) from error
             try:
-                payload = json.loads(result.text)
+                payload = _json_object_payload(result.text)
             except json.JSONDecodeError as error:
                 if attempt + 1 == MAX_JSON_RESPONSE_ATTEMPTS:
                     LOGGER.warning(
@@ -328,7 +355,7 @@ class LoopRunGenerationService:
                         role,
                         model_id,
                     )
-                    raise ModelExecutionError(
+                    raise ModelOutputValidationError(
                         f'Loop {role} agent returned invalid JSON.'
                     ) from error
                 retry_prompt = (
@@ -344,7 +371,7 @@ class LoopRunGenerationService:
                 role,
                 model_id,
             )
-            raise ModelExecutionError(
+            raise ModelOutputValidationError(
                 f'Loop {role} agent response must be a JSON object.'
             )
 
@@ -457,12 +484,23 @@ class LoopRunGenerationService:
                 require_non_empty=True,
             )
         except ValueError as error:
-            raise ModelExecutionError(
+            LOGGER.warning(
+                'Loop agent returned an invalid operation plan: keys=%s error=%s',
+                sorted(generated),
+                error,
+            )
+            raise ModelOutputValidationError(
                 'Loop agent returned an invalid operation plan.'
             ) from error
         commit_message = generated.get('commit_message')
         if not isinstance(commit_message, str) or not commit_message.strip():
-            raise ModelExecutionError(
+            LOGGER.warning(
+                'Loop agent returned an operation plan without a commit message: '
+                'keys=%s commit_message_type=%s',
+                sorted(generated),
+                type(commit_message).__name__,
+            )
+            raise ModelOutputValidationError(
                 'Loop agent returned an operation plan without a commit message.'
             )
         return {

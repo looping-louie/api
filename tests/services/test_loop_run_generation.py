@@ -5,7 +5,10 @@ from __future__ import annotations
 import pytest
 
 from src.app.catalogs.providers import ProviderId
-from src.app.services.loop_runs.generation import LoopRunGenerationService
+from src.app.services.loop_runs.generation import (
+    LoopRunGenerationService,
+    _json_object_payload,
+)
 from src.app.services.model_execution import ModelExecutionResult
 
 
@@ -81,6 +84,84 @@ async def test_generation_retries_one_invalid_json_response() -> None:
     ]
     assert len(model_execution_service.prompts) == 2
     assert 'Return a complete JSON object only' in model_execution_service.prompts[1]
+
+
+class FencedJsonModelExecutionService:
+    """Return an otherwise valid operation plan in a Markdown JSON fence."""
+
+    def __init__(self) -> None:
+        """Track the single prompt supplied to the executor."""
+
+        self.prompts: list[str] = []
+
+    async def execute(
+        self,
+        *,
+        prompt: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return one fenced operation plan."""
+
+        self.prompts.append(prompt)
+        return ModelExecutionResult(
+            text=(
+                '```json\n'
+                '{"operations":[{"operation":"create","path":"output.txt",'
+                '"content":"created"}],"commit_message":"feat: create output"}'
+                '\n```'
+            ),
+            provider_id=ProviderId.TOGETHER,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_generation_accepts_a_markdown_fenced_json_response() -> None:
+    """A valid operation plan in one JSON fence does not require a retry."""
+
+    model_execution_service = FencedJsonModelExecutionService()
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+
+    context = await service.generate_context(
+        loop_snapshot={
+            'flow': 'direct',
+            'agents': [
+                {
+                    'id': 'agent-1',
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+            'output_contract': {},
+        },
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert context['runtime_artifacts']['operations'][0]['path'] == 'output.txt'
+    assert len(model_execution_service.prompts) == 1
+
+
+def test_json_object_payload_accepts_prose_wrapped_json() -> None:
+    """A model explanation around one object preserves the operation plan."""
+
+    payload = _json_object_payload(
+        'Here is the requested operation plan:\n'
+        '{"operations":[],"commit_message":"docs: update"}\n'
+        'This plan is ready to apply.'
+    )
+
+    assert payload == {'operations': [], 'commit_message': 'docs: update'}
 
 
 class EmptyThenValidPlanExecutionService:

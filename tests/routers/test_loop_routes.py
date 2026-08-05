@@ -286,6 +286,25 @@ class FailingModelExecutionService:
         raise ModelExecutionError('Model provider returned HTTP 503.')
 
 
+class InvalidOutputModelExecutionService:
+    """Return malformed model content for HTTP error-contract coverage."""
+
+    async def execute(
+        self,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Simulate a successful completion that violates the JSON contract."""
+
+        return ModelExecutionResult(
+            text='The requested plan is ready.',
+            provider_id=ProviderId.OPENAI,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
 def build_app(
     *,
     controller: LoopController,
@@ -849,6 +868,33 @@ def test_loop_run_returns_structured_model_execution_error(
 
     assert response.status_code == 502
     assert response.json()['error']['code'] == 'model_execution_error'
+
+
+def test_loop_run_returns_structured_model_output_error(
+    tenant_service: TenantService,
+    reference_repository: FakeReferenceRepository,
+    reference_resolver: ReferenceResolver,
+) -> None:
+    """Malformed completion content is distinct from a provider failure."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+        reference_resolver=reference_resolver,
+        model_execution_service=InvalidOutputModelExecutionService(),
+    )
+    loop_id = client.post('/api/v1/loops', json=direct_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/loops/{loop_id}/runs',
+        json={'input': 'Create an output file.'},
+    ).json()
+    response = client.post(
+        f'/api/v1/loops/{loop_id}/runs/{created["id"]}/continue',
+        json=_snapshot_payload(created['continuation_token']),
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'model_output_error'
 
 
 def _snapshot_payload(continuation_token: str) -> dict[str, object]:

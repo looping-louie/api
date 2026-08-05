@@ -22,6 +22,11 @@ def parse_file_operations(
         data = json.loads(cleaned)
     except json.JSONDecodeError as exc:
         raise ValueError(f'Invalid JSON from generator: {exc}') from exc
+    if not isinstance(data, dict):
+        raise ValueError('Generator JSON must be an object')
+
+    if 'operation' in data:
+        data = {'operations': [data]}
 
     operations = data.get('operations')
 
@@ -34,9 +39,28 @@ def parse_file_operations(
         raise ValueError('Generator JSON must contain at least one operation')
 
     for operation in operations:
+        _normalize_replace_text_aliases(operation)
         _validate_operation(operation)
 
     return operations
+
+
+def _normalize_replace_text_aliases(operation: object) -> None:
+    """Map common model aliases to the CLI replace-text operation contract."""
+
+    if not isinstance(operation, dict) or operation.get('operation') != 'replace_text':
+        return
+
+    for alias, field_name in (
+        ('old_text', 'old_content'),
+        ('new_text', 'new_content'),
+    ):
+        if alias not in operation:
+            continue
+        alias_value = operation.pop(alias)
+        if field_name in operation and operation[field_name] != alias_value:
+            raise ValueError(f'{alias} conflicts with {field_name}')
+        operation[field_name] = alias_value
 
 
 def _file_entries_as_create_operations(
