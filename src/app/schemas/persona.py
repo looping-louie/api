@@ -7,7 +7,7 @@ from typing import Any, Self
 
 from pydantic import Field, StrictBool, model_validator
 
-from .common import (
+from .shared import (
     InstructionCapabilitiesResponse,
     ListResponse,
     NonEmptyString,

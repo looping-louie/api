@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from src.app.catalogs.providers import ProviderCatalogEntry
-from src.app.models.providers import ProviderCredential, ProviderState
+from src.app.models.provider import ProviderCredential, ProviderState
 from src.app.repositories.providers.provider_repository import (
     ProviderRepository,
 )

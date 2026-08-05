@@ -11,9 +11,10 @@ from src.app.main import app
 
 
 HTTP_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
-EXCLUDED_PATH_PREFIXES = ("/api/v1/tasks",)
+EXCLUDED_PATH_PREFIXES: tuple[str, ...] = ()
 PATH_PARAMETERS = {
     "LOOP_ID": "loop_id",
+    "LOOP_RUN_ID": "run_id",
     "model_id": "model_id",
     "PERSONA_ID": "persona_id",
     "PIPELINE_ID": "pipeline_id",

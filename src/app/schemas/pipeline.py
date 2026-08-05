@@ -7,7 +7,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from src.app.schemas.common import (
+from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
     PositiveInteger,

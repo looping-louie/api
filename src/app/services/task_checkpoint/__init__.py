@@ -1,24 +1,20 @@
-"""Helpers for checkpoint-based task execution contracts."""
+"""Helpers for persisted loop-run operation contracts."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Mapping
 
-
-EXECUTION_RUNS_DIR = Path(__file__).resolve().parents[4] / 'runtime' / 'executions'
 
 ALLOWED_OPERATIONS = {'create', 'replace', 'replace_text', 'delete'}
 
 
-def build_execution_run_path(run_id: str) -> Path:
-    """Resolve and create the API-owned execution directory for one run."""
-    run_path = EXECUTION_RUNS_DIR / run_id
-    run_path.mkdir(parents=True, exist_ok=False)
-    return run_path
-
-
-def parse_file_operations(raw: str) -> list[dict]:
+def parse_file_operations(
+    raw: str,
+    *,
+    require_non_empty: bool = False,
+) -> list[dict]:
     """Parse and validate generator output operations."""
     cleaned = _extract_json_object(raw)
 
@@ -26,15 +22,71 @@ def parse_file_operations(raw: str) -> list[dict]:
         data = json.loads(cleaned)
     except json.JSONDecodeError as exc:
         raise ValueError(f'Invalid JSON from generator: {exc}') from exc
+    if not isinstance(data, dict):
+        raise ValueError('Generator JSON must be an object')
+
+    if 'operation' in data:
+        data = {'operations': [data]}
 
     operations = data.get('operations')
 
+    if operations is None:
+        operations = _file_entries_as_create_operations(data)
+
     if not isinstance(operations, list):
         raise ValueError('Generator JSON must contain an operations list')
+    if require_non_empty and not operations:
+        raise ValueError('Generator JSON must contain at least one operation')
 
     for operation in operations:
+        _normalize_replace_text_aliases(operation)
         _validate_operation(operation)
 
+    return operations
+
+
+def _normalize_replace_text_aliases(operation: object) -> None:
+    """Map common model aliases to the CLI replace-text operation contract."""
+
+    if not isinstance(operation, dict) or operation.get('operation') != 'replace_text':
+        return
+
+    for alias, field_name in (
+        ('old_text', 'old_content'),
+        ('new_text', 'new_content'),
+    ):
+        if alias not in operation:
+            continue
+        alias_value = operation.pop(alias)
+        if field_name in operation and operation[field_name] != alias_value:
+            raise ValueError(f'{alias} conflicts with {field_name}')
+        operation[field_name] = alias_value
+
+
+def _file_entries_as_create_operations(
+    data: Mapping[str, object],
+) -> list[dict[str, str]] | None:
+    """Normalize the observed model file-list response into create operations."""
+
+    files = data.get('files')
+    if not isinstance(files, list):
+        return None
+
+    operations: list[dict[str, str]] = []
+    for file_entry in files:
+        if not isinstance(file_entry, Mapping):
+            return None
+        name = file_entry.get('name')
+        content = file_entry.get('content')
+        if not isinstance(name, str) or not isinstance(content, str):
+            return None
+        operations.append(
+            {
+                'operation': 'create',
+                'path': name,
+                'content': content,
+            }
+        )
     return operations
 
 

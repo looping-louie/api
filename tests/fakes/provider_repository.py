@@ -3,7 +3,7 @@
 from copy import deepcopy
 from datetime import datetime
 
-from src.app.models.providers import ProviderCredential
+from src.app.models.provider import ProviderCredential
 
 
 class FakeProviderRepository:

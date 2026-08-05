@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
 from src.app.controllers.loop import LoopController
+from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
@@ -36,6 +37,9 @@ EXPECTED_TABLES = {
     "loop_agents",
     "loop_catalog_installations",
     "loop_changelog_entries",
+    "loop_runs",
+    "loop_run_checkpoints",
+    "loop_run_idempotency",
     "pipelines",
     "pipeline_steps",
     "pipeline_changelog_entries",
@@ -106,6 +110,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
             LoopController,
         )
         assert isinstance(
+            app.state.loop_run_controller,
+            LoopRunController,
+        )
+        assert isinstance(
             app.state.pipeline_controller,
             PipelineController,
         )
@@ -120,6 +128,12 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.database,
             SqliteDatabase,
+        )
+
+    with TestClient(app):
+        assert isinstance(
+            app.state.loop_run_controller,
+            LoopRunController,
         )
 
     assert database_path.exists() is True
@@ -168,6 +182,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0007_persona_skills",
         "0008_loop_catalog_installations",
         "0009_pipelines",
+        "0010_loop_runs",
+        "0011_loop_run_checkpoints",
+            "0012_expand_loop_run_states",
+            "0013_repair_loop_run_idempotency",
     ]
     assert [str(row[0]) for row in loop_rows] == [
         "plan implementation",

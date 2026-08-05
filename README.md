@@ -74,13 +74,8 @@ python-dotenv
 
 ## Configuration
 
-After installation, populate the provider API keys required by the execution
-runtime in `.env.local`:
-
-```text
-TOGETHER_API_KEY=
-OPENAI_API_KEY=
-```
+After installation, configure provider credentials through the versioned
+provider API. Credentials are encrypted before SQLite persistence.
 
 The installer also creates these local provider settings:
 
@@ -138,6 +133,16 @@ make run
 The Makefile always starts Uvicorn with the virtual environment interpreter and
 exports the values from `.env.local`.
 
+Start the development server from a normal VS Code integrated terminal, not a
+sandboxed agent terminal. Sandboxed terminal environments can create empty
+home-configuration placeholders such as `.bashrc`, `.gitconfig`, or `.vscode`
+in the current repository. These files are not created or used by Looping
+Louie and should be removed if they appear.
+
+The local SQLite database at `.looping-louie/data/looping-louie.db` is an
+intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in
+`.env.local` to store it outside the repository when preferred.
+
 The API is available at:
 
 ```text
@@ -158,10 +163,10 @@ Looping Louie currently exposes these endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/api/v1/tasks/start` | Start one checkpoint-based task execution. |
-| `/api/v1/tasks/continue` | Advance one checkpoint transition. |
-| `/api/v1/tasks/{run_id}` | Read latest checkpoint state for a task run. |
 | `/api/v1/loops` | Manage persisted multi-agent loop definitions. |
+| `/api/v1/loops/{loop_id}/runs` | Start one persisted loop run. |
+| `/api/v1/loops/{loop_id}/runs/{run_id}` | Read one persisted loop run. |
+| `/api/v1/loops/{loop_id}/runs/{run_id}/continue` | Advance one loop-run checkpoint. |
 
 See the complete API documentation:
 
@@ -178,6 +183,19 @@ Before running Looping Louie against a target repository:
 
 Looping Louie refuses to execute against a dirty repository to keep runs
 deterministic.
+
+---
+
+## SQLite Migrations
+
+SQLite migration files are immutable once committed. Do not edit an existing
+migration for any reason, including whitespace or terminal-newline changes.
+Create a new forward migration instead.
+
+Every new SQLite migration must be added to
+`tests/integration/test_sqlite_migration_checksums.py`. That test protects the
+exact bytes of committed migrations and must pass before the migration is
+committed.
 
 ---
 
@@ -198,16 +216,16 @@ Project documentation is organised under `doc/`.
 ## High-Level Execution Flow
 
 ```
-task request
+loop input
       │
       ▼
-/api/v1/tasks/start
+/api/v1/loops/{loop_id}/runs
       │
       ▼
 CLI builds snapshot and runs local action
       │
       ▼
-/api/v1/tasks/continue
+/api/v1/loops/{loop_id}/runs/{run_id}/continue
       │
       ▼
 Planner and reviewer services
@@ -244,7 +262,7 @@ Looping Louie is currently an MVP focused on validating the execution runtime.
 
 The current implementation supports:
 
-- checkpoint task execution contracts;
+- persisted loop-run checkpoint contracts;
 - multi-skill review;
 - automatic commits;
 - execution traces;

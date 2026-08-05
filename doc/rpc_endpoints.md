@@ -79,14 +79,6 @@ prefijo `/api/v1`.
 | `DELETE` | `/loops/delete/{loop_id}` | Elimina el loop sin borrar runs históricos. |
 | `POST` | `/loops/validate/{loop_id}` | Comprueba que council, roles y modelos son válidos. |
 
-## Tasks
-
-| Método | Ruta | Descripción |
-| ------ | ---- | ----------- |
-| `POST` | `/api/v1/tasks/start` | Inicia una ejecución checkpoint de una tarea. |
-| `POST` | `/api/v1/tasks/continue` | Avanza una transición checkpoint. |
-| `GET` | `/api/v1/tasks/{run_id}` | Devuelve el estado checkpoint más reciente. |
-
 ## Runs
 
 | Método | Ruta | Descripción |

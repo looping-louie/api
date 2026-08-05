@@ -8,7 +8,7 @@ from src.app.catalogs.providers import (
     ProviderCatalogEntry,
     ProviderId,
 )
-from src.app.models.providers import ProviderCredential
+from src.app.models.provider import ProviderCredential
 from src.app.services.models.availability import ProviderConnectionState
 
 from .provider_repository import ProviderRepository

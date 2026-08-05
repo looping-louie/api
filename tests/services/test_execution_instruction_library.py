@@ -3,7 +3,6 @@ import pytest
 from src.app.services.execution_instruction_library import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instructions import build_assignment_instructions
 from src.app.services.personas.service import (
     PersonaCreate,
     PersonaService,
@@ -68,20 +67,6 @@ async def test_api_custom_is_immediately_available_to_execution(
     assert library.persona_content(persona.id) == (
         "SQL persona content."
     )
-    assert skill.id in {
-        entry["id"]
-        for entry in library.skill_registry()
-    }
-    assert persona.id in {
-        entry["id"]
-        for entry in library.persona_registry()
-    }
-    persona_registry_entry = next(
-        entry
-        for entry in library.persona_registry()
-        if entry["id"] == persona.id
-    )
-    assert persona_registry_entry["skills"] == [skill.id]
     snapshot_entries = {
         entry["id"]: entry
         for entry in library.snapshot()["instructions"]
@@ -161,20 +146,3 @@ async def test_fresh_execution_read_reflects_sql_update(
     assert after_snapshot[skill.id]["content"] == (
         "SQL content after update."
     )
-
-
-def test_assignment_builder_only_uses_resolved_content() -> None:
-    prompt = build_assignment_instructions(
-        role="reviewer",
-        persona_content="Resolved persona from SQL.",
-        skill_contents=[
-            "Resolved skill one.",
-            "Resolved skill two.",
-        ],
-        focus="Review the result.",
-    )
-
-    assert "Resolved persona from SQL." in prompt
-    assert "Resolved skill one." in prompt
-    assert "Resolved skill two." in prompt
-    assert "Review the result." in prompt

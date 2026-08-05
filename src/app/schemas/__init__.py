@@ -14,46 +14,9 @@ The hierarchy is intentionally split into:
 - run response
 """
 
-from src.app.schemas.generator import GeneratorAssignment
 from src.app.schemas.project import ProjectProfile, ProjectProfileMarkers
-from src.app.schemas.metrics import ModelMetrics
-from src.app.schemas.reviewer import (
-    ReviewerAssignment,
-    ReviewerIssue,
-    ReviewerMetrics,
-    ReviewerResult,
-)
-from src.app.schemas.plan import ExecutionPlan, ProjectPhase
-from src.app.schemas.harness import (
-    RunRequest as RunHarnessRequest,
-)
-from src.app.schemas.task import (
-    CheckpointResponse as TaskCheckpointResponse,
-    ContinueActionResult as TaskContinueActionResult,
-    ContinueRequest as TaskContinueRequest,
-    ContinueResponse as TaskContinueResponse,
-    GetResponse as GetTaskResponse,
-    StartRequest as TaskStartRequest,
-    StartResponse as TaskStartResponse,
-)
 
 __all__ = [
-    'ExecutionPlan',
-    'GeneratorAssignment',
-    'ModelMetrics',
     'ProjectProfile',
     'ProjectProfileMarkers',
-    'ProjectPhase',
-    'ReviewerAssignment',
-    'ReviewerIssue',
-    'ReviewerMetrics',
-    'ReviewerResult',
-    'GetTaskResponse',
-    'RunHarnessRequest',
-    'TaskCheckpointResponse',
-    'TaskContinueActionResult',
-    'TaskContinueRequest',
-    'TaskContinueResponse',
-    'TaskStartRequest',
-    'TaskStartResponse',
 ]

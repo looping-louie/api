@@ -104,6 +104,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
                 provider_model_id="deepseek-ai/DeepSeek-V4-Pro",
                 endpoint=ModelEndpoint.CHAT_COMPLETIONS,
                 context_window=512_000,
+                max_output_tokens=4096,
                 pricing=_pricing("1.74", "3.48", "0.20"),
             ),
         ),

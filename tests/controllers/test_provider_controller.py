@@ -3,7 +3,7 @@
 import pytest
 
 from src.app.controllers.provider import ProviderController
-from src.app.schemas.providers import ProviderPatchRequest
+from src.app.schemas.provider import ProviderPatchRequest
 from tests.fakes.provider_repository import FakeProviderRepository
 
 

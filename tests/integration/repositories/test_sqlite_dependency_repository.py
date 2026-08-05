@@ -1,5 +1,6 @@
 """Integration tests for loop persona dependency lookup."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -46,3 +47,28 @@ async def test_finds_persona_usage_from_loop_agents(
     assert usages[0].source == ResourceReference("loop", "loop-1")
     assert usages[0].relation == "persona"
     assert unrelated == []
+
+
+@pytest.mark.asyncio
+async def test_archived_loop_persona_usage_is_non_blocking(
+    sqlite_database_path: Path,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """Archived loop references remain visible without blocking cleanup."""
+
+    await create_workspace(workspace_id="workspace-1")
+    document = replace(loop_document(), status="archived")
+    await SqliteLoopRepository(sqlite_database_path).create(
+        document=document,
+        changelog_entry=entry(document, entry_id="entry-1"),
+    )
+
+    usages = await SqliteDependencyRepository(
+        sqlite_database_path,
+    ).find_usages(
+        workspace_id="workspace-1",
+        target=ResourceReference("persona", "persona-1"),
+    )
+
+    assert len(usages) == 1
+    assert usages[0].blocking is False

@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 
 from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
-from src.app.models.providers import ProviderCredential, ProviderState
+from src.app.models.provider import ProviderCredential, ProviderState
 
 from .errors import ProviderConfigurationError
 

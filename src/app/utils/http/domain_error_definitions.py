@@ -10,9 +10,21 @@ from src.app.services.loops.types import (
     LoopNotFoundError,
     LoopValidationError,
 )
+from src.app.services.loop_runs.service import (
+    LoopRunNotFoundError,
+    LoopRunUnavailableError,
+)
+from src.app.repositories.loop_runs.errors import (
+    LoopRunInvalidTransitionError,
+    LoopRunTokenConflictError,
+)
 from src.app.services.models.availability import (
     ModelNotFoundError,
     ModelValidationError,
+)
+from src.app.services.model_execution import (
+    ModelExecutionError,
+    ModelOutputValidationError,
 )
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
@@ -142,6 +154,22 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="loop_not_found",
         details_builder=_loop_details,
     ),
+    LoopRunNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="loop_run_not_found",
+    ),
+    LoopRunUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="loop_run_unavailable",
+    ),
+    LoopRunTokenConflictError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="loop_run_token_conflict",
+    ),
+    LoopRunInvalidTransitionError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code="loop_run_invalid_transition",
+    ),
     PipelineNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code="pipeline_not_found",
@@ -231,6 +259,16 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="model_validation_error",
         details_builder=_validation_details,
+    ),
+    ModelExecutionError: ErrorDefinition(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        code="model_execution_error",
+        public_message="The model provider could not complete the request.",
+    ),
+    ModelOutputValidationError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code="model_output_error",
+        public_message="The model response did not satisfy the required format.",
     ),
     UnknownProviderError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

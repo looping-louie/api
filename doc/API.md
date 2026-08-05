@@ -1,7 +1,7 @@
 # API
 
-Looping Louie API exposes task checkpoint endpoints plus a versioned API for
-managing the resources used by the execution runtime.
+Looping Louie API exposes persisted loop-run checkpoints plus a versioned API
+for managing the resources used by the execution runtime.
 
 The API owns planning, generation, and reviewer decisions.
 CLI owns local repository execution (filesystem, Git, workspace lifecycle).
@@ -12,15 +12,15 @@ CLI owns local repository execution (filesystem, Git, workspace lifecycle).
 - `/api/v1/skills/*` manages skill instructions.
 - `/api/v1/loops/*` manages stored multi-agent loop definitions.
 - `/api/v1/pipelines/*` manages ordered loop and human-gate definitions.
-- `/api/v1/tasks/start` starts one task run and returns the first checkpoint action.
-- `/api/v1/tasks/continue` advances one checkpoint transition.
-- `/api/v1/tasks/{run_id}` returns the latest checkpoint state for one run.
+- `/api/v1/loops/{loop_id}/runs` starts one persisted loop run.
+- `/api/v1/loops/{loop_id}/runs/{run_id}` returns one persisted loop run.
+- `/api/v1/loops/{loop_id}/runs/{run_id}/continue` advances one checkpoint.
 
 ---
 
 ## Versioned API conventions
 
-All task, provider, model, persona, skill, loop, and pipeline routes use the
+All provider, model, persona, skill, loop, and pipeline routes use the
 `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
@@ -466,31 +466,5 @@ Request schema failures use the standard API error envelope. Pipeline step
 discriminator failures use `unsupported_pipeline_step`, human-gate
 discriminator failures use `unsupported_human_gate_type`, and other invalid
 step structures use `invalid_pipeline_steps`.
-
----
-
-## POST /api/v1/tasks/start
-
-Starts checkpoint-based task execution.
-
-The API returns `status=in_progress` with `next_action=collect_snapshot` and
-an opaque `continuation_token`.
-
-## POST /api/v1/tasks/continue
-
-Advances one checkpoint transition for an existing task run.
-
-The CLI must send:
-
-- `run_id`
-- `continuation_token`
-- `idempotency_key`
-- `action_result`
-
-The API returns the next action or a terminal state.
-
-## GET /api/v1/tasks/{run_id}
-
-Returns the latest checkpoint state for one task run identifier.
 
 ---

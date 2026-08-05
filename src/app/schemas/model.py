@@ -12,7 +12,7 @@ from src.app.catalogs.models import (
 )
 from src.app.catalogs.providers import ProviderId
 
-from .common import (
+from .shared import (
     ListResponse,
     NonEmptyString,
     NonNegativeInteger,

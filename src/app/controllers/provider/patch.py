@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.app.schemas.providers import ProviderPatchRequest, ProviderResponse
+from src.app.schemas.provider import ProviderPatchRequest, ProviderResponse
 from src.app.services.providers.service import ProviderService
 
 

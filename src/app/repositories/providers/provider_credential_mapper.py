@@ -4,7 +4,7 @@ from datetime import datetime
 
 import aiosqlite
 
-from src.app.models.providers import ProviderCredential
+from src.app.models.provider import ProviderCredential
 
 
 def format_datetime(value: datetime | None) -> str | None:

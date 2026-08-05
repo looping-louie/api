@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.controllers.persona import PersonaController
-from src.app.schemas.common import DeleteResponse
+from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.persona import (
     PersonaCreateRequest,
     PersonaListResponse,

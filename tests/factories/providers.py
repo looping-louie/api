@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from src.app.models.providers import ProviderCredential
+from src.app.models.provider import ProviderCredential
 
 
 def build_provider_credential(

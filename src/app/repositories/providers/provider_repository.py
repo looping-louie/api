@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from src.app.models.providers import ProviderCredential
+from src.app.models.provider import ProviderCredential
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
