@@ -19,116 +19,35 @@ provider.
   boundaries.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
+- [Current limitations](components/limitations.md) records known MVP
+  boundaries.
 
 ## Repository structure
 
-Top-level packages and modules:
+Application code lives under `src/app` and is organized by responsibility:
 
 ```text
-app/
-
-main.py
-    HTTP API
-
-routers/
-    Endpoint composition
-
-controllers/
-    HTTP-level request orchestration
-
-services/
-    Application and domain services
-
-catalogs/
-    Curated providers, models, loops, and builtin instructions
-
-schemas/
-    API contracts and shared models
-
-models/
-    Internal domain entities
-
-utils/
-    Shared IO and helper utilities
-```
-
-## High-level architecture
-
-```text
-              Loop definition
-                     |
-                     v
-          Persisted loop run
-                     |
-                     v
-       Generator and reviewers
-                     |
-                     v
-    Operation Contract (JSON operations)
-                     |
-                     v
-           CLI Executes Locally
-                     |
-                     v
-             Reviewer agents
-          |
-          v
-      Aggregator
-          |
-      Approved?
-      |        |
-      |No      |Yes
-      v        v
- Retry      Commit allowed
-             (CLI commits)
-             Next workflow item
+src/app/
+    bootstrap/       Application startup and dependency wiring
+    catalogs/        Builtin providers, models, loops, and instructions
+    controllers/     HTTP-level use-case orchestration
+    middleware/      Cross-cutting HTTP middleware
+    models/          Internal domain entities
+    repositories/    Persistence and data access
+    routers/         FastAPI route composition
+    schemas/         HTTP contracts and shared schemas
+    services/        Application and domain services
+    skills/          Packaged instruction loading and validation
+    utils/           Shared HTTP and utility code
 ```
 
 ## Ownership boundaries
 
-Workspace lifecycle is CLI-owned. The API persists loop-run orchestration
-state and decides whether the next checkpoint is allowed. Multi-step workflow
-orchestration is also CLI-owned:
+The API owns resource management, loop-run state, prompt generation, model
+decisions, and checkpoint transitions. The CLI owns workspace lifecycle,
+repository inspection, filesystem changes, Git operations, and multi-step
+workflow progression.
 
-```text
-selected loop and input
-
-v
-
-create persisted loop run
-
-v
-
-iterate its `/continue` checkpoint
-
-v
-
-approved?
-
-v
-
-commit
-
-v
-
-record workflow progress
-
-v
-
-next task
-```
-
-Execution stops immediately after the first rejected task.
-
-## Current limitations
-
-The current MVP intentionally keeps the architecture simple:
-
-- repository snapshots are static rather than task-aware;
-- providers are not yet abstracted behind a common interface;
-- reviewers operate on text only, without screenshots;
-- file operations replace whole files rather than editing line ranges;
-- execution is sequential;
-- prompt caching is not yet implemented.
-
-These limitations are tracked separately in `roadmap.md`.
+The API and CLI coordinate through the loop-run checkpoint protocol documented
+in [Execution](components/execution.md). The API never mutates the target
+repository directly, and the CLI does not make model or reviewer decisions.
