@@ -55,11 +55,6 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/nvidia.jpeg",
         requires_api_key=True,
         default_base_url="https://integrate.api.nvidia.com/v1",
-        model_catalog_note=(
-            "No curated NVIDIA model deployments are available yet. "
-            "Configuring this provider does not currently enable a "
-            "selectable model."
-        ),
     ),
     ProviderCatalogEntry(
         id=ProviderId.OLLAMA,

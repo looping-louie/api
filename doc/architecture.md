@@ -363,11 +363,10 @@ Current providers:
 - OpenAI
 - Together
 
-The curated model catalog currently contains deployments for Anthropic, OpenAI
-and Together. NVIDIA and Ollama are valid configurable providers, but they do
-not yet expose selectable curated deployments. Their provider API response
-returns a zero model count and an explicit catalog note until model discovery
-or supported deployments are added.
+The curated model catalog contains deployments for Anthropic, NVIDIA, OpenAI,
+and Together. Ollama remains configurable but does not yet expose selectable
+curated deployments; its provider response returns a zero model count and an
+explicit catalog note.
 
 The architecture is intentionally provider independent.
 
