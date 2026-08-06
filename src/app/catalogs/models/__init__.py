@@ -1,5 +1,6 @@
 """Public curated logical model catalog and contracts."""
 
+from .nvidia import NVIDIA_MODEL_CATALOG
 from .primary import PRIMARY_MODEL_CATALOG
 from .secondary import SECONDARY_MODEL_CATALOG
 from .types import (
@@ -14,7 +15,11 @@ from .types import (
 from .validation import validate_model_catalog
 
 
-MODEL_CATALOG = PRIMARY_MODEL_CATALOG + SECONDARY_MODEL_CATALOG
+MODEL_CATALOG = (
+    PRIMARY_MODEL_CATALOG
+    + SECONDARY_MODEL_CATALOG
+    + NVIDIA_MODEL_CATALOG
+)
 
 validate_model_catalog(MODEL_CATALOG)
 

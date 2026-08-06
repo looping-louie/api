@@ -1,3 +1,5 @@
+"""Contract tests for the curated logical model catalog."""
+
 from typing import cast
 
 import pytest
@@ -22,10 +24,14 @@ from tests.factories.models import (
 
 
 def test_curated_model_catalog_is_valid() -> None:
+    """The production catalog satisfies every identity and deployment rule."""
+
     validate_model_catalog(MODEL_CATALOG)
 
 
 def test_rejects_duplicate_model_ids() -> None:
+    """Catalog validation rejects duplicate logical model identifiers."""
+
     catalog = (
         build_model(
             model_id="duplicate-model",
@@ -53,6 +59,8 @@ def test_rejects_duplicate_model_ids() -> None:
 
 
 def test_rejects_duplicate_provider_deployments() -> None:
+    """One provider model route cannot belong to two logical models."""
+
     catalog = (
         build_model(
             model_id="logical-model-one",
@@ -82,6 +90,8 @@ def test_rejects_duplicate_provider_deployments() -> None:
 
 
 def test_rejects_deployment_for_unknown_provider() -> None:
+    """Every deployment must reference a provider from the curated catalog."""
+
     catalog = (
         build_model(
             deployments=(
@@ -103,6 +113,8 @@ def test_rejects_deployment_for_unknown_provider() -> None:
 
 
 def test_one_logical_model_can_have_multiple_provider_deployments() -> None:
+    """A logical model may expose independent routes through several providers."""
+
     catalog: tuple[ModelCatalogEntry, ...] = (
         build_model(
             model_id="multi-provider-model",
@@ -126,18 +138,11 @@ def test_one_logical_model_can_have_multiple_provider_deployments() -> None:
     assert registry.count_by_provider(ProviderId.TOGETHER) == 1
 
 
-@pytest.mark.parametrize(
-    "provider_id",
-    [
-        ProviderId.NVIDIA,
-        ProviderId.OLLAMA,
-    ],
-)
-def test_empty_provider_catalogs_are_explicit(
-    provider_id: ProviderId,
-) -> None:
-    registry = CatalogModelRegistryService()
-    provider = PROVIDER_CATALOG_BY_ID[provider_id]
+def test_empty_ollama_catalog_is_explicit() -> None:
+    """Ollama documents why it remains configurable without curated models."""
 
-    assert registry.count_by_provider(provider_id) == 0
+    registry = CatalogModelRegistryService()
+    provider = PROVIDER_CATALOG_BY_ID[ProviderId.OLLAMA]
+
+    assert registry.count_by_provider(ProviderId.OLLAMA) == 0
     assert provider.model_catalog_note
