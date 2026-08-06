@@ -391,6 +391,51 @@ produces `tasks.json`. All their agents use `deepseek-v4-pro`. Installation is
 performed only once per workspace, so either loop can subsequently be modified
 or deleted without being reset or recreated.
 
+### Loop run calls
+
+Loop runs are persisted checkpoints for executing a loop with a CLI-owned
+repository. The API creates and advances the run; the CLI supplies repository
+snapshots, applies planned file operations, submits review input, and attempts
+commits. The API does not expose standalone run routes: every run is addressed
+through its parent loop.
+
+| Method | Path                                             | Description                                   |
+| ------ | ------------------------------------------------ | --------------------------------------------- |
+| `GET`  | `/api/v1/loops/{loop_id}/runs`                   | Lists ten newest runs after an optional offset. |
+| `POST` | `/api/v1/loops/{loop_id}/runs`                   | Creates a run awaiting its first snapshot.     |
+| `GET`  | `/api/v1/loops/{loop_id}/runs/{run_id}`          | Returns one persisted run.                     |
+| `POST` | `/api/v1/loops/{loop_id}/runs/{run_id}/continue` | Advances one idempotent execution checkpoint.  |
+
+Create a run with a non-empty `input`:
+
+```json
+{
+  "input": "Implement the requested change."
+}
+```
+
+The response includes the run `status`, current `state`, `next_action`,
+iteration, continuation token, timestamps, and a `payload` containing exposed
+runtime artifacts. A newly created run is `in_progress`, awaits a repository
+snapshot, and does not begin model generation until the CLI continues it.
+
+Each continuation request must include the current non-empty
+`continuation_token`, a non-empty `idempotency_key`, and a result whose
+`action` is one of:
+
+- `collect_snapshot`, which supplies repository context, workspace metadata,
+  constitution, and project profile before generation;
+- `apply_operations`, which reports whether API-planned file operations were
+  applied and includes the resulting diff or error;
+- `submit_review_input`, which supplies the final diff and changed file
+  contents;
+- `commit_if_allowed`, which reports whether the CLI committed and, when
+  successful, supplies the commit SHA and message.
+
+Continuation requests are safe to retry with the same idempotency key. The
+server validates the action-specific result and rejects stale continuation
+tokens or an action that is not valid for the run's current checkpoint.
+
 ---
 
 ## Pipelines
