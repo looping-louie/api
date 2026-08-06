@@ -1,16 +1,16 @@
-# Builtin instruction catalog
+# Builtin Instruction Catalog
 
 Builtin skills and personas are versioned application resources. Their
 manifests and Markdown live under:
 
 ```text
 src/app/catalogs/
-├── skills/
-│   ├── registry.json
-│   └── content/
-└── personas/
-    ├── registry.json
-    └── content/
+|-- skills/
+|   |-- registry.json
+|   `-- content/
+`-- personas/
+    |-- registry.json
+    `-- content/
 ```
 
 At startup the application validates these files and synchronizes them into
@@ -23,7 +23,7 @@ point.
 2. Assign a stable, never-reused ID:
    `builtin:skill:<key>` or `builtin:persona:<key>`.
 3. Set an explicit `content_path` and create exactly that Markdown file.
-4. Keep identity, description, version and structured metadata in the
+4. Keep identity, description, version, and structured metadata in the
    manifest. Keep only effective prompt instructions in Markdown.
 5. For a persona, use stable builtin skill IDs in `skill_ids`.
 6. Run `make catalog-check` and the test suite.
@@ -45,35 +45,52 @@ Remove its manifest entry, but never reuse its ID. Synchronization marks the
 SQL row as deprecated; it does not delete it. New loops cannot select a
 deprecated instruction, while historical references can still resolve it.
 
-## A brief note on catalog synchronization
+## Catalog synchronization
 
-Also called
+This pattern is also called seeded reference data, catalog synchronization,
+bootstrap or migration-managed data, or a materialized runtime catalog. It is
+useful when version-controlled reference content must become runtime-queryable
+and workspace-aware data.
 
-- Seeded reference data
-- Catalog synchronization
-- Bootstrap or migration-managed data
-- Materialized runtime catalog
+The design is:
 
-this pattern is common, especially when an application has version-controlled
-reference content that must become runtime-queryable, workspace-aware data.
-
-In this case, the design is:
-
-```txt
+```text
 Git-tracked manifest + Markdown
         -> validate and synchronize at startup
 SQL runtime projection
         -> API, availability resolution, loop-run execution
 ```
 
-The important distinction is that the files are still the authored source of truth for builtins, while SQL is the operational source of truth once the application is running.
+The files remain the authored source of truth for builtins. SQL is the
+operational source of truth once the application is running.
 
-This is a good fit here because SQL enables things that repository files do not provide cleanly:
+SQL provides:
 
-Workspace-specific enablement and availability.
-Custom copies of immutable builtins.
-Ownership and access control.
-Deprecation without losing historical references.
-Atomic updates and consistency constraints.
-Fast, uniform runtime queries.
-Reproducible execution snapshots based on the exact effective library.
+- workspace-specific enablement and availability;
+- custom copies of immutable builtins;
+- ownership and access control;
+- deprecation without losing historical references;
+- atomic updates and consistency constraints;
+- fast, uniform runtime queries;
+- reproducible execution snapshots based on the exact effective library.
+
+## Runtime boundary
+
+Startup has one ordered catalog boundary:
+
+```text
+run migrations
+    v
+load and validate packaged catalog
+    v
+synchronize builtins into SQL
+    v
+ensure local tenant
+    v
+construct repositories and services
+```
+
+Only startup reads packaged Markdown. API, loop resolution, and execution read
+the effective workspace library from SQL. Builtins are globally shared and
+immutable through the API; workspaces can enable, disable, or duplicate them.
+Custom instructions belong to one workspace and remain editable.
