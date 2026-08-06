@@ -169,7 +169,7 @@ During implementation:
   terminal, or reuse an already-running local server for API/CLI validation.
 - MUST remove only verified empty sandbox placeholders if they appear; do not
   add them to `.gitignore` because that hides the underlying execution issue.
-- `.looping-louie/data/looping-louie.db` is the intentional ignored local
+- `runtime/db/looping-louie.db` is the intentional ignored local
   SQLite runtime database. It is distinct from the unwanted placeholders.
 
 Before declaring the work complete:

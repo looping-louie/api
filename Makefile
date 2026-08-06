@@ -26,7 +26,7 @@ config: venv
 			'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"; \
 		printf '%s\n' \
 			"LOUIE_ENCRYPTION_KEY=$$ENCRYPTION_KEY" \
-			'LOUIE_DB_PATH=.looping-louie/data/looping-louie.db' \
+			'LOUIE_DB_PATH=runtime/db/looping-louie.db' \
 			'LOUIE_CATALOG_STRICT_VERSIONING=false' \
 			> "$(ENV_FILE)"; \
 		chmod 600 "$(ENV_FILE)"; \

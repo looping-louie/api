@@ -81,7 +81,7 @@ The installer also creates these local provider settings:
 
 ```text
 LOUIE_ENCRYPTION_KEY=<generated Fernet key>
-LOUIE_DB_PATH=.looping-louie/data/looping-louie.db
+LOUIE_DB_PATH=runtime/db/looping-louie.db
 LOUIE_CATALOG_STRICT_VERSIONING=false
 ```
 
@@ -139,7 +139,7 @@ home-configuration placeholders such as `.bashrc`, `.gitconfig`, or `.vscode`
 in the current repository. These files are not created or used by Looping
 Louie and should be removed if they appear.
 
-The local SQLite database at `.looping-louie/data/looping-louie.db` is an
+The local SQLite database at `runtime/db/looping-louie.db` is an
 intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in
 `.env.local` to store it outside the repository when preferred.
 

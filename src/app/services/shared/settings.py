@@ -34,7 +34,7 @@ def get_app_settings() -> AppSettings:
         database_path=Path(
             os.getenv(
                 "LOUIE_DB_PATH",
-                ".looping-louie/data/looping-louie.db",
+                "runtime/db/looping-louie.db",
             )
         ),
         dev_auth_enabled=_environment_flag(
