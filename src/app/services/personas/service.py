@@ -152,46 +152,6 @@ class PersonaService:
         )
         return await self._with_skill_ids(document)
 
-    async def create_from_source(
-        self,
-        *,
-        user_id: str,
-        source_persona_id: str,
-        name: str | None = None,
-        requested_workspace_id: str | None = None,
-    ) -> PersonaDocument:
-        """Create an editable persona copied from an available source."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        source = await self._instruction_service.describe(
-            workspace_id=workspace_id,
-            instruction_type="persona",
-            instruction_id=source_persona_id,
-        )
-        skill_ids = await self._persona_skill_repository.list_for_persona(
-            persona_id=source.id,
-        )
-        document = await self._instruction_service.duplicate(
-            workspace_id=workspace_id,
-            instruction_type="persona",
-            instruction_id=source_persona_id,
-            name=name,
-        )
-        await self._persona_skill_repository.replace_for_persona(
-            persona_id=document.id,
-            skill_ids=skill_ids,
-        )
-        return PersonaDocument(
-            **{
-                field.name: getattr(document, field.name)
-                for field in fields(document)
-            },
-            skill_ids=skill_ids,
-        )
-
     async def create(
         self,
         *,

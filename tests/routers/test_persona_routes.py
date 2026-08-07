@@ -93,32 +93,23 @@ def test_persona_rest_crud_routes(
     assert deleted.json() == {"deleted": True}
 
 
-def test_create_persona_from_source(
+def test_create_persona_rejects_source_identifier(
     persona_controller: PersonaController,
-    instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """POST copies an available source and records its lineage."""
+    """POST accepts complete creation content rather than source identifiers."""
 
-    builtin = seed_builtin(
-        instruction_repository,
-        instruction_type="persona",
-    )
     client = TestClient(build_app(controller=persona_controller))
 
     response = client.post(
         "/api/v1/personas",
         json={
-            "source_persona_id": builtin.id,
+            "source_persona_id": "builtin:persona:source",
+            "name": "Copied persona",
+            "instructions": "Review the source.",
         },
     )
 
-    assert response.status_code == 201
-    body = response.json()
-    assert body["name"] == f"{builtin.name} Copy"
-    assert body["description"] == builtin.description
-    assert body["instructions"] == builtin.instructions
-    assert body["metadata"] == dict(builtin.metadata)
-    assert body["source_instruction_id"] == builtin.id
+    assert response.status_code == 422
 
 
 def test_persona_routes_create_and_replace_skill_associations(
@@ -202,10 +193,6 @@ def test_patch_changes_builtin_enabled_state_without_version(
             "expected_version": 1,
             "skill_ids": ["skill-1", "skill-1"],
         },
-        {
-            "source_persona_id": "builtin:persona:source",
-            "instructions": "Do not override copied content.",
-        },
     ],
 )
 def test_persona_write_payload_validation(
@@ -216,11 +203,7 @@ def test_persona_write_payload_validation(
 
     client = TestClient(build_app(controller=persona_controller))
     path = "/api/v1/personas/persona-1"
-    response = (
-        client.post("/api/v1/personas", json=payload)
-        if "source_persona_id" in payload
-        else client.patch(path, json=payload)
-    )
+    response = client.patch(path, json=payload)
 
     assert response.status_code == 422
 

@@ -1,8 +1,7 @@
 # Personas
 
 A persona is a reusable set of agent instructions. Built-in personas are
-immutable; they can be enabled, disabled, or used as the source of an editable
-custom persona.
+immutable; they can be enabled or disabled.
 
 ## Persona calls
 
@@ -10,7 +9,7 @@ custom persona.
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/personas` | Lists persona metadata without full instructions. |
 | `GET` | `/api/v1/personas/{persona_id}` | Returns a persona including its complete instructions. |
-| `POST` | `/api/v1/personas` | Creates a custom persona or copies an available source. |
+| `POST` | `/api/v1/personas` | Creates a custom persona. |
 | `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
 
@@ -23,12 +22,6 @@ custom persona.
 | `instructions` | Required non-empty complete persona instructions. |
 | `skill_ids` | Ordered IDs of skills associated with the persona. |
 | `metadata` | Optional JSON object. Defaults to `{}`. |
-| `source_persona_id` | Omit when creating a persona from supplied content. |
-
-To copy an available, non-deprecated persona, send `source_persona_id` and an
-optional `name`. The source description, instructions, skills, and metadata are
-copied. Do not include those copied fields in the request. If `name` is
-omitted, it defaults to the source name followed by ` Copy`.
 
 ## Patch Persona Request
 
@@ -53,18 +46,6 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/personas \
     "metadata": {
       "team": "platform"
     }
-  }'
-```
-
-To create a copy instead:
-
-```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/personas \
-  -H "Content-Type: application/json" \
-  -H "X-Workspace-ID: workspace-id" \
-  -d '{
-    "source_persona_id": "builtin:persona:tech_lead",
-    "name": "Platform lead"
   }'
 ```
 

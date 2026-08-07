@@ -111,11 +111,11 @@ async def test_persona_crud_flow(
 
 
 @pytest.mark.asyncio
-async def test_persona_service_sets_enabled_and_creates_from_source(
+async def test_persona_service_sets_enabled_and_creates_content(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """Persona-specific methods support PATCH and sourced POST workflows."""
+    """Persona-specific methods support PATCH and direct POST workflows."""
 
     service = build_persona_service(instruction_service)
     builtin = seed_builtin(
@@ -133,22 +133,27 @@ async def test_persona_service_sets_enabled_and_creates_from_source(
         persona_id=builtin.id,
         enabled=True,
     )
-    copied = await service.create_from_source(
+    created = await service.create(
         user_id="user-1",
-        source_persona_id=builtin.id,
+        payload=PersonaCreate(
+            name="Workspace Lead",
+            description=builtin.description,
+            instructions=builtin.instructions,
+            metadata=builtin.metadata,
+        ),
     )
 
     assert disabled.enabled is False
     assert enabled.enabled is True
-    assert copied.source_instruction_id == builtin.id
+    assert created.source_instruction_id is None
 
 
 @pytest.mark.asyncio
-async def test_persona_service_manages_and_copies_skill_associations(
+async def test_persona_service_manages_skill_associations(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """Persona writes replace skill IDs and source copies retain them."""
+    """Persona writes create and replace ordered skill IDs."""
 
     association_repository = FakePersonaSkillRepository()
     service = build_persona_service(
@@ -185,11 +190,5 @@ async def test_persona_service_manages_and_copies_skill_associations(
             skill_ids=(),
         ),
     )
-    copied = await service.create_from_source(
-        user_id="user-1",
-        source_persona_id=source.id,
-    )
-
     assert created.skill_ids == (skill.id,)
     assert updated.skill_ids == ()
-    assert copied.skill_ids == (skill.id,)
