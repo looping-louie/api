@@ -197,6 +197,76 @@ class EmptyThenValidPlanExecutionService:
         )
 
 
+class ApiExampleThenValidPlanExecutionService:
+    """Return an API example before a valid file-operation plan."""
+
+    def __init__(self) -> None:
+        """Track prompts supplied to the deterministic fake executor."""
+
+        self.prompts: list[str] = []
+
+    async def execute(
+        self,
+        *,
+        prompt: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return a valid file-operation plan after the correction request."""
+
+        self.prompts.append(prompt)
+        text = (
+            '{"operations":[{"operation":"create","path":"output.txt",'
+            '"content":"created"}],"commit_message":"feat: create output"}'
+            if len(self.prompts) == 2
+            else '{"errorCode":"invalid-response","message":"Malformed response"}'
+        )
+        return ModelExecutionResult(
+            text=text,
+            provider_id=ProviderId.TOGETHER,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_generation_retries_an_api_example_response() -> None:
+    """An API-shaped response is corrected into a file-operation plan."""
+
+    model_execution_service = ApiExampleThenValidPlanExecutionService()
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+
+    context = await service.generate_context(
+        loop_snapshot={
+            'flow': 'direct',
+            'agents': [
+                {
+                    'id': 'agent-1',
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+            'output_contract': {},
+        },
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert context['runtime_artifacts']['operations'][0]['path'] == 'output.txt'
+    assert len(model_execution_service.prompts) == 2
+    assert 'only top-level keys are operations and commit_message' in (
+        model_execution_service.prompts[1]
+    )
+
+
 @pytest.mark.asyncio
 async def test_generation_retries_one_empty_operation_plan() -> None:
     """An empty operation plan is retried with an explicit change requirement."""
@@ -229,7 +299,7 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
 
     assert context['runtime_artifacts']['operations'][0]['path'] == 'output.txt'
     assert len(model_execution_service.prompts) == 2
-    assert 'Return a non-empty operations array' in model_execution_service.prompts[1]
+    assert 'operations must be a non-empty array' in model_execution_service.prompts[1]
 
 
 class MissingCommitThenValidPlanExecutionService:
@@ -298,4 +368,6 @@ async def test_generation_retries_one_plan_without_commit_message() -> None:
 
     assert context['runtime_artifacts']['commit_message'] == 'feat: create output'
     assert len(model_execution_service.prompts) == 2
-    assert 'a non-empty commit_message' in model_execution_service.prompts[1]
+    assert 'commit_message must be a non-empty string' in (
+        model_execution_service.prompts[1]
+    )

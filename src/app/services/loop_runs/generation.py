@@ -200,9 +200,13 @@ class LoopRunGenerationService:
                 if attempt + 1 == MAX_JSON_RESPONSE_ATTEMPTS:
                     raise
                 retry_prompt = (
-                    f'{prompt}\n\nReturn a non-empty operations array with the '
-                    'file changes required to complete the task and a non-empty '
-                    'commit_message.'
+                    f'{prompt}\n\nYour previous response was not a valid file '
+                    'operation plan. Return exactly one JSON object whose only '
+                    'top-level keys are operations and commit_message. Do not '
+                    'return an API response example, schema, error object, or '
+                    'check result. operations must be a non-empty array of file '
+                    'changes required to complete the task, and commit_message '
+                    'must be a non-empty string.'
                 )
 
         raise AssertionError('Operation plan retry attempts were exhausted.')
