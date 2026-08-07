@@ -198,11 +198,11 @@ async def test_update_skill_without_metadata_preserves_metadata(
 
 
 @pytest.mark.asyncio
-async def test_skill_service_sets_enabled_and_creates_from_source(
+async def test_skill_service_sets_enabled_and_creates_content(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """Skill-specific methods support PATCH and sourced POST workflows."""
+    """Skill-specific methods support PATCH and direct POST workflows."""
 
     service = build_skill_service(instruction_service)
     builtin = seed_builtin(
@@ -221,12 +221,16 @@ async def test_skill_service_sets_enabled_and_creates_from_source(
         skill_id=builtin.id,
         enabled=True,
     )
-    copied = await service.create_from_source(
+    created = await service.create(
         user_id="user-1",
-        source_skill_id=builtin.id,
-        name="Workspace Security",
+        payload=InstructionCreate(
+            name="Workspace Security",
+            description=builtin.description,
+            instructions=builtin.instructions,
+            metadata=builtin.metadata,
+        ),
     )
 
-    assert copied.source_instruction_id == builtin.id
-    assert copied.name == "Workspace Security"
-    assert copied.metadata == builtin.metadata
+    assert created.source_instruction_id is None
+    assert created.name == "Workspace Security"
+    assert created.metadata == builtin.metadata

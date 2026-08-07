@@ -42,36 +42,12 @@ class SkillMetadata(RequestSchema):
 
 
 class SkillCreateRequest(RequestSchema):
-    """Request body for creating or copying a skill."""
+    """Request body for creating a skill."""
 
-    name: NonEmptyString | None = None
+    name: NonEmptyString
     description: str = ""
-    instructions: NonEmptyString | None = None
+    instructions: NonEmptyString
     metadata: SkillMetadata = Field(default_factory=SkillMetadata)
-    source_skill_id: NonEmptyString | None = None
-
-    @model_validator(mode="after")
-    def validate_creation_mode(self) -> Self:
-        """Validate the fields required by direct and source-based creation."""
-
-        if self.source_skill_id is None:
-            if self.name is None or self.instructions is None:
-                raise ValueError(
-                    "Name and instructions are required when creating a skill."
-                )
-            return self
-
-        unsupported_overrides = {
-            "description",
-            "instructions",
-            "metadata",
-        } & self.model_fields_set
-        if unsupported_overrides:
-            raise ValueError(
-                "A skill copy only accepts source_skill_id and an optional name."
-            )
-
-        return self
 
 
 class SkillPatchRequest(RequestSchema):

@@ -8,7 +8,7 @@ from src.app.services.skills.service import SkillService
 
 
 class SkillCreateController:
-    """Create one skill directly or from an available source."""
+    """Create one skill."""
 
     def __init__(self, *, skill_service: SkillService) -> None:
         """Store the skill application service."""
@@ -21,27 +21,17 @@ class SkillCreateController:
         payload: SkillCreateRequest,
         requested_workspace_id: str | None = None,
     ) -> SkillResponse:
-        """Create a new skill directly or by copying a source."""
-        if payload.source_skill_id is not None:
-            document = await self._skill_service.create_from_source(
-                user_id=user_id,
-                source_skill_id=payload.source_skill_id,
+        """Create a new skill from the supplied content."""
+        document = await self._skill_service.create(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+            payload=InstructionCreate(
                 name=payload.name,
-                requested_workspace_id=requested_workspace_id,
-            )
-        else:
-            assert payload.name is not None
-            assert payload.instructions is not None
-            document = await self._skill_service.create(
-                user_id=user_id,
-                requested_workspace_id=requested_workspace_id,
-                payload=InstructionCreate(
-                    name=payload.name,
-                    description=payload.description,
-                    instructions=payload.instructions,
-                    metadata=payload.metadata.model_dump(exclude_none=True),
-                ),
-            )
+                description=payload.description,
+                instructions=payload.instructions,
+                metadata=payload.metadata.model_dump(exclude_none=True),
+            ),
+        )
         document = await self._skill_service.describe(
             user_id=user_id,
             skill_id=document.id,

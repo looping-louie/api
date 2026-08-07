@@ -95,31 +95,23 @@ def test_skill_rest_crud_routes(
     assert deleted.json() == {"deleted": True}
 
 
-def test_create_skill_from_source(
+def test_create_skill_rejects_source_identifier(
     skill_controller: SkillController,
-    instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """POST copies an available source and records its lineage."""
+    """POST accepts complete creation content rather than source identifiers."""
 
-    builtin = seed_builtin(
-        instruction_repository,
-        instruction_type="skill",
-    )
     client = TestClient(build_app(controller=skill_controller))
 
     response = client.post(
         "/api/v1/skills",
-        json={"source_skill_id": builtin.id},
+        json={
+            "source_skill_id": "builtin:skill:source",
+            "name": "Copied skill",
+            "instructions": "Review the source.",
+        },
     )
 
-    assert response.status_code == 201
-    body = response.json()
-    assert body["name"] == f"{builtin.name} Copy"
-    assert body["description"] == builtin.description
-    assert body["instructions"] == builtin.instructions
-    assert body["metadata"]["applies_when"] == builtin.metadata["applies_when"]
-    assert body["metadata"]["default_strictness"] is None
-    assert body["source_instruction_id"] == builtin.id
+    assert response.status_code == 422
 
 
 def test_patch_changes_builtin_enabled_state_without_version(
@@ -155,10 +147,6 @@ def test_patch_changes_builtin_enabled_state_without_version(
         {},
         {"enabled": None},
         {"description": "Missing version"},
-        {
-            "source_skill_id": "builtin:skill:source",
-            "instructions": "Do not override copied content.",
-        },
     ],
 )
 def test_skill_write_payload_validation(
@@ -169,11 +157,7 @@ def test_skill_write_payload_validation(
 
     client = TestClient(build_app(controller=skill_controller))
     path = "/api/v1/skills/skill-1"
-    response = (
-        client.post("/api/v1/skills", json=payload)
-        if "source_skill_id" in payload
-        else client.patch(path, json=payload)
-    )
+    response = client.patch(path, json=payload)
 
     assert response.status_code == 422
 

@@ -97,27 +97,6 @@ class SkillService:
             instruction_id=skill_id,
         )
 
-    async def create_from_source(
-        self,
-        *,
-        user_id: str,
-        source_skill_id: str,
-        name: str | None = None,
-        requested_workspace_id: str | None = None,
-    ) -> InstructionDocument:
-        """Create an editable skill copied from an available source."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return await self._instruction_service.duplicate(
-            workspace_id=workspace_id,
-            instruction_type="skill",
-            instruction_id=source_skill_id,
-            name=name,
-        )
-
     async def create(
         self,
         *,

@@ -23,11 +23,11 @@ from tests.services.test_skill_service import build_skill_service
 
 
 @pytest.mark.asyncio
-async def test_skill_controller_patches_and_creates_from_source(
+async def test_skill_controller_lists_patches_and_creates(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """Skill controller patches enablement and creates sourced copies."""
+    """Skill controller lists, patches enablement, and creates content."""
 
     service: SkillService = build_skill_service(instruction_service)
     controller = SkillController(skill_service=service)
@@ -45,8 +45,8 @@ async def test_skill_controller_patches_and_creates_from_source(
     copied = await controller.create(
         user_id="user-1",
         payload=SkillCreateRequest(
-            source_skill_id=builtin.id,
             name="Workspace Security",
+            instructions="Review workspace security.",
         ),
     )
 
@@ -61,17 +61,17 @@ async def test_skill_controller_patches_and_creates_from_source(
     assert disabled.enabled is False
     assert copied.origin == InstructionOrigin.CUSTOM
     assert copied.editable is True
-    assert copied.source_instruction_id == builtin.id
+    assert copied.source_instruction_id is None
     assert "owner_workspace_id" not in copied.model_dump()
     assert "workspace_id" not in copied.model_dump()
 
 
 @pytest.mark.asyncio
-async def test_persona_controller_patches_and_creates_from_source(
+async def test_persona_controller_patches_and_creates(
     instruction_service: InstructionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
-    """Persona controller patches enablement and creates sourced copies."""
+    """Persona controller patches enablement and creates content."""
 
     service: PersonaService = build_persona_service(instruction_service)
     controller = PersonaController(persona_service=service)
@@ -88,8 +88,8 @@ async def test_persona_controller_patches_and_creates_from_source(
     copied = await controller.create(
         user_id="user-1",
         payload=PersonaCreateRequest(
-            source_persona_id=builtin.id,
             name="Workspace Lead",
+            instructions="Lead workspace reviews.",
         ),
     )
 
@@ -100,5 +100,5 @@ async def test_persona_controller_patches_and_creates_from_source(
     assert copied.enabled is True
     assert copied.editable is True
     assert copied.duplicable is True
-    assert copied.source_instruction_id == builtin.id
+    assert copied.source_instruction_id is None
     assert "owner_workspace_id" not in copied.model_dump()
