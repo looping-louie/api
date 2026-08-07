@@ -11,11 +11,11 @@ from .entries import (
     SkillCatalogEntry,
 )
 from .errors import CatalogLoadError
-from .personas.loader import (
+from ..personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
 )
-from .skills.loader import (
+from ..skills.loader import (
     SKILL_CATALOG_DIR,
     load_skill_catalog,
 )

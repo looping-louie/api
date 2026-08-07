@@ -1,49 +1,43 @@
-"""Typed loader for packaged skill definitions."""
+"""Typed loader for packaged persona definitions."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Mapping
 
-from ..entries import SkillCatalogEntry
-from ..errors import CatalogLoadError
-from ..resource_loader import (
+from ..instructions.entries import PersonaCatalogEntry
+from ..instructions.errors import CatalogLoadError
+from ..instructions.resource_loader import (
     load_catalog_resources,
     require_heading,
     require_text,
 )
-from ..resource_validation import (
+from ..instructions.resource_validation import (
     require_boolean,
-    require_mapping,
     require_positive_integer,
     require_string_tuple,
 )
-from ..types import (
+from ..instructions.types import (
     AgentRole,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
-    ProjectPhase,
-    ReviewerStrictnessDefaults,
-    SkillArtifact,
-    SkillOutput,
-    SkillPhase,
 )
 
 
-SKILL_CATALOG_DIR = Path(__file__).parent
+PERSONA_CATALOG_DIR = Path(__file__).parent
 
 
-def load_skill_catalog(
-    catalog_dir: Path = SKILL_CATALOG_DIR,
-) -> tuple[SkillCatalogEntry, ...]:
-    """Load and fully validate immutable skill definitions."""
+def load_persona_catalog(
+    catalog_dir: Path = PERSONA_CATALOG_DIR,
+) -> tuple[PersonaCatalogEntry, ...]:
+    """Load and fully validate immutable persona definitions."""
 
     resources = load_catalog_resources(
         catalog_dir=catalog_dir,
-        instruction_type=CatalogInstructionType.SKILL,
+        instruction_type=CatalogInstructionType.PERSONA,
     )
-    entries: list[SkillCatalogEntry] = []
+    entries: list[PersonaCatalogEntry] = []
 
     for resource in resources:
         manifest = resource.manifest
@@ -51,11 +45,11 @@ def load_skill_catalog(
         name = require_text(manifest, "name")
         require_heading(
             resource=resource,
-            expected_heading=f"# {name}",
+            expected_heading=f"# Persona: {name}",
         )
 
         try:
-            entry = SkillCatalogEntry(
+            entry = PersonaCatalogEntry(
                 id=instruction_id,
                 key=require_text(manifest, "key"),
                 name=name,
@@ -78,6 +72,7 @@ def load_skill_catalog(
                     applies_to=_load_roles(
                         manifest,
                         "applies_to",
+                        allow_empty=False,
                     ),
                 ),
                 origin=InstructionOrigin.BUILTIN,
@@ -89,28 +84,20 @@ def load_skill_catalog(
                     manifest,
                     "version",
                 ),
-                reviewer_default_strictness=_load_strictness(
+                skill_ids=require_string_tuple(
                     manifest,
+                    "skill_ids",
+                    allow_empty=True,
                 ),
-                category=require_text(manifest, "category"),
-                phase=SkillPhase(
-                    require_text(manifest, "phase")
-                ),
-                artifacts=tuple(
-                    SkillArtifact(value)
-                    for value in require_string_tuple(
-                        manifest,
-                        "artifacts",
-                        allow_empty=False,
-                    )
-                ),
-                output=SkillOutput(
-                    require_text(manifest, "output")
+                default_for=_load_roles(
+                    manifest,
+                    "default_for",
+                    allow_empty=True,
                 ),
             )
         except (TypeError, ValueError) as exc:
             raise CatalogLoadError(
-                f"Invalid skill '{instruction_id}': {exc}"
+                f"Invalid persona '{instruction_id}': {exc}"
             ) from exc
 
         entries.append(entry)
@@ -121,13 +108,15 @@ def load_skill_catalog(
 def _load_roles(
     manifest: Mapping[str, object],
     field_name: str,
+    *,
+    allow_empty: bool,
 ) -> frozenset[AgentRole]:
-    """Parse and validate role names from skill manifest metadata."""
+    """Parse and validate role names from persona manifest metadata."""
 
     values = require_string_tuple(
         manifest,
         field_name,
-        allow_empty=False,
+        allow_empty=allow_empty,
     )
 
     try:
@@ -139,28 +128,3 @@ def _load_roles(
         raise CatalogLoadError(
             f"Catalog field '{field_name}' contains unsupported role."
         ) from exc
-
-
-def _load_strictness(
-    manifest: Mapping[str, object],
-) -> ReviewerStrictnessDefaults:
-    """Parse reviewer strictness defaults from a skill manifest."""
-
-    field_name = "reviewer_default_strictness"
-    values = require_mapping(manifest, field_name)
-    expected_phases = {
-        phase.value
-        for phase in ProjectPhase
-    }
-
-    if set(values) != expected_phases:
-        raise CatalogLoadError(
-            f"Catalog field '{field_name}' must define exactly "
-            f"{sorted(expected_phases)}."
-        )
-
-    return ReviewerStrictnessDefaults(
-        prototype=values["prototype"],
-        mvp=values["mvp"],
-        production=values["production"],
-    )

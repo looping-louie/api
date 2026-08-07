@@ -1,10 +1,10 @@
 """Filesystem contract tests for packaged instruction catalogs."""
 
-from src.app.catalogs.instructions.personas.loader import (
+from src.app.catalogs.personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
 )
-from src.app.catalogs.instructions.skills.loader import (
+from src.app.catalogs.skills.loader import (
     SKILL_CATALOG_DIR,
     load_skill_catalog,
 )
