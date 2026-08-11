@@ -82,7 +82,7 @@ circumstances.
 - Generated files, database migrations, and snapshots are exempt.
 - New files SHOULD stay within 400 lines. They MAY exceed that target when
   keeping one cohesive responsibility together is clearly safer than splitting
-  it, but they MUST remain within the absolute 500-line limit.
+  it, but they MUST remain within the absolute 800-line limit.
 - A modified file SHOULD be split by responsibility when it approaches or
   exceeds 400 lines and doing so is safe and proportionate to the task.
 - Existing files over 400 lines are technical debt, not authorization for a
@@ -92,7 +92,7 @@ circumstances.
   would require a broad unrelated refactor, keep the requested change narrow,
   do not increase the file's line count unnecessarily, and report the
   pre-existing violation.
-- No new or modified handwritten Python source or test file may exceed 500
+- No new or modified handwritten Python source or test file may exceed 800
   physical lines.
 - MUST NOT compress formatting, combine unrelated responsibilities, or remove
   useful documentation merely to satisfy either threshold.

@@ -58,8 +58,9 @@ services/
 |   |                              version and checksum policy, deprecates
 |   |                              removed entries, and synchronizes
 |   |                              persona-skill associations
-|   `-- service.py                 Owns InstructionService, its repository
-|                                  protocol, documents, DTOs, types, and errors
+|   |-- service.py                 Coordinates instruction resource operations
+|   |-- types.py                   Defines instruction contracts and domain errors
+|   `-- validation.py              Normalizes and validates instruction input
 |-- loop_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for direct and
@@ -83,7 +84,8 @@ services/
 |   `-- service.py                 Queries the curated model catalog
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages workspace personas and skill links
+|   |-- service.py                 Manages workspace personas and skill links
+|   `-- types.py                   Defines persona contracts and associations
 |-- pipelines/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- mutation.py                Builds pipeline updates and changelog diffs

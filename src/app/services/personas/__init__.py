@@ -1,10 +1,10 @@
 """Persona application services."""
 
-from .service import (
+from .service import PersonaService
+from .types import (
 	AvailablePersonaDocument,
 	PersonaCreate,
 	PersonaDocument,
-	PersonaService,
 	PersonaSkillRepository,
 	PersonaUpdate,
 )

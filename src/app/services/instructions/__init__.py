@@ -1,6 +1,9 @@
 """Shared application services and contracts for instructions."""
 
 from .service import (
+    InstructionService,
+)
+from .types import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     BuiltinInstructionImmutableError,
@@ -10,7 +13,6 @@ from .service import (
     InstructionNotFoundError,
     InstructionNotOwnedError,
     InstructionRepository,
-    InstructionService,
     InstructionServiceError,
     InstructionSummary,
     InstructionType,
