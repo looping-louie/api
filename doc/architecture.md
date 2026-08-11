@@ -47,7 +47,7 @@ services/
 |-- __init__.py                    Declares the services package
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- library.py                 Builds immutable SQL instruction snapshots
+|   `-- library.py                 Builds immutable SQL snapshots
 |                                  for prompt assembly
 |-- instructions/
 |   |-- __init__.py                Defines the package's public imports
@@ -58,51 +58,51 @@ services/
 |   |                              version and checksum policy, deprecates
 |   |                              removed entries, and synchronizes
 |   |                              persona-skill associations
-|   |-- service.py                 Coordinates instruction resource operations
-|   |-- types.py                   Defines instruction contracts and domain errors
-|   `-- validation.py              Normalizes and validates instruction input
+|   |-- service.py                 Coordinates resource operations
+|   |-- types.py                   Defines contracts and domain errors
+|   `-- validation.py              Normalizes and validates input
 |-- loop_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for direct and
-|   |                              roundtable loop runs
-|   |-- service.py                 Creates, reads, and advances loop-run
-|   |                              records through checkpoints
-|   |-- types.py                   Defines loop-run contracts and domain errors
-|   `-- validation.py              Normalizes and validates loop-run input
+|   |                              roundtable runs
+|   |-- service.py                 Creates, reads, and advances records through
+|   |                              checkpoints
+|   |-- types.py                   Defines contracts and domain errors
+|   `-- validation.py              Normalizes and validates input
 |-- loops/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- catalog_seeder.py          Installs curated catalog loops in workspaces
-|   |-- mutation.py                Builds loop updates and changelog data
-|   |-- service.py                 Coordinates loop definitions and changelogs
-|   |-- types.py                   Defines loop input types and domain errors
-|   `-- validation.py              Normalizes and validates loop definitions
+|   |-- catalog_seeder.py          Installs curated catalog entries in workspaces
+|   |-- mutation.py                Builds updates and changelog data
+|   |-- service.py                 Coordinates definitions and changelogs
+|   |-- types.py                   Defines input types and domain errors
+|   `-- validation.py              Normalizes and validates definitions
 |-- model_execution/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Resolves enabled workspace deployments and
-|                                  invokes provider-neutral model endpoints
+|                                  invokes provider-neutral endpoints
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- availability.py            Calculates workspace model availability
-|   `-- service.py                 Queries the curated model catalog
+|   |-- availability.py            Calculates workspace availability
+|   `-- service.py                 Queries the curated catalog
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- service.py                 Manages workspace personas and skill links
-|   `-- types.py                   Defines persona contracts and associations
+|   |-- service.py                 Manages workspace resources and skill links
+|   `-- types.py                   Defines contracts and associations
 |-- pipelines/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- mutation.py                Builds pipeline updates and changelog diffs
-|   |-- operations.py              Provides shared pipeline use-case operations
-|   |-- service.py                 Coordinates pipeline definitions and history
-|   |-- types.py                   Defines pipeline input types and domain errors
-|   `-- validation.py              Normalizes and validates pipeline definitions
+|   |-- mutation.py                Builds updates and changelog diffs
+|   |-- operations.py              Provides shared use-case operations
+|   |-- service.py                 Coordinates definitions and history
+|   |-- types.py                   Defines input types and domain errors
+|   `-- validation.py              Normalizes and validates definitions
 |-- providers/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- configuration.py           Interprets and validates provider settings
-|   |-- connection.py              Tests configured provider connectivity
-|   |-- errors.py                  Defines provider configuration errors
+|   |-- configuration.py           Interprets and validates settings
+|   |-- connection.py              Tests configured connectivity
+|   |-- errors.py                  Defines configuration errors
 |   |-- model_registry.py          Queries catalog models by provider
 |   |-- secret.py                  Encrypts, decrypts, and masks API keys
-|   `-- service.py                 Coordinates provider configuration and checks
+|   `-- service.py                 Coordinates configuration and checks
 |-- shared/
 |   |-- __init__.py                Declares shared service utilities
 |   |-- changelog.py               Builds changelog metadata and field diffs
@@ -115,11 +115,11 @@ services/
 |   `-- validation.py              Provides reusable domain validations
 |-- skills/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- metadata_validator.py      Validates structured skill metadata
-|   `-- service.py                 Manages workspace skill resources
+|   |-- metadata_validator.py      Validates structured metadata
+|   `-- service.py                 Manages workspace resources
 `-- task_checkpoint/
   |-- __init__.py                Defines the package's public imports
-  `-- service.py                 Parses and validates file operations
+  `-- service.py                 Parses and validates filesystem operations
 ```
 
 ### Catalogs
