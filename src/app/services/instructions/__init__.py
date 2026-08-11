@@ -1,5 +1,14 @@
 """Shared application services and contracts for instructions."""
 
+from .catalog_synchronizer import (
+    CatalogChecksumConflictError,
+    CatalogChecksumPolicy,
+    CatalogIdentityConflictError,
+    CatalogSynchronizationError,
+    CatalogSynchronizationResult,
+    CatalogVersionRegressionError,
+    InstructionCatalogSynchronizer,
+)
 from .service import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
@@ -25,7 +34,14 @@ __all__ = [
     "AvailableInstructionDocument",
     "AvailableInstructionSummary",
     "BuiltinInstructionImmutableError",
+    "CatalogChecksumConflictError",
+    "CatalogChecksumPolicy",
+    "CatalogIdentityConflictError",
+    "CatalogSynchronizationError",
+    "CatalogSynchronizationResult",
+    "CatalogVersionRegressionError",
     "InstructionCreate",
+    "InstructionCatalogSynchronizer",
     "InstructionDisabledError",
     "InstructionDocument",
     "InstructionNotFoundError",

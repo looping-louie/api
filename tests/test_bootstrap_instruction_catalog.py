@@ -19,7 +19,7 @@ from src.app.services.shared.settings import AppSettings
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.shared.instruction_catalog_synchronizer import (
+from src.app.services.instructions import (
     CatalogSynchronizationError,
     InstructionCatalogSynchronizer,
 )
