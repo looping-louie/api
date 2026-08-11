@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.persona import PersonaPatchRequest, PersonaResponse
-from src.app.services.personas.service import PersonaService, PersonaUpdate
+from src.app.services.personas import PersonaService, PersonaUpdate
 
 
 class PersonaPatchController:

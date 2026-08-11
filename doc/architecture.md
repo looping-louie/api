@@ -80,7 +80,7 @@ services/
 |   |-- availability.py            Calculates workspace model availability
 |   `-- service.py                 Queries the curated model catalog
 |-- personas/
-|   |-- __init__.py                Declares the personas package
+|   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages workspace personas and skill links
 |-- pipelines/
 |   |-- __init__.py                Defines the package's public imports
@@ -108,11 +108,12 @@ services/
 |   |-- tenant.py                  Resolves workspace tenancy and memberships
 |   `-- validation.py              Provides reusable domain validations
 |-- skills/
-|   |-- __init__.py                Declares the skills package
+|   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured skill metadata
 |   `-- service.py                 Manages workspace skill resources
 `-- task_checkpoint/
-  `-- __init__.py                Parses and validates file operations
+  |-- __init__.py                Defines the package's public imports
+  `-- service.py                 Parses and validates file operations
 ```
 
 ### Catalogs

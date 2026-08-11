@@ -72,7 +72,7 @@ from src.app.services.loop_runs.service import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
-from src.app.services.personas.service import PersonaService
+from src.app.services.personas import PersonaService
 from src.app.services.providers.model_registry import (
     CatalogModelRegistryService,
 )
@@ -87,7 +87,7 @@ from src.app.services.instructions import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
-from src.app.services.skills.service import SkillService
+from src.app.services.skills import SkillService
 
 
 LOGGER = logging.getLogger(__name__)

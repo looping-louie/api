@@ -66,7 +66,7 @@ from src.app.services.shared.validation import (
     DuplicateResourceError,
     ResourceVersionConflictError,
 )
-from src.app.services.skills.metadata_validator import SkillValidationError
+from src.app.services.skills import SkillValidationError
 
 from .domain_error_details import (
     _duplicate_resource_details,

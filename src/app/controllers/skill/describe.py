@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.skill import SkillResponse
-from src.app.services.skills.service import SkillService
+from src.app.services.skills import SkillService
 
 
 class SkillDescribeController:

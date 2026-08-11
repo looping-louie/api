@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.persona import PersonaCreateRequest, PersonaResponse
-from src.app.services.personas.service import PersonaCreate, PersonaService
+from src.app.services.personas import PersonaCreate, PersonaService
 
 
 class PersonaCreateController:
