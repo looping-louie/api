@@ -51,8 +51,10 @@ services/
 |                                  for prompt assembly
 |-- instructions/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- catalog_serialization.py   Serializes catalog entries for persistence
-|   |-- catalog_synchronizer.py    Materializes builtins in SQLite, applies
+|   |-- catalog/
+|   |   |-- __init__.py            Defines the package's public imports
+|   |   |-- serialization.py       Serializes catalog entries for persistence
+|   |   `-- synchronizer.py        Materializes builtins in SQLite, applies
 |   |                              version and checksum policy, deprecates
 |   |                              removed entries, and synchronizes
 |   |                              persona-skill associations

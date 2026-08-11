@@ -15,7 +15,7 @@ from src.app.catalogs import InstructionOrigin, load_instruction_catalog
 from src.app.repositories.instructions.instruction_repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.instructions import (
+from src.app.services.instructions.catalog import (
     InstructionCatalogSynchronizer,
 )
 from tests.instruction_availability_helpers import (

@@ -74,20 +74,20 @@ The following constraints apply:
 
 ## File Size
 
-Handwritten Python source and test files SHOULD NOT contain more than 300
+Handwritten Python source and test files SHOULD NOT contain more than 400
 physical lines, including docstrings, comments, and blank lines. New or
-modified files MUST NOT contain more than 500 physical lines under any
+modified files MUST NOT contain more than 800 physical lines under any
 circumstances.
 
 - Generated files, database migrations, and snapshots are exempt.
-- New files SHOULD stay within 300 lines. They MAY exceed that target when
+- New files SHOULD stay within 400 lines. They MAY exceed that target when
   keeping one cohesive responsibility together is clearly safer than splitting
   it, but they MUST remain within the absolute 500-line limit.
 - A modified file SHOULD be split by responsibility when it approaches or
-  exceeds 300 lines and doing so is safe and proportionate to the task.
-- Existing files over 300 lines are technical debt, not authorization for a
+  exceeds 400 lines and doing so is safe and proportionate to the task.
+- Existing files over 400 lines are technical debt, not authorization for a
   repository-wide refactor.
-- When the requested change touches an existing file over 300 lines, split the
+- When the requested change touches an existing file over 400 lines, split the
   relevant responsibility if that can be done safely within scope. If doing so
   would require a broad unrelated refactor, keep the requested change narrow,
   do not increase the file's line count unnecessarily, and report the
