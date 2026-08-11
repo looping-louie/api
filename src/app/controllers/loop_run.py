@@ -10,7 +10,7 @@ from src.app.schemas.loop_run import (
     LoopRunReviewInputResult,
     LoopRunResponse,
 )
-from src.app.services.loop_runs.service import LoopRunService
+from src.app.services.loop_runs import LoopRunService
 
 
 class LoopRunController:

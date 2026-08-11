@@ -68,7 +68,7 @@ from src.app.services.instructions.catalog import (
 )
 from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from src.app.services.loops.service import LoopService
-from src.app.services.loop_runs.service import LoopRunService
+from src.app.services.loop_runs import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService

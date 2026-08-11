@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime
 from secrets import token_urlsafe
-from typing import Callable, Mapping
+from typing import Mapping
 
 from src.app.models.loop import LoopDocument
 from src.app.models.loop_run import LoopRunDocument
@@ -20,27 +19,14 @@ from src.app.services.loops.types import LoopValidationError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 
-
-class LoopRunNotFoundError(Exception):
-    """Raised when a loop run is absent from its parent loop."""
-
-    def __init__(self, *, loop_id: str, run_id: str) -> None:
-        """Store the parent loop and missing run identifiers."""
-
-        super().__init__(f"Loop run '{run_id}' was not found for loop '{loop_id}'.")
-        self.loop_id = loop_id
-        self.run_id = run_id
-
-
-class LoopRunUnavailableError(Exception):
-    """Raised when a loop cannot start a new execution."""
-
-    def __init__(self, *, loop_id: str, loop_status: str) -> None:
-        """Store the loop state that prevents execution."""
-
-        super().__init__(f"Loop '{loop_id}' with status '{loop_status}' cannot run.")
-        self.loop_id = loop_id
-        self.loop_status = loop_status
+from .types import (
+    Clock,
+    IdFactory,
+    LoopRunNotFoundError,
+    LoopRunUnavailableError,
+    TokenFactory,
+)
+from .validation import require_text
 
 
 class LoopRunService:
@@ -52,11 +38,11 @@ class LoopRunService:
         repository: LoopRunRepository,
         loop_service: LoopService,
         tenant_service: TenantService,
-        id_factory: Callable[[], str],
-        token_factory: Callable[[], str] = lambda: token_urlsafe(32),
+        id_factory: IdFactory,
+        token_factory: TokenFactory = lambda: token_urlsafe(32),
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
-        clock: Callable[[], datetime],
+        clock: Clock,
     ) -> None:
         """Store dependencies used to own and persist loop runs."""
 
@@ -85,7 +71,7 @@ class LoopRunService:
     ) -> LoopRunDocument:
         """Persist a loop run awaiting the CLI repository snapshot."""
 
-        normalized_input = self._require_text(input_text, 'input')
+        normalized_input = require_text(input_text, 'input')
         loop = await self._loop_service.get(
             user_id=user_id,
             loop_id=loop_id,
@@ -115,7 +101,7 @@ class LoopRunService:
             loop_snapshot=self._snapshot(loop),
             execution_context={},
             created_at=now,
-            created_by=self._require_text(user_id, 'user_id'),
+            created_by=require_text(user_id, 'user_id'),
             updated_at=now,
         )
         return await self._repository.create(document=document)
@@ -142,13 +128,13 @@ class LoopRunService:
             requested_workspace_id=requested_workspace_id,
         )
         context = {
-            'repo_context': self._require_text(repo_context, 'repo_context'),
+            'repo_context': require_text(repo_context, 'repo_context'),
             'workspace_metadata': {
-                'workspace_path': self._require_text(
+                'workspace_path': require_text(
                     workspace_path,
                     'workspace_path',
                 ),
-                'source_commit_sha': self._require_text(
+                'source_commit_sha': require_text(
                     source_commit_sha,
                     'source_commit_sha',
                 ),
@@ -187,13 +173,13 @@ class LoopRunService:
         )
         return await self._repository.transition(
             workspace_id=workspace.workspace_id,
-            loop_id=self._require_text(loop_id, 'loop_id'),
-            run_id=self._require_text(run_id, 'run_id'),
-            continuation_token=self._require_text(
+            loop_id=require_text(loop_id, 'loop_id'),
+            run_id=require_text(run_id, 'run_id'),
+            continuation_token=require_text(
                 continuation_token,
                 'continuation_token',
             ),
-            idempotency_key=self._require_text(
+            idempotency_key=require_text(
                 idempotency_key,
                 'idempotency_key',
             ),
@@ -419,8 +405,8 @@ class LoopRunService:
         )
         document = await self._repository.get(
             workspace_id=workspace.workspace_id,
-            loop_id=self._require_text(loop_id, 'loop_id'),
-            run_id=self._require_text(run_id, 'run_id'),
+            loop_id=require_text(loop_id, 'loop_id'),
+            run_id=require_text(run_id, 'run_id'),
         )
         if document is None:
             raise LoopRunNotFoundError(loop_id=loop_id, run_id=run_id)
@@ -449,7 +435,7 @@ class LoopRunService:
             raise LoopValidationError(field_name='offset', message='must be positive')
         documents, total = await self._repository.list(
             workspace_id=workspace.workspace_id,
-            loop_id=self._require_text(loop_id, 'loop_id'),
+            loop_id=require_text(loop_id, 'loop_id'),
             offset=offset,
             limit=PAGE_SIZE,
         )
@@ -470,12 +456,3 @@ class LoopRunService:
         if self._generation_service is None:
             raise RuntimeError('Loop generation is not configured.')
         return self._generation_service
-
-    @staticmethod
-    def _require_text(value: str, field_name: str) -> str:
-        """Return a non-empty normalized string or raise a loop error."""
-
-        normalized = value.strip()
-        if not normalized:
-            raise LoopValidationError(field_name=field_name, message='must not be empty')
-        return normalized

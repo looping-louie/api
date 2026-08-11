@@ -18,7 +18,7 @@ from src.app.services.model_execution import (
     ModelExecutionError,
     ModelExecutionResult,
 )
-from src.app.services.loop_runs.service import LoopRunService
+from src.app.services.loop_runs import LoopRunService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers

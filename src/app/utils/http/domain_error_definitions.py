@@ -10,7 +10,7 @@ from src.app.services.loops.types import (
     LoopNotFoundError,
     LoopValidationError,
 )
-from src.app.services.loop_runs.service import (
+from src.app.services.loop_runs import (
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )

@@ -65,8 +65,10 @@ services/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for direct and
 |   |                              roundtable loop runs
-|   `-- service.py                 Creates, reads, and advances loop-run
-|                                  records through checkpoints
+|   |-- service.py                 Creates, reads, and advances loop-run
+|   |                              records through checkpoints
+|   |-- types.py                   Defines loop-run contracts and domain errors
+|   `-- validation.py              Normalizes and validates loop-run input
 |-- loops/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- catalog_seeder.py          Installs curated catalog loops in workspaces
