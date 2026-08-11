@@ -10,7 +10,7 @@ from typing import Callable, Mapping
 from src.app.models.loop import LoopDocument
 from src.app.models.loop_run import LoopRunDocument
 from src.app.repositories.loop_runs.loop_run_repository import LoopRunRepository
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
 from src.app.services.loop_runs.generation import LoopRunGenerationService

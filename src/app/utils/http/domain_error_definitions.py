@@ -2,7 +2,7 @@
 
 from fastapi import status
 
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
 from src.app.services.loops.types import (

@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
 from src.app.services.personas.service import (

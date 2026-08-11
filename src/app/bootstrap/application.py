@@ -59,7 +59,7 @@ from src.app.services.shared.settings import (
     AppSettings,
     get_app_settings,
 )
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
 from src.app.services.shared.instruction_catalog_synchronizer import (

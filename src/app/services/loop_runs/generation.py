@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Mapping
 
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionLibrary,
     ExecutionInstructionLibraryService,
 )

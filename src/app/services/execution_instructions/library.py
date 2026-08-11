@@ -9,13 +9,13 @@ from typing import Mapping, Sequence
 
 from src.app.catalogs.instructions import InstructionOrigin
 
-from .shared.instruction import (
+from ..shared.instruction import (
     AvailableInstructionDocument,
     InstructionRepository,
     InstructionType,
 )
-from .shared.tenant import TenantService
-from .personas.service import PersonaSkillRepository
+from ..shared.tenant import TenantService
+from ..personas.service import PersonaSkillRepository
 
 
 class ExecutionInstructionNotFoundError(LookupError):

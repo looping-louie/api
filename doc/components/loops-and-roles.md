@@ -58,7 +58,7 @@ Only the final operation plan reaches the CLI `apply_operations` and
 
 ## Instruction library support
 
-`src/app/services/execution_instruction_library.py` recognizes `generator` and
+`src/app/services/execution_instructions/library.py` recognizes `generator` and
 `reviewer` as default executable instruction roles. Builtin persona metadata
 also declares applicability for those roles.
 
@@ -104,5 +104,5 @@ implemented in the current loop-run executor.
 - `src/app/schemas/loop.py`;
 - `src/app/services/loops/validation.py`;
 - `src/app/services/loop_runs/service.py`;
-- `src/app/services/execution_instruction_library.py`;
+- `src/app/services/execution_instructions/library.py`;
 - `src/app/catalogs/loops/catalog.py`.

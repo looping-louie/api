@@ -1,6 +1,6 @@
 """Structured details exposed for known domain errors."""
 
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
 from src.app.services.models.availability import ModelNotFoundError
