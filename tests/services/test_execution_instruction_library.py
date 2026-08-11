@@ -7,7 +7,7 @@ from src.app.services.personas.service import (
     PersonaCreate,
     PersonaService,
 )
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionCreate,
     InstructionService,
     InstructionUpdate,

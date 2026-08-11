@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionRepository,
 )
 from src.app.services.models.service import ModelCatalogService

@@ -83,7 +83,7 @@ from src.app.services.providers.service import ProviderService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
-from src.app.services.shared.instruction import InstructionService
+from src.app.services.instructions import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService

@@ -42,7 +42,7 @@ from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
     ResourceInUseError,
 )
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     BuiltinInstructionImmutableError,
     InstructionDisabledError,
     InstructionNotFoundError,

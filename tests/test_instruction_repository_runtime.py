@@ -16,7 +16,7 @@ from src.app.repositories.instructions.persona_skill_repository import (
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.shared.instruction import InstructionDocument
+from src.app.services.instructions import InstructionDocument
 from src.app.services.shared.tenant import (
     TenantService,
     WorkspaceMembership,

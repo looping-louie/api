@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionCreate,
     InstructionService,
     InstructionUpdate,

@@ -9,7 +9,7 @@ from typing import Mapping, Sequence
 
 from src.app.catalogs.instructions import InstructionOrigin
 
-from ..shared.instruction import (
+from ..instructions import (
     AvailableInstructionDocument,
     InstructionRepository,
     InstructionType,

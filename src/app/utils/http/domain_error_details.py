@@ -9,7 +9,7 @@ from src.app.services.providers.errors import (
     UnknownProviderError,
 )
 from src.app.services.shared.dependency_checker import ResourceInUseError
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionNotFoundError,
     InvalidInstructionTypeError,
 )

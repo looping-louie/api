@@ -14,7 +14,7 @@ from src.app.schemas.skill import (
     SkillPatchRequest,
 )
 from src.app.services.personas.service import PersonaService
-from src.app.services.shared.instruction import InstructionService
+from src.app.services.instructions import InstructionService
 from src.app.services.skills.service import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.services.test_instruction_service import seed_builtin

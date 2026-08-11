@@ -8,7 +8,7 @@ from src.app.services.personas.service import (
     PersonaService,
     PersonaUpdate,
 )
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionNotFoundError,
     InstructionService,
 )

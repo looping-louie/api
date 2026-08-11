@@ -10,9 +10,9 @@ from uuid import uuid4
 
 from src.app.catalogs.instructions import InstructionOrigin
 
-from .dependency_checker import DependencyChecker
-from .reference_resolver import ResourceReference
-from .validation import ValidationService
+from ..shared.dependency_checker import DependencyChecker
+from ..shared.reference_resolver import ResourceReference
+from ..shared.validation import ValidationService
 
 
 InstructionType = Literal["persona", "skill"]

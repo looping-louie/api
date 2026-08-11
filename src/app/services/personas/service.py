@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, fields
 from typing import Protocol, TypeVar
 
-from ..shared.instruction import (
+from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionCreate,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.skill import SkillCreateRequest, SkillResponse
-from src.app.services.shared.instruction import InstructionCreate
+from src.app.services.instructions import InstructionCreate
 from src.app.services.skills.service import SkillService
 
 
