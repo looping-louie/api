@@ -16,7 +16,7 @@ from src.app.models.loop import (
     LoopOutputContract,
     LoopStopConditions,
 )
-from src.app.repositories.loops.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
 from tests.integration.conftest import WorkspaceFactory

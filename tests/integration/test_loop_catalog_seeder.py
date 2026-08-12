@@ -8,7 +8,7 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from src.app.repositories.loops.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
 from src.app.services.loops.catalog_seeder import seed_loop_catalog

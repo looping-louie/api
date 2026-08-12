@@ -18,7 +18,7 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
-from src.app.repositories.loops.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
 from src.app.repositories.loop_runs.sqlite_repository import (

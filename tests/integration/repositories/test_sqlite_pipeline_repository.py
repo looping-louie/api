@@ -15,7 +15,7 @@ from src.app.models.pipeline import (
     PipelineLoopStep,
     PipelineQuizConfig,
 )
-from src.app.repositories.loops.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
 from src.app.repositories.pipelines.sqlite_pipeline_repository import (
