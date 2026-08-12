@@ -47,6 +47,8 @@ handling FastAPI request-response concerns or direct persistence.
 services/
 |
 |-- __init__.py                    Declares the services package
+|-- activities/
+|   `-- service.py                 Manages definitions and changelog history
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
@@ -234,6 +236,9 @@ cross-resource lookups; infrastructure owns database setup and migrations.
 repositories/
 |
 |-- __init__.py                    Declares persistence implementations
+|-- activities/
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists definitions and changelog entries
 |-- infrastructure/
 |   |-- __init__.py                Declares database setup utilities
 |   |-- local_tenant_seed.py       Creates the initial local workspace
@@ -285,6 +290,7 @@ used between services and repositories. It does not define HTTP contracts.
 ```text
 models/
 |
+|-- activity.py                    Defines definitions and changelog entries
 |-- changelog.py                   Defines shared immutable changelog values
 |-- instruction.py                 Defines persisted and available resource data
 |-- loop.py                        Defines definitions, agents, output, and history

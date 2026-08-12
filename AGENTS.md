@@ -114,6 +114,12 @@ Use concise, informative documentation in English.
 - Comments MUST explain intent and reasoning, not narrate straightforward code.
 - MUST NOT add redundant comments to every line or restate the implementation
   in prose.
+- doc/backlog operates kind of like a document-based project manager; so, its
+  files SHOULD NOT be edited once created, unless strictly necessary.
+- doc/architecture.md and doc/API.md are extremely important files which
+  describe the whole project. So, they MUST be kept continuously up-to-date.
+  Whenever a change is made to some file that might impact on its content, it
+  should be updated.
 
 ## Tests
 
