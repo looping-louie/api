@@ -18,16 +18,16 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
-from src.app.repositories.loops.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
-from src.app.repositories.loop_runs.sqlite_loop_run_repository import (
+from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
 )
 from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
 )
-from src.app.repositories.instructions.instruction_repository import (
+from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
 from src.app.repositories.instructions.persona_skill_repository import (
@@ -39,10 +39,10 @@ from src.app.repositories.infrastructure.migration_runner import (
 from src.app.repositories.infrastructure.local_tenant_seed import (
     ensure_local_tenant,
 )
-from src.app.repositories.providers.provider_repository import (
+from src.app.repositories.providers.repository import (
     SqliteProviderRepository,
 )
-from src.app.repositories.providers.provider_state_repository import (
+from src.app.repositories.providers.state_repository import (
     ProviderStateRepositoryAdapter,
 )
 from src.app.repositories.shared.reference_repository import (
@@ -59,20 +59,20 @@ from src.app.services.shared.settings import (
     AppSettings,
     get_app_settings,
 )
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.shared.instruction_catalog_synchronizer import (
+from src.app.services.instructions.catalog import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
 from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from src.app.services.loops.service import LoopService
-from src.app.services.loop_runs.service import LoopRunService
+from src.app.services.loop_runs import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
-from src.app.services.personas.service import PersonaService
+from src.app.services.personas import PersonaService
 from src.app.services.providers.model_registry import (
     CatalogModelRegistryService,
 )
@@ -83,11 +83,11 @@ from src.app.services.providers.service import ProviderService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
-from src.app.services.shared.instruction import InstructionService
+from src.app.services.instructions import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
-from src.app.services.skills.service import SkillService
+from src.app.services.skills import SkillService
 
 
 LOGGER = logging.getLogger(__name__)

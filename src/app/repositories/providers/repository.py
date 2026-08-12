@@ -10,7 +10,7 @@ from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
 
-from .provider_credential_mapper import (
+from .credential_mapper import (
     credential_values,
     row_to_credential,
 )

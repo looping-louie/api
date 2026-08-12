@@ -13,7 +13,7 @@ from src.app.catalogs.providers import (
 from src.app.controllers.model import ModelController
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
-from src.app.services.shared.instruction import InstructionService
+from src.app.services.instructions import InstructionService
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import (
     TenantService,

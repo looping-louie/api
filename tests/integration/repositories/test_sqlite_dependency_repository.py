@@ -8,7 +8,7 @@ import pytest
 from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
 )
-from src.app.repositories.loops.sqlite_loop_repository import (
+from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
 from src.app.services.shared.reference_resolver import ResourceReference

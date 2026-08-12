@@ -15,7 +15,7 @@ from src.app.catalogs.models import (
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.provider import ProviderCredential
-from src.app.repositories.providers.provider_repository import ProviderRepository
+from src.app.repositories.providers.repository import ProviderRepository
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.providers.secret import SecretService
 

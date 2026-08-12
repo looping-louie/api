@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionType,
 )
 
-from .instruction_mapping import (
+from .mapping import (
     escape_like,
     normalize_search,
     to_available_document,

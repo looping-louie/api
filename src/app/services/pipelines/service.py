@@ -10,8 +10,8 @@ from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDocument,
 )
-from src.app.repositories.loops.loop_repository import LoopRepository
-from src.app.repositories.pipelines.pipeline_repository import (
+from src.app.repositories.loops.repository import LoopRepository
+from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
 from src.app.services.pipelines.operations import (

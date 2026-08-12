@@ -2,7 +2,7 @@
 
 from fastapi import status
 
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
 from src.app.services.loops.types import (
@@ -10,7 +10,7 @@ from src.app.services.loops.types import (
     LoopNotFoundError,
     LoopValidationError,
 )
-from src.app.services.loop_runs.service import (
+from src.app.services.loop_runs import (
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )
@@ -42,7 +42,7 @@ from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
     ResourceInUseError,
 )
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     BuiltinInstructionImmutableError,
     InstructionDisabledError,
     InstructionNotFoundError,
@@ -66,7 +66,7 @@ from src.app.services.shared.validation import (
     DuplicateResourceError,
     ResourceVersionConflictError,
 )
-from src.app.services.skills.metadata_validator import SkillValidationError
+from src.app.services.skills import SkillValidationError
 
 from .domain_error_details import (
     _duplicate_resource_details,

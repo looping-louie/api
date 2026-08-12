@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.pipelines.sqlite_pipeline_repository import (
+from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
 from src.app.repositories.shared.dependency_repository import (

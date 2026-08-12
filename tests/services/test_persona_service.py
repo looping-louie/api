@@ -3,12 +3,12 @@
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.personas.service import (
+from src.app.services.personas import (
     PersonaCreate,
     PersonaService,
     PersonaUpdate,
 )
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionNotFoundError,
     InstructionService,
 )

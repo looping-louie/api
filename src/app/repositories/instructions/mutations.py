@@ -6,12 +6,12 @@ from typing import Any
 
 import aiosqlite
 
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionDocument,
     InstructionType,
 )
 
-from .instruction_mapping import (
+from .mapping import (
     normalize_name,
     serialize_datetime,
     serialize_metadata,

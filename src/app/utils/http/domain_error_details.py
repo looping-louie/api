@@ -1,6 +1,6 @@
 """Structured details exposed for known domain errors."""
 
-from src.app.services.execution_instruction_library import (
+from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
 from src.app.services.models.availability import ModelNotFoundError
@@ -9,7 +9,7 @@ from src.app.services.providers.errors import (
     UnknownProviderError,
 )
 from src.app.services.shared.dependency_checker import ResourceInUseError
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     InstructionNotFoundError,
     InvalidInstructionTypeError,
 )

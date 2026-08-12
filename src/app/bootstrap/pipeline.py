@@ -7,8 +7,8 @@ from datetime import datetime
 from pathlib import Path
 
 from src.app.controllers.pipeline import PipelineController
-from src.app.repositories.loops.loop_repository import LoopRepository
-from src.app.repositories.pipelines.sqlite_pipeline_repository import (
+from src.app.repositories.loops.repository import LoopRepository
+from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
 from src.app.services.pipelines.service import PipelineService

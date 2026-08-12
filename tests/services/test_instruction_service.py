@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     AvailableInstructionDocument,
     BuiltinInstructionImmutableError,
     InstructionCreate,

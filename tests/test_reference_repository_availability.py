@@ -8,7 +8,7 @@ from src.app.catalogs.instructions import InstructionOrigin
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     AvailableInstructionDocument,
     InstructionDocument,
 )

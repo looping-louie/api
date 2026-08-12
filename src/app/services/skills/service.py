@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..shared.instruction import (
+from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionCreate,

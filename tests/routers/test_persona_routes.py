@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.persona import PersonaController
 from src.app.routers.personas import router as personas_router
-from src.app.services.shared.instruction import InstructionService
+from src.app.services.instructions import InstructionService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.services.test_instruction_service import seed_builtin

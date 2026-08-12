@@ -16,7 +16,7 @@ from src.app.catalogs.instructions import (
     PersonaCatalogEntry,
 )
 from src.app.catalogs.instructions.loader import InstructionCatalog
-from src.app.services.shared.instruction_catalog_serialization import (
+from .serialization import (
     serialize_catalog_metadata,
 )
 

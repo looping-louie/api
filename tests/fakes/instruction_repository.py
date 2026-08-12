@@ -3,7 +3,7 @@ from dataclasses import replace
 from typing import Sequence
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionDocument,

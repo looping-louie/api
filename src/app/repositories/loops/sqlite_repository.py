@@ -1,4 +1,4 @@
-"""SQLite persistence for pipelines and their changelog."""
+"""SQLite persistence for loops and their changelog."""
 
 from __future__ import annotations
 
@@ -8,24 +8,19 @@ from pathlib import Path
 
 import aiosqlite
 
-from src.app.models.pipeline import (
-    PipelineChangelogEntry,
-    PipelineDocument,
-    PipelineStatus,
-)
-from src.app.repositories.pipelines.pipeline_repository_mapping import (
-    count_pipelines,
+from src.app.models.loop import LoopChangelogEntry, LoopDocument
+from .mapping import (
+    insert_agents,
     insert_changelog,
-    insert_pipeline,
-    insert_steps,
-    list_filter,
+    insert_loop,
+    loop_update_values,
     to_changelog_entry,
     to_document,
 )
 
 
-class SqlitePipelineRepository:
-    """Persist pipeline aggregates and changelog entries in SQLite."""
+class SqliteLoopRepository:
+    """Persist loop aggregates and changelog entries in SQLite."""
 
     def __init__(self, database_path: str | Path) -> None:
         """Store the database path used for repository connections."""
@@ -38,34 +33,20 @@ class SqlitePipelineRepository:
         workspace_id: str,
         offset: int,
         limit: int,
-        status: PipelineStatus | None,
-        search: str | None,
-    ) -> tuple[list[PipelineDocument], int]:
-        """Return one filtered page with active pipelines ordered first."""
+    ) -> tuple[list[LoopDocument], int]:
+        """Return one page of loops ordered by most recent update."""
 
-        where, parameters = list_filter(
-            workspace_id=workspace_id,
-            status=status,
-            search=search,
-        )
         async with self._connect() as connection:
-            total = await count_pipelines(connection, where, parameters)
+            total = await self._count_loops(connection, workspace_id)
             cursor = await connection.execute(
-                f"""
+                """
                 SELECT *
-                FROM pipelines
-                WHERE {where}
-                ORDER BY
-                    CASE status
-                        WHEN 'active' THEN 0
-                        WHEN 'disabled' THEN 1
-                        ELSE 2
-                    END,
-                    updated_at DESC,
-                    id ASC
+                FROM loops
+                WHERE workspace_id = ?
+                ORDER BY updated_at DESC, id ASC
                 LIMIT ? OFFSET ?
                 """,
-                (*parameters, limit, offset),
+                (workspace_id, limit, offset),
             )
             try:
                 rows = await cursor.fetchall()
@@ -81,16 +62,12 @@ class SqlitePipelineRepository:
         self,
         *,
         workspace_id: str,
-        pipeline_id: str,
-    ) -> PipelineDocument | None:
-        """Return one pipeline with its ordered steps."""
+        loop_id: str,
+    ) -> LoopDocument | None:
+        """Return one loop and its ordered agents."""
 
         async with self._connect() as connection:
-            row = await self._get_row(
-                connection,
-                workspace_id,
-                pipeline_id,
-            )
+            row = await self._get_row(connection, workspace_id, loop_id)
             if row is None:
                 return None
             return await to_document(connection, row)
@@ -98,16 +75,16 @@ class SqlitePipelineRepository:
     async def create(
         self,
         *,
-        document: PipelineDocument,
-        changelog_entry: PipelineChangelogEntry,
-    ) -> PipelineDocument:
-        """Insert a pipeline and creation entry atomically."""
+        document: LoopDocument,
+        changelog_entry: LoopChangelogEntry,
+    ) -> LoopDocument:
+        """Insert a loop, agents, and creation entry in one transaction."""
 
         async with self._connect() as connection:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
-                await insert_pipeline(connection, document)
-                await insert_steps(connection, document)
+                await insert_loop(connection, document)
+                await insert_agents(connection, document)
                 await insert_changelog(connection, changelog_entry)
                 await connection.commit()
             except Exception:
@@ -118,26 +95,40 @@ class SqlitePipelineRepository:
     async def update(
         self,
         *,
-        document: PipelineDocument,
-        changelog_entry: PipelineChangelogEntry,
+        document: LoopDocument,
+        changelog_entry: LoopChangelogEntry,
     ) -> bool:
-        """Replace mutable fields and append a changelog entry atomically."""
+        """Replace a loop and append its update entry atomically."""
 
         async with self._connect() as connection:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
-                updated = await self._update_row(connection, document)
+                cursor = await connection.execute(
+                    """
+                    UPDATE loops
+                    SET title = ?, description = ?, flow = ?, status = ?,
+                        stop_conditions_json = ?, output_contract_json = ?,
+                        updated_at = ?, updated_by = ?
+                    WHERE workspace_id = ? AND id = ?
+                    """,
+                    loop_update_values(document),
+                )
+                try:
+                    updated = cursor.rowcount == 1
+                finally:
+                    await cursor.close()
                 if not updated:
                     await connection.rollback()
                     return False
+
                 await connection.execute(
                     """
-                    DELETE FROM pipeline_steps
-                    WHERE workspace_id = ? AND pipeline_id = ?
+                    DELETE FROM loop_agents
+                    WHERE workspace_id = ? AND loop_id = ?
                     """,
                     (document.workspace_id, document.id),
                 )
-                await insert_steps(connection, document)
+                await insert_agents(connection, document)
                 await insert_changelog(connection, changelog_entry)
                 await connection.commit()
                 return True
@@ -145,22 +136,28 @@ class SqlitePipelineRepository:
                 await connection.rollback()
                 raise
 
-    async def archive(
+    async def delete(
         self,
         *,
-        document: PipelineDocument,
-        changelog_entry: PipelineChangelogEntry,
+        workspace_id: str,
+        loop_id: str,
+        changelog_entry: LoopChangelogEntry,
     ) -> bool:
-        """Persist archival and its changelog entry atomically."""
+        """Append a deletion entry before deleting the loop atomically."""
 
         async with self._connect() as connection:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
-                updated = await self._update_row(connection, document)
-                if not updated:
+                exists = await self._get_row(connection, workspace_id, loop_id)
+                if exists is None:
                     await connection.rollback()
                     return False
+
                 await insert_changelog(connection, changelog_entry)
+                await connection.execute(
+                    "DELETE FROM loops WHERE workspace_id = ? AND id = ?",
+                    (workspace_id, loop_id),
+                )
                 await connection.commit()
                 return True
             except Exception:
@@ -171,20 +168,20 @@ class SqlitePipelineRepository:
         self,
         *,
         workspace_id: str,
-        pipeline_id: str,
+        loop_id: str,
         offset: int,
         limit: int,
-    ) -> tuple[list[PipelineChangelogEntry], int]:
-        """Return pipeline changelog entries from newest to oldest."""
+    ) -> tuple[list[LoopChangelogEntry], int]:
+        """Return changelog entries ordered from newest to oldest."""
 
         async with self._connect() as connection:
             count_cursor = await connection.execute(
                 """
                 SELECT COUNT(*) AS total
-                FROM pipeline_changelog_entries
-                WHERE workspace_id = ? AND pipeline_id = ?
+                FROM loop_changelog_entries
+                WHERE workspace_id = ? AND loop_id = ?
                 """,
-                (workspace_id, pipeline_id),
+                (workspace_id, loop_id),
             )
             try:
                 count_row = await count_cursor.fetchone()
@@ -195,12 +192,12 @@ class SqlitePipelineRepository:
             cursor = await connection.execute(
                 """
                 SELECT *
-                FROM pipeline_changelog_entries
-                WHERE workspace_id = ? AND pipeline_id = ?
+                FROM loop_changelog_entries
+                WHERE workspace_id = ? AND loop_id = ?
                 ORDER BY changed_at DESC, rowid DESC
                 LIMIT ? OFFSET ?
                 """,
-                (workspace_id, pipeline_id, limit, offset),
+                (workspace_id, loop_id, limit, offset),
             )
             try:
                 rows = await cursor.fetchall()
@@ -209,50 +206,38 @@ class SqlitePipelineRepository:
         return [to_changelog_entry(row) for row in rows], total
 
     @staticmethod
-    async def _update_row(
-        connection: aiosqlite.Connection,
-        document: PipelineDocument,
-    ) -> bool:
-        """Update scalar pipeline fields with an existing transaction."""
-
-        cursor = await connection.execute(
-            """
-            UPDATE pipelines
-            SET title = ?, description = ?, status = ?,
-                updated_at = ?, updated_by = ?
-            WHERE workspace_id = ? AND id = ?
-            """,
-            (
-                document.title,
-                document.description,
-                document.status,
-                document.updated_at.isoformat(),
-                document.updated_by,
-                document.workspace_id,
-                document.id,
-            ),
-        )
-        try:
-            return cursor.rowcount == 1
-        finally:
-            await cursor.close()
-
-    @staticmethod
     async def _get_row(
         connection: aiosqlite.Connection,
         workspace_id: str,
-        pipeline_id: str,
+        loop_id: str,
     ) -> aiosqlite.Row | None:
-        """Return one scalar pipeline row."""
+        """Return one scalar loop row using an existing connection."""
 
         cursor = await connection.execute(
-            "SELECT * FROM pipelines WHERE workspace_id = ? AND id = ?",
-            (workspace_id, pipeline_id),
+            "SELECT * FROM loops WHERE workspace_id = ? AND id = ?",
+            (workspace_id, loop_id),
         )
         try:
             return await cursor.fetchone()
         finally:
             await cursor.close()
+
+    @staticmethod
+    async def _count_loops(
+        connection: aiosqlite.Connection,
+        workspace_id: str,
+    ) -> int:
+        """Count loops in one workspace."""
+
+        cursor = await connection.execute(
+            "SELECT COUNT(*) AS total FROM loops WHERE workspace_id = ?",
+            (workspace_id,),
+        )
+        try:
+            row = await cursor.fetchone()
+        finally:
+            await cursor.close()
+        return int(row["total"]) if row is not None else 0
 
     @asynccontextmanager
     async def _connect(self) -> AsyncIterator[aiosqlite.Connection]:

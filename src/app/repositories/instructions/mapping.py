@@ -10,7 +10,7 @@ from typing import Any, cast
 import aiosqlite
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.shared.instruction import (
+from src.app.services.instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     InstructionDocument,
