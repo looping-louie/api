@@ -39,7 +39,9 @@ src/app/
 
 ### Services
 
-This package <ADD DESCRIPTION HERE>.
+This package implements application use cases and reusable business rules. It
+coordinates catalog definitions, domain models, and repositories without
+handling FastAPI request-response concerns or direct persistence.
 
 ```text
 services/
@@ -220,7 +222,24 @@ repositories/
 
 ### Models
 
-This package <ADD DESCRIPTION HERE>.
+This package defines typed internal domain state. It contains persisted
+documents, immutable changelog entries, availability projections, and values
+used between services and repositories. It does not define HTTP contracts.
+
+```text
+models/
+|
+|-- changelog.py                   Defines shared immutable changelog values
+|-- instruction.py                 Defines persisted and available resource data
+|-- loop.py                        Defines definitions, agents, output, and history
+|-- loop_run.py                    Defines execution state and checkpoints
+|-- model.py                       Defines catalog and availability projections
+|-- persona.py                     Defines resource documents with skill links
+|-- pipeline.py                    Defines definitions, steps, and history
+|-- provider.py                    Defines credential and safe configuration state
+|-- reference.py                   Defines dependency and reference values
+`-- tenant.py                      Defines workspace and membership state
+```
 
 ## Components
 
