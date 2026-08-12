@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import cast
 
@@ -12,9 +11,7 @@ from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineChangeType,
     PipelineDocument,
-    PipelineHumanGateStep,
-    PipelineLoopStep,
-    PipelineQuizConfig,
+    PipelineActivityStep,
     PipelineStatus,
 )
 from src.app.repositories.shared.json_mapping import (
@@ -59,38 +56,15 @@ async def insert_steps(
     await connection.executemany(
         """
         INSERT INTO pipeline_steps (
-            workspace_id, pipeline_id, position, step_type,
-            loop_id, gate_type, config_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            workspace_id, pipeline_id, position, activity_id
+        ) VALUES (?, ?, ?, ?)
         """,
         [
             (
                 document.workspace_id,
                 document.id,
                 position,
-                step.type,
-                step.loop_id if isinstance(step, PipelineLoopStep) else None,
-                (
-                    step.gate_type
-                    if isinstance(step, PipelineHumanGateStep)
-                    else None
-                ),
-                (
-                    serialize_json(
-                        {
-                            "minimum_correct_answers": (
-                                step.config.minimum_correct_answers
-                            ),
-                            "question_count": step.config.question_count,
-                            "option_count": step.config.option_count,
-                        }
-                    )
-                    if (
-                        isinstance(step, PipelineHumanGateStep)
-                        and step.config is not None
-                    )
-                    else None
-                ),
+                step.activity_id,
             )
             for position, step in enumerate(document.steps)
         ],
@@ -131,7 +105,7 @@ async def to_document(
 
     cursor = await connection.execute(
         """
-        SELECT step_type, loop_id, gate_type, config_json
+        SELECT activity_id
         FROM pipeline_steps
         WHERE workspace_id = ? AND pipeline_id = ?
         ORDER BY position ASC
@@ -157,23 +131,10 @@ async def to_document(
     )
 
 
-def _to_step(
-    row: aiosqlite.Row,
-) -> PipelineLoopStep | PipelineHumanGateStep:
-    """Build one domain step from its persisted discriminator."""
+def _to_step(row: aiosqlite.Row) -> PipelineActivityStep:
+    """Build one activity reference step from persistence."""
 
-    if row["step_type"] == "loop":
-        return PipelineLoopStep(type="loop", loop_id=str(row["loop_id"]))
-    config = (
-        cast(dict[str, int], json.loads(row["config_json"]))
-        if row["config_json"] is not None
-        else None
-    )
-    return PipelineHumanGateStep(
-        type="human_gate",
-        gate_type=cast(str, row["gate_type"]),  # type: ignore[arg-type]
-        config=PipelineQuizConfig(**config) if config is not None else None,
-    )
+    return PipelineActivityStep(activity_id=str(row["activity_id"]))
 
 
 def to_changelog_entry(row: aiosqlite.Row) -> PipelineChangelogEntry:

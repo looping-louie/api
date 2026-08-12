@@ -34,8 +34,6 @@ from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelineNotFoundError,
-    UnsupportedHumanGateTypeError,
-    UnsupportedPipelineStepError,
 )
 from src.app.services.providers.connection import ProviderConnectionError
 from src.app.services.providers.errors import (
@@ -192,16 +190,6 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="invalid_pipeline_steps",
         details_builder=_validation_details,
-    ),
-    UnsupportedPipelineStepError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="unsupported_pipeline_step",
-        details_builder=unsupported_step_details,
-    ),
-    UnsupportedHumanGateTypeError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="unsupported_human_gate_type",
-        details_builder=unsupported_gate_details,
     ),
     ReferenceValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

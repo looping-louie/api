@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime
 from typing import Callable
 
@@ -10,48 +9,47 @@ from src.app.models.changelog import JsonObject
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDocument,
-    PipelineLoopStep,
     PipelineStatus,
 )
-from src.app.repositories.loops.repository import LoopRepository
+from src.app.repositories.activities.repository import ActivityRepository
 from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
-from src.app.services.loops.types import LoopNotFoundError
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineNotFoundError,
 )
 from src.app.services.pipelines.validation import require_text
+from src.app.services.shared.reference_resolver import (
+    ResourceNotFoundError,
+    ResourceReference,
+)
 from src.app.services.shared.changelog import build_changelog_metadata
 from src.app.services.shared.pagination import require_offset
 
 
-async def validate_loop_references(
-    loop_repository: LoopRepository,
+async def validate_activity_references(
+    activity_repository: ActivityRepository,
     document: PipelineDocument,
 ) -> None:
-    """Require every unique referenced loop to exist and be active."""
+    """Require every unique referenced activity to exist and be active."""
 
-    loop_ids = tuple(
-        dict.fromkeys(
-            step.loop_id
-            for step in document.steps
-            if isinstance(step, PipelineLoopStep)
+    activity_ids = tuple(dict.fromkeys(
+        step.activity_id for step in document.steps
+    ))
+    unresolved: list[ResourceReference] = []
+    for activity_id in activity_ids:
+        activity = await activity_repository.get(
+            workspace_id=document.workspace_id,
+            activity_id=activity_id,
         )
-    )
-    loops = await asyncio.gather(
-        *(
-            loop_repository.get(
-                workspace_id=document.workspace_id,
-                loop_id=loop_id,
-            )
-            for loop_id in loop_ids
+        if activity is None or activity.status != "active":
+            unresolved.append(ResourceReference("activity", activity_id))
+    if unresolved:
+        raise ResourceNotFoundError(
+            workspace_id=document.workspace_id,
+            references=unresolved,
         )
-    )
-    for loop_id, loop in zip(loop_ids, loops):
-        if loop is None or loop.status != "active":
-            raise LoopNotFoundError(loop_id=loop_id)
 
 
 async def require_pipeline(
@@ -77,7 +75,7 @@ def build_entry(
     id_factory: Callable[[], str],
     document: PipelineDocument,
     actor_id: str,
-    change_type: str,
+    entry_change_type: str,
     changed_at: datetime,
     diff: JsonObject | None = None,
     content: JsonObject | None = None,
@@ -96,7 +94,7 @@ def build_entry(
         id=metadata.id,
         pipeline_id=document.id,
         workspace_id=metadata.workspace_id,
-        change_type=change_type,  # type: ignore[arg-type]
+        change_type=entry_change_type,  # type: ignore[arg-type]
         actor_id=metadata.actor_id,
         changed_at=metadata.changed_at,
         diff=metadata.diff,

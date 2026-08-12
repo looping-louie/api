@@ -8,28 +8,26 @@ from pathlib import Path
 
 import pytest
 
+from src.app.models.activity import (
+    ActivityChangelogEntry,
+    ActivityDocument,
+)
 from src.app.models.pipeline import (
+    PipelineActivityStep,
     PipelineChangelogEntry,
     PipelineDocument,
-    PipelineHumanGateStep,
-    PipelineLoopStep,
-    PipelineQuizConfig,
 )
-from src.app.repositories.loops.sqlite_repository import (
-    SqliteLoopRepository,
+from src.app.repositories.activities.sqlite_repository import (
+    SqliteActivityRepository,
 )
 from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
 from tests.factories.pipelines import (
     BASE_TIME,
-    build_loop,
     build_pipeline,
 )
 from tests.integration.conftest import WorkspaceFactory
-from tests.integration.repositories.test_sqlite_loop_repository import (
-    entry as loop_entry,
-)
 
 
 def entry(
@@ -52,45 +50,59 @@ def entry(
     )
 
 
-async def seed_loop(database_path: Path) -> None:
-    """Insert the active loop referenced by repository fixtures."""
+async def seed_activities(
+    database_path: Path,
+    activity_ids: tuple[str, ...] = ('activity-1', 'activity-2', 'activity-3'),
+) -> None:
+    """Insert active activities referenced by repository fixtures."""
 
-    loop = build_loop()
-    await SqliteLoopRepository(database_path).create(
-        document=loop,
-        changelog_entry=loop_entry(loop, entry_id="loop-entry"),
-    )
+    repository = SqliteActivityRepository(database_path)
+    for activity_id in activity_ids:
+        document = ActivityDocument(
+            id=activity_id,
+            workspace_id='workspace-1',
+            title=f'Activity {activity_id}',
+            description='Complete one stage.',
+            status='active',
+            type='loop',
+            config={'type': 'loop'},
+            created_at=BASE_TIME,
+            created_by='user-1',
+            updated_at=BASE_TIME,
+            updated_by='user-1',
+        )
+        await repository.create(
+            document=document,
+            changelog_entry=ActivityChangelogEntry(
+                id=f'{activity_id}-entry',
+                activity_id=activity_id,
+                workspace_id='workspace-1',
+                change_type='created',
+                actor_id='user-1',
+                changed_at=BASE_TIME,
+                diff=None,
+                content={'id': activity_id},
+            ),
+        )
 
 
 @pytest.mark.asyncio
-async def test_round_trips_ordered_steps_and_quiz_configuration(
+async def test_round_trips_ordered_activity_steps(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
-    """Persistence retains exact order, duplicates, and quiz limits."""
+    """Persistence retains exact activity order and duplicates."""
 
     await create_workspace(workspace_id="workspace-1")
-    await seed_loop(sqlite_database_path)
+    await seed_activities(sqlite_database_path)
     repository = SqlitePipelineRepository(sqlite_database_path)
     document = replace(
         build_pipeline(),
         steps=(
-            PipelineLoopStep(type="loop", loop_id="loop-1"),
-            PipelineLoopStep(type="loop", loop_id="loop-1"),
-            PipelineHumanGateStep(
-                type="human_gate",
-                gate_type="quiz",
-                config=PipelineQuizConfig(
-                    minimum_correct_answers=8,
-                    question_count=10,
-                    option_count=3,
-                ),
-            ),
-            PipelineHumanGateStep(
-                type="human_gate",
-                gate_type="approval",
-                config=None,
-            ),
+            PipelineActivityStep(activity_id='activity-1'),
+            PipelineActivityStep(activity_id='activity-1'),
+            PipelineActivityStep(activity_id='activity-2'),
+            PipelineActivityStep(activity_id='activity-3'),
         ),
     )
 
@@ -114,7 +126,7 @@ async def test_list_filters_searches_orders_and_paginates(
     """Active-first listing supports status, search, offset, and limit ten."""
 
     await create_workspace(workspace_id="workspace-1")
-    await seed_loop(sqlite_database_path)
+    await seed_activities(sqlite_database_path)
     repository = SqlitePipelineRepository(sqlite_database_path)
     for position in range(12):
         status = "disabled" if position == 11 else "active"
@@ -180,7 +192,7 @@ async def test_update_archive_and_changelog_are_atomic_resources(
     """Updates replace steps, archival persists, and changelog is retained."""
 
     await create_workspace(workspace_id="workspace-1")
-    await seed_loop(sqlite_database_path)
+    await seed_activities(sqlite_database_path)
     repository = SqlitePipelineRepository(sqlite_database_path)
     original = build_pipeline()
     await repository.create(
@@ -190,12 +202,8 @@ async def test_update_archive_and_changelog_are_atomic_resources(
     updated = replace(
         original,
         steps=(
-            PipelineHumanGateStep(
-                type="human_gate",
-                gate_type="approval",
-                config=None,
-            ),
-            PipelineLoopStep(type="loop", loop_id="loop-1"),
+            PipelineActivityStep(activity_id='activity-2'),
+            PipelineActivityStep(activity_id='activity-1'),
         ),
         updated_at=BASE_TIME + timedelta(seconds=1),
     )

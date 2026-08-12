@@ -13,8 +13,7 @@ The endpoint reference is organized by top-level router:
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Loops](endpoints/loops.md) manages stored multi-agent loop definitions and
   nested loop runs.
-- [Pipelines](endpoints/pipelines.md) manages ordered loop and human-gate
-  definitions.
+- [Pipelines](endpoints/pipelines.md) manages ordered activity references.
 
 The API owns planning, generation, and reviewer decisions. The CLI owns local
 repository execution, including filesystem, Git, and workspace lifecycle

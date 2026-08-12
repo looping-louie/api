@@ -584,12 +584,10 @@ pipeline_response="$(
     "description": "Created by scripts/smoke_api.sh",
     "steps": [
         {
-            "type": "loop",
-            "loop_id": "${LOOP_ID}"
+            "activity_id": "${ACTIVITY_ID}"
         },
         {
-            "type": "human_gate",
-            "gate_type": "approval"
+            "activity_id": "${ACTIVITY_ID}"
         }
     ]
 }
@@ -625,7 +623,7 @@ log "Deleting resources in dependency order"
 request \
     PATCH \
     "/pipelines/${PIPELINE_ID}" \
-    '{"steps":[{"type":"human_gate","gate_type":"approval"},{"type":"human_gate","gate_type":"approval"}]}' \
+    "{\"steps\":[{\"activity_id\":\"${ACTIVITY_ID}\"},{\"activity_id\":\"${ACTIVITY_ID}\"}]}" \
     >/dev/null
 request DELETE "/pipelines/${PIPELINE_ID}" >/dev/null
 PIPELINE_ID=""

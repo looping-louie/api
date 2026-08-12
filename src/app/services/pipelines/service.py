@@ -10,7 +10,7 @@ from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDocument,
 )
-from src.app.repositories.loops.repository import LoopRepository
+from src.app.repositories.activities.repository import ActivityRepository
 from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
@@ -20,7 +20,7 @@ from src.app.services.pipelines.operations import (
     normalize_offset,
     normalize_search,
     require_pipeline,
-    validate_loop_references,
+    validate_activity_references,
 )
 from src.app.services.pipelines.mutation import (
     apply_patch,
@@ -52,7 +52,7 @@ class PipelineService:
         self,
         *,
         repository: PipelineRepository,
-        loop_repository: LoopRepository,
+        activity_repository: ActivityRepository,
         tenant_service: TenantService,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
@@ -60,7 +60,7 @@ class PipelineService:
         """Store persistence, tenancy, and generated-value dependencies."""
 
         self._repository = repository
-        self._loop_repository = loop_repository
+        self._activity_repository = activity_repository
         self._tenant_service = tenant_service
         self._id_factory = id_factory
         self._clock = clock
@@ -139,12 +139,15 @@ class PipelineService:
             updated_at=now,
             updated_by=actor_id,
         )
-        await validate_loop_references(self._loop_repository, document)
+        await validate_activity_references(
+            self._activity_repository,
+            document,
+        )
         entry = build_entry(
             id_factory=self._id_factory,
             document=document,
             actor_id=actor_id,
-            change_type="created",
+            entry_change_type="created",
             changed_at=now,
             content=document_content(document),
         )
@@ -179,7 +182,10 @@ class PipelineService:
             actor_id=actor_id,
             changed_at=self._clock(),
         )
-        await validate_loop_references(self._loop_repository, updated)
+        await validate_activity_references(
+            self._activity_repository,
+            updated,
+        )
         diff = changed_fields(current, updated, payload.provided_fields)
         if not diff:
             raise InvalidPipelineStepsError(
@@ -190,7 +196,7 @@ class PipelineService:
             id_factory=self._id_factory,
             document=updated,
             actor_id=actor_id,
-            change_type=change_type(current.status, updated.status),
+            entry_change_type=change_type(current.status, updated.status),
             changed_at=updated.updated_at,
             diff=diff,
         )
@@ -237,7 +243,7 @@ class PipelineService:
             id_factory=self._id_factory,
             document=archived,
             actor_id=actor_id,
-            change_type="archived",
+            entry_change_type="archived",
             changed_at=archived.updated_at,
             diff=diff,
         )
