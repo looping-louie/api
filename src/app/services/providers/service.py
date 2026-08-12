@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from src.app.catalogs.providers import ProviderCatalogEntry
 from src.app.models.provider import ProviderCredential, ProviderState
-from src.app.repositories.providers.provider_repository import (
+from src.app.repositories.providers.repository import (
     ProviderRepository,
 )
 from src.app.services.shared.tenant import TenantService

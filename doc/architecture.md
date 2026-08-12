@@ -206,9 +206,9 @@ repositories/
 |   `-- sqlite_repository.py       Persists records and changelog entries
 |-- providers/
 |   |-- __init__.py                Declares credential persistence and adapters
-|   |-- provider_credential_mapper.py Maps SQLite credential rows
-|   |-- provider_repository.py     Persists encrypted credentials
-|   `-- provider_state_repository.py Exposes connection state to availability
+|   |-- credential_mapper.py       Maps SQLite credential rows
+|   |-- repository.py              Persists encrypted credentials
+|   `-- state_repository.py        Exposes connection state to availability
 `-- shared/
   |-- __init__.py                Declares reusable persistence adapters
   |-- dependency_repository.py   Looks up resource dependencies

@@ -11,10 +11,10 @@ from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.providers.provider_repository import (
+from src.app.repositories.providers.repository import (
     SqliteProviderRepository,
 )
-from src.app.repositories.providers.provider_state_repository import (
+from src.app.repositories.providers.state_repository import (
     ProviderStateRepositoryAdapter,
 )
 from src.app.repositories.shared.reference_repository import (

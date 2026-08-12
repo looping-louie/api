@@ -11,7 +11,7 @@ from src.app.catalogs.providers import (
 from src.app.models.provider import ProviderCredential
 from src.app.services.models.availability import ProviderConnectionState
 
-from .provider_repository import ProviderRepository
+from .repository import ProviderRepository
 
 
 class ProviderStateRepositoryAdapter:

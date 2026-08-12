@@ -39,10 +39,10 @@ from src.app.repositories.infrastructure.migration_runner import (
 from src.app.repositories.infrastructure.local_tenant_seed import (
     ensure_local_tenant,
 )
-from src.app.repositories.providers.provider_repository import (
+from src.app.repositories.providers.repository import (
     SqliteProviderRepository,
 )
-from src.app.repositories.providers.provider_state_repository import (
+from src.app.repositories.providers.state_repository import (
     ProviderStateRepositoryAdapter,
 )
 from src.app.repositories.shared.reference_repository import (
