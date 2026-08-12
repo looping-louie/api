@@ -2,6 +2,10 @@
 
 from fastapi import status
 
+from src.app.services.activities.service import (
+    ActivityNotFoundError,
+    ActivityValidationError,
+)
 from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
@@ -154,6 +158,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="loop_not_found",
         details_builder=_loop_details,
     ),
+    ActivityNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='activity_not_found',
+    ),
     LoopRunNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code="loop_run_not_found",
@@ -243,6 +251,11 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     LoopValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="loop_validation_error",
+        details_builder=_validation_details,
+    ),
+    ActivityValidationError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code='activity_validation_error',
         details_builder=_validation_details,
     ),
     ArchivedLoopImmutableError: ErrorDefinition(

@@ -21,6 +21,7 @@ EXPECTED_CHECKSUMS = {
     '0011_loop_run_checkpoints.sql': 'b8e9eacfd52da0438a8dac747cf77e13b92b066a1ec5d8f10d42d3b25d306ad3',
     '0012_expand_loop_run_states.sql': '0e2c0d72f6fd8a8aa6d103b7dda5dbb9c3dc773e103b4278ad7f068bc7e70fc8',
     '0013_repair_loop_run_idempotency.sql': 'fe367df6b131dbf944c053008f324cc4faf103656c6091745ab1808fba597e62',
+    '0014_activities.sql': '5464818ed489dda3a5145dbb580a9a6bbb3f5636a9280184dfe1b49080d95eee',
 }
 
 

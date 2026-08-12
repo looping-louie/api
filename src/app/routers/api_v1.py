@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from .activities import router as activities_router
 from .loops import router as loops_router
 from .pipelines import router as pipelines_router
 from .personas import router as personas_router
@@ -16,6 +17,7 @@ router = APIRouter(
 
 router.include_router(personas_router)
 router.include_router(skills_router)
+router.include_router(activities_router)
 router.include_router(loops_router)
 router.include_router(pipelines_router)
 router.include_router(models_router)

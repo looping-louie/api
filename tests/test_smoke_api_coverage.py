@@ -13,6 +13,7 @@ from src.app.main import app
 HTTP_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
 EXCLUDED_PATH_PREFIXES: tuple[str, ...] = ()
 PATH_PARAMETERS = {
+    "ACTIVITY_ID": "activity_id",
     "LOOP_ID": "loop_id",
     "LOOP_RUN_ID": "run_id",
     "model_id": "model_id",

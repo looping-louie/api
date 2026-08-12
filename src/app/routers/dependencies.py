@@ -7,6 +7,7 @@ from typing import Annotated, TypeVar
 
 from fastapi import Header, HTTPException, Request, status
 
+from src.app.controllers.activity import ActivityController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.pipeline import PipelineController
@@ -129,6 +130,18 @@ def get_loop_controller(
         request,
         attribute_name="loop_controller",
         expected_type=LoopController,
+    )
+
+
+def get_activity_controller(
+    request: Request,
+) -> ActivityController:
+    """Return the configured activity controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='activity_controller',
+        expected_type=ActivityController,
     )
 
 

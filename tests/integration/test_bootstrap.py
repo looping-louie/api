@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
+from src.app.controllers.activity import ActivityController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
@@ -46,6 +47,8 @@ EXPECTED_TABLES = {
     "provider_credentials",
     "persona_skills",
     "workspace_instruction_settings",
+    "activities",
+    "activity_changelog_entries",
 }
 
 
@@ -108,6 +111,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.loop_controller,
             LoopController,
+        )
+        assert isinstance(
+            app.state.activity_controller,
+            ActivityController,
         )
         assert isinstance(
             app.state.loop_run_controller,
@@ -184,8 +191,9 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0009_pipelines",
         "0010_loop_runs",
         "0011_loop_run_checkpoints",
-            "0012_expand_loop_run_states",
-            "0013_repair_loop_run_idempotency",
+        "0012_expand_loop_run_states",
+        "0013_repair_loop_run_idempotency",
+        "0014_activities",
     ]
     assert [str(row[0]) for row in loop_rows] == [
         "plan implementation",

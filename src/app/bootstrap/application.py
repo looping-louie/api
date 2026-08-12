@@ -7,6 +7,7 @@ import logging
 from fastapi import FastAPI
 
 from src.app.bootstrap.pipeline import build_pipeline_controller
+from src.app.controllers.activity import ActivityController
 from src.app.catalogs.instructions.loader import (
     InstructionCatalog,
     load_instruction_catalog,
@@ -20,6 +21,9 @@ from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
+)
+from src.app.repositories.activities.sqlite_repository import (
+    SqliteActivityRepository,
 )
 from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
@@ -68,6 +72,7 @@ from src.app.services.instructions.catalog import (
 )
 from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from src.app.services.loops.service import LoopService
+from src.app.services.activities.service import ActivityService
 from src.app.services.loop_runs import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
@@ -170,6 +175,9 @@ async def configure_application(
     loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
+    activity_repository = SqliteActivityRepository(
+        resolved_settings.database_path,
+    )
     loop_run_repository = SqliteLoopRunRepository(
         resolved_settings.database_path,
     )
@@ -246,6 +254,12 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    activity_service = ActivityService(
+        repository=activity_repository,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
     secret_service = FernetSecretService(encryption_key)
     loop_run_service = LoopRunService(
         repository=loop_run_repository,
@@ -279,6 +293,9 @@ async def configure_application(
     )
     app.state.loop_controller = LoopController(
         loop_service=loop_service,
+    )
+    app.state.activity_controller = ActivityController(
+        activity_service=activity_service,
     )
     app.state.loop_run_controller = LoopRunController(
         loop_run_service=loop_run_service,

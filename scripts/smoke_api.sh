@@ -21,6 +21,7 @@ SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
 PERSONA_ID=""
 SKILL_ID=""
 LOOP_ID=""
+ACTIVITY_ID=""
 LOOP_RUN_ID=""
 LOOP_RUN_TOKEN=""
 PIPELINE_ID=""
@@ -254,6 +255,10 @@ cleanup() {
         request DELETE "/loops/${LOOP_ID}" >/dev/null
     fi
 
+    if [[ -n "${ACTIVITY_ID}" ]]; then
+        request DELETE "/activities/${ACTIVITY_ID}" >/dev/null
+    fi
+
     if [[ -n "${SKILL_ID}" ]]; then
         request DELETE "/skills/${SKILL_ID}" >/dev/null
     fi
@@ -481,6 +486,49 @@ JSON
 
 request GET "/loops/${LOOP_ID}/changelog?offset=0" >/dev/null
 
+log "Creating activity"
+
+activity_response="$(
+    request POST "/activities" "$(
+        cat <<JSON
+{
+    "title": "Smoke Activity ${SMOKE_RUN_ID}",
+    "description": "Created by scripts/smoke_api.sh",
+    "type": "loop",
+    "config": {
+        "type": "loop",
+        "flow": "direct",
+        "stop_conditions": {
+            "max_iterations": 2
+        },
+        "agents": [
+            {
+                "model_id": "${model_id}",
+                "persona_id": "${PERSONA_ID}",
+                "role": "generator"
+            }
+        ],
+        "output_contract": {
+            "type": "text",
+            "description": "Produce a smoke-test answer."
+        }
+    }
+}
+JSON
+    )"
+)"
+
+ACTIVITY_ID="$(printf '%s' "${activity_response}" | json_field "id")"
+
+request GET "/activities/${ACTIVITY_ID}" >/dev/null
+request GET "/activities?offset=0" >/dev/null
+request \
+    PATCH \
+    "/activities/${ACTIVITY_ID}" \
+    '{"description":"Updated by scripts/smoke_api.sh"}' \
+    >/dev/null
+request GET "/activities/${ACTIVITY_ID}/changelog?offset=0" >/dev/null
+
 log "Creating loop run"
 
 loop_run_response="$(
@@ -585,6 +633,9 @@ PIPELINE_ID=""
 request DELETE "/loops/${LOOP_ID}" >/dev/null
 LOOP_ID=""
 
+request DELETE "/activities/${ACTIVITY_ID}" >/dev/null
+ACTIVITY_ID=""
+
 request DELETE "/skills/${SKILL_ID}" >/dev/null
 SKILL_ID=""
 
@@ -592,6 +643,7 @@ request DELETE "/personas/${PERSONA_ID}" >/dev/null
 PERSONA_ID=""
 
 request GET "/loops" >/dev/null
+request GET "/activities" >/dev/null
 request GET "/pipelines" >/dev/null
 request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null
