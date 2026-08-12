@@ -13,7 +13,7 @@ from src.app.models.pipeline import (
     PipelineDocument,
     PipelineStatus,
 )
-from src.app.repositories.pipelines.pipeline_repository_mapping import (
+from src.app.repositories.pipelines.mapping import (
     count_pipelines,
     insert_changelog,
     insert_pipeline,

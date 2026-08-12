@@ -18,7 +18,7 @@ from src.app.models.pipeline import (
 from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
 )
-from src.app.repositories.pipelines.sqlite_pipeline_repository import (
+from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
 from tests.factories.pipelines import (

@@ -201,9 +201,9 @@ repositories/
 |   `-- sqlite_repository.py       Persists records and changelog entries
 |-- pipelines/
 |   |-- __init__.py                Declares persistence contracts and adapters
-|   |-- pipeline_repository_mapping.py Maps SQLite rows and write values
-|   |-- pipeline_repository.py     Defines the persistence contract
-|   `-- sqlite_pipeline_repository.py Persists records and changelog entries
+|   |-- mapping.py                 Maps SQLite rows and write values
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists records and changelog entries
 |-- providers/
 |   |-- __init__.py                Declares credential persistence and adapters
 |   |-- provider_credential_mapper.py Maps SQLite credential rows

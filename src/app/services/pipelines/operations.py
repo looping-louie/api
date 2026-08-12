@@ -14,7 +14,7 @@ from src.app.models.pipeline import (
     PipelineStatus,
 )
 from src.app.repositories.loops.repository import LoopRepository
-from src.app.repositories.pipelines.pipeline_repository import (
+from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
 from src.app.services.loops.types import LoopNotFoundError
