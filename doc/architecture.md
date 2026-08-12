@@ -136,7 +136,15 @@ dependency injection, and request extraction.
 ```text
 controllers/
 |
-|-- activity.py                   Translates activity HTTP operations
+|-- activity/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates definitions
+|   |-- delete.py                 Deletes definitions
+|   |-- describe.py               Describes one definition
+|   |-- list.py                   Lists definitions
+|   |-- list_changelog.py         Lists changelog entries
+|   |-- patch.py                  Applies supplied changes
+|   `-- utils.py                  Translates patch schemas to service changes
 |-- loop/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
@@ -146,7 +154,13 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates request schemas to service inputs
-|-- loop_run.py                   Translates run and checkpoint operations
+|-- loop_run/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- advance.py                Advances CLI checkpoints
+|   |-- create.py                 Creates runs from definitions
+|   |-- describe.py               Describes one run
+|   |-- list.py                   Lists runs
+|   `-- utils.py                  Translates results to response schemas
 |-- model/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- describe.py               Describes one curated entry
