@@ -13,8 +13,6 @@ The endpoint reference is organized by top-level router:
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Activities](endpoints/activities.md) manages reusable loop and human-gate
   definitions, including loop-activity runs.
-- [Loops](endpoints/loops.md) manages stored multi-agent loop definitions and
-  nested loop runs during the Activity migration.
 - [Pipelines](endpoints/pipelines.md) manages ordered activity references.
 
 The API owns planning, generation, and reviewer decisions. The CLI owns local

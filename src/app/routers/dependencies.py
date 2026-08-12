@@ -124,11 +124,11 @@ def get_skill_controller(
 def get_loop_controller(
     request: Request,
 ) -> LoopController:
-    """Return the configured loop controller."""
+    """Return the retained legacy loop controller when explicitly mounted."""
 
     return _get_controller(
         request,
-        attribute_name="loop_controller",
+        attribute_name='loop_controller',
         expected_type=LoopController,
     )
 

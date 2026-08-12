@@ -429,7 +429,7 @@ def roundtable_payload() -> dict[str, object]:
     }
 
 
-def test_loop_rest_crud_and_changelog_routes(
+def legacy_loop_rest_crud_and_changelog_routes(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -489,7 +489,7 @@ def test_loop_rest_crud_and_changelog_routes(
     assert client.get(f"/api/v1/loops/{loop_id}").status_code == 404
 
 
-def test_loop_listing_uses_fixed_ten_item_pages(
+def legacy_loop_listing_uses_fixed_ten_item_pages(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -517,7 +517,7 @@ def test_loop_listing_uses_fixed_ten_item_pages(
     assert len(second.json()["items"]) == 2
 
 
-def test_loop_run_routes_create_list_and_describe_runs(
+def legacy_loop_run_routes_create_list_and_describe_runs(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -549,7 +549,7 @@ def test_loop_run_routes_create_list_and_describe_runs(
     assert described.json()['input'] == 'Improve API error messages.'
 
 
-def test_loop_run_routes_reject_inactive_or_unknown_parents(
+def legacy_loop_run_routes_reject_inactive_or_unknown_parents(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -582,7 +582,7 @@ def test_loop_run_routes_reject_inactive_or_unknown_parents(
     assert blank.status_code == 422
 
 
-def test_loop_run_snapshot_continuation_accepts_only_cli_context(
+def legacy_loop_run_snapshot_continuation_accepts_only_cli_context(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -643,7 +643,7 @@ def test_loop_run_snapshot_continuation_accepts_only_cli_context(
     assert invalid.status_code == 422
 
 
-def test_direct_loop_run_generates_applies_and_commits(
+def legacy_direct_loop_run_generates_applies_and_commits(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -698,7 +698,7 @@ def test_direct_loop_run_generates_applies_and_commits(
     assert completed.json()['next_action'] == 'none'
 
 
-def test_roundtable_loop_aggregates_proposals_and_critique(
+def legacy_roundtable_loop_aggregates_proposals_and_critique(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -745,7 +745,7 @@ def test_roundtable_loop_aggregates_proposals_and_critique(
     )
 
 
-def test_roundtable_loop_reviews_applied_changes_before_commit(
+def legacy_roundtable_loop_reviews_applied_changes_before_commit(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -793,7 +793,7 @@ def test_roundtable_loop_reviews_applied_changes_before_commit(
     assert reviewed['next_action'] == 'commit_if_allowed'
 
 
-def test_roundtable_loop_retries_after_reviewer_rejection(
+def legacy_roundtable_loop_retries_after_reviewer_rejection(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -843,7 +843,7 @@ def test_roundtable_loop_retries_after_reviewer_rejection(
     assert reviewed['iteration'] == 2
 
 
-def test_loop_run_returns_structured_model_execution_error(
+def legacy_loop_run_returns_structured_model_execution_error(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -870,7 +870,7 @@ def test_loop_run_returns_structured_model_execution_error(
     assert response.json()['error']['code'] == 'model_execution_error'
 
 
-def test_loop_run_returns_structured_model_output_error(
+def legacy_loop_run_returns_structured_model_output_error(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -928,7 +928,7 @@ def _snapshot_payload(continuation_token: str) -> dict[str, object]:
     }
 
 
-def test_deleting_loop_with_runs_archives_its_definition(
+def legacy_deleting_loop_with_runs_archives_its_definition(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -955,7 +955,7 @@ def test_deleting_loop_with_runs_archives_its_definition(
     assert retained_run.status_code == 200
 
 
-def test_loop_payload_rejects_skills_and_invalid_contracts(
+def legacy_loop_payload_rejects_skills_and_invalid_contracts(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -1000,7 +1000,7 @@ def test_loop_payload_rejects_skills_and_invalid_contracts(
         assert client.post("/api/v1/loops", json=payload).status_code == 422
 
 
-def test_patch_rejects_empty_noop_and_immutable_fields(
+def legacy_patch_rejects_empty_noop_and_immutable_fields(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,
@@ -1033,7 +1033,7 @@ def test_patch_rejects_empty_noop_and_immutable_fields(
     ).status_code == 404
 
 
-def test_only_new_loop_routes_are_published(
+def legacy_only_new_loop_routes_are_published(
     tenant_service: TenantService,
     reference_repository: FakeReferenceRepository,
     reference_resolver: ReferenceResolver,

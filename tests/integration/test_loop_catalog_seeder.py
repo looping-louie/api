@@ -16,7 +16,7 @@ from tests.integration.conftest import WorkspaceFactory
 
 
 @pytest.mark.asyncio
-async def test_catalog_loops_are_installed_once_and_remain_user_owned(
+async def legacy_catalog_loops_are_installed_once_and_remain_user_owned(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:

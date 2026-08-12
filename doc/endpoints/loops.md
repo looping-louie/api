@@ -1,4 +1,9 @@
-# Loops
+# Retired Loop Endpoints
+
+Loop endpoints are retired. Use [Activities](activities.md) for loop
+definitions and loop-activity runs.
+
+<!--
 
 A loop stores a validated flow, its model/persona agents, stop conditions, and
 the expected output. The API stores this definition but does not execute it.
@@ -130,3 +135,4 @@ Each continuation request must include the current non-empty
 Continuation requests are safe to retry with the same idempotency key. The
 server validates the action-specific result and rejects stale continuation
 tokens or an action that is not valid for the run's current checkpoint.
+-->

@@ -26,7 +26,7 @@ Application code lives under `src/app` and is organized by responsibility:
 src/app/
 |
 |-- bootstrap/       Application startup and dependency wiring
-|-- catalogs/        Builtin providers, models, loops, personas, and skills
+|-- catalogs/        Builtin providers, models, loop activities, personas, and skills
 |-- controllers/     HTTP-level use-case orchestration
 |-- middleware/      Cross-cutting HTTP middleware
 |-- models/          Internal domain entities
@@ -48,6 +48,7 @@ services/
 |
 |-- __init__.py                    Declares the services package
 |-- activities/
+|   |-- catalog_seeder.py         Installs curated loop activities in workspaces
 |   `-- service.py                 Manages definitions and changelog history
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
@@ -75,7 +76,6 @@ services/
 |   `-- validation.py              Normalizes and validates input
 |-- loops/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- catalog_seeder.py          Installs curated catalog entries in workspaces
 |   |-- mutation.py                Builds updates and changelog data
 |   |-- service.py                 Coordinates definitions and changelogs
 |   |-- types.py                   Defines input types and domain errors
@@ -145,15 +145,6 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- loop/
-|   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- create.py                 Creates definitions
-|   |-- delete.py                 Deletes definitions
-|   |-- describe.py               Describes one definition
-|   |-- list.py                   Lists definitions
-|   |-- list_changelog.py         Lists changelog entries
-|   |-- patch.py                  Applies supplied changes
-|   `-- utils.py                  Translates request schemas to service inputs
 |-- loop_run/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- advance.py                Advances CLI checkpoints

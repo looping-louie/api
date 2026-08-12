@@ -13,7 +13,6 @@ from src.app.catalogs.instructions.loader import (
     load_instruction_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -70,9 +69,9 @@ from src.app.services.instructions.catalog import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
-from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from src.app.services.loops.service import LoopService
 from src.app.services.activities.service import ActivityService
+from src.app.services.activities.catalog_seeder import seed_activity_catalog
 from src.app.services.loop_runs import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
@@ -147,12 +146,12 @@ async def configure_application(
         workspace_name="Local workspace",
         user_id="local-user",
     )
-    installed_loops = await seed_loop_catalog(
+    installed_activities = await seed_activity_catalog(
         database_path=resolved_settings.database_path,
     )
     LOGGER.info(
-        "Loop catalog installed: inserted=%d",
-        installed_loops,
+        'Activity catalog installed: inserted=%d',
+        installed_activities,
     )
 
     encryption_key = _require_encryption_key(
@@ -291,9 +290,6 @@ async def configure_application(
     )
     app.state.skill_controller = SkillController(
         skill_service=skill_service,
-    )
-    app.state.loop_controller = LoopController(
-        loop_service=loop_service,
     )
     app.state.activity_controller = ActivityController(
         activity_service=activity_service,

@@ -216,9 +216,6 @@ A task is complete only when:
 - The requested behavior is implemented without unrequested functionality.
 - Layer responsibilities remain clear and no speculative abstraction was
   introduced.
-- New and modified files follow the 300-line target and absolute 500-line
-  limit, and touched legacy violations were handled according to the file-size
-  policy.
 - Modules, classes, functions, methods, and tests have useful docstrings.
 - Non-obvious implementation decisions have concise `why` comments.
 - Corresponding tests were added or updated.

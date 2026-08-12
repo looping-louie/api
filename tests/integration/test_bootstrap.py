@@ -16,7 +16,6 @@ from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
 from src.app.controllers.activity import ActivityController
-from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -48,6 +47,7 @@ EXPECTED_TABLES = {
     "persona_skills",
     "workspace_instruction_settings",
     "activities",
+    "activity_catalog_installations",
     "activity_changelog_entries",
 }
 
@@ -109,10 +109,6 @@ def test_bootstrap_configures_application_and_runs_migrations(
             SkillController,
         )
         assert isinstance(
-            app.state.loop_controller,
-            LoopController,
-        )
-        assert isinstance(
             app.state.activity_controller,
             ActivityController,
         )
@@ -161,10 +157,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
             ORDER BY version ASC
             """
         ).fetchall()
-        loop_rows = connection.execute(
+        activity_rows = connection.execute(
             """
             SELECT title
-            FROM loops
+            FROM activities
             WHERE workspace_id = 'local-workspace'
             ORDER BY title
             """
@@ -196,8 +192,9 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0014_activities",
         "0015_pipeline_activity_steps",
         "0016_activity_loop_runs",
+        "0017_activity_catalog_installations",
     ]
-    assert [str(row[0]) for row in loop_rows] == [
+    assert [str(row[0]) for row in activity_rows] == [
         "plan implementation",
         "shape ideas",
     ]
