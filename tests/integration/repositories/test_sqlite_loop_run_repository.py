@@ -11,7 +11,7 @@ import pytest
 
 from src.app.models.loop_run import LoopRunDocument
 from src.app.repositories.loop_runs.errors import LoopRunTokenConflictError
-from src.app.repositories.loop_runs.sqlite_loop_run_repository import (
+from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
 )
 

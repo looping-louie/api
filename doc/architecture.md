@@ -192,8 +192,8 @@ repositories/
 |-- loop_runs/
 |   |-- __init__.py                Defines public persistence imports
 |   |-- errors.py                  Defines checkpoint transition conflicts
-|   |-- loop_run_repository.py     Defines the persistence contract
-|   `-- sqlite_loop_run_repository.py Persists checkpoint records
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists checkpoint records
 |-- loops/
 |   |-- __init__.py                Declares persistence contracts and helpers
 |   |-- loop_repository_mapping.py Maps SQLite rows and write values

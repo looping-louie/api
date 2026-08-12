@@ -11,7 +11,7 @@ from src.app.models.loop import (
     LoopDocument,
 )
 from src.app.repositories.loops.loop_repository import LoopRepository
-from src.app.repositories.loop_runs.loop_run_repository import LoopRunRepository
+from src.app.repositories.loop_runs.repository import LoopRunRepository
 from src.app.services.loops.mutation import (
     apply_patch,
     build_entry,

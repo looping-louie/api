@@ -8,7 +8,7 @@ from typing import Mapping
 
 from src.app.models.loop import LoopDocument
 from src.app.models.loop_run import LoopRunDocument
-from src.app.repositories.loop_runs.loop_run_repository import LoopRunRepository
+from src.app.repositories.loop_runs.repository import LoopRunRepository
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )

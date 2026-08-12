@@ -21,7 +21,7 @@ from src.app.controllers.skill import SkillController
 from src.app.repositories.loops.sqlite_loop_repository import (
     SqliteLoopRepository,
 )
-from src.app.repositories.loop_runs.sqlite_loop_run_repository import (
+from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
 )
 from src.app.repositories.shared.dependency_repository import (
