@@ -26,7 +26,7 @@ Application code lives under `src/app` and is organized by responsibility:
 src/app/
 |
 |-- bootstrap/       Application startup and dependency wiring
-|-- catalogs/        Builtin providers, models, loop activities, personas, and skills
+|-- catalogs/        Builtin providers, models, personas, and skills
 |-- controllers/     HTTP-level use-case orchestration
 |-- middleware/      Cross-cutting HTTP middleware
 |-- models/          Internal domain entities
@@ -48,7 +48,6 @@ services/
 |
 |-- __init__.py                    Declares the services package
 |-- activities/
-|   |-- catalog_seeder.py         Installs curated loop activities in workspaces
 |   `-- service.py                 Manages definitions and changelog history
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports

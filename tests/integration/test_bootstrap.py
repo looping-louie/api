@@ -193,11 +193,9 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0015_pipeline_activity_steps",
         "0016_activity_loop_runs",
         "0017_activity_catalog_installations",
+        "0018_archive_builtin_activities",
     ]
-    assert [str(row[0]) for row in activity_rows] == [
-        "plan implementation",
-        "shape ideas",
-    ]
+    assert activity_rows == []
 
 
 @pytest.mark.asyncio

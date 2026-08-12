@@ -71,7 +71,6 @@ from src.app.services.instructions.catalog import (
 )
 from src.app.services.loops.service import LoopService
 from src.app.services.activities.service import ActivityService
-from src.app.services.activities.catalog_seeder import seed_activity_catalog
 from src.app.services.loop_runs import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
@@ -145,13 +144,6 @@ async def configure_application(
         workspace_id="local-workspace",
         workspace_name="Local workspace",
         user_id="local-user",
-    )
-    installed_activities = await seed_activity_catalog(
-        database_path=resolved_settings.database_path,
-    )
-    LOGGER.info(
-        'Activity catalog installed: inserted=%d',
-        installed_activities,
     )
 
     encryption_key = _require_encryption_key(
