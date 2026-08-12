@@ -124,6 +124,62 @@ services/
   `-- service.py                 Parses and validates filesystem operations
 ```
 
+### Controllers
+
+This package translates HTTP schemas to application service calls and
+application results to HTTP schemas. Resource packages compose endpoint-specific
+controllers for router compatibility; routers retain route declarations,
+dependency injection, and request extraction.
+
+```text
+controllers/
+|
+|-- activity.py                   Translates activity HTTP operations
+|-- loop/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates definitions
+|   |-- delete.py                 Deletes definitions
+|   |-- describe.py               Describes one definition
+|   |-- list.py                   Lists definitions
+|   |-- list_changelog.py         Lists changelog entries
+|   |-- patch.py                  Applies supplied changes
+|   `-- utils.py                  Translates request schemas to service inputs
+|-- loop_run.py                   Translates run and checkpoint operations
+|-- model/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- describe.py               Describes one curated entry
+|   `-- list.py                   Lists curated entries and availability
+|-- persona/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates resources
+|   |-- delete.py                 Deletes resources
+|   |-- describe.py               Describes one resource
+|   |-- list.py                   Lists resources
+|   `-- patch.py                  Applies supplied changes
+|-- pipeline/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates definitions
+|   |-- delete.py                 Deletes definitions
+|   |-- describe.py               Describes one definition
+|   |-- list.py                   Lists definitions
+|   |-- list_changelog.py         Lists changelog entries
+|   |-- patch.py                  Applies supplied changes
+|   `-- utils.py                  Translates request schemas to service inputs
+|-- provider/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- delete.py                 Deletes configuration
+|   |-- describe.py               Describes one configuration
+|   |-- list.py                   Lists configurations
+|   `-- patch.py                  Applies supplied changes
+`-- skill/
+    |-- __init__.py               Composes endpoint-specific controllers
+    |-- create.py                 Creates resources
+    |-- delete.py                 Deletes resources
+    |-- describe.py               Describes one resource
+    |-- list.py                   Lists resources
+    `-- patch.py                  Applies supplied changes
+```
+
 ### Catalogs
 
 This package defines immutable, application-shipped data. It contains curated
