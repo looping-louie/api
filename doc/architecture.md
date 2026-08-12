@@ -168,7 +168,55 @@ catalogs/
 
 ### Repositories
 
-This package <ADD DESCRIPTION HERE>.
+This package implements application persistence with SQLite. Resource packages
+define repository contracts, mappings, and adapters; shared adapters support
+cross-resource lookups; infrastructure owns database setup and migrations.
+
+```text
+repositories/
+|
+|-- __init__.py                    Declares persistence implementations
+|-- infrastructure/
+|   |-- __init__.py                Declares database setup utilities
+|   |-- local_tenant_seed.py       Creates the initial local workspace
+|   |-- migration_runner.py         Discovers and applies SQLite migrations
+|   `-- sqlite_database.py          Manages asynchronous SQLite connections
+|-- instructions/
+|   |-- __init__.py                Declares persona and skill persistence
+|   |-- instruction_availability.py Persists workspace availability settings
+|   |-- instruction_mapping.py     Maps SQLite rows and normalizes values
+|   |-- instruction_mutations.py   Creates, updates, and deletes records
+|   |-- instruction_repository.py  Persists resource definitions
+|   |-- instruction_settings.py    Persists workspace enablement settings
+|   `-- persona_skill_repository.py Persists persona-skill associations
+|-- loop_runs/
+|   |-- __init__.py                Defines public persistence imports
+|   |-- errors.py                  Defines checkpoint transition conflicts
+|   |-- loop_run_repository.py     Defines the persistence contract
+|   `-- sqlite_loop_run_repository.py Persists checkpoint records
+|-- loops/
+|   |-- __init__.py                Declares persistence contracts and helpers
+|   |-- loop_repository_mapping.py Maps SQLite rows and write values
+|   |-- loop_repository.py         Defines the persistence contract and changelog
+|   `-- sqlite_loop_repository.py  Persists records and changelog entries
+|-- pipelines/
+|   |-- __init__.py                Declares persistence contracts and adapters
+|   |-- pipeline_repository_mapping.py Maps SQLite rows and write values
+|   |-- pipeline_repository.py     Defines the persistence contract
+|   `-- sqlite_pipeline_repository.py Persists records and changelog entries
+|-- providers/
+|   |-- __init__.py                Declares credential persistence and adapters
+|   |-- provider_credential_mapper.py Maps SQLite credential rows
+|   |-- provider_repository.py     Persists encrypted credentials
+|   `-- provider_state_repository.py Exposes connection state to availability
+`-- shared/
+  |-- __init__.py                Declares reusable persistence adapters
+  |-- dependency_repository.py   Looks up resource dependencies
+  |-- json_mapping.py            Serializes and deserializes JSON values
+  |-- reference_repository.py    Resolves instruction and model references
+  |-- tenant_repository.py       Persists workspace memberships
+  `-- validation_repository.py   Looks up normalized resource names
+```
 
 ### Models
 
