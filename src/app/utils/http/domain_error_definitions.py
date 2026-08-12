@@ -15,6 +15,7 @@ from src.app.services.loops.types import (
     LoopValidationError,
 )
 from src.app.services.loop_runs import (
+    ActivityRunUnavailableError,
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )
@@ -167,6 +168,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     LoopRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code="loop_run_unavailable",
+    ),
+    ActivityRunUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='activity_run_unavailable',
     ),
     LoopRunTokenConflictError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,

@@ -264,6 +264,7 @@ async def configure_application(
     loop_run_service = LoopRunService(
         repository=loop_run_repository,
         loop_service=loop_service,
+        activity_service=activity_service,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,

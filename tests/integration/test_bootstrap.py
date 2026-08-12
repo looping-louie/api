@@ -195,6 +195,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0013_repair_loop_run_idempotency",
         "0014_activities",
         "0015_pipeline_activity_steps",
+        "0016_activity_loop_runs",
     ]
     assert [str(row[0]) for row in loop_rows] == [
         "plan implementation",

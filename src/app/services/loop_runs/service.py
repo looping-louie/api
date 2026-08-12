@@ -9,6 +9,7 @@ from typing import Mapping
 from src.app.models.loop import LoopDocument
 from src.app.models.loop_run import LoopRunDocument
 from src.app.repositories.loop_runs.repository import LoopRunRepository
+from src.app.services.activities.service import ActivityService
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -24,6 +25,7 @@ from .types import (
     IdFactory,
     LoopRunNotFoundError,
     LoopRunUnavailableError,
+    ActivityRunUnavailableError,
     TokenFactory,
 )
 from .validation import require_text
@@ -37,6 +39,7 @@ class LoopRunService:
         *,
         repository: LoopRunRepository,
         loop_service: LoopService,
+        activity_service: ActivityService | None = None,
         tenant_service: TenantService,
         id_factory: IdFactory,
         token_factory: TokenFactory = lambda: token_urlsafe(32),
@@ -48,6 +51,7 @@ class LoopRunService:
 
         self._repository = repository
         self._loop_service = loop_service
+        self._activity_service = activity_service
         self._tenant_service = tenant_service
         self._id_factory = id_factory
         self._token_factory = token_factory
@@ -105,6 +109,36 @@ class LoopRunService:
             updated_at=now,
         )
         return await self._repository.create(document=document)
+
+    async def create_for_activity(
+        self,
+        *,
+        user_id: str,
+        activity_id: str,
+        input_text: str,
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunDocument:
+        """Create a run from an active loop activity configuration."""
+
+        activity = await self._active_loop_activity(
+            user_id=user_id,
+            activity_id=activity_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        now = self._clock()
+        return await self._repository.create(document=LoopRunDocument(
+            id=self._id_factory(), workspace_id=workspace.workspace_id,
+            loop_id=activity.id, activity_id=activity.id,
+            input=require_text(input_text, 'input'), status='in_progress',
+            state='awaiting_snapshot', next_action='collect_snapshot', iteration=1,
+            token_revision=0, continuation_token=self._token_factory(),
+            loop_snapshot=self._activity_snapshot(activity), execution_context={},
+            created_at=now, created_by=require_text(user_id, 'user_id'), updated_at=now,
+        ))
 
     async def continue_collect_snapshot(
         self,
@@ -190,6 +224,64 @@ class LoopRunService:
             next_continuation_token=self._token_factory(),
             execution_context=context,
             updated_at=self._clock(),
+        )
+
+    async def continue_for_activity(
+        self,
+        *,
+        user_id: str,
+        activity_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        action: str,
+        result: Mapping[str, object],
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunDocument:
+        """Advance one checkpoint for an active loop activity run."""
+
+        await self._active_loop_activity(
+            user_id=user_id, activity_id=activity_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        document = await self.get_for_activity(
+            user_id=user_id, activity_id=activity_id, run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if action == 'collect_snapshot':
+            context = dict(result)
+            context.pop('action', None)
+            workspace = await self._tenant_service.resolve(
+                user_id=user_id, requested_workspace_id=requested_workspace_id,
+            )
+            if self._generation_service is None:
+                return await self._repository.transition_for_activity(
+                    workspace_id=workspace.workspace_id, activity_id=activity_id,
+                    run_id=run_id, continuation_token=continuation_token,
+                    idempotency_key=idempotency_key, expected_action='collect_snapshot',
+                    status='in_progress', state='awaiting_generation', next_action='none',
+                    next_continuation_token=None, execution_context=context,
+                    updated_at=self._clock(),
+                )
+            self._require_generation_service().require_executable_flow(document.loop_snapshot)
+            generated = await self._require_generation_service().generate_context(
+                loop_snapshot=document.loop_snapshot, workspace_id=workspace.workspace_id,
+                user_id=user_id, requested_workspace_id=requested_workspace_id,
+                input_text=document.input, context=context,
+            )
+            return await self._repository.transition_for_activity(
+                workspace_id=workspace.workspace_id, activity_id=activity_id, run_id=run_id,
+                continuation_token=continuation_token, idempotency_key=idempotency_key,
+                expected_action='collect_snapshot', status='in_progress',
+                state='awaiting_apply', next_action='apply_operations',
+                next_continuation_token=self._token_factory(), execution_context=generated,
+                updated_at=self._clock(),
+            )
+        return await self._continue_activity_action(
+            document=document, user_id=user_id, activity_id=activity_id,
+            continuation_token=continuation_token, idempotency_key=idempotency_key,
+            action=action, result=result,
+            requested_workspace_id=requested_workspace_id,
         )
 
     async def continue_action(
@@ -412,6 +504,26 @@ class LoopRunService:
             raise LoopRunNotFoundError(loop_id=loop_id, run_id=run_id)
         return document
 
+    async def get_for_activity(
+        self,
+        *,
+        user_id: str,
+        activity_id: str,
+        run_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunDocument:
+        """Return one run beneath an activity after ownership validation."""
+
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
+        document = await self._repository.get_for_activity(
+            workspace_id=workspace.workspace_id, activity_id=activity_id, run_id=run_id,
+        )
+        if document is None:
+            raise LoopRunNotFoundError(loop_id=activity_id, run_id=run_id)
+        return document
+
     async def list(
         self,
         *,
@@ -441,6 +553,29 @@ class LoopRunService:
         )
         return list(documents), total
 
+    async def list_for_activity(
+        self,
+        *,
+        user_id: str,
+        activity_id: str,
+        offset: int,
+        requested_workspace_id: str | None = None,
+    ) -> tuple[list[LoopRunDocument], int]:
+        """Return one page of runs for an active loop activity."""
+
+        await self._active_loop_activity(
+            user_id=user_id, activity_id=activity_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
+        documents, total = await self._repository.list_for_activity(
+            workspace_id=workspace.workspace_id, activity_id=activity_id,
+            offset=offset, limit=PAGE_SIZE,
+        )
+        return list(documents), total
+
     @staticmethod
     def _snapshot(loop: LoopDocument) -> dict[str, object]:
         """Capture the complete loop definition selected at run creation."""
@@ -456,3 +591,107 @@ class LoopRunService:
         if self._generation_service is None:
             raise RuntimeError('Loop generation is not configured.')
         return self._generation_service
+
+    async def _active_loop_activity(
+        self,
+        *,
+        user_id: str,
+        activity_id: str,
+        requested_workspace_id: str | None,
+    ) -> object:
+        """Return an executable activity or a stable public domain error."""
+
+        if self._activity_service is None:
+            raise RuntimeError('Activity execution is not configured.')
+        activity = await self._activity_service.get(
+            user_id=user_id, activity_id=activity_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if activity.type != 'loop':
+            raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not loop')
+        if activity.status != 'active':
+            raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
+        return activity
+
+    @staticmethod
+    def _activity_snapshot(activity: object) -> dict[str, object]:
+        """Shape an activity loop configuration for existing generation logic."""
+
+        return {
+            'id': getattr(activity, 'id'), 'title': getattr(activity, 'title'),
+            'description': getattr(activity, 'description'),
+            **dict(getattr(activity, 'config')),
+        }
+
+    async def _continue_activity_action(
+        self,
+        *,
+        document: LoopRunDocument,
+        user_id: str,
+        activity_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        action: str,
+        result: Mapping[str, object],
+        requested_workspace_id: str | None,
+    ) -> LoopRunDocument:
+        """Advance activity actions through the existing state machine."""
+
+        self._require_generation_service().require_executable_flow(document.loop_snapshot)
+        workspace = await self._tenant_service.resolve(user_id=user_id, requested_workspace_id=requested_workspace_id)
+        context = dict(document.execution_context)
+        if action == 'apply_operations':
+            context['apply_result'] = dict(result)
+            if result.get('applied') is True and self._has_reviewers(document.loop_snapshot):
+                return await self._repository.transition_for_activity(
+                    workspace_id=workspace.workspace_id, activity_id=activity_id,
+                    run_id=document.id, continuation_token=continuation_token,
+                    idempotency_key=idempotency_key, expected_action=action,
+                    status='in_progress', state='awaiting_review_input',
+                    next_action='submit_review_input',
+                    next_continuation_token=self._token_factory(), execution_context=context,
+                    updated_at=self._clock(),
+                )
+            return await self._repository.transition_for_activity(
+                workspace_id=workspace.workspace_id, activity_id=activity_id, run_id=document.id,
+                continuation_token=continuation_token, idempotency_key=idempotency_key,
+                expected_action=action, status='in_progress' if result.get('applied') is True else 'failed',
+                state='awaiting_commit' if result.get('applied') is True else 'failed',
+                next_action='commit_if_allowed' if result.get('applied') is True else 'none',
+                next_continuation_token=self._token_factory() if result.get('applied') is True else None,
+                execution_context=context, updated_at=self._clock(),
+            )
+        if action == 'submit_review_input':
+            review_context = await self._require_generation_service().generate_review_context(
+                loop_snapshot=document.loop_snapshot, workspace_id=workspace.workspace_id,
+                input_text=document.input, context=context,
+                final_diff=str(result.get('final_diff', '')),
+                changed_file_contents=self._changed_file_contents(result),
+            )
+            updated_context = {
+                **context, 'review_input': dict(result), 'review_result': review_context,
+            }
+            approved = review_context['approved'] is True
+            retry = not approved and document.iteration < self._max_iterations(document.loop_snapshot)
+            return await self._repository.transition_for_activity(
+                workspace_id=workspace.workspace_id, activity_id=activity_id,
+                run_id=document.id, continuation_token=continuation_token,
+                idempotency_key=idempotency_key, expected_action=action,
+                status='in_progress' if approved or retry else 'failed',
+                state='awaiting_commit' if approved else ('awaiting_snapshot' if retry else 'failed'),
+                next_action='commit_if_allowed' if approved else ('collect_snapshot' if retry else 'none'),
+                next_continuation_token=self._token_factory() if approved or retry else None,
+                execution_context=updated_context, updated_at=self._clock(),
+                iteration=document.iteration + 1 if retry else None,
+            )
+        if action == 'commit_if_allowed':
+            committed = result.get('committed') is True
+            return await self._repository.transition_for_activity(
+                workspace_id=workspace.workspace_id, activity_id=activity_id, run_id=document.id,
+                continuation_token=continuation_token, idempotency_key=idempotency_key,
+                expected_action=action, status='completed' if committed else 'failed',
+                state='completed' if committed else 'failed', next_action='none',
+                next_continuation_token=None,
+                execution_context={**context, 'commit_result': dict(result)}, updated_at=self._clock(),
+            )
+        raise LoopValidationError(field_name='result.action', message='is not supported')

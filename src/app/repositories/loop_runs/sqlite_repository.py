@@ -56,18 +56,19 @@ class SqliteLoopRunRepository:
                 await connection.execute(
                     '''
                     INSERT INTO loop_runs (
-                        id, workspace_id, loop_id, input, status, state,
+                        id, workspace_id, loop_id, activity_id, input, status, state,
                         next_action, iteration, token_revision,
                         continuation_token, loop_snapshot_json,
                         execution_context_json, created_at, created_by,
                         updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''',
                     (
                         document.id,
                         document.workspace_id,
-                        document.loop_id,
+                        None if document.activity_id is not None else document.loop_id,
+                        document.activity_id,
                         document.input,
                         document.status,
                         document.state,
@@ -132,6 +133,30 @@ class SqliteLoopRunRepository:
                 await cursor.close()
         return self._to_document(row) if row is not None else None
 
+    async def get_for_activity(
+        self,
+        *,
+        workspace_id: str,
+        activity_id: str,
+        run_id: str,
+    ) -> LoopRunDocument | None:
+        """Return one run belonging to the requested activity."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT *
+                FROM loop_runs
+                WHERE workspace_id = ? AND activity_id = ? AND id = ?
+                ''',
+                (workspace_id, activity_id, run_id),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return self._to_document(row) if row is not None else None
+
     async def list(
         self,
         *,
@@ -163,6 +188,46 @@ class SqliteLoopRunRepository:
                 LIMIT ? OFFSET ?
                 ''',
                 (workspace_id, loop_id, limit, offset),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        total = int(count_row['total']) if count_row is not None else 0
+        return [self._to_document(row) for row in rows], total
+
+    async def list_for_activity(
+        self,
+        *,
+        workspace_id: str,
+        activity_id: str,
+        offset: int,
+        limit: int,
+    ) -> tuple[list[LoopRunDocument], int]:
+        """Return newest-first runs and their total for one activity."""
+
+        async with self._connect() as connection:
+            count_cursor = await connection.execute(
+                '''
+                SELECT COUNT(*) AS total
+                FROM loop_runs
+                WHERE workspace_id = ? AND activity_id = ?
+                ''',
+                (workspace_id, activity_id),
+            )
+            try:
+                count_row = await count_cursor.fetchone()
+            finally:
+                await count_cursor.close()
+            cursor = await connection.execute(
+                '''
+                SELECT *
+                FROM loop_runs
+                WHERE workspace_id = ? AND activity_id = ?
+                ORDER BY created_at DESC, id ASC
+                LIMIT ? OFFSET ?
+                ''',
+                (workspace_id, activity_id, limit, offset),
             )
             try:
                 rows = await cursor.fetchall()
@@ -326,6 +391,114 @@ class SqliteLoopRunRepository:
             updated_at=updated_at,
         )
 
+    async def transition_for_activity(
+        self,
+        *,
+        workspace_id: str,
+        activity_id: str,
+        run_id: str,
+        continuation_token: str,
+        idempotency_key: str,
+        expected_action: str,
+        status: str,
+        state: str,
+        next_action: str,
+        next_continuation_token: str | None,
+        execution_context: dict[str, object],
+        updated_at: datetime,
+        iteration: int | None = None,
+    ) -> LoopRunDocument:
+        """Persist a checkpoint transition for an activity-owned run."""
+
+        async with self._connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                row = await self._get_activity_row(
+                    connection,
+                    workspace_id=workspace_id,
+                    activity_id=activity_id,
+                    run_id=run_id,
+                )
+                if row is None:
+                    raise LoopRunInvalidTransitionError()
+                revision = await self._get_checkpoint_revision(
+                    connection,
+                    workspace_id=workspace_id,
+                    run_id=run_id,
+                    continuation_token=continuation_token,
+                )
+                if revision is None:
+                    raise LoopRunTokenConflictError()
+                replay = await self._get_idempotent_response(
+                    connection,
+                    workspace_id=workspace_id,
+                    run_id=run_id,
+                    token_revision=revision,
+                    idempotency_key=idempotency_key,
+                )
+                if replay is not None:
+                    await connection.commit()
+                    return replay
+                if int(row['token_revision']) != revision:
+                    raise LoopRunTokenConflictError()
+                if str(row['next_action']) != expected_action:
+                    raise LoopRunInvalidTransitionError()
+
+                updated = self._to_document(
+                    row,
+                    status=status,
+                    state=state,
+                    next_action=next_action,
+                    iteration=iteration if iteration is not None else int(row['iteration']),
+                    token_revision=revision + 1,
+                    continuation_token=next_continuation_token,
+                    execution_context=execution_context,
+                    updated_at=updated_at,
+                )
+                await connection.execute(
+                    '''
+                    UPDATE loop_runs
+                    SET status = ?, state = ?, next_action = ?, iteration = ?, token_revision = ?,
+                        continuation_token = ?, execution_context_json = ?, updated_at = ?
+                    WHERE workspace_id = ? AND activity_id = ? AND id = ?
+                    ''',
+                    (
+                        status, updated.state, updated.next_action, updated.iteration,
+                        updated.token_revision, updated.continuation_token,
+                        json.dumps(execution_context, sort_keys=True),
+                        self._serialize_datetime(updated.updated_at), workspace_id,
+                        activity_id, run_id,
+                    ),
+                )
+                await connection.execute(
+                    '''
+                    INSERT INTO loop_run_checkpoints (
+                        workspace_id, run_id, token_revision, continuation_token,
+                        state, next_action, context_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''',
+                    (
+                        workspace_id, run_id, updated.token_revision,
+                        updated.continuation_token, updated.state, updated.next_action,
+                        json.dumps(execution_context, sort_keys=True),
+                        self._serialize_datetime(updated.updated_at),
+                    ),
+                )
+                await self._store_idempotent_response(
+                    connection,
+                    workspace_id=workspace_id,
+                    run_id=run_id,
+                    token_revision=revision,
+                    idempotency_key=idempotency_key,
+                    document=updated,
+                    created_at=updated.updated_at,
+                )
+                await connection.commit()
+                return updated
+            except Exception:
+                await connection.rollback()
+                raise
+
     @staticmethod
     def _to_document(
         row: aiosqlite.Row,
@@ -344,7 +517,16 @@ class SqliteLoopRunRepository:
         return LoopRunDocument(
             id=str(row['id']),
             workspace_id=str(row['workspace_id']),
-            loop_id=str(row['loop_id']),
+            loop_id=(
+                str(row['loop_id'])
+                if row['loop_id'] is not None
+                else str(row['activity_id'])
+            ),
+            activity_id=(
+                str(row['activity_id'])
+                if row['activity_id'] is not None
+                else None
+            ),
             input=str(row['input']),
             status=status or str(row['status']),
             state=state or str(row['state']),
@@ -392,6 +574,28 @@ class SqliteLoopRunRepository:
             WHERE workspace_id = ? AND loop_id = ? AND id = ?
             ''',
             (workspace_id, loop_id, run_id),
+        )
+        try:
+            return await cursor.fetchone()
+        finally:
+            await cursor.close()
+
+    @staticmethod
+    async def _get_activity_row(
+        connection: aiosqlite.Connection,
+        *,
+        workspace_id: str,
+        activity_id: str,
+        run_id: str,
+    ) -> aiosqlite.Row | None:
+        """Return one activity-owned loop-run row using the open transaction."""
+
+        cursor = await connection.execute(
+            '''
+            SELECT * FROM loop_runs
+            WHERE workspace_id = ? AND activity_id = ? AND id = ?
+            ''',
+            (workspace_id, activity_id, run_id),
         )
         try:
             return await cursor.fetchone()
@@ -493,6 +697,7 @@ class SqliteLoopRunRepository:
             'id': document.id,
             'workspace_id': document.workspace_id,
             'loop_id': document.loop_id,
+            'activity_id': document.activity_id,
             'input': document.input,
             'status': document.status,
             'state': document.state,
@@ -515,6 +720,11 @@ class SqliteLoopRunRepository:
             id=str(value['id']),
             workspace_id=str(value['workspace_id']),
             loop_id=str(value['loop_id']),
+            activity_id=(
+                str(value['activity_id'])
+                if value.get('activity_id') is not None
+                else None
+            ),
             input=str(value['input']),
             status=str(value['status']),
             state=str(value['state']),

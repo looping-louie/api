@@ -22,7 +22,8 @@ EXPECTED_CHECKSUMS = {
     '0012_expand_loop_run_states.sql': '0e2c0d72f6fd8a8aa6d103b7dda5dbb9c3dc773e103b4278ad7f068bc7e70fc8',
     '0013_repair_loop_run_idempotency.sql': 'fe367df6b131dbf944c053008f324cc4faf103656c6091745ab1808fba597e62',
     '0014_activities.sql': 'ba267422801bcfbc4a31da5fbc2edea8f014b267af21484026b13ce9bb42b1f4',
-    '0015_pipeline_activity_steps.sql': '7c06ff232306dc25cfadba0da79a3455e36b6011c4697662bb947d6205022f45',
+    '0015_pipeline_activity_steps.sql': '63ff3ae6ab2e8fd1f322ba246e8ee30cd216b5b87db7e3f9bd1b6b4cda0f7f57',
+    '0016_activity_loop_runs.sql': '74f01fef75b9e2007a40b7bc7891455f6e2d2b757b2486c424f4f550d821c4c7',
 }
 
 

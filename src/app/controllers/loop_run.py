@@ -57,6 +57,28 @@ class LoopRunController:
         )
         return self._response(document)
 
+    async def create_for_activity(
+        self, *, user_id: str, activity_id: str, payload: LoopRunCreateRequest,
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunResponse:
+        """Create one run from an activity loop configuration."""
+
+        return self._response(await self._loop_run_service.create_for_activity(
+            user_id=user_id, activity_id=activity_id, input_text=payload.input,
+            requested_workspace_id=requested_workspace_id,
+        ))
+
+    async def get_for_activity(
+        self, *, user_id: str, activity_id: str, run_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunResponse:
+        """Return one activity-owned run."""
+
+        return self._response(await self._loop_run_service.get_for_activity(
+            user_id=user_id, activity_id=activity_id, run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        ))
+
     async def continue_collect_snapshot(
         self,
         *,
@@ -146,3 +168,32 @@ class LoopRunController:
             items=[self._response(item) for item in documents],
             total=total,
         )
+
+    async def list_for_activity(
+        self, *, user_id: str, activity_id: str, offset: int,
+        requested_workspace_id: str | None = None,
+    ) -> LoopRunListResponse:
+        """Return one activity-owned run page."""
+
+        documents, total = await self._loop_run_service.list_for_activity(
+            user_id=user_id, activity_id=activity_id, offset=offset,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return LoopRunListResponse(items=[self._response(item) for item in documents], total=total)
+
+    async def continue_for_activity(
+        self, *, user_id: str, activity_id: str, run_id: str,
+        payload: LoopRunContinueRequest, requested_workspace_id: str | None = None,
+    ) -> LoopRunResponse:
+        """Advance one activity-owned CLI checkpoint."""
+
+        action = payload.result.get('action')
+        result = (
+            LoopRunCollectSnapshotResult.model_validate(payload.result).model_dump(mode='json')
+            if action == 'collect_snapshot' else self._action_result(payload.result).model_dump(mode='json')
+        )
+        return self._response(await self._loop_run_service.continue_for_activity(
+            user_id=user_id, activity_id=activity_id, run_id=run_id,
+            continuation_token=payload.continuation_token, idempotency_key=payload.idempotency_key,
+            action=str(action), result=result, requested_workspace_id=requested_workspace_id,
+        ))
