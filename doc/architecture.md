@@ -124,17 +124,47 @@ services/
 
 ### Catalogs
 
-This package <ADD DESCRIPTION HERE>.
+This package defines immutable, application-shipped data. It contains curated
+Python definitions and typed loaders for manifest-backed Markdown resources.
+It does not access SQLite or workspace state.
 
-Internally, contains the following packages and modules:
-
-- `personas` contain the packaged builtin persona registries,
-  Markdown resources, and typed loaders.
-- `skills` contain the packaged builtin skill registries,
-  Markdown resources, and typed loaders.
-- `instructions` provides the shared catalog entry types,
-  resource validation, and combined loader. It loads and validates immutable
-  packaged resources without knowing about SQLite or application bootstrap.
+```text
+catalogs/
+|
+|-- __init__.py                    Exposes the combined instruction catalog
+|-- instructions/
+|   |-- __init__.py                Defines public catalog contracts
+|   |-- entries.py                 Defines immutable persona and skill entries
+|   |-- errors.py                  Defines catalog loading errors
+|   |-- loader.py                  Loads catalogs and validates cross-references
+|   |-- resource_loader.py         Loads JSON manifests and Markdown resources
+|   |-- resource_validation.py     Validates manifest values
+|   `-- types.py                   Defines catalog metadata and value types
+|-- loops/
+|   |-- __init__.py                Defines public catalog contracts
+|   `-- catalog.py                 Defines curated entries
+|-- models/
+|   |-- __init__.py                Combines and validates curated entries
+|   |-- helpers.py                 Builds shared pricing and capability values
+|   |-- nvidia.py                  Defines NVIDIA entries
+|   |-- primary.py                 Defines primary provider entries
+|   |-- secondary.py               Defines secondary provider entries
+|   |-- types.py                   Defines catalog contracts
+|   `-- validation.py              Validates catalog consistency
+|-- personas/
+|   |-- __init__.py                Declares packaged resources
+|   |-- content/                   Contains Markdown definitions
+|   |-- loader.py                  Loads and validates entries
+|   `-- registry.json              Declares resource metadata
+|-- providers/
+|   |-- __init__.py                Defines public catalog contracts
+|   `-- catalog.py                 Defines supported provider metadata
+`-- skills/
+  |-- __init__.py                Declares packaged resources
+  |-- content/                   Contains Markdown definitions
+  |-- loader.py                  Loads and validates entries
+  `-- registry.json              Declares resource metadata
+```
 
 ### Repositories
 
