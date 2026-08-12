@@ -183,11 +183,11 @@ repositories/
 |   `-- sqlite_database.py          Manages asynchronous SQLite connections
 |-- instructions/
 |   |-- __init__.py                Declares persona and skill persistence
-|   |-- instruction_availability.py Persists workspace availability settings
-|   |-- instruction_mapping.py     Maps SQLite rows and normalizes values
-|   |-- instruction_mutations.py   Creates, updates, and deletes records
-|   |-- instruction_repository.py  Persists resource definitions
-|   |-- instruction_settings.py    Persists workspace enablement settings
+|   |-- availability.py            Persists workspace availability settings
+|   |-- mapping.py                 Maps SQLite rows and normalizes values
+|   |-- mutations.py               Creates, updates, and deletes records
+|   |-- repository.py              Persists resource definitions
+|   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- loop_runs/
 |   |-- __init__.py                Defines public persistence imports

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.repositories.instructions.instruction_repository import (
+from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
 from src.app.repositories.providers.provider_repository import (

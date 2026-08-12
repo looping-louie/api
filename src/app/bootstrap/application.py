@@ -27,7 +27,7 @@ from src.app.repositories.loop_runs.sqlite_loop_run_repository import (
 from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
 )
-from src.app.repositories.instructions.instruction_repository import (
+from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
 from src.app.repositories.instructions.persona_skill_repository import (

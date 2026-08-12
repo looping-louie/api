@@ -14,13 +14,13 @@ from src.app.services.instructions import (
     InstructionType,
 )
 
-from .instruction_availability import InstructionAvailabilityMixin
-from .instruction_mapping import (
+from .availability import InstructionAvailabilityMixin
+from .mapping import (
     to_document,
     to_summary,
 )
-from .instruction_mutations import InstructionMutationMixin
-from .instruction_settings import InstructionSettingsMixin
+from .mutations import InstructionMutationMixin
+from .settings import InstructionSettingsMixin
 
 
 class SqliteInstructionRepository(

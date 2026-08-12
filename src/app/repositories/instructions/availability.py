@@ -10,7 +10,7 @@ from src.app.services.instructions import (
     InstructionType,
 )
 
-from .instruction_mapping import (
+from .mapping import (
     escape_like,
     normalize_search,
     to_available_document,

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.instructions.instruction_repository import (
+from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
 from src.app.repositories.instructions.persona_skill_repository import (

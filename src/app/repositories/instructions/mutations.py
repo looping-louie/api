@@ -11,7 +11,7 @@ from src.app.services.instructions import (
     InstructionType,
 )
 
-from .instruction_mapping import (
+from .mapping import (
     normalize_name,
     serialize_datetime,
     serialize_metadata,
