@@ -1,0 +1,111 @@
+"""SQLite name lookup adapter for shared validation."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+import aiosqlite
+
+
+_RESOURCE_LOCATIONS: dict[str, tuple[str, str]] = {
+    "persona": (
+        "instructions",
+        "instruction_type",
+    ),
+    "skill": (
+        "instructions",
+        "instruction_type",
+    ),
+}
+
+
+class SqliteValidationRepository:
+    """Looks up resources by normalized name across shared tables."""
+
+    def __init__(
+        self,
+        database_path: str | Path,
+    ) -> None:
+        """Store the SQLite database path."""
+
+        self._database_path = Path(database_path)
+
+    async def find_resource_id_by_name(
+        self,
+        *,
+        workspace_id: str,
+        resource_type: str,
+        normalized_name: str,
+    ) -> str | None:
+        """Return the resource with a matching normalized name."""
+
+        location = _RESOURCE_LOCATIONS.get(resource_type)
+
+        if location is None:
+            raise ValueError(
+                f"Unsupported resource type '{resource_type}'."
+            )
+
+        table_name, type_column = location
+        name_key = normalized_name
+        workspace_column = "owner_workspace_id"
+        origin_clause = "AND origin = 'custom'"
+
+        query = f"""
+            SELECT id
+            FROM {table_name}
+            WHERE {workspace_column} = ?
+              AND {type_column} = ?
+              AND name_key = ?
+              {origin_clause}
+            LIMIT 1
+        """
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                query,
+                (
+                    workspace_id,
+                    resource_type,
+                    name_key,
+                ),
+            )
+
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+
+        if row is None:
+            return None
+
+        return str(row["id"])
+
+    @asynccontextmanager
+    async def _connect(
+        self,
+    ) -> AsyncIterator[aiosqlite.Connection]:
+        """Open one configured read connection."""
+
+        connection = await aiosqlite.connect(
+            self._database_path,
+        )
+
+        try:
+            connection.row_factory = aiosqlite.Row
+            await connection.execute(
+                "PRAGMA foreign_keys = ON"
+            )
+            yield connection
+        finally:
+            await connection.close()
+
+    @staticmethod
+    def _normalize_name(name: str) -> str:
+        """Normalize display text for case-insensitive matching."""
+
+        return " ".join(
+            name.strip().casefold().split()
+        )

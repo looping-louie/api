@@ -1,0 +1,287 @@
+[
+  {
+    "id": "builtin:persona:product_manager",
+    "key": "product_manager",
+    "name": "Product Manager",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/product_manager.md",
+    "description": "Frames work around user problems, product outcomes, scope, requirements, trade-offs, prioritisation, and acceptance criteria.",
+    "applies_when": [
+      "product",
+      "requirements",
+      "scope",
+      "roadmap",
+      "prioritisation",
+      "user_flows",
+      "mvp"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:web_development",
+      "builtin:skill:accessibility",
+      "builtin:skill:privacy",
+      "builtin:skill:resilience"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:founder",
+    "key": "founder",
+    "name": "Founder",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/founder.md",
+    "description": "Evaluates strategic fit, speed, differentiation, customer value, business risk, and whether the work advances the company.",
+    "applies_when": [
+      "strategy",
+      "business",
+      "mvp",
+      "positioning",
+      "trade_offs",
+      "company_priorities"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:web_development",
+      "builtin:skill:privacy",
+      "builtin:skill:security",
+      "builtin:skill:resilience"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:ux_designer",
+    "key": "ux_designer",
+    "name": "UX Designer",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/ux_designer.md",
+    "description": "Focuses on user goals, interaction clarity, information architecture, accessibility, usability, consistency, and friction.",
+    "applies_when": [
+      "ux",
+      "ui",
+      "frontend",
+      "interaction",
+      "usability",
+      "accessibility",
+      "user_flows"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:web_development",
+      "builtin:skill:accessibility",
+      "builtin:skill:internationalisation"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:tech_lead",
+    "key": "tech_lead",
+    "name": "Tech Lead",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/tech_lead.md",
+    "description": "Optimises for correct implementation, maintainable code, sensible scope, framework conventions, testability, and safe delivery.",
+    "applies_when": [
+      "code",
+      "implementation",
+      "frontend",
+      "backend",
+      "refactor",
+      "testing",
+      "architecture"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:nuxt",
+      "builtin:skill:web_development",
+      "builtin:skill:security",
+      "builtin:skill:performance",
+      "builtin:skill:resilience"
+    ],
+    "default_for": [
+      "generator"
+    ]
+  },
+  {
+    "id": "builtin:persona:enterprise_customer",
+    "key": "enterprise_customer",
+    "name": "Enterprise Customer",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/enterprise_customer.md",
+    "description": "Assesses whether the result is trustworthy, governable, supportable, auditable, secure, and suitable for enterprise adoption.",
+    "applies_when": [
+      "enterprise",
+      "governance",
+      "procurement",
+      "compliance",
+      "security",
+      "privacy",
+      "reliability"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:security",
+      "builtin:skill:privacy",
+      "builtin:skill:resilience",
+      "builtin:skill:accessibility"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:growth",
+    "key": "growth",
+    "name": "Growth",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/growth.md",
+    "description": "Looks for acquisition, activation, conversion, retention, discoverability, measurement, and scalable distribution opportunities.",
+    "applies_when": [
+      "growth",
+      "seo",
+      "conversion",
+      "activation",
+      "retention",
+      "analytics",
+      "acquisition"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:seo",
+      "builtin:skill:performance",
+      "builtin:skill:web_development",
+      "builtin:skill:agent_readiness"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:devils_advocate",
+    "key": "devils_advocate",
+    "name": "Devil's Advocate",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/devils_advocate.md",
+    "description": "Challenges assumptions, searches for failure modes, tests edge cases, and identifies reasons the proposed solution may not work.",
+    "applies_when": [
+      "risk",
+      "assumptions",
+      "edge_cases",
+      "failure_modes",
+      "challenge",
+      "validation"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:security",
+      "builtin:skill:privacy",
+      "builtin:skill:resilience",
+      "builtin:skill:web_development"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:finance",
+    "key": "finance",
+    "name": "Finance",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/finance.md",
+    "description": "Evaluates cost, pricing, margin, resource use, financial exposure, commercial viability, and measurable return.",
+    "applies_when": [
+      "finance",
+      "pricing",
+      "cost",
+      "margin",
+      "billing",
+      "revenue",
+      "roi"
+    ],
+    "applies_to": [
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:privacy",
+      "builtin:skill:security",
+      "builtin:skill:resilience"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:platform_architect",
+    "key": "platform_architect",
+    "name": "Platform Architect",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/platform_architect.md",
+    "description": "Focuses on system boundaries, deployment portability, scalability, reliability, observability, integration contracts, and operational risk.",
+    "applies_when": [
+      "architecture",
+      "platform",
+      "infrastructure",
+      "deployment",
+      "scalability",
+      "integration",
+      "observability"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:security",
+      "builtin:skill:performance",
+      "builtin:skill:resilience",
+      "builtin:skill:privacy",
+      "builtin:skill:web_development"
+    ],
+    "default_for": []
+  },
+  {
+    "id": "builtin:persona:editor",
+    "key": "editor",
+    "name": "Editor",
+    "version": 1,
+    "enabled_by_default": true,
+    "content_path": "content/editor.md",
+    "description": "Improves clarity, structure, consistency, precision, readability, tone, and suitability for the intended audience.",
+    "applies_when": [
+      "content",
+      "copy",
+      "documentation",
+      "messaging",
+      "clarity",
+      "localisation"
+    ],
+    "applies_to": [
+      "generator",
+      "reviewer"
+    ],
+    "skill_ids": [
+      "builtin:skill:seo",
+      "builtin:skill:accessibility",
+      "builtin:skill:internationalisation",
+      "builtin:skill:agent_readiness"
+    ],
+    "default_for": []
+  }
+]

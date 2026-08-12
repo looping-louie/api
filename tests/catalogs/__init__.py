@@ -1,0 +1,1 @@
+"""Catalog contract tests."""

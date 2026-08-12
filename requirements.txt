@@ -1,5 +1,8 @@
-fastapi==0.138.2
-httpx==0.28.1
-python-dotenv==1.2.2
-together==2.21.0
-openai==2.44.0
+aiosqlite==0.22.*
+cryptography==44.0.*
+fastapi==0.138.*
+httpx==0.28.*
+pytest==9.1.*
+pytest-asyncio==1.4.*
+python-dotenv==1.*
+uvicorn==0.49.*

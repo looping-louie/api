@@ -1,48 +1,278 @@
-# USE
+# Looping Louie
 
-## Repo
+Looping Louie API is the decision engine for iterative LLM software development.
 
-To get the repo up and running, follow the steps:
+Instead of relying on a single model, Looping Louie orchestrates a development
+loop where:
 
-1. Run `make install` to create the virtualenv, install requirements and initialize the .env file.
-2. Manually add the required API keys in your new .env file.
-3. Run `make run` to start the uvicorn.
+1. A generator proposes code changes.
+2. One or more specialised reviewer skills validate those changes.
+3. The generator iterates until every reviewer approves or the maximum number
+   of iterations is reached.
 
-## Api
+The runtime is provider-independent and designed to be reproducible, observable
+and deployable in SaaS and on-premise environments.
 
-The API currently has a single endpoint /run. You can call it like this:
+---
+
+## Big picture
+
+Lets take a step back and remember: Looping Louie is an app for fast
+AI-driven development, which intends to automate the dev cycle.
+
+Ideally, an user will create a repo (looping-louie-test) and, by means of
+interacting with the lopping-louie CLI (which internally calls to the API),
+will be able to rapidly implement whatever project is in their mind.
+
+## Features
+
+- Iterative generator and reviewer workflow
+- Multiple independent review skills
+- Checkpoint-based API-CLI orchestration
+- Automatic Git diff generation
+- JSON-based file operations
+- API-guided local execution in CLI
+- One commit per approved task (executed by CLI)
+- Complete execution traces
+- Token and latency metrics
+- Provider-independent architecture
+- Encrypted provider credential storage
+- Local SQLite persistence for development and simple on-premise deployments
+
+---
+
+## Installation
+
+Clone the repository and run:
+
+```sh
+make install
+```
+
+This command will:
+
+- Create the Python virtual environment in `env/`.
+- Install every dependency from `requirements.txt`.
+- Create `.env.local` when it does not already exist.
+- Generate a Fernet encryption key.
+- Store the generated key as `LOUIE_ENCRYPTION_KEY` in `.env.local`.
+
+The installer never overwrites an existing `.env.local`, because changing
+`LOUIE_ENCRYPTION_KEY` would make previously encrypted provider credentials
+unreadable.
+
+Ensure `requirements.txt` contains the provider feature dependencies:
+
+```text
+aiosqlite
+cryptography
+httpx
+python-dotenv
+```
+
+---
+
+## Configuration
+
+After installation, configure provider credentials through the versioned
+provider API. Credentials are encrypted before SQLite persistence.
+
+The installer also creates these local provider settings:
+
+```text
+LOUIE_ENCRYPTION_KEY=<generated Fernet key>
+LOUIE_DB_PATH=runtime/db/looping-louie.db
+LOUIE_CATALOG_STRICT_VERSIONING=false
+```
+
+`LOUIE_ENCRYPTION_KEY` is the Looping Louie master encryption key. It encrypts
+provider credentials before they are stored in SQLite. Do not commit it, log it
+or regenerate it while encrypted credentials still exist.
+
+`LOUIE_CATALOG_STRICT_VERSIONING` defaults to `false` for development. Set it
+to `true` in production so a builtin checksum change requires an incremented
+`catalog_version`.
+
+Add these patterns to `.gitignore`:
+
+```gitignore
+.env
+.env.local
+*.db
+*.db-shm
+*.db-wal
+.looping-louie/
+```
+
+To deliberately replace the local configuration and generate a new encryption
+key:
+
+```sh
+make reset-config
+```
+
+This is destructive for existing encrypted provider credentials. Remove or
+reconfigure those credentials after resetting the key.
+
+---
+
+## Running the API
+
+Start the development server:
+
+```sh
+make dev
+```
+
+Or use the existing alias:
+
+```sh
+make run
+```
+
+The Makefile always starts Uvicorn with the virtual environment interpreter and
+exports the values from `.env.local`.
+
+Start the development server from a normal VS Code integrated terminal, not a
+sandboxed agent terminal. Sandboxed terminal environments can create empty
+home-configuration placeholders such as `.bashrc`, `.gitconfig`, or `.vscode`
+in the current repository. These files are not created or used by Looping
+Louie and should be removed if they appear.
+
+The local SQLite database at `runtime/db/looping-louie.db` is an
+intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in
+`.env.local` to store it outside the repository when preferred.
+
+The API is available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Interactive API documentation is available at:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## Usage
+
+Looping Louie currently exposes these endpoints.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/v1/loops` | Manage persisted multi-agent loop definitions. |
+| `/api/v1/loops/{loop_id}/runs` | Start one persisted loop run. |
+| `/api/v1/loops/{loop_id}/runs/{run_id}` | Read one persisted loop run. |
+| `/api/v1/loops/{loop_id}/runs/{run_id}/continue` | Advance one loop-run checkpoint. |
+
+See the complete API documentation:
+
+- [`doc/API.md`](doc/API.md)
+
+---
+
+## Repository Requirements
+
+Before running Looping Louie against a target repository:
+
+- The target directory must be a Git repository.
+- The repository must have no uncommitted changes.
+
+Looping Louie refuses to execute against a dirty repository to keep runs
+deterministic.
+
+---
+
+## SQLite Migrations
+
+SQLite migration files are immutable once committed. Do not edit an existing
+migration for any reason, including whitespace or terminal-newline changes.
+Create a new forward migration instead.
+
+Every new SQLite migration must be added to
+`tests/integration/test_sqlite_migration_checksums.py`. That test protects the
+exact bytes of committed migrations and must pass before the migration is
+committed.
+
+---
+
+## Documentation
+
+Project documentation is organised under `doc/`.
+
+| Document | Purpose |
+|---|---|
+| `architecture.md` | Runtime architecture and execution lifecycle. |
+| `philosophy.md` | Design principles and engineering philosophy. |
+| `roadmap.md` | Planned architectural evolution. |
+| `API.md` | HTTP API reference. |
+| `development-log.md` | Engineering logbook and execution notes. |
+
+---
+
+## High-Level Execution Flow
 
 ```
-curl -X POST http://127.0.0.1:8000/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo_path": "/home/jadraque/Documents/source/looping-louie/web",
-    "prompt": "Fix the Nuxt layout warning. Ensure the default layout is actually used by app.vue. Do not redesign the homepage. Keep changes minimal.",
-    "max_iterations": 2,
-    "generator_model": "zai-org/GLM-5.2",
-    "reviewer_model": "gpt-4.1-mini",
-    "skills": ["small_patch_quality", "nuxt_code_review"]
-  }'
+loop input
+      │
+      ▼
+/api/v1/loops/{loop_id}/runs
+      │
+      ▼
+CLI builds snapshot and runs local action
+      │
+      ▼
+/api/v1/loops/{loop_id}/runs/{run_id}/continue
+      │
+      ▼
+Planner and reviewer services
+      │
+      ▼
+Generator model
+      │
+      ▼
+JSON file operations
+      │
+      ▼
+Apply operations
+      │
+      ▼
+Git diff
+      │
+      ▼
+Reviewer skills
+      │
+      ▼
+Approved?
+ │           │
+ │ No        │ Yes
+ ▼           ▼
+Retry    Commit allowed
+          (CLI commits)
 ```
 
-***
+---
 
-# RULES
+## Current Status
 
-- Looping Louie only runs against a clean committed Git state.
-  Commit or stash your changes before running.
+Looping Louie is currently an MVP focused on validating the execution runtime.
 
-***
+The current implementation supports:
 
-# LOGIC
+- persisted loop-run checkpoint contracts;
+- multi-skill review;
+- automatic commits;
+- execution traces;
+- run persistence;
+- reusable review skills.
 
-/run
-→ runner.py
-→ workspace.py crea worktree
-→ repository.py genera snapshot
-→ llm_together.py genera patch
-→ patcher.py valida/aplica en worktree
-→ patcher.py saca diff real
-→ llm_openai.py revisa diff + changed files
-→ si aprueba: patcher.py aplica final_diff en repo original
-→ workspace.py borra worktree
+Future work is tracked in `docs/roadmap.md`.
+
+---
+
+## License
+
+_Not yet defined._
