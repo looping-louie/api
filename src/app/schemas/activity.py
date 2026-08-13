@@ -22,8 +22,17 @@ ActivityChangeTypeValue = Literal[
 ]
 
 
+class DirectLoopActivityConfig(RequestSchema):
+    """Configuration for a direct loop activity."""
+
+    type: Literal['direct_loop']
+    stop_conditions: LoopStopConditionsSchema
+    agents: list[LoopAgentSchema]
+    output_contract: LoopOutputContractSchema
+
+
 class LoopActivityConfig(RequestSchema):
-    """Loop-compatible configuration stored inside a loop activity."""
+    """Configuration for loop variants pending their own Activity type."""
 
     type: Literal['loop']
     flow: LoopFlowValue
@@ -46,7 +55,10 @@ class QuizActivityConfig(RequestSchema):
 
 
 ActivityConfig = Annotated[
-    ApprovalActivityConfig | QuizActivityConfig | LoopActivityConfig,
+    ApprovalActivityConfig
+    | QuizActivityConfig
+    | DirectLoopActivityConfig
+    | LoopActivityConfig,
     Field(discriminator='type'),
 ]
 
@@ -56,7 +68,7 @@ class ActivityCreateRequest(RequestSchema):
 
     title: NonEmptyString
     description: str
-    type: Literal['approval', 'quiz', 'loop']
+    type: Literal['approval', 'quiz', 'direct_loop', 'loop']
     config: ActivityConfig
 
     @model_validator(mode='after')
@@ -96,7 +108,7 @@ class ActivityResponse(ResponseSchema):
     title: str
     description: str
     status: ActivityStatusValue
-    type: Literal['approval', 'quiz', 'loop']
+    type: Literal['approval', 'quiz', 'direct_loop', 'loop']
     config: ActivityConfig
     created_at: datetime
     created_by: str

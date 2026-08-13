@@ -1,10 +1,10 @@
 # Activities
 
 Activities are workspace-scoped reusable units of work. The current supported
-types are `approval`, `quiz`, and `loop`. Approval activities represent human
-approval, and quiz activities collect human quiz responses. A loop activity can
-create persisted runs; approval and quiz execution are reserved for future
-pipeline orchestration.
+types are `approval`, `quiz`, `direct_loop`, and `loop`. Approval activities
+represent human approval, and quiz activities collect human quiz responses.
+Direct-loop activities can create persisted runs; approval and quiz execution
+are reserved for future pipeline orchestration.
 
 ## Resource endpoints
 
@@ -22,9 +22,9 @@ Activity creation specifies a common `type` and a matching discriminated
 
 ## Loop activity runs
 
-Only active activities with `type: "loop"` can run. Their `config` is captured
-when a run is created, so later definition changes do not alter an in-progress
-run.
+Only active activities with `type: "direct_loop"` can run. Their `config` is
+captured when a run is created, so later definition changes do not alter an
+in-progress run.
 
 | Method | Path | Purpose |
 | --- | --- | --- |

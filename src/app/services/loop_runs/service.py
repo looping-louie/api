@@ -607,8 +607,8 @@ class LoopRunService:
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if activity.type != 'loop':
-            raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not loop')
+        if activity.type != 'direct_loop':
+            raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not direct_loop')
         if activity.status != 'active':
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
         return activity
@@ -621,6 +621,7 @@ class LoopRunService:
             'id': getattr(activity, 'id'), 'title': getattr(activity, 'title'),
             'description': getattr(activity, 'description'),
             **dict(getattr(activity, 'config')),
+            'flow': 'direct',
         }
 
     async def _continue_activity_action(

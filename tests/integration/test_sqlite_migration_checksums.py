@@ -27,7 +27,8 @@ EXPECTED_CHECKSUMS = {
     '0017_activity_catalog_installations.sql': '545540d77ae10358d14a72511fd6045cd07415864bbff0948f87e388384cb2c8',
     '0018_archive_builtin_activities.sql': 'c247732633257e31c01578703b145cd987a4983f51813ffaa9dc2c634774d02d',
     '0019_flatten_approval_activities.sql': '664cea04e52bbcb824c57eb3b133748031130759b25765f5dc40f5180a42e26c',
-    '0020_flatten_quiz_activities.sql': '8db45fefd873486615e4f293067b3f626329b89e9ab830672f21900def449aef',
+    '0020_flatten_quiz_activities.sql': '765189cd23acee40cf99aaa0d263cba2cac7b3deeb00dc5f9281a0934f2843ea',
+    '0021_flatten_direct_loop_activities.sql': '29ef9d010466ffde278c1f182fd2f8b5fb78f7f6f3521a1b3a03a3694fb41635',
 }
 
 

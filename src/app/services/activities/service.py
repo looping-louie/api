@@ -148,6 +148,7 @@ class ActivityService:
         if not isinstance(value, dict) or value.get('type') not in (
             'approval',
             'quiz',
+            'direct_loop',
             'loop',
         ):
             raise ActivityValidationError(

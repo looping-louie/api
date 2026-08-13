@@ -91,15 +91,15 @@ def build_client(*, tenant_service: TenantService) -> TestClient:
     return TestClient(app)
 
 
-def loop_payload() -> dict[str, object]:
-    """Return one valid loop activity body."""
+def direct_loop_payload() -> dict[str, object]:
+    """Return one valid direct loop activity body."""
 
     return {
         'title': 'Implementation activity',
         'description': 'Produce a change.',
-        'type': 'loop',
+        'type': 'direct_loop',
         'config': {
-            'type': 'loop', 'flow': 'direct',
+            'type': 'direct_loop',
             'stop_conditions': {'max_tokens': 100},
             'agents': [{'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'}],
             'output_contract': {'type': 'text', 'description': 'A result.'},
@@ -111,11 +111,11 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     """Create, read, update, audit, delete, and validate both activity types."""
 
     client = build_client(tenant_service=tenant_service)
-    created = client.post('/api/v1/activities', json=loop_payload())
+    created = client.post('/api/v1/activities', json=direct_loop_payload())
     assert created.status_code == 201
     activity_id = created.json()['id']
-    assert created.json()['type'] == 'loop'
-    assert created.json()['config']['flow'] == 'direct'
+    assert created.json()['type'] == 'direct_loop'
+    assert created.json()['config']['type'] == 'direct_loop'
 
     quiz = client.post('/api/v1/activities', json={
         'title': 'Review quiz', 'description': 'Answer the questions.',
@@ -169,7 +169,7 @@ def test_activity_patch_rejects_a_config_with_a_different_type(
     """An activity remains its original type after creation."""
 
     client = build_client(tenant_service=tenant_service)
-    created = client.post('/api/v1/activities', json=loop_payload())
+    created = client.post('/api/v1/activities', json=direct_loop_payload())
 
     response = client.patch(
         f"/api/v1/activities/{created.json()['id']}",
@@ -189,7 +189,7 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
     """Only active loop activities create, read, and advance their own runs."""
 
     client = build_client(tenant_service=tenant_service)
-    activity_id = client.post('/api/v1/activities', json=loop_payload()).json()['id']
+    activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
     created = client.post(f'/api/v1/activities/{activity_id}/runs', json={'input': 'Create a file.'})
     run_id = created.json()['id']
     listed = client.get(f'/api/v1/activities/{activity_id}/runs')
