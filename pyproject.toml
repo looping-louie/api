@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'looping-louie-api'
-version = '0.1.0'
+version = '0.2.0'
 description = 'REST API for the Looping Louie development workflow.'
 requires-python = '>=3.12'
 dependencies = [
