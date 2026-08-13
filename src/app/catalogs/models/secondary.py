@@ -150,7 +150,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Qwen",
         family="Qwen3.7",
         description="Cost-efficient long-context Qwen model.",
-        released_at=date(2026, 5, 26),
+        released_at=date(2026, 6, 1),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(

@@ -43,7 +43,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
             "speed-quality trade-offs and premium cost, recommended for "
             "long-running coding agents and complex tool-driven work."
         ),
-        released_at=date(2026, 5, 22),
+        released_at=date(2026, 4, 29),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
