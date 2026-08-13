@@ -144,6 +144,25 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     assert invalid_gate.status_code == 422
 
 
+def test_activity_creates_approval_without_a_human_gate_wrapper(
+    tenant_service: TenantService,
+) -> None:
+    """Approval is a top-level activity type with its own config shape."""
+
+    client = build_client(tenant_service=tenant_service)
+
+    created = client.post('/api/v1/activities', json={
+        'title': 'Release approval',
+        'description': 'Approve the release.',
+        'type': 'approval',
+        'config': {'type': 'approval'},
+    })
+
+    assert created.status_code == 201
+    assert created.json()['type'] == 'approval'
+    assert created.json()['config'] == {'type': 'approval'}
+
+
 def test_activity_patch_rejects_a_config_with_a_different_type(
     tenant_service: TenantService,
 ) -> None:

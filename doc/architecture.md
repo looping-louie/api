@@ -290,6 +290,8 @@ repositories/
 This package defines typed internal domain state. It contains persisted
 documents, immutable changelog entries, availability projections, and values
 used between services and repositories. It does not define HTTP contracts.
+Activity definitions currently support `approval`, `loop`, and `human_gate`
+types while the remaining concrete variants are flattened incrementally.
 
 ```text
 models/

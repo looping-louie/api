@@ -50,8 +50,14 @@ class HumanGateActivityConfig(RequestSchema):
         return self
 
 
+class ApprovalActivityConfig(RequestSchema):
+    """Configuration for an activity that requires human approval."""
+
+    type: Literal['approval']
+
+
 ActivityConfig = Annotated[
-    LoopActivityConfig | HumanGateActivityConfig,
+    ApprovalActivityConfig | LoopActivityConfig | HumanGateActivityConfig,
     Field(discriminator='type'),
 ]
 
@@ -61,7 +67,7 @@ class ActivityCreateRequest(RequestSchema):
 
     title: NonEmptyString
     description: str
-    type: Literal['loop', 'human_gate']
+    type: Literal['approval', 'loop', 'human_gate']
     config: ActivityConfig
 
     @model_validator(mode='after')
@@ -101,7 +107,7 @@ class ActivityResponse(ResponseSchema):
     title: str
     description: str
     status: ActivityStatusValue
-    type: Literal['loop', 'human_gate']
+    type: Literal['approval', 'loop', 'human_gate']
     config: ActivityConfig
     created_at: datetime
     created_by: str

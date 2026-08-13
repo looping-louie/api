@@ -10,7 +10,7 @@ from src.app.models.changelog import JsonObject
 
 
 ActivityStatus = Literal['active', 'disabled', 'archived']
-ActivityType = Literal['loop', 'human_gate']
+ActivityType = Literal['approval', 'loop', 'human_gate']
 ActivityChangeType = Literal[
     'created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'
 ]

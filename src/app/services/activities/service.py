@@ -145,7 +145,11 @@ class ActivityService:
     def _config(value: object) -> dict[str, object]:
         """Validate the normalized discriminated activity configuration."""
 
-        if not isinstance(value, dict) or value.get('type') not in ('loop', 'human_gate'):
+        if not isinstance(value, dict) or value.get('type') not in (
+            'approval',
+            'loop',
+            'human_gate',
+        ):
             raise ActivityValidationError(
                 field_name='config',
                 message='must contain a supported type',
