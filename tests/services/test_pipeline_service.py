@@ -43,8 +43,8 @@ def build_activity(
         title=f'Activity {activity_id}',
         description='Complete one stage.',
         status=status,  # type: ignore[arg-type]
-        type='loop',
-        config={'type': 'loop'},
+        type='direct_loop',
+        config={'type': 'direct_loop'},
         created_at=timestamp,
         created_by='user-1',
         updated_at=timestamp,

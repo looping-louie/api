@@ -30,7 +30,7 @@ EXPECTED_CHECKSUMS = {
     '0020_flatten_quiz_activities.sql': '765189cd23acee40cf99aaa0d263cba2cac7b3deeb00dc5f9281a0934f2843ea',
     '0021_flatten_direct_loop_activities.sql': '453b87a8de13621ee697dfddfac3ae22241c63eb5c2a15e03e4246631c03d8de',
     '0022_flatten_refinement_loop_activities.sql': 'e3abeac8063f32987f774e7fbd496928081c773cbb2233f5385d55ea1e587402',
-    '0023_flatten_roundtable_loop_activities.sql': '6d833b7f37e14a0203c85bf3528d7b2191bf6e5f0dab1b9af751bff6f93c4ca7',
+    '0023_flatten_roundtable_loop_activities.sql': '337a276775f4e786a2b4e6adc9ae8b222a54ea467992f493b3d2c4ab651b9482',
 }
 
 

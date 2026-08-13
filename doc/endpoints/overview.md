@@ -13,8 +13,8 @@ operations.
 - [Models](models.md) exposes the curated model catalog.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
-- [Activities](activities.md) manages reusable loop and human-gate definitions
-  and their loop-activity runs.
+- [Activities](activities.md) manages reusable concrete Activity definitions
+  and their Activity runs.
 - [Pipelines](pipelines.md) manages ordered activity references.
 
 ## Versioned API conventions
