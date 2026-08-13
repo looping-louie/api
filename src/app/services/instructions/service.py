@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import replace
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.instructions import (
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
+    InstructionOrigin,
+)
 
 from ..shared.dependency_checker import DependencyChecker
 from ..shared.reference_resolver import ResourceReference
 from ..shared.validation import ValidationService
 from .types import (
     AvailableInstructionDocument,
-    AvailableInstructionSummary,
+    AvailableInstructionPage,
     BuiltinInstructionImmutableError,
     InstructionCreate,
     InstructionDisabledError,
@@ -63,8 +69,13 @@ class InstructionService:
         workspace_id: str,
         instruction_type: InstructionType,
         search: str | None = None,
-    ) -> list[AvailableInstructionSummary]:
-        """List the effective instruction library of a workspace."""
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> AvailableInstructionPage:
+        """Return a filtered page of the effective instruction catalog."""
 
         require_instruction_type(instruction_type)
 
@@ -72,9 +83,14 @@ class InstructionService:
             workspace_id=require_text(workspace_id, "workspace_id"),
             instruction_type=instruction_type,
             search=normalize_search(search),
+            status=status,
+            categories=categories,
+            sort=sort,
+            offset=offset,
+            limit=limit,
         )
 
-        return list(summaries)
+        return summaries
 
     async def describe(
         self,

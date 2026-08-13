@@ -20,6 +20,14 @@ IDs, or metadata. An optional `search` matches eligible persona content.
 `model` is the optional configured model ID assigned to the Persona; Personas
 created before this field was introduced return `null`.
 
+The endpoint returns 12 personas per page and accepts `offset`, `search`,
+`status` (`enabled` or `disabled`), repeatable `category`, and `sort`
+(`alphabetical-asc`, `alphabetical-desc`, `newest`, or `oldest`). Repeated
+categories use OR semantics. `newest` and `oldest` order by `created_at`, with
+name and ID providing stable tie-breakers. Status refers to effective workspace
+enablement, including workspace overrides of a built-in default. List items
+include the top-level category.
+
 ```http
 GET /api/v1/personas?search=api
 X-Workspace-ID: workspace-acme
@@ -97,7 +105,7 @@ Example response (`200 OK`):
 | `instructions` | Required non-empty complete persona instructions. |
 | `model` | Optional ID of a configured model. |
 | `skill_ids` | Unique ordered IDs of skills associated with the persona. |
-| `metadata` | Optional JSON object. Defaults to `{}`. |
+| `metadata` | Optional JSON object. `category`, when present, must use the shared company-area taxonomy. Defaults to `{}`. |
 
 ```http
 POST /api/v1/personas
@@ -194,4 +202,5 @@ Example response (`200 OK`):
 Write and describe operations return the complete persona, including `id`,
 instructions, `model`, `skill_ids`, metadata, origin and capabilities, version,
 and timestamps. Deleting a custom skill automatically removes its ID from every
-associated persona. List items omit instructions, skill IDs, and metadata.
+associated persona. List items omit instructions, skill IDs, and metadata but
+include their top-level category.

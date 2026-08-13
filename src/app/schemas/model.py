@@ -64,6 +64,7 @@ class ModelSummaryResponse(ResponseSchema):
     vendor: str
     family: str
     description: str
+    released_at: date
     capabilities: set[ModelCapability]
     status: ModelStatus
     providers: list[ProviderId]
@@ -80,6 +81,7 @@ class ModelResponse(ResponseSchema):
     vendor: str
     family: str
     description: str
+    released_at: date
     capabilities: set[ModelCapability]
     status: ModelStatus
     replacement_model_id: str | None = None

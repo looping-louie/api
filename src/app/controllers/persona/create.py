@@ -29,7 +29,7 @@ class PersonaCreateController:
                 description=payload.description,
                 instructions=payload.instructions,
                 model=payload.model,
-                metadata=payload.metadata,
+                metadata=payload.metadata.model_dump(exclude_none=True),
                 skill_ids=tuple(payload.skill_ids),
             ),
         )

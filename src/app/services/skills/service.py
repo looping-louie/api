@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+from src.app.catalogs.instructions import (
+    CATALOG_INSTRUCTION_PAGE_SIZE,
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
+)
+
 from ..instructions import (
     AvailableInstructionDocument,
-    AvailableInstructionSummary,
+    AvailableInstructionPage,
     InstructionCreate,
     InstructionDocument,
     InstructionService,
@@ -36,8 +45,13 @@ class SkillService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-    ) -> list[AvailableInstructionSummary]:
-        """List skills available in the resolved workspace."""
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
+        offset: int = 0,
+        limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
+    ) -> AvailableInstructionPage:
+        """Return one filtered page of skills in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
@@ -48,6 +62,11 @@ class SkillService:
             workspace_id=workspace_id,
             instruction_type="skill",
             search=search,
+            status=status,
+            categories=categories,
+            sort=sort,
+            offset=offset,
+            limit=limit,
         )
 
     async def describe(

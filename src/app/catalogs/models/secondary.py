@@ -9,6 +9,7 @@ from .types import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
     ModelStatus,
 )
 
@@ -18,8 +19,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="qwen3.7-max",
         name="Qwen3.7 Max",
         vendor="Qwen",
+        lab=ModelLab.QWEN,
         family="Qwen3.7",
         description="High-capability Qwen model.",
+        released_at=date(2026, 5, 20),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
@@ -35,8 +38,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="nemotron-3-ultra",
         name="NVIDIA Nemotron 3 Ultra",
         vendor="NVIDIA",
+        lab=ModelLab.NVIDIA,
         family="Nemotron",
         description="Large NVIDIA reasoning model with tool support.",
+        released_at=date(2026, 6, 4),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -60,8 +65,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="qwen3.5-397b-a17b",
         name="Qwen3.5 397B A17B",
         vendor="Qwen",
+        lab=ModelLab.QWEN,
         family="Qwen3.5",
         description="Large multimodal mixture-of-experts Qwen model.",
+        released_at=date(2026, 2, 16),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -87,8 +94,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="deepseek-v4-pro",
         name="DeepSeek V4 Pro",
         vendor="DeepSeek",
+        lab=ModelLab.DEEPSEEK,
         family="DeepSeek V4",
         description="Long-context reasoning and coding model.",
+        released_at=date(2026, 4, 24),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -120,8 +129,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="qwen3.6-plus",
         name="Qwen3.6 Plus",
         vendor="Qwen",
+        lab=ModelLab.QWEN,
         family="Qwen3.6",
         description="Long-context hybrid reasoning model.",
+        released_at=date(2026, 4, 2),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -143,8 +154,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="qwen3.7-plus",
         name="Qwen3.7 Plus",
         vendor="Qwen",
+        lab=ModelLab.QWEN,
         family="Qwen3.7",
         description="Cost-efficient long-context Qwen model.",
+        released_at=date(2026, 6, 1),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
@@ -161,8 +174,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="cogito-v2.1-671b",
         name="Cogito v2.1 671B",
         vendor="Deep Cogito",
+        lab=ModelLab.DEEP_COGITO,
         family="Cogito",
         description="Large hybrid reasoning model.",
+        released_at=date(2025, 11, 19),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -184,8 +199,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="minimax-m3",
         name="MiniMax M3",
         vendor="MiniMax",
+        lab=ModelLab.MINIMAX,
         family="MiniMax M",
         description="General-purpose multimodal model with tool support.",
+        released_at=date(2026, 6, 1),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -215,8 +232,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="minimax-m2.7",
         name="MiniMax M2.7",
         vendor="MiniMax",
+        lab=ModelLab.MINIMAX,
         family="MiniMax M",
         description="Cost-efficient reasoning model.",
+        released_at=date(2026, 3, 18),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -240,8 +259,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="llama-3.3-70b",
         name="Llama 3.3 70B",
         vendor="Meta",
+        lab=ModelLab.META,
         family="Llama 3",
         description="General-purpose Llama instruction model.",
+        released_at=date(2024, 12, 6),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -264,8 +285,10 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="gemma-4-31b",
         name="Gemma 4 31B",
         vendor="Google",
+        lab=ModelLab.GOOGLE,
         family="Gemma 4",
         description="Compact multimodal Google model.",
+        released_at=date(2026, 3, 31),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,

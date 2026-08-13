@@ -9,7 +9,9 @@ from .types import (
     ModelCatalogValidationError,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
     ModelPricing,
+    ModelSort,
     ModelStatus,
 )
 from .validation import validate_model_catalog
@@ -37,7 +39,9 @@ __all__ = [
     "ModelCatalogValidationError",
     "ModelDeployment",
     "ModelEndpoint",
+    "ModelLab",
     "ModelPricing",
+    "ModelSort",
     "ModelStatus",
     "validate_model_catalog",
 ]

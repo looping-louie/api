@@ -114,6 +114,83 @@ def test_create_skill_rejects_source_identifier(
     assert response.status_code == 422
 
 
+def test_list_skills_filters_sorts_and_paginates(
+    skill_controller: SkillController,
+) -> None:
+    """List queries combine business categories, status, sort, and offset."""
+
+    client = TestClient(build_app(controller=skill_controller))
+    categories = [
+        "software_engineering",
+        "growth_acquisition",
+    ]
+
+    for index in range(14):
+        created = client.post(
+            "/api/v1/skills",
+            json={
+                "name": f"Skill {index:02d}",
+                "description": "Catalog query fixture.",
+                "instructions": "Apply the skill.",
+                "metadata": {
+                    "category": categories[index % 2],
+                },
+            },
+        )
+        assert created.status_code == 201
+
+    disabled = client.patch(
+        "/api/v1/skills/instruction-2",
+        json={"enabled": False},
+    )
+    assert disabled.status_code == 200
+
+    first_page = client.get(
+        "/api/v1/skills",
+        params={"sort": "newest", "offset": "0"},
+    )
+    second_page = client.get(
+        "/api/v1/skills",
+        params={"sort": "newest", "offset": "12"},
+    )
+    filtered = client.get(
+        "/api/v1/skills",
+        params=[
+            ("category", "growth_acquisition"),
+            ("status", "disabled"),
+        ],
+    )
+
+    assert first_page.status_code == 200
+    assert first_page.json()["total"] == 14
+    assert len(first_page.json()["items"]) == 12
+    assert first_page.json()["items"][0]["name"] == "Skill 13"
+    assert second_page.status_code == 200
+    assert second_page.json()["total"] == 14
+    assert len(second_page.json()["items"]) == 2
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["items"][0]["category"] == (
+        "growth_acquisition"
+    )
+
+
+def test_list_skills_rejects_unknown_query_values(
+    skill_controller: SkillController,
+) -> None:
+    """Unsupported categories, statuses, sorts, and offsets return 422."""
+
+    client = TestClient(build_app(controller=skill_controller))
+
+    for params in (
+        {"category": "other"},
+        {"status": "archived"},
+        {"sort": "popular"},
+        {"offset": "-1"},
+    ):
+        assert client.get("/api/v1/skills", params=params).status_code == 422
+
+
 def test_patch_changes_builtin_enabled_state_without_version(
     skill_controller: SkillController,
     instruction_repository: FakeInstructionRepository,

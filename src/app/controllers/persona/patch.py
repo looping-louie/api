@@ -23,6 +23,11 @@ class PersonaPatchController:
     ) -> PersonaResponse:
         """Apply supplied content and enabled-state changes."""
         if payload.has_content_changes():
+            metadata = (
+                payload.metadata.model_dump(exclude_none=True)
+                if payload.metadata is not None
+                else None
+            )
             assert payload.expected_version is not None
             await self._persona_service.update(
                 user_id=user_id,
@@ -34,7 +39,7 @@ class PersonaPatchController:
                     description=payload.description,
                     instructions=payload.instructions,
                     model=payload.model,
-                    metadata=payload.metadata,
+                    metadata=metadata,
                     skill_ids=(
                         tuple(payload.skill_ids)
                         if payload.skill_ids is not None

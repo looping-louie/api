@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import fields
+
+from src.app.catalogs.instructions import (
+    CATALOG_INSTRUCTION_PAGE_SIZE,
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
+)
 
 from ..instructions import (
     AvailableInstructionDocument,
+    AvailableInstructionPage,
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
@@ -56,31 +65,44 @@ class PersonaService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-    ) -> list[PersonaSummaryDocument]:
-        """List personas available in the resolved workspace."""
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
+        offset: int = 0,
+        limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
+    ) -> AvailableInstructionPage:
+        """Return one filtered page of personas in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
 
-        summaries = await self._instruction_service.list(
+        page = await self._instruction_service.list(
             workspace_id=workspace_id,
             instruction_type="persona",
             search=search,
+            status=status,
+            categories=categories,
+            sort=sort,
+            offset=offset,
+            limit=limit,
         )
-        return [
-            AvailablePersonaSummary(
-                **{
-                    field.name: getattr(summary, field.name)
-                    for field in fields(summary)
-                },
-                model=await self._persona_model_repository.get_for_persona(
-                    persona_id=summary.id,
-                ),
+        items: list[AvailablePersonaSummary] = []
+        for summary in page.items:
+            model = await self._persona_model_repository.get_for_persona(
+                persona_id=summary.id,
             )
-            for summary in summaries
-        ]
+            items.append(
+                AvailablePersonaSummary(
+                    **{
+                        field.name: getattr(summary, field.name)
+                        for field in fields(summary)
+                    },
+                    model=model,
+                )
+            )
+        return AvailableInstructionPage(items=tuple(items), total=page.total)
 
     async def describe(
         self,

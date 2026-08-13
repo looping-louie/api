@@ -2,6 +2,8 @@
 
 from collections.abc import Mapping, Sequence
 
+from src.app.catalogs.instructions import CatalogInstructionCategory
+
 
 STRICTNESS_PHASES: frozenset[str] = frozenset(
     {
@@ -33,6 +35,28 @@ def validate_skill_metadata(metadata: Mapping[str, object]) -> None:
     default_strictness = metadata.get("default_strictness")
     if default_strictness is not None:
         _validate_default_strictness(default_strictness)
+
+    category = metadata.get("category")
+    if category is not None:
+        _validate_category(category)
+
+
+def _validate_category(value: object) -> None:
+    """Require one category from the stable company-area taxonomy."""
+
+    if not isinstance(value, str):
+        raise SkillValidationError(
+            field_name="metadata.category",
+            message="must be a supported skill category",
+        )
+
+    try:
+        CatalogInstructionCategory(value)
+    except ValueError as exc:
+        raise SkillValidationError(
+            field_name="metadata.category",
+            message="must be a supported skill category",
+        ) from exc
 
 
 def _validate_applies_when(value: object) -> None:

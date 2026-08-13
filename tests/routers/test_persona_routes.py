@@ -194,6 +194,10 @@ def test_patch_changes_builtin_enabled_state_without_version(
             "expected_version": 1,
             "skill_ids": ["skill-1", "skill-1"],
         },
+        {
+            "expected_version": 1,
+            "metadata": {"category": "unsupported"},
+        },
     ],
 )
 def test_persona_write_payload_validation(

@@ -19,6 +19,7 @@ from ..instructions.resource_validation import (
 )
 from ..instructions.types import (
     AgentRole,
+    CatalogInstructionCategory,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -83,6 +84,9 @@ def load_persona_catalog(
                 catalog_version=require_positive_integer(
                     manifest,
                     "version",
+                ),
+                category=CatalogInstructionCategory(
+                    require_text(manifest, "category")
                 ),
                 skill_ids=require_string_tuple(
                     manifest,

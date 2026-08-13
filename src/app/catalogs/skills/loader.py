@@ -20,6 +20,7 @@ from ..instructions.resource_validation import (
 )
 from ..instructions.types import (
     AgentRole,
+    CatalogInstructionCategory,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -92,7 +93,9 @@ def load_skill_catalog(
                 reviewer_default_strictness=_load_strictness(
                     manifest,
                 ),
-                category=require_text(manifest, "category"),
+                category=CatalogInstructionCategory(
+                    require_text(manifest, "category")
+                ),
                 phase=SkillPhase(
                     require_text(manifest, "phase")
                 ),
