@@ -33,6 +33,7 @@ class PersonaPatchController:
                     name=payload.name,
                     description=payload.description,
                     instructions=payload.instructions,
+                    model=payload.model,
                     metadata=payload.metadata,
                     skill_ids=(
                         tuple(payload.skill_ids)

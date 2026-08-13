@@ -260,7 +260,7 @@ async def test_activity_owned_loop_run_preserves_legacy_loop_runs(
         await connection.execute(
             '''
             INSERT INTO activities (
-                id, workspace_id, title, description, status, activity_type,
+                    id, workspace_id, name, description, status, activity_type,
                 config_json, created_at, created_by, updated_at, updated_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',

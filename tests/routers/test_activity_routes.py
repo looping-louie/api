@@ -95,11 +95,10 @@ def direct_loop_payload() -> dict[str, object]:
     """Return one valid direct loop activity body."""
 
     return {
-        'title': 'Implementation activity',
+        'name': 'Implementation activity',
         'description': 'Produce a change.',
         'type': 'direct_loop',
         'config': {
-            'type': 'direct_loop',
             'stop_conditions': {'max_tokens': 100},
             'agents': [{'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'}],
             'output_contract': {'type': 'text', 'description': 'A result.'},
@@ -111,11 +110,10 @@ def roundtable_loop_payload() -> dict[str, object]:
     """Return one valid roundtable loop activity body."""
 
     return {
-        'title': 'Roundtable activity',
+        'name': 'Roundtable activity',
         'description': 'Reach a shared decision.',
         'type': 'roundtable_loop',
         'config': {
-            'type': 'roundtable_loop',
             'stop_conditions': {'max_tokens': 100},
             'agents': [],
             'output_contract': {'type': 'text', 'description': 'A result.'},
@@ -123,7 +121,7 @@ def roundtable_loop_payload() -> dict[str, object]:
     }
 
 
-def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: TenantService) -> None:
+def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: TenantService) -> None:
     """Create, read, update, audit, delete, and validate both activity types."""
 
     client = build_client(tenant_service=tenant_service)
@@ -131,18 +129,17 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     assert created.status_code == 201
     activity_id = created.json()['id']
     assert created.json()['type'] == 'direct_loop'
-    assert created.json()['config']['type'] == 'direct_loop'
+    assert 'type' not in created.json()['config']
 
     quiz = client.post('/api/v1/activities', json={
-        'title': 'Review quiz', 'description': 'Answer the questions.',
+        'name': 'Review quiz', 'description': 'Answer the questions.',
         'type': 'quiz',
-        'config': {'type': 'quiz', 'quiz': {'questions': []}},
+        'config': {'quiz': {'questions': []}},
     })
     refinement = client.post('/api/v1/activities', json={
-        'title': 'Refine change', 'description': 'Review and refine a change.',
+        'name': 'Refine change', 'description': 'Review and refine a change.',
         'type': 'refinement_loop',
         'config': {
-            'type': 'refinement_loop',
             'stop_conditions': {'max_tokens': 100},
             'agents': [],
             'output_contract': {'type': 'text', 'description': 'A result.'},
@@ -157,9 +154,16 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     deleted = client.delete(f'/api/v1/activities/{activity_id}')
     retained = client.get(f'/api/v1/activities/{activity_id}/changelog')
     invalid_quiz = client.post('/api/v1/activities', json={
-        'title': 'Invalid', 'description': '',
+        'name': 'Invalid', 'description': '',
         'type': 'quiz',
-        'config': {'type': 'quiz'},
+        'config': {},
+    })
+    legacy_config_type = client.post('/api/v1/activities', json={
+        **direct_loop_payload(),
+        'config': {
+            **direct_loop_payload()['config'],
+            'type': 'direct_loop',
+        },
     })
 
     assert quiz.status_code == 201
@@ -176,6 +180,8 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     assert retained.status_code == 200
     assert retained.json()['items'][0]['change_type'] == 'deleted'
     assert invalid_quiz.status_code == 422
+    assert legacy_config_type.status_code == 422
+    assert 'error' in legacy_config_type.json()
 
 
 def test_activity_creates_approval_without_a_human_gate_wrapper(
@@ -186,21 +192,62 @@ def test_activity_creates_approval_without_a_human_gate_wrapper(
     client = build_client(tenant_service=tenant_service)
 
     created = client.post('/api/v1/activities', json={
-        'title': 'Release approval',
+        'name': 'Release approval',
         'description': 'Approve the release.',
         'type': 'approval',
-        'config': {'type': 'approval'},
+        'config': {},
     })
 
     assert created.status_code == 201
     assert created.json()['type'] == 'approval'
-    assert created.json()['config'] == {'type': 'approval'}
+    assert created.json()['config'] == {}
 
 
-def test_activity_patch_rejects_a_config_with_a_different_type(
+def test_activity_rejects_an_invalid_top_level_type(
     tenant_service: TenantService,
 ) -> None:
-    """An activity remains its original type after creation."""
+    """Unsupported types use the standard request-validation envelope."""
+
+    client = build_client(tenant_service=tenant_service)
+
+    response = client.post(
+        '/api/v1/activities',
+        json={
+            'name': 'Invalid activity',
+            'description': 'Reject unsupported types.',
+            'type': 'unsupported',
+            'config': {},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_activity_rejects_legacy_title_field(
+    tenant_service: TenantService,
+) -> None:
+    """Activity requests require the public name field."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/activities',
+        json={
+            'title': 'Legacy title',
+            'description': 'Reject the retired field.',
+            'type': 'approval',
+            'config': {},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_activity_patch_rejects_legacy_nested_config_type(
+    tenant_service: TenantService,
+) -> None:
+    """Nested type fields are not accepted in an immutable config update."""
 
     client = build_client(tenant_service=tenant_service)
     created = client.post('/api/v1/activities', json=direct_loop_payload())
@@ -209,14 +256,20 @@ def test_activity_patch_rejects_a_config_with_a_different_type(
         f"/api/v1/activities/{created.json()['id']}",
         json={
             'config': {
-                'type': 'approval',
+                'type': 'direct_loop',
+                'stop_conditions': {'max_tokens': 100},
+                'agents': [],
+                'output_contract': {
+                    'type': 'text',
+                    'description': 'A result.',
+                },
             },
         },
     )
 
     assert response.status_code == 422
     assert response.json()['error']['code'] == 'activity_validation_error'
-    assert response.json()['error']['details']['field'] == 'config.type'
+    assert response.json()['error']['details']['field'] == 'config'
 
 
 def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activities(tenant_service: TenantService) -> None:
@@ -240,12 +293,11 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
         'continuation_token': created.json()['continuation_token'], 'idempotency_key': 'snapshot-1',
         'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'workspace_metadata': {'workspace_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
     })
-    approval = client.post('/api/v1/activities', json={'title': 'Approval', 'description': '', 'type': 'approval', 'config': {'type': 'approval'}})
+    approval = client.post('/api/v1/activities', json={'name': 'Approval', 'description': '', 'type': 'approval', 'config': {}})
     mismatch = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'No run.'})
     refinement = client.post('/api/v1/activities', json={
-        'title': 'Refinement', 'description': '', 'type': 'refinement_loop',
+        'name': 'Refinement', 'description': '', 'type': 'refinement_loop',
         'config': {
-            'type': 'refinement_loop',
             'stop_conditions': {'max_tokens': 100},
             'agents': [],
             'output_contract': {'type': 'text', 'description': 'A result.'},

@@ -3,22 +3,35 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)
-class PipelineStepInput:
-    """Untrusted pipeline step values passed to the service."""
+class PipelineActivityDependencyInput:
+    """Named condition required by one inline Activity definition."""
 
-    activity_id: str
+    activity: str
+    condition: Literal['success', 'failure']
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineActivityInput:
+    """Activity definition supplied for one pipeline step."""
+
+    name: str
+    description: str
+    type: str
+    config: dict[str, object]
+    depends_on: tuple[PipelineActivityDependencyInput, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class PipelineCreate:
     """User-managed values required to create a pipeline."""
 
-    title: str
+    name: str
     description: str
-    steps: tuple[PipelineStepInput, ...]
+    steps: tuple[PipelineActivityInput, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,10 +39,10 @@ class PipelinePatch:
     """Partial pipeline changes with supplied-field tracking."""
 
     provided_fields: frozenset[str]
-    title: str | None = None
+    name: str | None = None
     description: str | None = None
     enabled: bool | None = None
-    steps: tuple[PipelineStepInput, ...] | None = None
+    steps: tuple[PipelineActivityInput, ...] | None = None
 
 
 class PipelineServiceError(Exception):

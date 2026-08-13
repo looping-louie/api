@@ -8,9 +8,9 @@ availability from the providers configured in the selected workspace.
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/models` | Lists models, catalog metadata, pricing, and availability. |
-| `GET` | `/api/v1/models/{model_id}` | Returns deployments, capabilities, and availability details. |
+| `GET` | `/api/v1/models/{model_id}` | Describes deployments, capabilities, and availability details. |
 
-## List Models Query
+## List models
 
 | Parameter | Description |
 | --------- | ----------- |
@@ -21,15 +21,97 @@ availability from the providers configured in the selected workspace.
 | `search` | Searches name, vendor, family, and tags; 1-200 characters. |
 | `include_deprecated` | Includes deprecated entries. Defaults to `false`. |
 
-## List Models Example
+`GET /api/v1/models` lists catalog entries and their workspace availability.
 
-```sh
-curl -s \
-  "http://127.0.0.1:8000/api/v1/models?capability=coding&available=true" \
-  -H "X-Workspace-ID: workspace-id"
+```http
+GET /api/v1/models?capability=coding&available=true
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "kimi-k2.6",
+      "name": "Kimi K2.6",
+      "vendor": "Moonshot AI",
+      "family": "Kimi K2",
+      "description": "A coding-capable reasoning model.",
+      "capabilities": ["coding", "reasoning", "text"],
+      "status": "active",
+      "providers": ["together"],
+      "available": true,
+      "starting_price": {
+        "input_per_million_usd": "0.6",
+        "output_per_million_usd": "2.5",
+        "cached_input_per_million_usd": null,
+        "valid_until": null,
+        "note": null
+      },
+      "tags": ["coding", "reasoning"]
+    }
+  ],
+  "total": 1
+}
 ```
 
 List items include summary metadata, capabilities, provider IDs, availability,
 starting price, and tags. A describe response additionally includes every
 provider deployment, its endpoint and limits, pricing, replacement model, and
 workspace-specific availability reason.
+
+## Describe a model
+
+`GET /api/v1/models/{model_id}` returns every configured deployment and its
+workspace availability.
+
+```http
+GET /api/v1/models/kimi-k2.6
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "kimi-k2.6",
+  "name": "Kimi K2.6",
+  "vendor": "Moonshot AI",
+  "family": "Kimi K2",
+  "description": "A coding-capable reasoning model.",
+  "capabilities": ["coding", "reasoning", "text"],
+  "status": "active",
+  "replacement_model_id": null,
+  "tags": ["coding", "reasoning"],
+  "deployments": [
+    {
+      "provider_id": "together",
+      "provider_model_id": "moonshotai/Kimi-K2.6",
+      "endpoint": "chat_completions",
+      "context_window": 262144,
+      "max_output_tokens": 32768,
+      "pricing": {
+        "input_per_million_usd": "0.6",
+        "output_per_million_usd": "2.5",
+        "cached_input_per_million_usd": null,
+        "valid_until": null,
+        "note": null
+      },
+      "status": "active",
+      "deprecated_at": null
+    }
+  ],
+  "availability": [
+    {
+      "provider_id": "together",
+      "configured": true,
+      "enabled": true,
+      "available": true,
+      "reason": null
+    }
+  ],
+  "available": true
+}
+```

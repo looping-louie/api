@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
+from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
@@ -23,16 +24,36 @@ PipelineChangeTypeValue = Literal[
     "disabled",
     "archived",
 ]
-class PipelineActivityStepRequest(RequestSchema):
-    """Reference to an existing active workspace activity."""
 
-    activity_id: NonEmptyString
+
+class PipelineStepDependencyRequest(RequestSchema):
+    """One named Activity condition required by a pipeline step."""
+
+    activity: NonEmptyString
+    condition: Literal['success', 'failure']
+
+
+class PipelineStepDependencyResponse(ResponseSchema):
+    """One named Activity condition returned for a pipeline step."""
+
+    activity: str
+    condition: Literal['success', 'failure']
+
+
+class PipelineActivityStepRequest(ActivityCreateRequest):
+    """Activity definition created as one persisted pipeline step."""
+
+    depends_on: list[PipelineStepDependencyRequest] = Field(
+        default_factory=list,
+        validation_alias='dependsOn',
+        serialization_alias='dependsOn',
+    )
 
 
 class PipelineCreateRequest(RequestSchema):
     """Request body for creating an enabled pipeline."""
 
-    title: NonEmptyString
+    name: NonEmptyString
     description: str
     steps: list[PipelineActivityStepRequest]
 
@@ -40,7 +61,7 @@ class PipelineCreateRequest(RequestSchema):
 class PipelinePatchRequest(RequestSchema):
     """Partial mutable pipeline fields accepted by PATCH."""
 
-    title: NonEmptyString | None = None
+    name: NonEmptyString | None = None
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
@@ -57,17 +78,20 @@ class PipelinePatchRequest(RequestSchema):
         return self
 
 
-class PipelineActivityStepResponse(ResponseSchema):
-    """Stored activity reference."""
+class PipelineActivityStepResponse(ActivityResponse):
+    """Pipeline Activity with its graph dependencies."""
 
-    activity_id: str
+    depends_on: list[PipelineStepDependencyResponse] = Field(
+        default_factory=list,
+        serialization_alias='dependsOn',
+    )
 
 
 class PipelineResponse(ResponseSchema):
-    """Complete public pipeline definition."""
+    """Pipeline representation with full Activity definitions for each step."""
 
     id: str
-    title: str
+    name: str
     description: str
     enabled: bool
     steps: list[PipelineActivityStepResponse]

@@ -83,6 +83,7 @@ def test_persona_rest_crud_routes(
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
     assert described.status_code == 200
+    assert described.json()['model'] is None
     assert described.json()["instructions"] == (
         "Review every public API contract."
     )

@@ -36,6 +36,9 @@ from src.app.repositories.instructions.repository import (
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
+from src.app.repositories.instructions.persona_model_repository import (
+    SqlitePersonaModelRepository,
+)
 from src.app.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -163,6 +166,9 @@ async def configure_application(
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
+    persona_model_repository = SqlitePersonaModelRepository(
+        resolved_settings.database_path,
+    )
     loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
@@ -231,6 +237,8 @@ async def configure_application(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
+        persona_model_repository=persona_model_repository,
+        reference_resolver=reference_resolver,
     )
     skill_service = SkillService(
         tenant_service=tenant_service,
@@ -291,7 +299,6 @@ async def configure_application(
     )
     app.state.pipeline_controller = build_pipeline_controller(
         database_path=resolved_settings.database_path,
-        activity_repository=activity_repository,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,

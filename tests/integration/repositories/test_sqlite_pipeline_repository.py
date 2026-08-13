@@ -16,6 +16,7 @@ from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineChangelogEntry,
     PipelineDocument,
+    PipelineStepDependency,
 )
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
@@ -61,7 +62,7 @@ async def seed_activities(
         document = ActivityDocument(
             id=activity_id,
             workspace_id='workspace-1',
-            title=f'Activity {activity_id}',
+            name=f'Activity {activity_id}',
             description='Complete one stage.',
             status='active',
             type='direct_loop',
@@ -86,8 +87,116 @@ async def seed_activities(
         )
 
 
+def generated_activity(
+    *,
+    activity_id: str,
+) -> tuple[ActivityDocument, ActivityChangelogEntry]:
+    """Build one Activity and creation entry generated from a Pipeline step."""
+
+    document = ActivityDocument(
+        id=activity_id,
+        workspace_id='workspace-1',
+        name=f'Generated {activity_id}',
+        description='Created with a pipeline.',
+        status='active',
+        type='approval',
+        config={'type': 'approval'},
+        created_at=BASE_TIME,
+        created_by='user-1',
+        updated_at=BASE_TIME,
+        updated_by='user-1',
+    )
+    return document, ActivityChangelogEntry(
+        id=f'{activity_id}-entry',
+        activity_id=activity_id,
+        workspace_id='workspace-1',
+        change_type='created',
+        actor_id='user-1',
+        changed_at=BASE_TIME,
+        diff=None,
+        content={'id': activity_id},
+    )
+
+
 @pytest.mark.asyncio
-async def test_round_trips_ordered_activity_steps(
+async def test_creates_generated_activities_with_pipeline_atomically(
+    sqlite_database_path: Path,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """Generated Activities persist independently with their Pipeline steps."""
+
+    await create_workspace(workspace_id='workspace-1')
+    repository = SqlitePipelineRepository(sqlite_database_path)
+    activity_repository = SqliteActivityRepository(sqlite_database_path)
+    first, first_entry = generated_activity(activity_id='generated-1')
+    second, second_entry = generated_activity(activity_id='generated-2')
+    document = replace(
+        build_pipeline(pipeline_id='pipeline-generated'),
+        steps=(
+            PipelineActivityStep(activity_id=first.id),
+            PipelineActivityStep(activity_id=second.id),
+        ),
+    )
+
+    await repository.create_with_activities(
+        document=document,
+        changelog_entry=entry(document, entry_id='pipeline-generated-entry'),
+        activity_documents=[first, second],
+        activity_changelog_entries=[first_entry, second_entry],
+    )
+
+    assert await activity_repository.get(
+        workspace_id='workspace-1',
+        activity_id=first.id,
+    ) == first
+    assert await repository.get(
+        workspace_id='workspace-1',
+        pipeline_id=document.id,
+    ) == document
+    details = await repository.get_with_activities(
+        workspace_id='workspace-1',
+        pipeline_id=document.id,
+    )
+    assert details is not None
+    assert details.document == document
+    assert details.activities == (first, second)
+
+
+@pytest.mark.asyncio
+async def test_failed_generated_activity_insert_rolls_back_pipeline_creation(
+    sqlite_database_path: Path,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """A bundled create rolls back when one generated Activity conflicts."""
+
+    await create_workspace(workspace_id='workspace-1')
+    repository = SqlitePipelineRepository(sqlite_database_path)
+    first, first_entry = generated_activity(activity_id='generated-1')
+    duplicate, duplicate_entry = generated_activity(activity_id='generated-1')
+    document = replace(
+        build_pipeline(pipeline_id='pipeline-rollback'),
+        steps=(
+            PipelineActivityStep(activity_id=first.id),
+            PipelineActivityStep(activity_id=duplicate.id),
+        ),
+    )
+
+    with pytest.raises(Exception):
+        await repository.create_with_activities(
+            document=document,
+            changelog_entry=entry(document, entry_id='pipeline-rollback-entry'),
+            activity_documents=[first, duplicate],
+            activity_changelog_entries=[first_entry, duplicate_entry],
+        )
+
+    assert await repository.get(
+        workspace_id='workspace-1',
+        pipeline_id=document.id,
+    ) is None
+
+
+@pytest.mark.asyncio
+async def test_round_trips_ordered_activity_steps_and_dependencies(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
@@ -100,8 +209,15 @@ async def test_round_trips_ordered_activity_steps(
         build_pipeline(),
         steps=(
             PipelineActivityStep(activity_id='activity-1'),
-            PipelineActivityStep(activity_id='activity-1'),
-            PipelineActivityStep(activity_id='activity-2'),
+            PipelineActivityStep(
+                activity_id='activity-2',
+                depends_on=(
+                    PipelineStepDependency(
+                        activity_id='activity-1',
+                            condition='success',
+                    ),
+                ),
+            ),
             PipelineActivityStep(activity_id='activity-3'),
         ),
     )
@@ -132,7 +248,7 @@ async def test_list_filters_searches_orders_and_paginates(
         status = "disabled" if position == 11 else "active"
         document = replace(
             build_pipeline(pipeline_id=f"pipeline-{position:02d}"),
-            title=f"Knowledge {position:02d}",
+            name=f"Knowledge {position:02d}",
             status=status,
             updated_at=BASE_TIME + timedelta(seconds=position),
         )
@@ -145,7 +261,7 @@ async def test_list_filters_searches_orders_and_paginates(
         )
     archived = replace(
         build_pipeline(pipeline_id="pipeline-archived"),
-        title="Archived knowledge",
+        name="Archived knowledge",
         status="archived",
     )
     await repository.create(

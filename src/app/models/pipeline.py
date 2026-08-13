@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
 
 
@@ -17,6 +18,15 @@ PipelineChangeType = Literal[
     "disabled",
     "archived",
 ]
+PipelineDependencyCondition = Literal['success', 'failure']
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineStepDependency:
+    """Execution condition required from one preceding Activity."""
+
+    activity_id: str
+    condition: PipelineDependencyCondition
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +34,7 @@ class PipelineActivityStep:
     """Reference to one active workspace activity."""
 
     activity_id: str
+    depends_on: tuple[PipelineStepDependency, ...] = ()
 
 
 PipelineStep = PipelineActivityStep
@@ -35,7 +46,7 @@ class PipelineDocument:
 
     id: str
     workspace_id: str
-    title: str
+    name: str
     description: str
     status: PipelineStatus
     steps: tuple[PipelineStep, ...]
@@ -49,6 +60,14 @@ class PipelineDocument:
         """Expose active state through the public boolean contract."""
 
         return self.status == "active"
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineDetails:
+    """Pipeline definition and Activity documents resolved in step order."""
+
+    document: PipelineDocument
+    activities: tuple[ActivityDocument, ...]
 
 
 @dataclass(frozen=True, slots=True)

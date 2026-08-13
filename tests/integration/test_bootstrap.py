@@ -42,8 +42,10 @@ EXPECTED_TABLES = {
     "loop_run_idempotency",
     "pipelines",
     "pipeline_steps",
+    "pipeline_step_dependencies",
     "pipeline_changelog_entries",
     "provider_credentials",
+    "persona_models",
     "persona_skills",
     "workspace_instruction_settings",
     "activities",
@@ -159,10 +161,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         ).fetchall()
         activity_rows = connection.execute(
             """
-            SELECT title
+            SELECT name
             FROM activities
             WHERE workspace_id = 'local-workspace'
-            ORDER BY title
+            ORDER BY name
             """
         ).fetchall()
 
@@ -199,6 +201,11 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0021_flatten_direct_loop_activities",
         "0022_flatten_refinement_loop_activities",
         "0023_flatten_roundtable_loop_activities",
+        "0024_remove_activity_config_type",
+        "0025_rename_activity_pipeline_titles",
+        "0026_persona_models",
+        "0027_pipeline_step_dependencies",
+        "0028_rename_pipeline_dependency_success_condition",
     ]
     assert activity_rows == []
 

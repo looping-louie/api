@@ -31,6 +31,11 @@ EXPECTED_CHECKSUMS = {
     '0021_flatten_direct_loop_activities.sql': '453b87a8de13621ee697dfddfac3ae22241c63eb5c2a15e03e4246631c03d8de',
     '0022_flatten_refinement_loop_activities.sql': 'e3abeac8063f32987f774e7fbd496928081c773cbb2233f5385d55ea1e587402',
     '0023_flatten_roundtable_loop_activities.sql': '337a276775f4e786a2b4e6adc9ae8b222a54ea467992f493b3d2c4ab651b9482',
+    '0024_remove_activity_config_type.sql': '4b3d69fd0f64f40c039b9fc663cd5ff64b1f85210c8fce7e96357a9af7ff94a1',
+    '0025_rename_activity_pipeline_titles.sql': 'c308d42f36d283e970cba711ca602c875cf617aa4c277c21b5eff50856c1aa89',
+    '0026_persona_models.sql': 'd14f15e67a978e4166de6507a080f3d92d45e0123831d4508c65a017b94456dc',
+    '0027_pipeline_step_dependencies.sql': '8890234d866e4c8fadeb44dddfd04dfcc7b60c51dda510bb7b2766fdc7e10b54',
+    '0028_rename_pipeline_dependency_success_condition.sql': 'be2996fa5d047da5d324e025fbf04fffce9fc0b7514d2bfcb4e09a8e6e0839ea',
 }
 
 

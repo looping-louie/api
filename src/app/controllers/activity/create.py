@@ -17,8 +17,9 @@ class ActivityCreateController:
         """Create one activity."""
         document = await self._activity_service.create(
             user_id=user_id,
-            title=payload.title,
+            name=payload.name,
             description=payload.description,
+            activity_type=payload.type,
             config=payload.config.model_dump(by_alias=True),
             requested_workspace_id=requested_workspace_id,
         )

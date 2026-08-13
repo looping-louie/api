@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from src.app.schemas.pipeline import PipelineListResponse, PipelineResponse
+from src.app.schemas.pipeline import PipelineListResponse
 from src.app.services.pipelines.service import PipelineService
+
+from .utils import pipeline_details_response
 
 
 class PipelineListController:
@@ -23,7 +25,7 @@ class PipelineListController:
         requested_workspace_id: str | None = None,
     ) -> PipelineListResponse:
         """Return one filtered pipeline page."""
-        documents, total = await self._pipeline_service.list(
+        details, total = await self._pipeline_service.list_details(
             user_id=user_id,
             offset=offset,
             status=status,
@@ -31,6 +33,6 @@ class PipelineListController:
             requested_workspace_id=requested_workspace_id,
         )
         return PipelineListResponse(
-            items=[PipelineResponse.model_validate(item) for item in documents],
+            items=[pipeline_details_response(item) for item in details],
             total=total,
         )

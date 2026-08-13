@@ -15,7 +15,8 @@ operations.
 - [Skills](skills.md) manages skill instructions.
 - [Activities](activities.md) manages reusable concrete Activity definitions
   and their Activity runs.
-- [Pipelines](pipelines.md) manages ordered activity references.
+- [Pipelines](pipelines.md) manages ordered Activity definitions and persists
+  each supplied step as an independent Activity record.
 
 ## Versioned API conventions
 

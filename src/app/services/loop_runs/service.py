@@ -625,7 +625,7 @@ class LoopRunService:
             'roundtable_loop': 'roundtable',
         }
         return {
-            'id': getattr(activity, 'id'), 'title': getattr(activity, 'title'),
+            'id': getattr(activity, 'id'), 'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
             **dict(getattr(activity, 'config')),
             'flow': flow_by_type[getattr(activity, 'type')],

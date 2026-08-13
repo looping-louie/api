@@ -28,7 +28,7 @@ class ActivityDocument:
 
     id: str
     workspace_id: str
-    title: str
+    name: str
     description: str
     status: ActivityStatus
     type: ActivityType
