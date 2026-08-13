@@ -13,6 +13,41 @@ immutable; they can be enabled or disabled.
 | `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
 
+## List personas
+
+`GET /api/v1/personas` returns summary metadata without instructions, skill
+IDs, or metadata. An optional `search` matches eligible persona content.
+
+```http
+GET /api/v1/personas?search=api
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "persona-api-reviewer",
+      "name": "API reviewer",
+      "description": "Reviews public API compatibility.",
+      "origin": "custom",
+      "enabled": true,
+      "editable": true,
+      "duplicable": true,
+      "deprecated": false,
+      "catalog_version": null,
+      "source_instruction_id": null,
+      "version": 1,
+      "created_at": "2026-08-13T10:00:00Z",
+      "updated_at": "2026-08-13T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
 ## Create a persona
 
 `POST /api/v1/personas` creates a custom persona in the workspace supplied by

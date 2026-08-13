@@ -21,12 +21,11 @@ availability from the providers configured in the selected workspace.
 | `search` | Searches name, vendor, family, and tags; 1-200 characters. |
 | `include_deprecated` | Includes deprecated entries. Defaults to `false`. |
 
-## List Models Example
+## List models
 
-```sh
-curl -s \
-  "http://127.0.0.1:8000/api/v1/models?capability=coding&available=true" \
-  -H "X-Workspace-ID: workspace-id"
+```http
+GET /api/v1/models?capability=coding&available=true
+X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):

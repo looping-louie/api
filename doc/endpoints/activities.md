@@ -25,6 +25,43 @@ include a `type` field; its required shape is selected by the top-level type.
 The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
 
+## List activities
+
+`GET /api/v1/activities` returns ten activities after the optional
+non-negative `offset`.
+
+```http
+GET /api/v1/activities?offset=0
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "activity-implementation",
+      "workspace_id": "workspace-acme",
+      "title": "Implement requested change",
+      "description": "Make and validate a focused code change.",
+      "status": "active",
+      "type": "direct_loop",
+      "config": {
+        "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
+        "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
+        "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    }
+  ],
+  "total": 1
+}
+```
+
 ## Create an activity
 
 `POST /api/v1/activities` creates an active Activity in the workspace supplied
@@ -352,6 +389,39 @@ created, so later definition changes do not alter an in-progress run.
 | `GET` | `/api/v1/activities/{activity_id}/runs/{run_id}` | Get one run. |
 | `POST` | `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Submit one CLI checkpoint result. |
 
+`GET /api/v1/activities/{activity_id}/runs` returns ten runs after the
+optional non-negative `offset`.
+
+```http
+GET /api/v1/activities/activity-implementation/runs?offset=0
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "run-implementation-001",
+      "loop_id": "activity-implementation",
+      "input": "Implement the requested change.",
+      "status": "in_progress",
+      "state": "awaiting_snapshot",
+      "next_action": "collect_snapshot",
+      "iteration": 1,
+      "token_revision": 1,
+      "continuation_token": "continuation-token",
+      "created_at": "2026-08-13T10:05:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:05:00Z",
+      "payload": {}
+    }
+  ],
+  "total": 1
+}
+```
+
 Run creation accepts the existing request body:
 
 ```json
@@ -383,3 +453,32 @@ Example response (`201 Created`):
 Checkpoint responses and continuation payloads are identical to the legacy
 loop-run protocol. Requests for inactive or non-loop activities return
 `409 activity_run_unavailable`.
+
+## List activity changelog entries
+
+`GET /api/v1/activities/{activity_id}/changelog` returns ten newest entries
+after the optional non-negative `offset`.
+
+```http
+GET /api/v1/activities/activity-implementation/changelog?offset=0
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "activity-change-002",
+      "activity_id": "activity-implementation",
+      "change_type": "disabled",
+      "actor_id": "user-123",
+      "changed_at": "2026-08-13T10:15:00Z",
+      "diff": {"status": {"from": "active", "to": "disabled"}},
+      "content": null
+    }
+  ],
+  "total": 2
+}
+```

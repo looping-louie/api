@@ -13,6 +13,36 @@ The supported `provider_id` values are `anthropic`, `nvidia`, `ollama`,
 | `PATCH` | `/api/v1/providers/{provider_id}` | Updates credentials, base URL, or enabled state. |
 | `DELETE` | `/api/v1/providers/{provider_id}` | Deletes workspace configuration and encrypted credentials. |
 
+## List providers
+
+`GET /api/v1/providers` returns every catalog provider and the selected
+workspace configuration state.
+
+```http
+GET /api/v1/providers
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+[
+  {
+    "provider": "openai",
+    "name": "OpenAI",
+    "description": "OpenAI model provider.",
+    "logo_url": "https://example.invalid/openai.svg",
+    "requires_api_key": true,
+    "configured": true,
+    "enabled": true,
+    "key_trimmed": "prov****************",
+    "base_url": null,
+    "model_count": 3,
+    "model_catalog_note": "Availability depends on this workspace configuration."
+  }
+]
+```
+
 ## Update a provider
 
 `PATCH /api/v1/providers/{provider_id}` updates the selected workspace

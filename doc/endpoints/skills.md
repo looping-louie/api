@@ -13,6 +13,41 @@ immutable; they can be enabled or disabled.
 | `PATCH` | `/api/v1/skills/{skill_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/skills/{skill_id}` | Deletes a skill when it has no blocking dependencies. |
 
+## List skills
+
+`GET /api/v1/skills` returns summary metadata without instructions or metadata.
+An optional `search` matches eligible skill content.
+
+```http
+GET /api/v1/skills?search=compatibility
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "skill-api-compatibility",
+      "name": "API compatibility",
+      "description": "Detects breaking API changes.",
+      "origin": "custom",
+      "enabled": true,
+      "editable": true,
+      "duplicable": true,
+      "deprecated": false,
+      "catalog_version": null,
+      "source_instruction_id": null,
+      "version": 1,
+      "created_at": "2026-08-13T10:00:00Z",
+      "updated_at": "2026-08-13T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
 ## Create a skill
 
 `POST /api/v1/skills` creates a custom skill in the workspace supplied by
