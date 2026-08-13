@@ -8,7 +8,7 @@ immutable; they can be enabled or disabled.
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/skills` | Lists skill metadata without full instructions. |
-| `GET` | `/api/v1/skills/{skill_id}` | Returns a skill including its complete instructions. |
+| `GET` | `/api/v1/skills/{skill_id}` | Describes a skill including its complete instructions. |
 | `POST` | `/api/v1/skills` | Creates a custom skill. |
 | `PATCH` | `/api/v1/skills/{skill_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/skills/{skill_id}` | Deletes a skill when it has no blocking dependencies. |
@@ -45,6 +45,41 @@ Example response (`200 OK`):
     }
   ],
   "total": 1
+}
+```
+
+## Describe a skill
+
+`GET /api/v1/skills/{skill_id}` returns the complete skill, including
+instructions and metadata.
+
+```http
+GET /api/v1/skills/skill-api-compatibility
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "skill-api-compatibility",
+  "name": "API compatibility",
+  "description": "Detects breaking API changes.",
+  "instructions": "Compare routes and schemas with the documented contract.",
+  "metadata": {
+    "applies_when": ["An HTTP contract changes"],
+    "default_strictness": {"production": 100}
+  },
+  "origin": "custom",
+  "enabled": true,
+  "editable": true,
+  "duplicable": true,
+  "deprecated": false,
+  "catalog_version": null,
+  "source_instruction_id": null,
+  "version": 1,
+  "created_at": "2026-08-13T10:00:00Z",
+  "updated_at": "2026-08-13T10:00:00Z"
 }
 ```
 
@@ -159,6 +194,6 @@ Example response (`200 OK`):
 }
 ```
 
-Write and get operations return the complete skill, including `id`,
+Write and describe operations return the complete skill, including `id`,
 instructions, metadata, origin and capabilities, version, and timestamps. List
 items omit instructions and metadata.

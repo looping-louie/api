@@ -15,7 +15,7 @@ orchestration.
 | --- | --- | --- |
 | `GET` | `/api/v1/activities` | List activities. |
 | `POST` | `/api/v1/activities` | Create an activity. |
-| `GET` | `/api/v1/activities/{activity_id}` | Get an activity. |
+| `GET` | `/api/v1/activities/{activity_id}` | Describe an activity. |
 | `PATCH` | `/api/v1/activities/{activity_id}` | Update an activity. |
 | `DELETE` | `/api/v1/activities/{activity_id}` | Delete an activity. |
 | `GET` | `/api/v1/activities/{activity_id}/changelog` | List activity history. |
@@ -59,6 +59,38 @@ Example response (`200 OK`):
     }
   ],
   "total": 1
+}
+```
+
+## Describe an activity
+
+`GET /api/v1/activities/{activity_id}` returns the complete Activity,
+including its type-specific configuration.
+
+```http
+GET /api/v1/activities/activity-implementation
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "activity-implementation",
+  "workspace_id": "workspace-acme",
+  "title": "Implement requested change",
+  "description": "Make and validate a focused code change.",
+  "status": "active",
+  "type": "direct_loop",
+  "config": {
+    "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
+    "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
+    "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+  },
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:00:00Z",
+  "updated_by": "user-123"
 }
 ```
 
@@ -386,7 +418,7 @@ created, so later definition changes do not alter an in-progress run.
 | --- | --- | --- |
 | `GET` | `/api/v1/activities/{activity_id}/runs` | List runs for a loop activity. |
 | `POST` | `/api/v1/activities/{activity_id}/runs` | Create a run. |
-| `GET` | `/api/v1/activities/{activity_id}/runs/{run_id}` | Get one run. |
+| `GET` | `/api/v1/activities/{activity_id}/runs/{run_id}` | Describe a run. |
 | `POST` | `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Submit one CLI checkpoint result. |
 
 `GET /api/v1/activities/{activity_id}/runs` returns ten runs after the
@@ -419,6 +451,36 @@ Example response (`200 OK`):
     }
   ],
   "total": 1
+}
+```
+
+## Describe an activity run
+
+`GET /api/v1/activities/{activity_id}/runs/{run_id}` returns one complete run
+owned by the selected Activity.
+
+```http
+GET /api/v1/activities/activity-implementation/runs/run-implementation-001
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "run-implementation-001",
+  "loop_id": "activity-implementation",
+  "input": "Implement the requested change.",
+  "status": "in_progress",
+  "state": "awaiting_snapshot",
+  "next_action": "collect_snapshot",
+  "iteration": 1,
+  "token_revision": 1,
+  "continuation_token": "continuation-token",
+  "created_at": "2026-08-13T10:05:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:05:00Z",
+  "payload": {}
 }
 ```
 

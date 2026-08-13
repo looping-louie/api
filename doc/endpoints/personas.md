@@ -8,7 +8,7 @@ immutable; they can be enabled or disabled.
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/personas` | Lists persona metadata without full instructions. |
-| `GET` | `/api/v1/personas/{persona_id}` | Returns a persona including its complete instructions. |
+| `GET` | `/api/v1/personas/{persona_id}` | Describes a persona including its complete instructions. |
 | `POST` | `/api/v1/personas` | Creates a custom persona. |
 | `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
@@ -45,6 +45,39 @@ Example response (`200 OK`):
     }
   ],
   "total": 1
+}
+```
+
+## Describe a persona
+
+`GET /api/v1/personas/{persona_id}` returns the complete persona, including
+instructions, associated skill IDs, and metadata.
+
+```http
+GET /api/v1/personas/persona-api-reviewer
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "persona-api-reviewer",
+  "name": "API reviewer",
+  "description": "Reviews public API compatibility.",
+  "instructions": "Inspect every public contract and report breaking changes.",
+  "skill_ids": ["skill-api-compatibility"],
+  "metadata": {"team": "platform"},
+  "origin": "custom",
+  "enabled": true,
+  "editable": true,
+  "duplicable": true,
+  "deprecated": false,
+  "catalog_version": null,
+  "source_instruction_id": null,
+  "version": 1,
+  "created_at": "2026-08-13T10:00:00Z",
+  "updated_at": "2026-08-13T10:00:00Z"
 }
 ```
 
@@ -149,7 +182,7 @@ Example response (`200 OK`):
 }
 ```
 
-Write and get operations return the complete persona, including `id`,
+Write and describe operations return the complete persona, including `id`,
 instructions, `skill_ids`, metadata, origin and capabilities, version, and
 timestamps. Deleting a custom skill automatically removes its ID from every
 associated persona. List items omit instructions, skill IDs, and metadata.

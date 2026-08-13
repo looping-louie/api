@@ -11,7 +11,7 @@ the definition but does not execute it.
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/pipelines` | Lists ten filtered pipelines after an offset. |
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
-| `GET` | `/api/v1/pipelines/{pipeline_id}` | Returns one complete ordered definition. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
@@ -52,6 +52,34 @@ Example response (`200 OK`):
     }
   ],
   "total": 1
+}
+```
+
+## Describe a pipeline
+
+`GET /api/v1/pipelines/{pipeline_id}` returns the complete ordered definition
+and the generated Activity ID for every step.
+
+```http
+GET /api/v1/pipelines/pipeline-production-release-review
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "pipeline-production-release-review",
+  "title": "Production release review",
+  "description": "Review a release, collect readiness information, and request approval.",
+  "enabled": true,
+  "steps": [
+    {"activity_id": "activity-release-review"},
+    {"activity_id": "activity-readiness-quiz"},
+    {"activity_id": "activity-production-approval"}
+  ],
+  "created_at": "2026-08-13T10:00:00Z",
+  "updated_at": "2026-08-13T10:00:00Z"
 }
 ```
 
