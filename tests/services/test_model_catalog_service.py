@@ -1,7 +1,10 @@
+from datetime import date
+
 import pytest
 
 from src.app.catalogs.models import (
     ModelCapability,
+    ModelSort,
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
@@ -31,6 +34,7 @@ def build_service(
             model_id="coding-model",
             name="Coding Model",
             vendor="Vendor A",
+            released_at=date(2026, 2, 1),
             capabilities=frozenset(
                 {
                     ModelCapability.TEXT,
@@ -43,6 +47,7 @@ def build_service(
             model_id="openai-model",
             name="OpenAI Model",
             vendor="OpenAI",
+            released_at=date(2026, 3, 1),
             deployments=(
                 build_deployment(
                     provider_id=ProviderId.OPENAI,
@@ -54,6 +59,8 @@ def build_service(
         build_model(
             model_id="deprecated-model",
             name="Deprecated Model",
+            vendor="Vendor A",
+            released_at=date(2026, 1, 1),
             status=ModelStatus.DEPRECATED,
         ),
     )
@@ -113,6 +120,85 @@ async def test_list_can_include_deprecated_models(
         "openai-model",
         "deprecated-model",
     }
+
+
+@pytest.mark.asyncio
+async def test_list_can_select_deprecated_status_directly(
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+    )
+
+    models = await service.list(
+        user_id="user-1",
+        model_status=ModelStatus.DEPRECATED,
+    )
+
+    assert [model.id for model in models] == ["deprecated-model"]
+
+
+@pytest.mark.asyncio
+async def test_list_filters_by_multiple_labs(
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+    )
+
+    models = await service.list(
+        user_id="user-1",
+        labs=("openai", "missing-lab"),
+        include_deprecated=True,
+    )
+
+    assert [model.id for model in models] == ["openai-model"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("sort", "expected_ids"),
+    [
+        (
+            ModelSort.ALPHABETICAL_ASC,
+            ["coding-model", "deprecated-model", "openai-model"],
+        ),
+        (
+            ModelSort.ALPHABETICAL_DESC,
+            ["openai-model", "deprecated-model", "coding-model"],
+        ),
+        (
+            ModelSort.NEWEST,
+            ["openai-model", "coding-model", "deprecated-model"],
+        ),
+        (
+            ModelSort.OLDEST,
+            ["deprecated-model", "coding-model", "openai-model"],
+        ),
+    ],
+)
+async def test_list_sorts_models(
+    sort: ModelSort,
+    expected_ids: list[str],
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+    )
+
+    models = await service.list(
+        user_id="user-1",
+        include_deprecated=True,
+        sort=sort,
+    )
+
+    assert [model.id for model in models] == expected_ids
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,7 @@
 """Logical models currently available only through NVIDIA-hosted deployments."""
 
+from datetime import date
+
 from ..providers import ProviderId
 from .helpers import TEXT
 from .types import (
@@ -20,6 +22,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
             "latency and cost, recommended for coding agents, tool use and "
             "multimodal tasks."
         ),
+        released_at=date(2026, 7, 15),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
@@ -40,6 +43,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
             "speed-quality trade-offs and premium cost, recommended for "
             "long-running coding agents and complex tool-driven work."
         ),
+        released_at=date(2026, 5, 22),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
@@ -59,6 +63,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
             "Fast, low-cost reasoning model recommended for high-volume "
             "coding agents and general text workloads."
         ),
+        released_at=date(2026, 4, 24),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(

@@ -17,6 +17,9 @@ availability from the providers configured in the selected workspace.
 | `provider_id` | Filters by `anthropic`, `nvidia`, `ollama`, `openai`, or `together`. |
 | `capability` | Filters by `coding`, `function_calling`, `reasoning`, `structured_output`, `text`, or `vision`. |
 | `status` | Filters by catalog status: `active`, `deprecated`, or `preview`. |
+| `lab` | Filters by repeated lab slugs, for example `?lab=openai&lab=anthropic`. |
+| `sort` | Orders by `alphabetical-asc`, `alphabetical-desc`, `newest`, or `oldest`. Date sorts use `released_at`. |
+| `offset` | Skips filtered results. The endpoint always returns at most 24 models. |
 | `available` | Filters by effective workspace availability (`true` or `false`). |
 | `search` | Searches name, vendor, family, and tags; 1-200 characters. |
 | `include_deprecated` | Includes deprecated entries. Defaults to `false`. |
@@ -29,7 +32,7 @@ curl -s \
   -H "X-Workspace-ID: workspace-id"
 ```
 
-List items include summary metadata, capabilities, provider IDs, availability,
-starting price, and tags. A describe response additionally includes every
+List items include summary metadata, the model version's `released_at` date,
+capabilities, provider IDs, availability, starting price, and tags. A describe response additionally includes every
 provider deployment, its endpoint and limits, pricing, replacement model, and
 workspace-specific availability reason.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from src.app.catalogs.models import (
@@ -44,6 +45,7 @@ def build_model(
     vendor: str = "Vendor",
     family: str = "Family",
     description: str = "Test model",
+    released_at: date = date(2026, 1, 1),
     status: ModelStatus = ModelStatus.ACTIVE,
     capabilities: frozenset[ModelCapability] | None = None,
     deployments: tuple[ModelDeployment, ...] | None = None,
@@ -58,6 +60,7 @@ def build_model(
         vendor=vendor,
         family=family,
         description=description,
+        released_at=released_at,
         capabilities=capabilities
         or frozenset(
             {

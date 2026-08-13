@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 import json
 from typing import Any
 
@@ -78,6 +78,7 @@ def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
         vendor='Test',
         family='Test',
         description='Test model.',
+        released_at=date(2026, 1, 1),
         capabilities=frozenset({ModelCapability.TEXT}),
         deployments=deployments,
     )

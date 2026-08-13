@@ -10,6 +10,7 @@ from .types import (
     ModelDeployment,
     ModelEndpoint,
     ModelPricing,
+    ModelSort,
     ModelStatus,
 )
 from .validation import validate_model_catalog
@@ -38,6 +39,7 @@ __all__ = [
     "ModelDeployment",
     "ModelEndpoint",
     "ModelPricing",
+    "ModelSort",
     "ModelStatus",
     "validate_model_catalog",
 ]

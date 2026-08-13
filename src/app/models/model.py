@@ -1,6 +1,7 @@
 """Domain projections for model availability and catalog queries."""
 
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 
 from src.app.catalogs.models import (
@@ -58,6 +59,7 @@ class ModelSummary:
     vendor: str
     family: str
     description: str
+    released_at: date
     capabilities: frozenset[ModelCapability]
     status: ModelStatus
     providers: tuple[ProviderId, ...]
@@ -75,6 +77,7 @@ class ModelDocument:
     vendor: str
     family: str
     description: str
+    released_at: date
     capabilities: frozenset[ModelCapability]
     status: ModelStatus
     replacement_model_id: str | None

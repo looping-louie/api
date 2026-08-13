@@ -20,6 +20,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Qwen",
         family="Qwen3.7",
         description="High-capability Qwen model.",
+        released_at=date(2026, 5, 20),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
@@ -37,6 +38,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="NVIDIA",
         family="Nemotron",
         description="Large NVIDIA reasoning model with tool support.",
+        released_at=date(2026, 6, 4),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -62,6 +64,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Qwen",
         family="Qwen3.5",
         description="Large multimodal mixture-of-experts Qwen model.",
+        released_at=date(2026, 2, 16),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -89,6 +92,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="DeepSeek",
         family="DeepSeek V4",
         description="Long-context reasoning and coding model.",
+        released_at=date(2026, 4, 24),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -122,6 +126,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Qwen",
         family="Qwen3.6",
         description="Long-context hybrid reasoning model.",
+        released_at=date(2026, 4, 2),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -145,6 +150,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Qwen",
         family="Qwen3.7",
         description="Cost-efficient long-context Qwen model.",
+        released_at=date(2026, 5, 26),
         capabilities=TEXT,
         deployments=(
             ModelDeployment(
@@ -163,6 +169,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Deep Cogito",
         family="Cogito",
         description="Large hybrid reasoning model.",
+        released_at=date(2025, 11, 19),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -186,6 +193,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="MiniMax",
         family="MiniMax M",
         description="General-purpose multimodal model with tool support.",
+        released_at=date(2026, 6, 1),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -217,6 +225,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="MiniMax",
         family="MiniMax M",
         description="Cost-efficient reasoning model.",
+        released_at=date(2026, 3, 18),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -242,6 +251,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Meta",
         family="Llama 3",
         description="General-purpose Llama instruction model.",
+        released_at=date(2024, 12, 6),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -266,6 +276,7 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Google",
         family="Gemma 4",
         description="Compact multimodal Google model.",
+        released_at=date(2026, 3, 31),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,

@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from src.app.catalogs.models import ModelCapability, ModelStatus
+from collections.abc import Sequence
+
+from src.app.catalogs.models import ModelCapability, ModelSort, ModelStatus
 from src.app.catalogs.providers import ProviderId
 from src.app.schemas.model import ModelListResponse, ModelSummaryResponse
 from src.app.services.models.service import ModelCatalogService
+
+
+MODEL_PAGE_SIZE = 24
 
 
 class ModelListController:
@@ -23,6 +28,9 @@ class ModelListController:
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
+        labs: Sequence[str] = (),
+        sort: ModelSort | None = None,
+        offset: int = 0,
         available: bool | None = None,
         search: str | None = None,
         include_deprecated: bool = False,
@@ -34,9 +42,12 @@ class ModelListController:
             provider_id=provider_id,
             capability=capability,
             model_status=model_status,
+            labs=labs,
+            sort=sort,
             available=available,
             search=search,
             include_deprecated=include_deprecated,
         )
-        items = [ModelSummaryResponse.model_validate(model) for model in models]
-        return ModelListResponse(items=items, total=len(items))
+        page = models[offset : offset + MODEL_PAGE_SIZE]
+        items = [ModelSummaryResponse.model_validate(model) for model in page]
+        return ModelListResponse(items=items, total=len(models))

@@ -20,6 +20,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="OpenAI",
         family="GPT-5.6",
         description="OpenAI flagship for complex reasoning and coding.",
+        released_at=date(2026, 7, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -39,6 +40,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="OpenAI",
         family="GPT-5.6",
         description="Balanced OpenAI model for quality, latency and cost.",
+        released_at=date(2026, 7, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -58,6 +60,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="OpenAI",
         family="GPT-5.6",
         description="Cost-efficient OpenAI model for high-volume workloads.",
+        released_at=date(2026, 7, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -77,6 +80,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Anthropic",
         family="Claude 5",
         description="Anthropic model for long-running and demanding agents.",
+        released_at=date(2026, 6, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -96,6 +100,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Anthropic",
         family="Claude 4",
         description="Anthropic model for agentic coding and enterprise work.",
+        released_at=date(2026, 5, 28),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -115,6 +120,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Anthropic",
         family="Claude 5",
         description="Anthropic model balancing speed and intelligence.",
+        released_at=date(2026, 6, 30),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -139,6 +145,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Anthropic",
         family="Claude 4",
         description="Fast Anthropic model for cost-sensitive workloads.",
+        released_at=date(2025, 10, 15),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -158,6 +165,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Moonshot AI",
         family="Kimi",
         description="Multimodal reasoning model for agents and tool use.",
+        released_at=date(2026, 4, 20),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -176,6 +184,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Z.ai",
         family="GLM",
         description="Reasoning and coding model for long-horizon agents.",
+        released_at=date(2026, 6, 16),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -203,6 +212,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Z.ai",
         family="GLM",
         description="Previous GLM reasoning and function-calling model.",
+        released_at=date(2026, 4, 7),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -232,6 +242,7 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         vendor="Moonshot AI",
         family="Kimi",
         description="Kimi model specialised in coding agents.",
+        released_at=date(2026, 6, 12),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(

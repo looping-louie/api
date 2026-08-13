@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Sequence
 
 from src.app.catalogs.models import (
@@ -9,6 +10,7 @@ from src.app.catalogs.models import (
     ModelCapability,
     ModelCatalogEntry,
     ModelPricing,
+    ModelSort,
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
@@ -51,6 +53,8 @@ class ModelCatalogService:
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
+        labs: Sequence[str] = (),
+        sort: ModelSort | None = None,
         available: bool | None = None,
         search: str | None = None,
         include_deprecated: bool = False,
@@ -62,6 +66,10 @@ class ModelCatalogService:
             requested_workspace_id=requested_workspace_id,
         )
         normalized_search = self._normalize_search(search)
+        normalized_labs = frozenset(
+            self._normalize_lab(lab)
+            for lab in labs
+        )
 
         models = [
             model
@@ -71,6 +79,7 @@ class ModelCatalogService:
                 provider_id=provider_id,
                 capability=capability,
                 model_status=model_status,
+                labs=normalized_labs,
                 search=normalized_search,
                 include_deprecated=include_deprecated,
             )
@@ -95,6 +104,9 @@ class ModelCatalogService:
                 for summary in summaries
                 if summary.available is available
             ]
+
+        if sort is not None:
+            summaries = self._sort_summaries(summaries, sort)
 
         return summaries
 
@@ -172,15 +184,23 @@ class ModelCatalogService:
         provider_id: ProviderId | None,
         capability: ModelCapability | None,
         model_status: ModelStatus | None,
+        labs: frozenset[str],
         search: str | None,
         include_deprecated: bool,
     ) -> bool:
         """Return whether a model satisfies filters independent of workspace."""
 
-        if not include_deprecated and model.status == ModelStatus.DEPRECATED:
+        if (
+            model_status is None
+            and not include_deprecated
+            and model.status == ModelStatus.DEPRECATED
+        ):
             return False
 
         if model_status is not None and model.status != model_status:
+            return False
+
+        if labs and self._model_lab(model) not in labs:
             return False
 
         if capability is not None and capability not in model.capabilities:
@@ -247,6 +267,7 @@ class ModelCatalogService:
             vendor=model.vendor,
             family=model.family,
             description=model.description,
+            released_at=model.released_at,
             capabilities=model.capabilities,
             status=model.status,
             providers=self._get_model_providers(model),
@@ -269,6 +290,7 @@ class ModelCatalogService:
             vendor=model.vendor,
             family=model.family,
             description=model.description,
+            released_at=model.released_at,
             capabilities=model.capabilities,
             status=model.status,
             replacement_model_id=model.replacement_model_id,
@@ -352,6 +374,66 @@ class ModelCatalogService:
         return normalized or None
 
     @staticmethod
+    def _normalize_lab(value: str) -> str:
+        """Normalize vendor labels to stable catalog-filter slugs."""
+
+        normalized = re.sub(
+            r"[^a-z0-9]+",
+            "-",
+            value.strip().casefold(),
+        ).strip("-")
+        return {
+            "mistral-ai": "mistral",
+            "moonshot-ai": "moonshot",
+            "z-ai": "z",
+        }.get(normalized, normalized)
+
+    @classmethod
+    def _model_lab(cls, model: ModelCatalogEntry) -> str:
+        """Return the public lab slug for a catalog model."""
+
+        return cls._normalize_lab(model.vendor)
+
+    @staticmethod
+    def _sort_summaries(
+        summaries: list[ModelSummary],
+        sort: ModelSort,
+    ) -> list[ModelSummary]:
+        """Return model summaries ordered by the requested catalog sort."""
+
+        if sort == ModelSort.ALPHABETICAL_DESC:
+            return sorted(
+                summaries,
+                key=lambda model: (model.name.casefold(), model.id),
+                reverse=True,
+            )
+
+        if sort == ModelSort.NEWEST:
+            return sorted(
+                summaries,
+                key=lambda model: (
+                    -model.released_at.toordinal(),
+                    model.name.casefold(),
+                    model.id,
+                ),
+            )
+
+        if sort == ModelSort.OLDEST:
+            return sorted(
+                summaries,
+                key=lambda model: (
+                    model.released_at,
+                    model.name.casefold(),
+                    model.id,
+                ),
+            )
+
+        return sorted(
+            summaries,
+            key=lambda model: (model.name.casefold(), model.id),
+        )
+
+    @staticmethod
     def _require_text(value: str, field_name: str) -> str:
         """Normalize a required text value."""
 
@@ -370,4 +452,3 @@ class ModelCatalogService:
             )
 
         return normalized
-

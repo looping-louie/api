@@ -76,6 +76,8 @@ def test_list_models_route(
     body = response.json()
 
     assert body["total"] > 0
+    assert len(body["items"]) <= 24
+    assert all("released_at" in item for item in body["items"])
     assert all(
         item["available"] is True
         for item in body["items"]
@@ -84,6 +86,47 @@ def test_list_models_route(
         "together" in item["providers"]
         for item in body["items"]
     )
+
+
+def test_list_models_filters_sorts_and_paginates(
+    model_controller: ModelController,
+) -> None:
+    client = TestClient(build_app(controller=model_controller))
+
+    first_page = client.get(
+        "/api/v1/models",
+        params=[
+            ("include_deprecated", "true"),
+            ("lab", "openai"),
+            ("lab", "anthropic"),
+            ("sort", "newest"),
+            ("offset", "0"),
+        ],
+    )
+
+    assert first_page.status_code == 200
+    body = first_page.json()
+    assert body["items"]
+    assert all(
+        item["vendor"] in {"OpenAI", "Anthropic"}
+        for item in body["items"]
+    )
+    release_dates = [item["released_at"] for item in body["items"]]
+    assert release_dates == sorted(release_dates, reverse=True)
+
+    all_models = client.get(
+        "/api/v1/models",
+        params={"include_deprecated": "true", "offset": "0"},
+    ).json()
+    second_page = client.get(
+        "/api/v1/models",
+        params={"include_deprecated": "true", "offset": "24"},
+    ).json()
+
+    assert all_models["total"] == 25
+    assert len(all_models["items"]) == 24
+    assert len(second_page["items"]) == 1
+    assert second_page["total"] == 25
 
 
 def test_describe_model_route(

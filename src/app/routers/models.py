@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from src.app.catalogs.models import (
     ModelCapability,
+    ModelSort,
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
@@ -67,6 +68,25 @@ async def list_models(
             description="Filter models by catalog status.",
         ),
     ] = None,
+    lab: Annotated[
+        list[str] | None,
+        Query(
+            description="Filter by one or more lab slugs.",
+        ),
+    ] = None,
+    sort: Annotated[
+        ModelSort | None,
+        Query(
+            description="Order the filtered model catalog.",
+        ),
+    ] = None,
+    offset: Annotated[
+        int,
+        Query(
+            ge=0,
+            description="Number of filtered models to skip. Page size is 24.",
+        ),
+    ] = 0,
     available: Annotated[
         bool | None,
         Query(
@@ -96,6 +116,9 @@ async def list_models(
         provider_id=provider_id,
         capability=capability,
         model_status=model_status,
+        labs=lab or (),
+        sort=sort,
+        offset=offset,
         available=available,
         search=search,
         include_deprecated=include_deprecated,
