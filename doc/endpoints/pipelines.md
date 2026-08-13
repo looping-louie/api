@@ -19,6 +19,37 @@ New pipelines are enabled. PATCH accepts `title`, `description`, `enabled`, and
 `steps`; supplying `steps` replaces the complete ordered array. Archived
 pipelines are immutable and omitted from unfiltered listings.
 
+## Create a pipeline
+
+`POST /api/v1/pipelines` creates an enabled pipeline in the workspace supplied
+by `X-Workspace-ID`. Create the referenced Activities first, then provide their
+IDs in execution order. Every referenced Activity must be active and belong to
+the same workspace. Repeating an Activity ID is allowed.
+
+```http
+POST /api/v1/pipelines
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "title": "Production release review",
+  "description": "Review a release, collect readiness information, and request approval.",
+  "steps": [
+    {
+      "activity_id": "activity-release-review"
+    },
+    {
+      "activity_id": "activity-readiness-quiz"
+    },
+    {
+      "activity_id": "activity-production-approval"
+    }
+  ]
+}
+```
+
 The list accepts a non-negative `offset`, optional case-insensitive `search`
 over title and description, and optional `status` of `active`, `disabled`, or
 `archived`. Active pipelines sort before disabled and archived pipelines.
