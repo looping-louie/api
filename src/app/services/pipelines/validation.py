@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pydantic import ValidationError
+
 from src.app.models.changelog import JsonObject
+from src.app.schemas.activity import validate_activity_config
 from src.app.models.pipeline import (
     PipelineDocument,
     PipelineStatus,
@@ -70,12 +73,27 @@ def normalize_steps(
                 field_name=f"steps.{position}",
                 message="must be an activity definition",
             )
-        config = dict(value.config)
-        if value.type != config.get("type"):
+        if value.type not in {
+            'approval',
+            'quiz',
+            'direct_loop',
+            'refinement_loop',
+            'roundtable_loop',
+        }:
             raise InvalidPipelineStepsError(
-                field_name=f"steps.{position}.config.type",
-                message="must match the step type",
+                field_name=f'steps.{position}.type',
+                message='must contain a supported activity type',
             )
+        try:
+            config = validate_activity_config(
+                activity_type=value.type,
+                value=value.config,
+            ).model_dump(by_alias=True)
+        except ValidationError as error:
+            raise InvalidPipelineStepsError(
+                field_name=f'steps.{position}.config',
+                message=error.errors()[0]['msg'],
+            ) from error
         steps.append(
             PipelineActivityInput(
                 title=require_text(value.title, f"steps.{position}.title"),

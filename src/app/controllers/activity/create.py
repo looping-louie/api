@@ -19,6 +19,7 @@ class ActivityCreateController:
             user_id=user_id,
             title=payload.title,
             description=payload.description,
+            activity_type=payload.type,
             config=payload.config.model_dump(by_alias=True),
             requested_workspace_id=requested_workspace_id,
         )

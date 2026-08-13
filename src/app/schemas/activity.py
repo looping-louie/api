@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
 from .loop import (
     LoopAgentSchema,
@@ -19,12 +19,18 @@ ActivityStatusValue = Literal['active', 'disabled', 'archived']
 ActivityChangeTypeValue = Literal[
     'created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'
 ]
+ActivityTypeValue = Literal[
+    'approval',
+    'quiz',
+    'direct_loop',
+    'refinement_loop',
+    'roundtable_loop',
+]
 
 
 class DirectLoopActivityConfig(RequestSchema):
     """Configuration for a direct loop activity."""
 
-    type: Literal['direct_loop']
     stop_conditions: LoopStopConditionsSchema
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
@@ -33,7 +39,6 @@ class DirectLoopActivityConfig(RequestSchema):
 class RefinementLoopActivityConfig(RequestSchema):
     """Configuration for a refinement loop activity."""
 
-    type: Literal['refinement_loop']
     stop_conditions: LoopStopConditionsSchema
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
@@ -42,7 +47,6 @@ class RefinementLoopActivityConfig(RequestSchema):
 class RoundtableLoopActivityConfig(RequestSchema):
     """Configuration for a roundtable loop activity."""
 
-    type: Literal['roundtable_loop']
     stop_conditions: LoopStopConditionsSchema
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
@@ -51,24 +55,38 @@ class RoundtableLoopActivityConfig(RequestSchema):
 class ApprovalActivityConfig(RequestSchema):
     """Configuration for an activity that requires human approval."""
 
-    type: Literal['approval']
-
 
 class QuizActivityConfig(RequestSchema):
     """Configuration for an activity that requires a human quiz response."""
 
-    type: Literal['quiz']
     quiz: dict[str, Any]
 
 
-ActivityConfig = Annotated[
+ActivityConfig = (
     ApprovalActivityConfig
     | QuizActivityConfig
     | DirectLoopActivityConfig
     | RefinementLoopActivityConfig
-    | RoundtableLoopActivityConfig,
-    Field(discriminator='type'),
-]
+    | RoundtableLoopActivityConfig
+)
+
+ACTIVITY_CONFIG_SCHEMAS = {
+    'approval': ApprovalActivityConfig,
+    'quiz': QuizActivityConfig,
+    'direct_loop': DirectLoopActivityConfig,
+    'refinement_loop': RefinementLoopActivityConfig,
+    'roundtable_loop': RoundtableLoopActivityConfig,
+}
+
+
+def validate_activity_config(
+    *,
+    activity_type: ActivityTypeValue,
+    value: object,
+) -> ActivityConfig:
+    """Validate one configuration using its parent Activity type."""
+
+    return ACTIVITY_CONFIG_SCHEMAS[activity_type].model_validate(value)
 
 
 class ActivityCreateRequest(RequestSchema):
@@ -76,22 +94,25 @@ class ActivityCreateRequest(RequestSchema):
 
     title: NonEmptyString
     description: str
-    type: Literal[
-        'approval',
-        'quiz',
-        'direct_loop',
-        'refinement_loop',
-        'roundtable_loop',
-    ]
+    type: ActivityTypeValue
     config: ActivityConfig
 
-    @model_validator(mode='after')
-    def require_matching_type(self) -> 'ActivityCreateRequest':
-        """Keep the common activity type aligned with the config discriminator."""
+    @model_validator(mode='before')
+    @classmethod
+    def validate_config_for_type(cls, value: object) -> object:
+        """Use the top-level Activity type to select the config schema."""
 
-        if self.type != self.config.type:
-            raise ValueError('type must match config.type.')
-        return self
+        if (
+            not isinstance(value, dict)
+            or value.get('type') not in ACTIVITY_CONFIG_SCHEMAS
+        ):
+            return value
+        normalized = dict(value)
+        normalized['config'] = validate_activity_config(
+            activity_type=value['type'],
+            value=value.get('config'),
+        )
+        return normalized
 
 
 class ActivityPatchRequest(RequestSchema):
@@ -100,7 +121,7 @@ class ActivityPatchRequest(RequestSchema):
     title: NonEmptyString | None = None
     description: str | None = None
     status: ActivityStatusValue | None = None
-    config: ActivityConfig | None = None
+    config: dict[str, Any] | None = None
 
     @model_validator(mode='after')
     def require_supplied_non_null_change(self) -> 'ActivityPatchRequest':
@@ -122,13 +143,7 @@ class ActivityResponse(ResponseSchema):
     title: str
     description: str
     status: ActivityStatusValue
-    type: Literal[
-        'approval',
-        'quiz',
-        'direct_loop',
-        'refinement_loop',
-        'roundtable_loop',
-    ]
+    type: ActivityTypeValue
     config: ActivityConfig
     created_at: datetime
     created_by: str

@@ -68,7 +68,6 @@ def activity_payload(title: str) -> dict[str, object]:
         'description': 'Complete one pipeline stage.',
         'type': 'direct_loop',
         'config': {
-            'type': 'direct_loop',
             'stop_conditions': {'max_iterations': 1},
             'agents': [],
             'output_contract': {

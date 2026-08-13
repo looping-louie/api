@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
-from typing import Callable, Literal
+from typing import Callable, Literal, cast
 
-from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
+from pydantic import ValidationError
+
+from src.app.models.activity import (
+    ActivityChangelogEntry,
+    ActivityDocument,
+    ActivityType,
+)
 from src.app.repositories.activities.repository import ActivityRepository
+from src.app.schemas.activity import validate_activity_config
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 
@@ -55,16 +62,17 @@ class ActivityService:
 
         return await self._require(await self._workspace_id(user_id, requested_workspace_id), activity_id)
 
-    async def create(self, *, user_id: str, title: str, description: str, config: dict[str, object], requested_workspace_id: str | None = None) -> ActivityDocument:
+    async def create(self, *, user_id: str, title: str, description: str, activity_type: str, config: dict[str, object], requested_workspace_id: str | None = None) -> ActivityDocument:
         """Create a validated active activity and its initial changelog entry."""
 
         workspace_id = await self._workspace_id(user_id, requested_workspace_id)
         actor_id = self._text(user_id, 'user_id')
         now = self._clock()
-        normalized_config = self._config(config)
+        normalized_type = self._activity_type(activity_type)
+        normalized_config = self._config(config, normalized_type)
         document = ActivityDocument(
             id=self._id_factory(), workspace_id=workspace_id, title=self._text(title, 'title'),
-            description=description.strip(), status='active', type=normalized_config['type'],
+            description=description.strip(), status='active', type=normalized_type,
             config=normalized_config, created_at=now, created_by=actor_id, updated_at=now,
             updated_by=actor_id,
         )
@@ -77,19 +85,14 @@ class ActivityService:
         current = await self._require(workspace_id, activity_id)
         actor_id = self._text(user_id, 'user_id')
         config = (
-            self._config(changes['config'])
+            self._config(changes['config'], current.type)
             if 'config' in changes
             else current.config
         )
-        if config['type'] != current.type:
-            raise ActivityValidationError(
-                field_name='config.type',
-                message='must match the existing activity type',
-            )
         updated = replace(
             current, title=self._text(changes['title'], 'title') if 'title' in changes else current.title,
             description=str(changes['description']).strip() if 'description' in changes else current.description,
-            status=changes.get('status', current.status), type=config['type'], config=config,
+            status=changes.get('status', current.status), type=current.type, config=config,
             updated_at=self._clock(), updated_by=actor_id,
         )
         diff = {field: getattr(updated, field) for field in changes if getattr(current, field) != getattr(updated, field)}
@@ -142,10 +145,25 @@ class ActivityService:
         return ActivityChangelogEntry(id=self._id_factory(), activity_id=document.id, workspace_id=document.workspace_id, change_type=change_type, actor_id=actor_id, changed_at=changed_at, diff=diff, content=content)
 
     @staticmethod
-    def _config(value: object) -> dict[str, object]:
-        """Validate the normalized discriminated activity configuration."""
+    def _config(value: object, activity_type: ActivityType) -> dict[str, object]:
+        """Validate a config using the owning immutable Activity type."""
 
-        if not isinstance(value, dict) or value.get('type') not in (
+        try:
+            return validate_activity_config(
+                activity_type=activity_type,
+                value=value,
+            ).model_dump(by_alias=True)
+        except ValidationError as error:
+            raise ActivityValidationError(
+                field_name='config',
+                message=error.errors()[0]['msg'],
+            ) from error
+
+    @staticmethod
+    def _activity_type(value: object) -> ActivityType:
+        """Validate a supported top-level activity discriminator."""
+
+        if value not in (
             'approval',
             'quiz',
             'direct_loop',
@@ -153,10 +171,10 @@ class ActivityService:
             'roundtable_loop',
         ):
             raise ActivityValidationError(
-                field_name='config',
-                message='must contain a supported type',
+                field_name='type',
+                message='must contain a supported activity type',
             )
-        return value
+        return cast(ActivityType, value)
 
     @staticmethod
     def _content(document: ActivityDocument) -> dict[str, object]:

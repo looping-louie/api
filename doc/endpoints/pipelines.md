@@ -44,7 +44,6 @@ Content-Type: application/json
       "description": "Reach a shared decision about release readiness.",
       "type": "roundtable_loop",
       "config": {
-        "type": "roundtable_loop",
         "stop_conditions": {
           "max_iterations": 2
         },
@@ -60,7 +59,6 @@ Content-Type: application/json
       "description": "Confirm operational readiness before deployment.",
       "type": "quiz",
       "config": {
-        "type": "quiz",
         "quiz": {
           "questions": []
         }
@@ -70,9 +68,7 @@ Content-Type: application/json
       "title": "Approve production release",
       "description": "A release manager approves deployment.",
       "type": "approval",
-      "config": {
-        "type": "approval"
-      }
+      "config": {}
     }
   ]
 }

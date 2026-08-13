@@ -20,14 +20,16 @@ orchestration.
 | `DELETE` | `/api/v1/activities/{activity_id}` | Delete an activity. |
 | `GET` | `/api/v1/activities/{activity_id}/changelog` | List activity history. |
 
-Activity creation specifies a common `type` and a matching discriminated
-`config.type`. The activity type is immutable after creation.
+Activity creation specifies the sole `type` discriminator. `config` does not
+include a `type` field; its required shape is selected by the top-level type.
+The activity type is immutable after creation, and PATCH validates replacement
+configurations against the persisted activity type.
 
 ## Create an activity
 
 `POST /api/v1/activities` creates an active Activity in the workspace supplied
 by `X-Workspace-ID`. Every request needs a non-empty `title`, a `description`,
-and matching `type` and `config.type` values.
+a supported `type`, and a configuration matching that type.
 
 ### Direct loop
 
@@ -47,7 +49,6 @@ Content-Type: application/json
   "description": "Make and validate a focused code change.",
   "type": "direct_loop",
   "config": {
-    "type": "direct_loop",
     "stop_conditions": {
       "max_iterations": 3,
       "max_tokens": 12000
@@ -78,7 +79,6 @@ Agents can use the `generator`, `reviewer`, and `aggregator` roles.
   "description": "Reach a shared decision about release readiness.",
   "type": "roundtable_loop",
   "config": {
-    "type": "roundtable_loop",
     "stop_conditions": {
       "max_iterations": 2
     },
@@ -127,7 +127,6 @@ runs.
   "description": "Improve a draft through review iterations.",
   "type": "refinement_loop",
   "config": {
-    "type": "refinement_loop",
     "stop_conditions": {
       "timeout_seconds": 900
     },
@@ -162,9 +161,7 @@ additional fields.
   "title": "Approve production release",
   "description": "A release manager must approve deployment to production.",
   "type": "approval",
-  "config": {
-    "type": "approval"
-  }
+  "config": {}
 }
 ```
 
@@ -179,7 +176,6 @@ application-defined and stored as supplied.
   "description": "Confirm operational readiness before deployment.",
   "type": "quiz",
   "config": {
-    "type": "quiz",
     "quiz": {
       "questions": [
         {

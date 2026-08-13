@@ -27,7 +27,14 @@ def activity_step(title: str = 'Implementation activity') -> PipelineActivityInp
         title=title,
         description='Complete one stage.',
         type='direct_loop',
-        config={'type': 'direct_loop'},
+        config={
+            'stop_conditions': {'max_iterations': 1},
+            'agents': [],
+            'output_contract': {
+                'type': 'text',
+                'description': 'A pipeline stage result.',
+            },
+        },
     )
 
 
