@@ -163,10 +163,10 @@ Looping Louie currently exposes these endpoints.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/api/v1/loops` | Manage persisted multi-agent loop definitions. |
-| `/api/v1/loops/{loop_id}/runs` | Start one persisted loop run. |
-| `/api/v1/loops/{loop_id}/runs/{run_id}` | Read one persisted loop run. |
-| `/api/v1/loops/{loop_id}/runs/{run_id}/continue` | Advance one loop-run checkpoint. |
+| `/api/v1/activities` | Manage reusable Activity definitions. |
+| `/api/v1/activities/{activity_id}/runs` | Start one persisted executable Activity run. |
+| `/api/v1/activities/{activity_id}/runs/{run_id}` | Read one persisted Activity run. |
+| `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Advance one Activity-run checkpoint. |
 
 See the complete API documentation:
 
@@ -216,16 +216,16 @@ Project documentation is organised under `doc/`.
 ## High-Level Execution Flow
 
 ```
-loop input
+activity input
       │
       ▼
-/api/v1/loops/{loop_id}/runs
+/api/v1/activities/{activity_id}/runs
       │
       ▼
 CLI builds snapshot and runs local action
       │
       ▼
-/api/v1/loops/{loop_id}/runs/{run_id}/continue
+/api/v1/activities/{activity_id}/runs/{run_id}/continue
       │
       ▼
 Planner and reviewer services
@@ -262,7 +262,7 @@ Looping Louie is currently an MVP focused on validating the execution runtime.
 
 The current implementation supports:
 
-- persisted loop-run checkpoint contracts;
+- persisted Activity-run checkpoint contracts;
 - multi-skill review;
 - automatic commits;
 - execution traces;

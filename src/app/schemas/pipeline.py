@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
-    PositiveInteger,
     RequestSchema,
     ResponseSchema,
 )
@@ -24,58 +23,10 @@ PipelineChangeTypeValue = Literal[
     "disabled",
     "archived",
 ]
-OptionCount = Annotated[int, Field(ge=2, strict=True)]
+class PipelineActivityStepRequest(RequestSchema):
+    """Reference to an existing active workspace activity."""
 
-
-class PipelineQuizConfigRequest(RequestSchema):
-    """Required quiz threshold with default question and option counts."""
-
-    minimum_correct_answers: PositiveInteger
-    question_count: PositiveInteger = 10
-    option_count: OptionCount = 3
-
-    @model_validator(mode="after")
-    def validate_threshold(self) -> Self:
-        """Reject thresholds that cannot be met by the quiz."""
-
-        if self.minimum_correct_answers > self.question_count:
-            raise ValueError(
-                "minimum_correct_answers cannot exceed question_count."
-            )
-        return self
-
-
-class PipelineLoopStepRequest(RequestSchema):
-    """Reference to an existing active loop."""
-
-    type: Literal["loop"]
-    loop_id: NonEmptyString
-
-
-class PipelineHumanGateStepRequest(RequestSchema):
-    """Approval or configured quiz human checkpoint."""
-
-    type: Literal["human_gate"]
-    gate_type: Literal["approval", "quiz"]
-    config: PipelineQuizConfigRequest | None = None
-
-    @model_validator(mode="after")
-    def validate_gate_config(self) -> Self:
-        """Require quiz configuration and forbid approval configuration."""
-
-        if self.gate_type == "quiz" and self.config is None:
-            raise ValueError("config is required for quiz gates.")
-        if self.gate_type == "approval" and self.config is not None:
-            raise ValueError(
-                "config must not be supplied for approval gates."
-            )
-        return self
-
-
-PipelineStepRequest = Annotated[
-    PipelineLoopStepRequest | PipelineHumanGateStepRequest,
-    Field(discriminator="type"),
-]
+    activity_id: NonEmptyString
 
 
 class PipelineCreateRequest(RequestSchema):
@@ -83,7 +34,7 @@ class PipelineCreateRequest(RequestSchema):
 
     title: NonEmptyString
     description: str
-    steps: list[PipelineStepRequest]
+    steps: list[PipelineActivityStepRequest]
 
 
 class PipelinePatchRequest(RequestSchema):
@@ -92,7 +43,7 @@ class PipelinePatchRequest(RequestSchema):
     title: NonEmptyString | None = None
     description: str | None = None
     enabled: bool | None = None
-    steps: list[PipelineStepRequest] | None = None
+    steps: list[PipelineActivityStepRequest] | None = None
 
     @model_validator(mode="after")
     def require_supplied_non_null_change(self) -> Self:
@@ -106,33 +57,10 @@ class PipelinePatchRequest(RequestSchema):
         return self
 
 
-class PipelineQuizConfigResponse(ResponseSchema):
-    """Stored quiz-generation limits."""
+class PipelineActivityStepResponse(ResponseSchema):
+    """Stored activity reference."""
 
-    minimum_correct_answers: int
-    question_count: int
-    option_count: int
-
-
-class PipelineLoopStepResponse(ResponseSchema):
-    """Stored loop reference."""
-
-    type: Literal["loop"]
-    loop_id: str
-
-
-class PipelineHumanGateStepResponse(ResponseSchema):
-    """Stored human checkpoint."""
-
-    type: Literal["human_gate"]
-    gate_type: Literal["approval", "quiz"]
-    config: PipelineQuizConfigResponse | None = None
-
-
-PipelineStepResponse = Annotated[
-    PipelineLoopStepResponse | PipelineHumanGateStepResponse,
-    Field(discriminator="type"),
-]
+    activity_id: str
 
 
 class PipelineResponse(ResponseSchema):
@@ -142,7 +70,7 @@ class PipelineResponse(ResponseSchema):
     title: str
     description: str
     enabled: bool
-    steps: list[PipelineStepResponse]
+    steps: list[PipelineActivityStepResponse]
     created_at: datetime
     updated_at: datetime
 

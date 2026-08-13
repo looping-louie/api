@@ -30,19 +30,6 @@ three loop flows:
 These rules define valid loop resources. They do not by themselves execute
 agents.
 
-## Catalog examples
-
-The builtin loops in `src/app/catalogs/loops/catalog.py` use the `roundtable`
-flow:
-
-- `shape ideas` assigns `product_manager` and `ux_designer` as generators,
-  `devils_advocate` as a reviewer, and `editor` as an aggregator;
-- `plan implementation` assigns `tech_lead` and `platform_architect` as
-  generators, `devils_advocate` as a reviewer, and `editor` as an aggregator.
-
-The output contracts specify the final expected document or JSON. They do not
-specify the sequencing of generator, reviewer, and aggregator calls.
-
 ## Implemented loop-run behavior
 
 The loop-run executor in `src/app/services/loop_runs/service.py` supports
@@ -104,5 +91,4 @@ implemented in the current loop-run executor.
 - `src/app/schemas/loop.py`;
 - `src/app/services/loops/validation.py`;
 - `src/app/services/loop_runs/service.py`;
-- `src/app/services/execution_instructions/library.py`;
-- `src/app/catalogs/loops/catalog.py`.
+- `src/app/services/execution_instructions/library.py`.

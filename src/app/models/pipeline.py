@@ -20,32 +20,13 @@ PipelineChangeType = Literal[
 
 
 @dataclass(frozen=True, slots=True)
-class PipelineQuizConfig:
-    """Validated quiz-generation limits stored in a pipeline."""
+class PipelineActivityStep:
+    """Reference to one active workspace activity."""
 
-    minimum_correct_answers: int
-    question_count: int
-    option_count: int
+    activity_id: str
 
 
-@dataclass(frozen=True, slots=True)
-class PipelineLoopStep:
-    """Reference to one active loop."""
-
-    type: Literal["loop"]
-    loop_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class PipelineHumanGateStep:
-    """Approval or quiz checkpoint in a pipeline."""
-
-    type: Literal["human_gate"]
-    gate_type: Literal["approval", "quiz"]
-    config: PipelineQuizConfig | None
-
-
-PipelineStep = PipelineLoopStep | PipelineHumanGateStep
+PipelineStep = PipelineActivityStep
 
 
 @dataclass(frozen=True, slots=True)

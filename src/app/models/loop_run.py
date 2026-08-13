@@ -37,3 +37,4 @@ class LoopRunDocument:
     created_at: datetime
     created_by: str
     updated_at: datetime
+    activity_id: str | None = None

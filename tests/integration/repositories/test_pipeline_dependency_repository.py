@@ -1,4 +1,4 @@
-"""Integration tests for pipeline-to-loop dependency lookup."""
+"""Integration tests for pipeline-to-activity dependency lookup."""
 
 from __future__ import annotations
 
@@ -17,19 +17,19 @@ from tests.factories.pipelines import build_pipeline
 from tests.integration.conftest import WorkspaceFactory
 from tests.integration.repositories.test_sqlite_pipeline_repository import (
     entry,
-    seed_loop,
+    seed_activities,
 )
 
 
 @pytest.mark.asyncio
-async def test_finds_pipeline_usage_of_loop(
+async def test_finds_pipeline_usage_of_activity(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
-    """A stored pipeline reports a blocking reference to its loop."""
+    """A stored pipeline reports a blocking activity reference."""
 
     await create_workspace(workspace_id="workspace-1")
-    await seed_loop(sqlite_database_path)
+    await seed_activities(sqlite_database_path)
     document = build_pipeline()
     await SqlitePipelineRepository(sqlite_database_path).create(
         document=document,
@@ -40,7 +40,7 @@ async def test_finds_pipeline_usage_of_loop(
         sqlite_database_path
     ).find_usages(
         workspace_id="workspace-1",
-        target=ResourceReference("loop", "loop-1"),
+        target=ResourceReference("activity", "activity-1"),
     )
 
     assert len(usages) == 1
@@ -48,4 +48,4 @@ async def test_finds_pipeline_usage_of_loop(
         "pipeline",
         "pipeline-1",
     )
-    assert usages[0].relation == "loop"
+    assert usages[0].relation == "activity"

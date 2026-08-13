@@ -26,7 +26,7 @@ Application code lives under `src/app` and is organized by responsibility:
 src/app/
 |
 |-- bootstrap/       Application startup and dependency wiring
-|-- catalogs/        Builtin providers, models, loops, personas, and skills
+|-- catalogs/        Builtin providers, models, personas, and skills
 |-- controllers/     HTTP-level use-case orchestration
 |-- middleware/      Cross-cutting HTTP middleware
 |-- models/          Internal domain entities
@@ -47,6 +47,8 @@ handling FastAPI request-response concerns or direct persistence.
 services/
 |
 |-- __init__.py                    Declares the services package
+|-- activities/
+|   `-- service.py                 Manages definitions and changelog history
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
@@ -73,7 +75,6 @@ services/
 |   `-- validation.py              Normalizes and validates input
 |-- loops/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- catalog_seeder.py          Installs curated catalog entries in workspaces
 |   |-- mutation.py                Builds updates and changelog data
 |   |-- service.py                 Coordinates definitions and changelogs
 |   |-- types.py                   Defines input types and domain errors
@@ -122,6 +123,67 @@ services/
 `-- task_checkpoint/
   |-- __init__.py                Defines the package's public imports
   `-- service.py                 Parses and validates filesystem operations
+```
+
+### Controllers
+
+This package translates HTTP schemas to application service calls and
+application results to HTTP schemas. Resource packages compose endpoint-specific
+controllers for router compatibility; routers retain route declarations,
+dependency injection, and request extraction.
+
+```text
+controllers/
+|
+|-- activity/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates definitions
+|   |-- delete.py                 Deletes definitions
+|   |-- describe.py               Describes one definition
+|   |-- list.py                   Lists definitions
+|   |-- list_changelog.py         Lists changelog entries
+|   |-- patch.py                  Applies supplied changes
+|   `-- utils.py                  Translates patch schemas to service changes
+|-- loop_run/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- advance.py                Advances CLI checkpoints
+|   |-- create.py                 Creates runs from definitions
+|   |-- describe.py               Describes one run
+|   |-- list.py                   Lists runs
+|   `-- utils.py                  Translates results to response schemas
+|-- model/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- describe.py               Describes one curated entry
+|   `-- list.py                   Lists curated entries and availability
+|-- persona/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates resources
+|   |-- delete.py                 Deletes resources
+|   |-- describe.py               Describes one resource
+|   |-- list.py                   Lists resources
+|   `-- patch.py                  Applies supplied changes
+|-- pipeline/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates definitions
+|   |-- delete.py                 Deletes definitions
+|   |-- describe.py               Describes one definition
+|   |-- list.py                   Lists definitions
+|   |-- list_changelog.py         Lists changelog entries
+|   |-- patch.py                  Applies supplied changes
+|   `-- utils.py                  Translates request schemas to service inputs
+|-- provider/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- delete.py                 Deletes configuration
+|   |-- describe.py               Describes one configuration
+|   |-- list.py                   Lists configurations
+|   `-- patch.py                  Applies supplied changes
+`-- skill/
+    |-- __init__.py               Composes endpoint-specific controllers
+    |-- create.py                 Creates resources
+    |-- delete.py                 Deletes resources
+    |-- describe.py               Describes one resource
+    |-- list.py                   Lists resources
+    `-- patch.py                  Applies supplied changes
 ```
 
 ### Catalogs
@@ -178,6 +240,9 @@ cross-resource lookups; infrastructure owns database setup and migrations.
 repositories/
 |
 |-- __init__.py                    Declares persistence implementations
+|-- activities/
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists definitions and changelog entries
 |-- infrastructure/
 |   |-- __init__.py                Declares database setup utilities
 |   |-- local_tenant_seed.py       Creates the initial local workspace
@@ -225,10 +290,13 @@ repositories/
 This package defines typed internal domain state. It contains persisted
 documents, immutable changelog entries, availability projections, and values
 used between services and repositories. It does not define HTTP contracts.
+Activity definitions currently support `approval`, `quiz`, `direct_loop`,
+`refinement_loop`, and `roundtable_loop` types.
 
 ```text
 models/
 |
+|-- activity.py                    Defines definitions and changelog entries
 |-- changelog.py                   Defines shared immutable changelog values
 |-- instruction.py                 Defines persisted and available resource data
 |-- loop.py                        Defines definitions, agents, output, and history

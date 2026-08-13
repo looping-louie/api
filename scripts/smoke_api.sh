@@ -20,9 +20,9 @@ SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
 
 PERSONA_ID=""
 SKILL_ID=""
-LOOP_ID=""
-LOOP_RUN_ID=""
-LOOP_RUN_TOKEN=""
+ACTIVITY_ID=""
+ACTIVITY_RUN_ID=""
+ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
@@ -250,8 +250,8 @@ cleanup() {
         request DELETE "/pipelines/${PIPELINE_ID}" >/dev/null
     fi
 
-    if [[ -n "${LOOP_ID}" ]]; then
-        request DELETE "/loops/${LOOP_ID}" >/dev/null
+    if [[ -n "${ACTIVITY_ID}" ]]; then
+        request DELETE "/activities/${ACTIVITY_ID}" >/dev/null
     fi
 
     if [[ -n "${SKILL_ID}" ]]; then
@@ -433,79 +433,95 @@ request \
     '{"enabled": true}' \
     >/dev/null
 
-log "Creating loop"
+log "Creating activity"
 
-loop_response="$(
-    request POST "/loops" "$(
+activity_response="$(
+    request POST "/activities" "$(
         cat <<JSON
 {
-    "title": "Smoke Loop ${SMOKE_RUN_ID}",
+    "title": "Smoke Activity ${SMOKE_RUN_ID}",
     "description": "Created by scripts/smoke_api.sh",
-    "flow": "direct",
-    "stop_conditions": {
-        "max_iterations": 2
-    },
-    "agents": [
-        {
-            "model_id": "${model_id}",
-            "persona_id": "${PERSONA_ID}",
-            "role": "generator"
+    "type": "loop",
+    "config": {
+        "type": "loop",
+        "flow": "direct",
+        "stop_conditions": {
+            "max_iterations": 2
+        },
+        "agents": [
+            {
+                "model_id": "${model_id}",
+                "persona_id": "${PERSONA_ID}",
+                "role": "generator"
+            }
+        ],
+        "output_contract": {
+            "type": "text",
+            "description": "Produce a smoke-test answer."
         }
-    ],
-    "output_contract": {
-        "type": "text",
-        "description": "Produce a smoke-test answer."
     }
 }
 JSON
     )"
 )"
 
-LOOP_ID="$(printf '%s' "${loop_response}" | json_field "id")"
+ACTIVITY_ID="$(printf '%s' "${activity_response}" | json_field "id")"
 
-request GET "/loops/${LOOP_ID}" >/dev/null
-request GET "/loops?offset=0" >/dev/null
+request GET "/activities/${ACTIVITY_ID}" >/dev/null
+request GET "/activities?offset=0" >/dev/null
+request \
+    PATCH \
+    "/activities/${ACTIVITY_ID}" \
+    '{"description":"Updated by scripts/smoke_api.sh"}' \
+    >/dev/null
+request GET "/activities/${ACTIVITY_ID}/changelog?offset=0" >/dev/null
 
-loop_response="$(
-    request PATCH "/loops/${LOOP_ID}" "$(
+log "Creating pipeline"
+
+pipeline_response="$(
+    request POST "/pipelines" "$(
         cat <<JSON
 {
-    "description": "Updated by scripts/smoke_api.sh",
-    "stop_conditions": {
-        "max_iterations": 3
-    }
+    "title": "Smoke Pipeline ${SMOKE_RUN_ID}",
+    "description": "Created by scripts/smoke_api.sh",
+    "steps": [
+        {
+            "activity_id": "${ACTIVITY_ID}"
+        },
+        {
+            "activity_id": "${ACTIVITY_ID}"
+        }
+    ]
 }
 JSON
     )"
 )"
 
-request GET "/loops/${LOOP_ID}/changelog?offset=0" >/dev/null
+log "Creating activity run"
 
-log "Creating loop run"
-
-loop_run_response="$(
-    request POST "/loops/${LOOP_ID}/runs" \
-        '{"input":"Produce a smoke-test answer."}'
+activity_run_response="$(
+    request POST "/activities/${ACTIVITY_ID}/runs" \
+        '{"input":"Produce an activity smoke-test answer."}'
 )"
 
-LOOP_RUN_ID="$(printf '%s' "${loop_run_response}" | json_field "id")"
-LOOP_RUN_TOKEN="$(
-    printf '%s' "${loop_run_response}" | json_field "continuation_token"
+ACTIVITY_RUN_ID="$(printf '%s' "${activity_run_response}" | json_field "id")"
+ACTIVITY_RUN_TOKEN="$(
+    printf '%s' "${activity_run_response}" | json_field "continuation_token"
 )"
 
-request GET "/loops/${LOOP_ID}/runs?offset=0" >/dev/null
-request GET "/loops/${LOOP_ID}/runs/${LOOP_RUN_ID}" >/dev/null
-request POST "/loops/${LOOP_ID}/runs/${LOOP_RUN_ID}/continue" "$(
+request GET "/activities/${ACTIVITY_ID}/runs?offset=0" >/dev/null
+request GET "/activities/${ACTIVITY_ID}/runs/${ACTIVITY_RUN_ID}" >/dev/null
+request POST "/activities/${ACTIVITY_ID}/runs/${ACTIVITY_RUN_ID}/continue" "$(
     cat <<JSON
 {
-    "continuation_token": "${LOOP_RUN_TOKEN}",
-    "idempotency_key": "smoke-snapshot-${SMOKE_RUN_ID}",
+    "continuation_token": "${ACTIVITY_RUN_TOKEN}",
+    "idempotency_key": "activity-smoke-snapshot-${SMOKE_RUN_ID}",
     "result": {
         "action": "collect_snapshot",
-        "repo_context": "Smoke-test repository context.",
+        "repo_context": "Activity smoke-test repository context.",
         "workspace_metadata": {
             "workspace_path": "/workspace/smoke",
-            "source_commit_sha": "smoke-${SMOKE_RUN_ID}"
+            "source_commit_sha": "activity-smoke-${SMOKE_RUN_ID}"
         },
         "constitution": "Keep smoke-test changes small.",
         "project_profile": {
@@ -525,29 +541,6 @@ request POST "/loops/${LOOP_ID}/runs/${LOOP_RUN_ID}/continue" "$(
 }
 JSON
 )" >/dev/null
-
-log "Creating pipeline"
-
-pipeline_response="$(
-    request POST "/pipelines" "$(
-        cat <<JSON
-{
-    "title": "Smoke Pipeline ${SMOKE_RUN_ID}",
-    "description": "Created by scripts/smoke_api.sh",
-    "steps": [
-        {
-            "type": "loop",
-            "loop_id": "${LOOP_ID}"
-        },
-        {
-            "type": "human_gate",
-            "gate_type": "approval"
-        }
-    ]
-}
-JSON
-    )"
-)"
 
 PIPELINE_ID="$(
     printf '%s' "${pipeline_response}" | json_field "id"
@@ -577,13 +570,13 @@ log "Deleting resources in dependency order"
 request \
     PATCH \
     "/pipelines/${PIPELINE_ID}" \
-    '{"steps":[{"type":"human_gate","gate_type":"approval"},{"type":"human_gate","gate_type":"approval"}]}' \
+    "{\"steps\":[{\"activity_id\":\"${ACTIVITY_ID}\"},{\"activity_id\":\"${ACTIVITY_ID}\"}]}" \
     >/dev/null
 request DELETE "/pipelines/${PIPELINE_ID}" >/dev/null
 PIPELINE_ID=""
 
-request DELETE "/loops/${LOOP_ID}" >/dev/null
-LOOP_ID=""
+request DELETE "/activities/${ACTIVITY_ID}" >/dev/null
+ACTIVITY_ID=""
 
 request DELETE "/skills/${SKILL_ID}" >/dev/null
 SKILL_ID=""
@@ -591,7 +584,7 @@ SKILL_ID=""
 request DELETE "/personas/${PERSONA_ID}" >/dev/null
 PERSONA_ID=""
 
-request GET "/loops" >/dev/null
+request GET "/activities" >/dev/null
 request GET "/pipelines" >/dev/null
 request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null

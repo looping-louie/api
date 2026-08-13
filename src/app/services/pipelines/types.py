@@ -6,22 +6,10 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class PipelineQuizConfigInput:
-    """Quiz values accepted by create and patch operations."""
-
-    minimum_correct_answers: int
-    question_count: int = 10
-    option_count: int = 3
-
-
-@dataclass(frozen=True, slots=True)
 class PipelineStepInput:
     """Untrusted pipeline step values passed to the service."""
 
-    type: str
-    loop_id: str | None = None
-    gate_type: str | None = None
-    config: PipelineQuizConfigInput | None = None
+    activity_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,23 +65,3 @@ class InvalidPipelineStepsError(PipelineServiceError):
         super().__init__(f"Invalid pipeline field '{field_name}': {message}")
         self.field_name = field_name
         self.message = message
-
-
-class UnsupportedPipelineStepError(PipelineServiceError):
-    """Raised when a step discriminator is unsupported."""
-
-    def __init__(self, *, step_type: object) -> None:
-        """Store the rejected discriminator."""
-
-        super().__init__(f"Unsupported pipeline step type '{step_type}'.")
-        self.step_type = step_type
-
-
-class UnsupportedHumanGateTypeError(PipelineServiceError):
-    """Raised when a human gate discriminator is unsupported."""
-
-    def __init__(self, *, gate_type: object) -> None:
-        """Store the rejected gate type."""
-
-        super().__init__(f"Unsupported human gate type '{gate_type}'.")
-        self.gate_type = gate_type

@@ -22,3 +22,13 @@ def test_legacy_root_task_routes_are_not_exposed() -> None:
     assert "/task/start" not in paths
     assert "/task/continue" not in paths
     assert "/task/{run_id}" not in paths
+
+
+def test_legacy_loop_routes_are_not_exposed() -> None:
+    """The Activity resource replaces public loop management routes."""
+
+    app = FastAPI()
+    app.include_router(api_v1_router)
+    paths = set(app.openapi()['paths'])
+
+    assert not any(path.startswith('/api/v1/loops') for path in paths)

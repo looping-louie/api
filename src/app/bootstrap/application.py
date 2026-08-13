@@ -7,12 +7,12 @@ import logging
 from fastapi import FastAPI
 
 from src.app.bootstrap.pipeline import build_pipeline_controller
+from src.app.controllers.activity import ActivityController
 from src.app.catalogs.instructions.loader import (
     InstructionCatalog,
     load_instruction_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -20,6 +20,9 @@ from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
+)
+from src.app.repositories.activities.sqlite_repository import (
+    SqliteActivityRepository,
 )
 from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
@@ -66,8 +69,8 @@ from src.app.services.instructions.catalog import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
-from src.app.services.loops.catalog_seeder import seed_loop_catalog
 from src.app.services.loops.service import LoopService
+from src.app.services.activities.service import ActivityService
 from src.app.services.loop_runs import LoopRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
@@ -142,13 +145,6 @@ async def configure_application(
         workspace_name="Local workspace",
         user_id="local-user",
     )
-    installed_loops = await seed_loop_catalog(
-        database_path=resolved_settings.database_path,
-    )
-    LOGGER.info(
-        "Loop catalog installed: inserted=%d",
-        installed_loops,
-    )
 
     encryption_key = _require_encryption_key(
         resolved_settings,
@@ -168,6 +164,9 @@ async def configure_application(
         resolved_settings.database_path,
     )
     loop_repository = SqliteLoopRepository(
+        resolved_settings.database_path,
+    )
+    activity_repository = SqliteActivityRepository(
         resolved_settings.database_path,
     )
     loop_run_repository = SqliteLoopRunRepository(
@@ -246,10 +245,17 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    activity_service = ActivityService(
+        repository=activity_repository,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
     secret_service = FernetSecretService(encryption_key)
     loop_run_service = LoopRunService(
         repository=loop_run_repository,
         loop_service=loop_service,
+        activity_service=activity_service,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
@@ -277,15 +283,15 @@ async def configure_application(
     app.state.skill_controller = SkillController(
         skill_service=skill_service,
     )
-    app.state.loop_controller = LoopController(
-        loop_service=loop_service,
+    app.state.activity_controller = ActivityController(
+        activity_service=activity_service,
     )
     app.state.loop_run_controller = LoopRunController(
         loop_run_service=loop_run_service,
     )
     app.state.pipeline_controller = build_pipeline_controller(
         database_path=resolved_settings.database_path,
-        loop_repository=loop_repository,
+        activity_repository=activity_repository,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
