@@ -37,6 +37,8 @@ def build_app(
             request: Request,
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
+            """Inject the authenticated user required by route dependencies."""
+
             request.state.user_id = "user-1"
             return await call_next(request)
 

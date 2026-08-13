@@ -1,3 +1,5 @@
+"""Tests for filtering and describing the curated model catalog."""
+
 from datetime import date
 
 import pytest
@@ -30,6 +32,8 @@ def build_service(
     tenant_service: TenantService,
     repository: FakeProviderStateRepository,
 ) -> ModelCatalogService:
+    """Build a catalog service with models that distinguish every filter."""
+
     catalog = (
         build_model(
             model_id="coding-model",
