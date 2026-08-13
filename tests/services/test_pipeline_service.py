@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from itertools import count
 
 import pytest
@@ -10,6 +9,7 @@ import pytest
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
+    PipelineActivityDependencyInput,
     PipelineArchivedError,
     PipelineActivityInput,
     PipelineCreate,
@@ -20,7 +20,10 @@ from tests.conftest import IncrementingClock
 from tests.fakes.pipeline_repository import FakePipelineRepository
 
 
-def activity_step(name: str = 'Implementation activity') -> PipelineActivityInput:
+def activity_step(
+    name: str = 'Implementation activity',
+    depends_on: tuple[PipelineActivityDependencyInput, ...] = (),
+) -> PipelineActivityInput:
     """Build one inline direct-loop Activity input."""
 
     return PipelineActivityInput(
@@ -35,6 +38,16 @@ def activity_step(name: str = 'Implementation activity') -> PipelineActivityInpu
                 'description': 'A pipeline stage result.',
             },
         },
+        depends_on=depends_on,
+    )
+
+
+def dependency(activity: str, condition: str = 'succeed') -> PipelineActivityDependencyInput:
+    """Build one named pipeline dependency condition."""
+
+    return PipelineActivityDependencyInput(
+        activity=activity,
+        condition=condition,  # type: ignore[arg-type]
     )
 
 
@@ -107,6 +120,95 @@ async def test_create_rejects_fewer_than_two_steps(
     steps: tuple[PipelineActivityInput, ...],
 ) -> None:
     """Complete validation rejects empty and single-step pipelines."""
+
+    service, _ = build_service(tenant_service=tenant_service)
+
+    with pytest.raises(InvalidPipelineStepsError):
+        await service.create(user_id='user-1', payload=payload(steps=steps))
+
+
+@pytest.mark.asyncio
+async def test_create_resolves_named_dependency_graph(
+    tenant_service: TenantService,
+) -> None:
+    """Named dependencies resolve to generated Activities and retain conditions."""
+
+    service, _ = build_service(tenant_service=tenant_service)
+    created = await service.create(
+        user_id='user-1',
+        payload=payload(
+            steps=(
+                activity_step('Prepare'),
+                activity_step(
+                    'Validate',
+                    depends_on=(dependency('Prepare'),),
+                ),
+                activity_step(
+                    'Notify',
+                    depends_on=(
+                        dependency('Validate'),
+                        dependency('Prepare', 'failure'),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    assert created.steps[0].depends_on == ()
+    assert created.steps[1].depends_on[0].activity_id == created.steps[0].activity_id
+    assert created.steps[1].depends_on[0].condition == 'succeed'
+    assert [item.condition for item in created.steps[2].depends_on] == [
+        'succeed',
+        'failure',
+    ]
+    assert [item.activity_id for item in created.steps[2].depends_on] == [
+        created.steps[1].activity_id,
+        created.steps[0].activity_id,
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'steps',
+    [
+        (
+            activity_step(
+                'First',
+                depends_on=(dependency('Missing'),),
+            ),
+            activity_step('Second'),
+        ),
+        (
+            activity_step(
+                'First',
+                depends_on=(dependency('First'),),
+            ),
+            activity_step('Second'),
+        ),
+        (
+            activity_step('Duplicate'),
+            activity_step(
+                'Duplicate',
+                depends_on=(dependency('Duplicate'),),
+            ),
+        ),
+        (
+            activity_step(
+                'First',
+                depends_on=(dependency('Second'), dependency('Second', 'failure')),
+            ),
+            activity_step(
+                'Second',
+                depends_on=(dependency('First'),),
+            ),
+        ),
+    ],
+)
+async def test_create_rejects_invalid_dependency_graph(
+    tenant_service: TenantService,
+    steps: tuple[PipelineActivityInput, ...],
+) -> None:
+    """Pipeline dependencies must name valid, unambiguous, acyclic edges."""
 
     service, _ = build_service(tenant_service=tenant_service)
 

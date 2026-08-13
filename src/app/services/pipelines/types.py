@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineActivityDependencyInput:
+    """Named condition required by one inline Activity definition."""
+
+    activity: str
+    condition: Literal['succeed', 'failure']
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,6 +22,7 @@ class PipelineActivityInput:
     description: str
     type: str
     config: dict[str, object]
+    depends_on: tuple[PipelineActivityDependencyInput, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -18,6 +18,15 @@ PipelineChangeType = Literal[
     "disabled",
     "archived",
 ]
+PipelineDependencyCondition = Literal['succeed', 'failure']
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineStepDependency:
+    """Execution condition required from one preceding Activity."""
+
+    activity_id: str
+    condition: PipelineDependencyCondition
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +34,7 @@ class PipelineActivityStep:
     """Reference to one active workspace activity."""
 
     activity_id: str
+    depends_on: tuple[PipelineStepDependency, ...] = ()
 
 
 PipelineStep = PipelineActivityStep

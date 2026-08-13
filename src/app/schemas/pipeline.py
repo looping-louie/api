@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
 from src.app.schemas.shared import (
@@ -24,8 +24,30 @@ PipelineChangeTypeValue = Literal[
     "disabled",
     "archived",
 ]
+
+
+class PipelineStepDependencyRequest(RequestSchema):
+    """One named Activity condition required by a pipeline step."""
+
+    activity: NonEmptyString
+    condition: Literal['succeed', 'failure']
+
+
+class PipelineStepDependencyResponse(ResponseSchema):
+    """One named Activity condition returned for a pipeline step."""
+
+    activity: str
+    condition: Literal['succeed', 'failure']
+
+
 class PipelineActivityStepRequest(ActivityCreateRequest):
     """Activity definition created as one persisted pipeline step."""
+
+    depends_on: list[PipelineStepDependencyRequest] = Field(
+        default_factory=list,
+        validation_alias='dependsOn',
+        serialization_alias='dependsOn',
+    )
 
 
 class PipelineCreateRequest(RequestSchema):
@@ -56,6 +78,15 @@ class PipelinePatchRequest(RequestSchema):
         return self
 
 
+class PipelineActivityStepResponse(ActivityResponse):
+    """Pipeline Activity with its graph dependencies."""
+
+    depends_on: list[PipelineStepDependencyResponse] = Field(
+        default_factory=list,
+        serialization_alias='dependsOn',
+    )
+
+
 class PipelineResponse(ResponseSchema):
     """Pipeline representation with full Activity definitions for each step."""
 
@@ -63,7 +94,7 @@ class PipelineResponse(ResponseSchema):
     name: str
     description: str
     enabled: bool
-    steps: list[ActivityResponse]
+    steps: list[PipelineActivityStepResponse]
     created_at: datetime
     updated_at: datetime
 

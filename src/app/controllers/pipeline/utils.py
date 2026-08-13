@@ -2,11 +2,13 @@
 
 from src.app.schemas.pipeline import (
     PipelineActivityStepRequest,
+    PipelineActivityStepResponse,
+    PipelineStepDependencyResponse,
     PipelineResponse,
 )
-from src.app.schemas.activity import ActivityResponse
 from src.app.models.pipeline import PipelineDetails
 from src.app.services.pipelines.types import PipelineActivityInput
+from src.app.services.pipelines.types import PipelineActivityDependencyInput
 
 
 def pipeline_steps(
@@ -23,6 +25,13 @@ def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
         description=value.description,
         type=value.type,
         config=value.config.model_dump(by_alias=True),
+        depends_on=tuple(
+            PipelineActivityDependencyInput(
+                activity=dependency.activity,
+                condition=dependency.condition,
+            )
+            for dependency in value.depends_on
+        ),
     )
 
 
@@ -35,10 +44,36 @@ def pipeline_details_response(details: PipelineDetails) -> PipelineResponse:
         name=document.name,
         description=document.description,
         enabled=document.enabled,
-        steps=[
-            ActivityResponse.model_validate(activity)
-            for activity in details.activities
-        ],
+        steps=_step_responses(details),
         created_at=document.created_at,
         updated_at=document.updated_at,
     )
+
+
+def _step_responses(
+    details: PipelineDetails,
+) -> list[PipelineActivityStepResponse]:
+    """Attach named graph dependencies to resolved Activity responses."""
+
+    activity_names = {
+        activity.id: activity.name
+        for activity in details.activities
+    }
+    return [
+        PipelineActivityStepResponse.model_validate(activity).model_copy(
+            update={
+                'depends_on': [
+                PipelineStepDependencyResponse(
+                    activity=activity_names[dependency.activity_id],
+                    condition=dependency.condition,
+                )
+                for dependency in step.depends_on
+                ],
+            },
+        )
+        for step, activity in zip(
+            details.document.steps,
+            details.activities,
+            strict=True,
+        )
+    ]

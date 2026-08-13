@@ -16,6 +16,7 @@ from src.app.models.pipeline import (
     PipelineDetails,
     PipelineDocument,
     PipelineActivityStep,
+    PipelineStepDependency,
 )
 from src.app.repositories.pipelines.repository import (
     PipelineRepository,
@@ -204,18 +205,16 @@ class PipelineService:
             updated_at=now,
             updated_by=actor_id,
         )
+        inputs = normalize_steps(payload.steps)
         activities, activity_entries = self._build_activities(
             workspace_id=workspace_id,
             actor_id=actor_id,
-            inputs=normalize_steps(payload.steps),
+            inputs=inputs,
             now=now,
         )
         document = replace(
             document,
-            steps=tuple(
-                PipelineActivityStep(activity_id=activity.id)
-                for activity in activities
-            ),
+            steps=self._steps(activities, inputs),
         )
         entry = build_entry(
             id_factory=self._id_factory,
@@ -256,15 +255,16 @@ class PipelineService:
         activity_entries: list[ActivityChangelogEntry] = []
         generated_steps = None
         if payload.steps is not None:
+            inputs = normalize_steps(payload.steps)
             activities, activity_entries = self._build_activities(
                 workspace_id=workspace_id,
                 actor_id=actor_id,
-                inputs=normalize_steps(payload.steps),
+                inputs=inputs,
                 now=self._clock(),
             )
-            generated_steps = tuple(
-                PipelineActivityStep(activity_id=activity.id)
-                for activity in activities
+            generated_steps = self._steps(
+                activities,
+                inputs,
             )
         updated = apply_patch(
             current,
@@ -303,6 +303,31 @@ class PipelineService:
         if not updated_persisted:
             raise PipelineNotFoundError(pipeline_id=pipeline_id)
         return updated
+
+    @staticmethod
+    def _steps(
+        activities: list[ActivityDocument],
+        inputs: tuple[PipelineActivityInput, ...],
+    ) -> tuple[PipelineActivityStep, ...]:
+        """Resolve named input dependencies to their generated Activity IDs."""
+
+        activity_ids_by_name = {
+            value.name: activity.id
+            for value, activity in zip(inputs, activities, strict=True)
+        }
+        return tuple(
+            PipelineActivityStep(
+                activity_id=activity.id,
+                depends_on=tuple(
+                    PipelineStepDependency(
+                        activity_id=activity_ids_by_name[dependency.activity],
+                        condition=dependency.condition,
+                    )
+                    for dependency in value.depends_on
+                ),
+            )
+            for value, activity in zip(inputs, activities, strict=True)
+        )
 
     async def archive(
         self,

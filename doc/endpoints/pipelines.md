@@ -1,9 +1,11 @@
 # Pipelines
 
-A pipeline stores an ordered sequence of Activity definitions. The API creates
+A pipeline stores a declared sequence of Activity definitions. The API creates
 an independent persisted Activity record for every supplied step, then stores
-the generated Activity IDs in execution order. The API manages and validates
-the definition but does not execute it.
+the generated Activity IDs in that display order. A step can declare `dependsOn`
+conditions for other named steps, forming an acyclic execution graph that
+controls execution eligibility. The API manages and validates the definition
+but does not execute it.
 
 ## Pipeline calls
 
@@ -20,6 +22,11 @@ Creation requires a non-empty `name`, a `description`, and at least two steps.
 New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
 `steps`; supplying `steps` replaces the complete ordered array. Archived
 pipelines are immutable and omitted from unfiltered listings.
+
+Each step has a `dependsOn` array. Every item contains an `activity` name from
+another step and a `condition` of `succeed` or `failure`. The array can be
+empty. Dependency targets must be unambiguous and the graph cannot contain
+cycles.
 
 ## List pipelines
 
@@ -48,6 +55,7 @@ Example response (`200 OK`):
           "id": "activity-release-review",
           "workspace_id": "workspace-acme",
           "name": "ReviewReleasePlan",
+          "dependsOn": [],
           "description": "Reach a shared decision about release readiness.",
           "status": "active",
           "type": "roundtable_loop",
@@ -70,6 +78,9 @@ Example response (`200 OK`):
           "id": "activity-readiness-quiz",
           "workspace_id": "workspace-acme",
           "name": "DeploymentReadinessQuiz",
+          "dependsOn": [
+            {"activity": "ReviewReleasePlan", "condition": "succeed"}
+          ],
           "description": "Confirm operational readiness before deployment.",
           "status": "active",
           "type": "quiz",
@@ -87,6 +98,10 @@ Example response (`200 OK`):
           "id": "activity-production-approval",
           "workspace_id": "workspace-acme",
           "name": "ApproveProductionRelease",
+          "dependsOn": [
+            {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+            {"activity": "ReviewReleasePlan", "condition": "failure"}
+          ],
           "description": "A release manager approves deployment.",
           "status": "active",
           "type": "approval",
@@ -128,6 +143,7 @@ Example response (`200 OK`):
       "id": "activity-release-review",
       "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
+      "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -150,6 +166,9 @@ Example response (`200 OK`):
       "id": "activity-readiness-quiz",
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
+      "dependsOn": [
+        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+      ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
@@ -167,6 +186,10 @@ Example response (`200 OK`):
       "id": "activity-production-approval",
       "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
+      "dependsOn": [
+        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "ReviewReleasePlan", "condition": "failure"}
+      ],
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
@@ -203,6 +226,7 @@ Content-Type: application/json
   "steps": [
     {
       "name": "ReviewReleasePlan",
+      "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
       "type": "roundtable_loop",
       "config": {
@@ -218,6 +242,9 @@ Content-Type: application/json
     },
     {
       "name": "DeploymentReadinessQuiz",
+      "dependsOn": [
+        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+      ],
       "description": "Confirm operational readiness before deployment.",
       "type": "quiz",
       "config": {
@@ -228,6 +255,10 @@ Content-Type: application/json
     },
     {
       "name": "ApproveProductionRelease",
+      "dependsOn": [
+        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "ReviewReleasePlan", "condition": "failure"}
+      ],
       "description": "A release manager approves deployment.",
       "type": "approval",
       "config": {}
@@ -249,6 +280,7 @@ Example response (`201 Created`):
       "id": "activity-release-review",
       "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
+      "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -271,6 +303,9 @@ Example response (`201 Created`):
       "id": "activity-readiness-quiz",
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
+      "dependsOn": [
+        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+      ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
@@ -288,6 +323,10 @@ Example response (`201 Created`):
       "id": "activity-production-approval",
       "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
+      "dependsOn": [
+        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "ReviewReleasePlan", "condition": "failure"}
+      ],
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
@@ -336,6 +375,7 @@ Example response (`200 OK`):
       "id": "activity-release-review",
       "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
+      "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -358,6 +398,9 @@ Example response (`200 OK`):
       "id": "activity-readiness-quiz",
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
+      "dependsOn": [
+        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+      ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
@@ -375,6 +418,10 @@ Example response (`200 OK`):
       "id": "activity-production-approval",
       "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
+      "dependsOn": [
+        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "ReviewReleasePlan", "condition": "failure"}
+      ],
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",

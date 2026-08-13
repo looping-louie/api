@@ -12,6 +12,7 @@ from src.app.models.pipeline import (
     PipelineChangeType,
     PipelineDocument,
     PipelineActivityStep,
+    PipelineStepDependency,
     PipelineStatus,
 )
 from src.app.repositories.shared.json_mapping import (
@@ -51,7 +52,7 @@ async def insert_steps(
     connection: aiosqlite.Connection,
     document: PipelineDocument,
 ) -> None:
-    """Insert all pipeline steps in execution order."""
+    """Insert all pipeline steps in their declared display order."""
 
     await connection.executemany(
         """
@@ -69,6 +70,27 @@ async def insert_steps(
             for position, step in enumerate(document.steps)
         ],
     )
+    dependencies = [
+        (
+            document.workspace_id,
+            document.id,
+            position,
+            dependency.activity_id,
+            dependency.condition,
+        )
+        for position, step in enumerate(document.steps)
+        for dependency in step.depends_on
+    ]
+    if dependencies:
+        await connection.executemany(
+            """
+            INSERT INTO pipeline_step_dependencies (
+                workspace_id, pipeline_id, dependent_position,
+                dependency_activity_id, condition
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            dependencies,
+        )
 
 
 async def insert_changelog(
@@ -105,7 +127,7 @@ async def to_document(
 
     cursor = await connection.execute(
         """
-        SELECT activity_id
+        SELECT position, activity_id
         FROM pipeline_steps
         WHERE workspace_id = ? AND pipeline_id = ?
         ORDER BY position ASC
@@ -116,6 +138,30 @@ async def to_document(
         step_rows = await cursor.fetchall()
     finally:
         await cursor.close()
+    dependency_cursor = await connection.execute(
+        """
+        SELECT dependent_position, dependency_activity_id, condition
+        FROM pipeline_step_dependencies
+        WHERE workspace_id = ? AND pipeline_id = ?
+        ORDER BY dependent_position ASC, rowid ASC
+        """,
+        (row['workspace_id'], row['id']),
+    )
+    try:
+        dependency_rows = await dependency_cursor.fetchall()
+    finally:
+        await dependency_cursor.close()
+    dependencies_by_position: dict[int, list[PipelineStepDependency]] = {}
+    for dependency_row in dependency_rows:
+        dependencies_by_position.setdefault(
+            int(dependency_row['dependent_position']),
+            [],
+        ).append(
+            PipelineStepDependency(
+                activity_id=str(dependency_row['dependency_activity_id']),
+                condition=dependency_row['condition'],
+            )
+        )
 
     return PipelineDocument(
         id=str(row["id"]),
@@ -123,7 +169,13 @@ async def to_document(
         name=str(row["name"]),
         description=str(row["description"]),
         status=cast(PipelineStatus, row["status"]),
-        steps=tuple(_to_step(step_row) for step_row in step_rows),
+        steps=tuple(
+            _to_step(
+                step_row,
+                dependencies_by_position.get(int(step_row['position']), []),
+            )
+            for step_row in step_rows
+        ),
         created_at=datetime.fromisoformat(row["created_at"]),
         created_by=str(row["created_by"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
@@ -131,10 +183,16 @@ async def to_document(
     )
 
 
-def _to_step(row: aiosqlite.Row) -> PipelineActivityStep:
+def _to_step(
+    row: aiosqlite.Row,
+    dependencies: list[PipelineStepDependency],
+) -> PipelineActivityStep:
     """Build one activity reference step from persistence."""
 
-    return PipelineActivityStep(activity_id=str(row["activity_id"]))
+    return PipelineActivityStep(
+        activity_id=str(row["activity_id"]),
+        depends_on=tuple(dependencies),
+    )
 
 
 def to_changelog_entry(row: aiosqlite.Row) -> PipelineChangelogEntry:

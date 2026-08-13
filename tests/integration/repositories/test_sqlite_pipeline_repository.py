@@ -16,6 +16,7 @@ from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineChangelogEntry,
     PipelineDocument,
+    PipelineStepDependency,
 )
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
@@ -195,7 +196,7 @@ async def test_failed_generated_activity_insert_rolls_back_pipeline_creation(
 
 
 @pytest.mark.asyncio
-async def test_round_trips_ordered_activity_steps(
+async def test_round_trips_ordered_activity_steps_and_dependencies(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
@@ -208,8 +209,15 @@ async def test_round_trips_ordered_activity_steps(
         build_pipeline(),
         steps=(
             PipelineActivityStep(activity_id='activity-1'),
-            PipelineActivityStep(activity_id='activity-1'),
-            PipelineActivityStep(activity_id='activity-2'),
+            PipelineActivityStep(
+                activity_id='activity-2',
+                depends_on=(
+                    PipelineStepDependency(
+                        activity_id='activity-1',
+                        condition='succeed',
+                    ),
+                ),
+            ),
             PipelineActivityStep(activity_id='activity-3'),
         ),
     )

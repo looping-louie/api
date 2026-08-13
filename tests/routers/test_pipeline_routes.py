@@ -60,10 +60,13 @@ def pipeline_payload(
     }
 
 
-def activity_payload(name: str) -> dict[str, object]:
+def activity_payload(
+    name: str,
+    depends_on: list[dict[str, str]] | None = None,
+) -> dict[str, object]:
     """Build one valid inline Activity definition."""
 
-    return {
+    payload: dict[str, object] = {
         'name': name,
         'description': 'Complete one pipeline stage.',
         'type': 'direct_loop',
@@ -76,6 +79,9 @@ def activity_payload(name: str) -> dict[str, object]:
             },
         },
     }
+    if depends_on is not None:
+        payload['dependsOn'] = depends_on
+    return payload
 
 
 def test_pipeline_crud_changelog_and_archival_routes(
@@ -166,6 +172,32 @@ def test_pipeline_creation_persists_inline_activity_definitions(
 
     assert response.status_code == 201
     assert len(response.json()['steps']) == 2
+
+
+def test_pipeline_returns_named_step_dependencies(
+    tenant_service: TenantService,
+) -> None:
+    """Pipeline responses expose graph edges with named Activity conditions."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(
+            steps=[
+                activity_payload('Prepare'),
+                activity_payload(
+                    'Validate',
+                    [{'activity': 'Prepare', 'condition': 'succeed'}],
+                ),
+            ],
+        ),
+    )
+
+    assert response.status_code == 201
+    assert response.json()['steps'][0]['dependsOn'] == []
+    assert response.json()['steps'][1]['dependsOn'] == [
+        {'activity': 'Prepare', 'condition': 'succeed'},
+    ]
 
 
 def test_generic_body_validation_also_uses_api_envelope(
