@@ -92,6 +92,43 @@ Example response (`201 Created`):
 }
 ```
 
+## Update a pipeline
+
+`PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `title`,
+`description`, `enabled`, and `steps`. Supplying `steps` replaces the complete
+ordered array and creates new independent Activity records from the supplied
+inline definitions.
+
+```http
+PATCH /api/v1/pipelines/pipeline-production-release-review
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "enabled": false
+}
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "pipeline-production-release-review",
+  "title": "Production release review",
+  "description": "Review a release, collect readiness information, and request approval.",
+  "enabled": false,
+  "steps": [
+    {"activity_id": "activity-release-review"},
+    {"activity_id": "activity-readiness-quiz"},
+    {"activity_id": "activity-production-approval"}
+  ],
+  "created_at": "2026-08-13T10:00:00Z",
+  "updated_at": "2026-08-13T10:15:00Z"
+}
+```
+
 The list accepts a non-negative `offset`, optional case-insensitive `search`
 over title and description, and optional `status` of `active`, `disabled`, or
 `archived`. Active pipelines sort before disabled and archived pipelines.

@@ -298,6 +298,47 @@ Example response (`201 Created`):
 }
 ```
 
+## Update an activity
+
+`PATCH /api/v1/activities/{activity_id}` accepts one or more of `title`,
+`description`, `status`, and `config`. `status` must be `active`, `disabled`,
+or `archived`. A replacement `config` must match the persisted immutable
+Activity type and must not include `type`.
+
+```http
+PATCH /api/v1/activities/activity-implementation
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "status": "disabled"
+}
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "activity-implementation",
+  "workspace_id": "workspace-acme",
+  "title": "Implement requested change",
+  "description": "Make and validate a focused code change.",
+  "status": "disabled",
+  "type": "direct_loop",
+  "config": {
+    "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
+    "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
+    "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+  },
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:15:00Z",
+  "updated_by": "user-123"
+}
+```
+
 ## Loop activity runs
 
 Only active activities with `type: "direct_loop"` or

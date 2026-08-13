@@ -13,7 +13,10 @@ The supported `provider_id` values are `anthropic`, `nvidia`, `ollama`,
 | `PATCH` | `/api/v1/providers/{provider_id}` | Updates credentials, base URL, or enabled state. |
 | `DELETE` | `/api/v1/providers/{provider_id}` | Deletes workspace configuration and encrypted credentials. |
 
-## Patch Provider Request
+## Update a provider
+
+`PATCH /api/v1/providers/{provider_id}` updates the selected workspace
+configuration.
 
 | Field | Description |
 | ----- | ----------- |
@@ -26,15 +29,16 @@ At least one field must be present. Initial configuration is enabled unless
 enabled, are tested before storage. The API never returns the complete key:
 provider responses contain only `key_trimmed`.
 
-## Configure Provider Example
+```http
+PATCH /api/v1/providers/openai
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
 
-```sh
-curl -s -X PATCH http://127.0.0.1:8000/api/v1/providers/openai \
-  -H "Content-Type: application/json" \
-  -H "X-Workspace-ID: workspace-id" \
-  -d '{
-    "api_key": "provider-api-key"
-  }'
+```json
+{
+  "api_key": "provider-api-key"
+}
 ```
 
 Example response (`200 OK`):
