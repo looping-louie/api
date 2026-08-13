@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
 import aiosqlite
@@ -12,6 +13,7 @@ import aiosqlite
 from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
+    PipelineDetails,
     PipelineDocument,
     PipelineStatus,
 )
@@ -96,6 +98,45 @@ class SqlitePipelineRepository:
             if row is None:
                 return None
             return await to_document(connection, row)
+
+    async def get_with_activities(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+    ) -> PipelineDetails | None:
+        """Return one pipeline with Activity documents in step order."""
+
+        async with self._connect() as connection:
+            row = await self._get_row(
+                connection,
+                workspace_id,
+                pipeline_id,
+            )
+            if row is None:
+                return None
+            document = await to_document(connection, row)
+            cursor = await connection.execute(
+                """
+                SELECT activities.*
+                FROM pipeline_steps
+                JOIN activities
+                    ON activities.workspace_id = pipeline_steps.workspace_id
+                    AND activities.id = pipeline_steps.activity_id
+                WHERE pipeline_steps.workspace_id = ?
+                    AND pipeline_steps.pipeline_id = ?
+                ORDER BY pipeline_steps.position ASC
+                """,
+                (workspace_id, pipeline_id),
+            )
+            try:
+                activity_rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return PipelineDetails(
+            document=document,
+            activities=tuple(self._activity_document(row) for row in activity_rows),
+        )
 
     async def create(
         self,
@@ -360,6 +401,24 @@ class SqlitePipelineRepository:
                     json.dumps(entry.content) if entry.content is not None else None,
                 ),
             )
+
+    @staticmethod
+    def _activity_document(row: aiosqlite.Row) -> ActivityDocument:
+        """Map one resolved pipeline Activity row to its domain document."""
+
+        return ActivityDocument(
+            id=str(row['id']),
+            workspace_id=str(row['workspace_id']),
+            title=str(row['title']),
+            description=str(row['description']),
+            status=row['status'],
+            type=row['activity_type'],
+            config=json.loads(row['config_json']),
+            created_at=datetime.fromisoformat(row['created_at']),
+            created_by=str(row['created_by']),
+            updated_at=datetime.fromisoformat(row['updated_at']),
+            updated_by=str(row['updated_by']),
+        )
 
     @asynccontextmanager
     async def _connect(self) -> AsyncIterator[aiosqlite.Connection]:

@@ -152,6 +152,13 @@ async def test_creates_generated_activities_with_pipeline_atomically(
         workspace_id='workspace-1',
         pipeline_id=document.id,
     ) == document
+    details = await repository.get_with_activities(
+        workspace_id='workspace-1',
+        pipeline_id=document.id,
+    )
+    assert details is not None
+    assert details.document == document
+    assert details.activities == (first, second)
 
 
 @pytest.mark.asyncio

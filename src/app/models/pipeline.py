@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
 
 
@@ -49,6 +50,14 @@ class PipelineDocument:
         """Expose active state through the public boolean contract."""
 
         return self.status == "active"
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineDetails:
+    """Pipeline definition and Activity documents resolved in step order."""
+
+    document: PipelineDocument
+    activities: tuple[ActivityDocument, ...]
 
 
 @dataclass(frozen=True, slots=True)

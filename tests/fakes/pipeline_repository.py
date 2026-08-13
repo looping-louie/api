@@ -7,6 +7,7 @@ from copy import deepcopy
 from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
+    PipelineDetails,
     PipelineDocument,
     PipelineStatus,
 )
@@ -69,6 +70,33 @@ class FakePipelineRepository:
 
         document = self.documents.get((workspace_id, pipeline_id))
         return deepcopy(document) if document is not None else None
+
+    async def get_with_activities(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+    ) -> PipelineDetails | None:
+        """Return one pipeline and its generated Activities in step order."""
+
+        document = await self.get(
+            workspace_id=workspace_id,
+            pipeline_id=pipeline_id,
+        )
+        if document is None:
+            return None
+        activities_by_id = {
+            activity.id: activity
+            for activity in self.activity_documents
+            if activity.workspace_id == workspace_id
+        }
+        return PipelineDetails(
+            document=document,
+            activities=tuple(
+                deepcopy(activities_by_id[step.activity_id])
+                for step in document.steps
+            ),
+        )
 
     async def create(
         self,

@@ -7,6 +7,7 @@ from typing import Protocol, Sequence
 from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
+    PipelineDetails,
     PipelineDocument,
     PipelineStatus,
 )
@@ -35,6 +36,16 @@ class PipelineRepository(Protocol):
         pipeline_id: str,
     ) -> PipelineDocument | None:
         """Return one pipeline if present."""
+
+        ...
+
+    async def get_with_activities(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+    ) -> PipelineDetails | None:
+        """Return one pipeline and its ordered Activity documents."""
 
         ...
 

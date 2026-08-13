@@ -25,7 +25,8 @@ pipelines are immutable and omitted from unfiltered listings.
 
 `GET /api/v1/pipelines` returns ten pipelines after the optional non-negative
 `offset`. `search` matches title and description case-insensitively, and
-`status` accepts `active`, `disabled`, or `archived`.
+`status` accepts `active`, `disabled`, or `archived`. Each Pipeline resolves
+every stored step to its full persisted Activity.
 
 ```http
 GET /api/v1/pipelines?offset=0&status=active&search=release
@@ -43,9 +44,58 @@ Example response (`200 OK`):
       "description": "Review a release, collect readiness information, and request approval.",
       "enabled": true,
       "steps": [
-        {"activity_id": "activity-release-review"},
-        {"activity_id": "activity-readiness-quiz"},
-        {"activity_id": "activity-production-approval"}
+        {
+          "id": "activity-release-review",
+          "workspace_id": "workspace-acme",
+          "title": "Review release plan",
+          "description": "Reach a shared decision about release readiness.",
+          "status": "active",
+          "type": "roundtable_loop",
+          "config": {
+            "stop_conditions": {
+              "max_iterations": 2
+            },
+            "agents": [],
+            "output_contract": {
+              "type": "text",
+              "description": "Release decision."
+            }
+          },
+          "created_at": "2026-08-13T10:00:00Z",
+          "created_by": "user-123",
+          "updated_at": "2026-08-13T10:00:00Z",
+          "updated_by": "user-123"
+        },
+        {
+          "id": "activity-readiness-quiz",
+          "workspace_id": "workspace-acme",
+          "title": "Deployment readiness quiz",
+          "description": "Confirm operational readiness before deployment.",
+          "status": "active",
+          "type": "quiz",
+          "config": {
+            "quiz": {
+              "questions": []
+            }
+          },
+          "created_at": "2026-08-13T10:00:00Z",
+          "created_by": "user-123",
+          "updated_at": "2026-08-13T10:00:00Z",
+          "updated_by": "user-123"
+        },
+        {
+          "id": "activity-production-approval",
+          "workspace_id": "workspace-acme",
+          "title": "Approve production release",
+          "description": "A release manager approves deployment.",
+          "status": "active",
+          "type": "approval",
+          "config": {},
+          "created_at": "2026-08-13T10:00:00Z",
+          "created_by": "user-123",
+          "updated_at": "2026-08-13T10:00:00Z",
+          "updated_by": "user-123"
+        }
       ],
       "created_at": "2026-08-13T10:00:00Z",
       "updated_at": "2026-08-13T10:00:00Z"
@@ -58,7 +108,7 @@ Example response (`200 OK`):
 ## Describe a pipeline
 
 `GET /api/v1/pipelines/{pipeline_id}` returns the complete ordered definition
-and the generated Activity ID for every step.
+with the full persisted Activity for every step, including its generated ID.
 
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review
@@ -74,9 +124,58 @@ Example response (`200 OK`):
   "description": "Review a release, collect readiness information, and request approval.",
   "enabled": true,
   "steps": [
-    {"activity_id": "activity-release-review"},
-    {"activity_id": "activity-readiness-quiz"},
-    {"activity_id": "activity-production-approval"}
+    {
+      "id": "activity-release-review",
+      "workspace_id": "workspace-acme",
+      "title": "Review release plan",
+      "description": "Reach a shared decision about release readiness.",
+      "status": "active",
+      "type": "roundtable_loop",
+      "config": {
+        "stop_conditions": {
+          "max_iterations": 2
+        },
+        "agents": [],
+        "output_contract": {
+          "type": "text",
+          "description": "Release decision."
+        }
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    },
+    {
+      "id": "activity-readiness-quiz",
+      "workspace_id": "workspace-acme",
+      "title": "Deployment readiness quiz",
+      "description": "Confirm operational readiness before deployment.",
+      "status": "active",
+      "type": "quiz",
+      "config": {
+        "quiz": {
+          "questions": []
+        }
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    },
+    {
+      "id": "activity-production-approval",
+      "workspace_id": "workspace-acme",
+      "title": "Approve production release",
+      "description": "A release manager approves deployment.",
+      "status": "active",
+      "type": "approval",
+      "config": {},
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    }
   ],
   "created_at": "2026-08-13T10:00:00Z",
   "updated_at": "2026-08-13T10:00:00Z"
@@ -88,7 +187,8 @@ Example response (`200 OK`):
 `POST /api/v1/pipelines` creates an enabled pipeline in the workspace supplied
 by `X-Workspace-ID`. Supply complete Activity definitions in execution order.
 The API validates and persists each Activity in the same transaction, assigns
-each one an ID, and stores those IDs as Pipeline steps.
+each one an ID, and stores those IDs as Pipeline steps. The response resolves
+each stored step to its full persisted Activity.
 
 ```http
 POST /api/v1/pipelines
@@ -145,9 +245,58 @@ Example response (`201 Created`):
   "description": "Review a release, collect readiness information, and request approval.",
   "enabled": true,
   "steps": [
-    {"activity_id": "activity-release-review"},
-    {"activity_id": "activity-readiness-quiz"},
-    {"activity_id": "activity-production-approval"}
+    {
+      "id": "activity-release-review",
+      "workspace_id": "workspace-acme",
+      "title": "Review release plan",
+      "description": "Reach a shared decision about release readiness.",
+      "status": "active",
+      "type": "roundtable_loop",
+      "config": {
+        "stop_conditions": {
+          "max_iterations": 2
+        },
+        "agents": [],
+        "output_contract": {
+          "type": "text",
+          "description": "Release decision."
+        }
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    },
+    {
+      "id": "activity-readiness-quiz",
+      "workspace_id": "workspace-acme",
+      "title": "Deployment readiness quiz",
+      "description": "Confirm operational readiness before deployment.",
+      "status": "active",
+      "type": "quiz",
+      "config": {
+        "quiz": {
+          "questions": []
+        }
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    },
+    {
+      "id": "activity-production-approval",
+      "workspace_id": "workspace-acme",
+      "title": "Approve production release",
+      "description": "A release manager approves deployment.",
+      "status": "active",
+      "type": "approval",
+      "config": {},
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    }
   ],
   "created_at": "2026-08-13T10:00:00Z",
   "updated_at": "2026-08-13T10:00:00Z"
@@ -159,7 +308,8 @@ Example response (`201 Created`):
 `PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `title`,
 `description`, `enabled`, and `steps`. Supplying `steps` replaces the complete
 ordered array and creates new independent Activity records from the supplied
-inline definitions.
+inline definitions. The response resolves every stored step to its full
+persisted Activity.
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review
@@ -182,9 +332,58 @@ Example response (`200 OK`):
   "description": "Review a release, collect readiness information, and request approval.",
   "enabled": false,
   "steps": [
-    {"activity_id": "activity-release-review"},
-    {"activity_id": "activity-readiness-quiz"},
-    {"activity_id": "activity-production-approval"}
+    {
+      "id": "activity-release-review",
+      "workspace_id": "workspace-acme",
+      "title": "Review release plan",
+      "description": "Reach a shared decision about release readiness.",
+      "status": "active",
+      "type": "roundtable_loop",
+      "config": {
+        "stop_conditions": {
+          "max_iterations": 2
+        },
+        "agents": [],
+        "output_contract": {
+          "type": "text",
+          "description": "Release decision."
+        }
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    },
+    {
+      "id": "activity-readiness-quiz",
+      "workspace_id": "workspace-acme",
+      "title": "Deployment readiness quiz",
+      "description": "Confirm operational readiness before deployment.",
+      "status": "active",
+      "type": "quiz",
+      "config": {
+        "quiz": {
+          "questions": []
+        }
+      },
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    },
+    {
+      "id": "activity-production-approval",
+      "workspace_id": "workspace-acme",
+      "title": "Approve production release",
+      "description": "A release manager approves deployment.",
+      "status": "active",
+      "type": "approval",
+      "config": {},
+      "created_at": "2026-08-13T10:00:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-13T10:00:00Z",
+      "updated_by": "user-123"
+    }
   ],
   "created_at": "2026-08-13T10:00:00Z",
   "updated_at": "2026-08-13T10:15:00Z"
@@ -195,20 +394,11 @@ The list accepts a non-negative `offset`, optional case-insensitive `search`
 over title and description, and optional `status` of `active`, `disabled`, or
 `archived`. Active pipelines sort before disabled and archived pipelines.
 
-## Pipeline steps
-
-A response step contains the generated ID of its independently persisted
-Activity:
-
-```json
-{
-  "activity_id": "activity-id"
-}
-```
-
-Pipeline creation and step replacement both accept the same full Activity
-definition shape as `POST /api/v1/activities`. Replacing steps creates new
-Activity records; it does not modify or delete Activities from prior steps.
+Every Pipeline response resolves each step to the complete Activity
+representation. Pipeline creation and step replacement both accept the same
+full Activity definition shape as `POST /api/v1/activities`. Replacing steps
+creates new Activity records; it does not modify or delete Activities from
+prior steps.
 
 Every create, patch, enablement change, and archival appends a changelog entry
 in the same transaction. Step diffs report additions, removals, positional
@@ -235,7 +425,12 @@ Example response (`200 OK`):
       "change_type": "disabled",
       "actor_id": "user-123",
       "changed_at": "2026-08-13T10:15:00Z",
-      "diff": {"enabled": {"from": true, "to": false}},
+      "diff": {
+        "enabled": {
+          "from": true,
+          "to": false
+        }
+      },
       "content": null
     }
   ],

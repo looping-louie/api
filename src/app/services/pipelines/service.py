@@ -13,6 +13,7 @@ from src.app.models.activity import (
 )
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
+    PipelineDetails,
     PipelineDocument,
     PipelineActivityStep,
 )
@@ -114,6 +115,67 @@ class PipelineService:
             workspace_id=workspace_id,
             pipeline_id=pipeline_id,
         )
+
+    async def list_details(
+        self,
+        *,
+        user_id: str,
+        offset: int,
+        status: str | None = None,
+        search: str | None = None,
+        requested_workspace_id: str | None = None,
+    ) -> tuple[list[PipelineDetails], int]:
+        """Return one filtered page with Activity definitions resolved."""
+
+        documents, total = await self.list(
+            user_id=user_id,
+            offset=offset,
+            status=status,
+            search=search,
+            requested_workspace_id=requested_workspace_id,
+        )
+        details = [
+            await self._pipeline_details(
+                workspace_id=document.workspace_id,
+                pipeline_id=document.id,
+            )
+            for document in documents
+        ]
+        return details, total
+
+    async def describe(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineDetails:
+        """Return one pipeline with its ordered Activity definitions."""
+
+        workspace_id = await self._workspace_id(
+            user_id,
+            requested_workspace_id,
+        )
+        return await self._pipeline_details(
+            workspace_id=workspace_id,
+            pipeline_id=pipeline_id,
+        )
+
+    async def _pipeline_details(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+    ) -> PipelineDetails:
+        """Resolve one persisted pipeline and its ordered Activities."""
+
+        details = await self._repository.get_with_activities(
+            workspace_id=workspace_id,
+            pipeline_id=pipeline_id,
+        )
+        if details is None:
+            raise PipelineNotFoundError(pipeline_id=pipeline_id)
+        return details
 
     async def create(
         self,

@@ -89,9 +89,14 @@ def test_pipeline_crud_changelog_and_archival_routes(
     created = created_response.json()
     pipeline_id = created['id']
     assert len(created['steps']) == 2
-    assert all(step['activity_id'] for step in created['steps'])
+    assert all(step['id'] for step in created['steps'])
+    assert [step['title'] for step in created['steps']] == [
+        'Implementation activity',
+        'Validation activity',
+    ]
 
     fetched = client.get(f'/api/v1/pipelines/{pipeline_id}')
+    listed_before_update = client.get('/api/v1/pipelines')
     patched = client.patch(
         f'/api/v1/pipelines/{pipeline_id}',
         json={
@@ -107,7 +112,14 @@ def test_pipeline_crud_changelog_and_archival_routes(
     archived = client.get('/api/v1/pipelines?status=archived')
 
     assert fetched.status_code == 200
-    assert patched.json()['steps'][0] != created['steps'][0]
+    assert fetched.json()['steps'] == created['steps']
+    assert listed_before_update.json()['items'][0]['steps'] == created['steps']
+    assert [step['title'] for step in patched.json()['steps']] == [
+        'Review activity',
+        'Approval activity',
+    ]
+    assert all(step['id'] for step in patched.json()['steps'])
+    assert patched.json()['steps'][0]['id'] != created['steps'][0]['id']
     assert changelog.json()['items'][0]['diff']['steps']['changed']
     assert not changelog.json()['items'][0]['diff']['steps']['order_changes']
     assert deleted.json() == {'deleted': True}

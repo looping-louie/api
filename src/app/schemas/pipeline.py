@@ -7,7 +7,7 @@ from typing import Literal, Self
 
 from pydantic import model_validator
 
-from src.app.schemas.activity import ActivityCreateRequest
+from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
@@ -56,20 +56,14 @@ class PipelinePatchRequest(RequestSchema):
         return self
 
 
-class PipelineActivityStepResponse(ResponseSchema):
-    """Stored activity reference."""
-
-    activity_id: str
-
-
 class PipelineResponse(ResponseSchema):
-    """Complete public pipeline definition."""
+    """Pipeline representation with full Activity definitions for each step."""
 
     id: str
     title: str
     description: str
     enabled: bool
-    steps: list[PipelineActivityStepResponse]
+    steps: list[ActivityResponse]
     created_at: datetime
     updated_at: datetime
 
