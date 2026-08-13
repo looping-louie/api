@@ -137,7 +137,7 @@ Example response (`201 Created`):
 }
 ```
 
-## Patch Persona Request
+## Update a persona
 
 Include at least one of `name`, `description`, `instructions`, `skill_ids`,
 `metadata`, or `enabled`. Supplying `skill_ids` replaces the complete

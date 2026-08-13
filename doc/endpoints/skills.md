@@ -146,7 +146,7 @@ Example response (`201 Created`):
 }
 ```
 
-## Patch Skill Request
+## Update a skill
 
 Include at least one of `name`, `description`, `instructions`, `metadata`, or
 `enabled`. Content changes require `expected_version`; an enabled-only change
