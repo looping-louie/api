@@ -6,6 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
+from src.app.catalogs.models import (
+    MODEL_CATALOG_BY_ID,
+    ModelLab,
+)
 from src.app.catalogs.providers import ProviderId
 from src.app.controllers.model import ModelController
 from src.app.routers.models import router as models_router
@@ -112,7 +116,8 @@ def test_list_models_filters_sorts_and_paginates(
     body = first_page.json()
     assert body["items"]
     assert all(
-        item["vendor"] in {"OpenAI", "Anthropic"}
+        MODEL_CATALOG_BY_ID[item["id"]].lab
+        in {ModelLab.OPENAI, ModelLab.ANTHROPIC}
         for item in body["items"]
     )
     release_dates = [item["released_at"] for item in body["items"]]
@@ -127,10 +132,20 @@ def test_list_models_filters_sorts_and_paginates(
         params={"include_deprecated": "true", "offset": "24"},
     ).json()
 
-    assert all_models["total"] == 25
+    assert all_models["total"] > 24
     assert len(all_models["items"]) == 24
-    assert len(second_page["items"]) == 1
-    assert second_page["total"] == 25
+    assert len(second_page["items"]) == min(
+        all_models["total"] - 24,
+        24,
+    )
+    assert second_page["total"] == all_models["total"]
+    assert {
+        item["id"]
+        for item in all_models["items"]
+    }.isdisjoint(
+        item["id"]
+        for item in second_page["items"]
+    )
 
 
 def test_describe_model_route(

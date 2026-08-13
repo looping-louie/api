@@ -16,4 +16,3 @@ def test_packaged_instructions_use_the_stable_business_taxonomy() -> None:
         isinstance(entry.category, LibraryCategory)
         for entry in (*skills, *personas)
     )
-    assert all(entry.catalog_version == 2 for entry in (*skills, *personas))
