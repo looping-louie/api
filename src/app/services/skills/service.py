@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.skills import SkillCategory, SkillSort, SkillStatus
+from src.app.catalogs.library import (
+    LibraryCategory,
+    LibrarySort,
+    LibraryStatus,
+)
 
 from ..instructions import (
     AvailableInstructionDocument,
@@ -41,9 +45,9 @@ class SkillService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-        status: SkillStatus | None = None,
-        categories: Sequence[SkillCategory] = (),
-        sort: SkillSort | None = None,
+        status: LibraryStatus | None = None,
+        categories: Sequence[LibraryCategory] = (),
+        sort: LibrarySort | None = None,
     ) -> list[AvailableInstructionSummary]:
         """List skills available in the resolved workspace."""
 

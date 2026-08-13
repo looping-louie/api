@@ -7,7 +7,7 @@ from typing import Self
 
 from pydantic import ConfigDict, Field, StrictBool, model_validator
 
-from src.app.catalogs.instructions import InstructionCategory
+from src.app.catalogs.library import LibraryCategory
 
 from .shared import (
     InstructionCapabilitiesResponse,
@@ -27,7 +27,7 @@ class PersonaMetadata(RequestSchema):
         str_strip_whitespace=True,
     )
 
-    category: InstructionCategory | None = None
+    category: LibraryCategory | None = None
 
 
 class PersonaCreateRequest(RequestSchema):
@@ -118,7 +118,7 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
-    category: InstructionCategory | None = None
+    category: LibraryCategory | None = None
 
 
 class PersonaResponse(InstructionCapabilitiesResponse):

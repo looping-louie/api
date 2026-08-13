@@ -6,10 +6,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from src.app.catalogs.instructions import (
-    InstructionCategory,
-    InstructionSort,
-    InstructionStatus,
+from src.app.catalogs.library import (
+    LibraryCategory,
+    LibrarySort,
+    LibraryStatus,
 )
 from src.app.controllers.persona import PersonaController
 from src.app.schemas.shared import DeleteResponse
@@ -59,18 +59,18 @@ async def list_personas(
         ),
     ] = None,
     persona_status: Annotated[
-        InstructionStatus | None,
+        LibraryStatus | None,
         Query(
             alias="status",
             description="Filter by workspace enablement state.",
         ),
     ] = None,
     category: Annotated[
-        list[InstructionCategory] | None,
+        list[LibraryCategory] | None,
         Query(description="Filter by one or more business categories."),
     ] = None,
     sort: Annotated[
-        InstructionSort | None,
+        LibrarySort | None,
         Query(description="Order the filtered persona catalog."),
     ] = None,
     offset: Annotated[

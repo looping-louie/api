@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping, Sequence
 
-from src.app.catalogs.skills import SkillCategory
+from src.app.catalogs.library import LibraryCategory
 
 
 STRICTNESS_PHASES: frozenset[str] = frozenset(
@@ -51,7 +51,7 @@ def _validate_category(value: object) -> None:
         )
 
     try:
-        SkillCategory(value)
+        LibraryCategory(value)
     except ValueError as exc:
         raise SkillValidationError(
             field_name="metadata.category",

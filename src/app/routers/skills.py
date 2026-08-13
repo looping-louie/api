@@ -6,7 +6,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from src.app.catalogs.skills import SkillCategory, SkillSort, SkillStatus
+from src.app.catalogs.library import (
+    LibraryCategory,
+    LibrarySort,
+    LibraryStatus,
+)
 from src.app.controllers.skill import SkillController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.skill import (
@@ -55,20 +59,20 @@ async def list_skills(
         ),
     ] = None,
     skill_status: Annotated[
-        SkillStatus | None,
+        LibraryStatus | None,
         Query(
             alias="status",
             description="Filter by workspace enablement state.",
         ),
     ] = None,
     category: Annotated[
-        list[SkillCategory] | None,
+        list[LibraryCategory] | None,
         Query(
             description="Filter by one or more business categories.",
         ),
     ] = None,
     sort: Annotated[
-        SkillSort | None,
+        LibrarySort | None,
         Query(description="Order the filtered skill catalog."),
     ] = None,
     offset: Annotated[

@@ -1,6 +1,6 @@
 """Contract tests for the shared instruction business taxonomy."""
 
-from src.app.catalogs.instructions import InstructionCategory
+from src.app.catalogs.library import LibraryCategory
 from src.app.catalogs.personas.loader import load_persona_catalog
 from src.app.catalogs.skills.loader import load_skill_catalog
 
@@ -11,9 +11,9 @@ def test_packaged_instructions_use_the_stable_business_taxonomy() -> None:
     skills = load_skill_catalog()
     personas = load_persona_catalog()
 
-    assert len(InstructionCategory) == 12
+    assert len(LibraryCategory) == 12
     assert all(
-        isinstance(entry.category, InstructionCategory)
+        isinstance(entry.category, LibraryCategory)
         for entry in (*skills, *personas)
     )
     assert all(entry.catalog_version == 2 for entry in (*skills, *personas))

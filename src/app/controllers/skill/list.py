@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.skills import SkillCategory, SkillSort, SkillStatus
+from src.app.catalogs.library import (
+    LIBRARY_PAGE_SIZE,
+    LibraryCategory,
+    LibrarySort,
+    LibraryStatus,
+)
 from src.app.schemas.skill import SkillListResponse, SkillSummaryResponse
 from src.app.services.skills import SkillService
-
-
-SKILL_PAGE_SIZE = 12
 
 
 class SkillListController:
@@ -25,9 +27,9 @@ class SkillListController:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-        status: SkillStatus | None = None,
-        categories: Sequence[SkillCategory] = (),
-        sort: SkillSort | None = None,
+        status: LibraryStatus | None = None,
+        categories: Sequence[LibraryCategory] = (),
+        sort: LibrarySort | None = None,
         offset: int = 0,
     ) -> SkillListResponse:
         """List skill summaries available in a workspace."""
@@ -39,6 +41,6 @@ class SkillListController:
             categories=categories,
             sort=sort,
         )
-        page = summaries[offset : offset + SKILL_PAGE_SIZE]
+        page = summaries[offset : offset + LIBRARY_PAGE_SIZE]
         items = [SkillSummaryResponse.model_validate(item) for item in page]
         return SkillListResponse(items=items, total=len(summaries))

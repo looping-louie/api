@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.instructions import (
-    InstructionCategory,
-    InstructionSort,
-    InstructionStatus,
+from src.app.catalogs.library import (
+    LibraryCategory,
+    LibrarySort,
+    LibraryStatus,
 )
 
 from .types import AvailableInstructionSummary
@@ -16,16 +16,16 @@ from .types import AvailableInstructionSummary
 def filter_and_sort_instruction_summaries(
     summaries: list[AvailableInstructionSummary],
     *,
-    status: InstructionStatus | None,
-    categories: Sequence[InstructionCategory],
-    sort: InstructionSort | None,
+    status: LibraryStatus | None,
+    categories: Sequence[LibraryCategory],
+    sort: LibrarySort | None,
 ) -> list[AvailableInstructionSummary]:
     """Apply the common catalog filters and a stable ordering."""
 
     filtered = summaries
 
     if status is not None:
-        enabled = status == InstructionStatus.ENABLED
+        enabled = status == LibraryStatus.ENABLED
         filtered = [
             summary
             for summary in filtered
@@ -40,14 +40,14 @@ def filter_and_sort_instruction_summaries(
             if summary.category in selected_categories
         ]
 
-    if sort == InstructionSort.ALPHABETICAL_DESC:
+    if sort == LibrarySort.ALPHABETICAL_DESC:
         return sorted(
             filtered,
             key=lambda summary: (summary.name.casefold(), summary.id),
             reverse=True,
         )
 
-    if sort == InstructionSort.NEWEST:
+    if sort == LibrarySort.NEWEST:
         return sorted(
             filtered,
             key=lambda summary: (
@@ -57,7 +57,7 @@ def filter_and_sort_instruction_summaries(
             ),
         )
 
-    if sort == InstructionSort.OLDEST:
+    if sort == LibrarySort.OLDEST:
         return sorted(
             filtered,
             key=lambda summary: (
