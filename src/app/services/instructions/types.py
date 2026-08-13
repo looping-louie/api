@@ -8,11 +8,11 @@ from datetime import UTC, datetime
 from typing import Callable, Literal, Mapping, Protocol, Sequence
 from uuid import uuid4
 
-from src.app.catalogs.instructions import InstructionOrigin
-from src.app.catalogs.library import (
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
+    InstructionOrigin,
 )
 
 
@@ -102,7 +102,7 @@ class AvailableInstructionSummary:
 
 @dataclass(frozen=True, slots=True)
 class AvailableInstructionPage(Sequence[AvailableInstructionSummary]):
-    """One filtered page of a workspace's effective instruction library."""
+    """One filtered page of a workspace's effective instruction catalog."""
 
     items: tuple[AvailableInstructionSummary, ...]
     total: int
@@ -217,13 +217,13 @@ class InstructionRepository(Protocol):
         instruction_type: InstructionType,
         search: str | None = None,
         include_deprecated: bool = False,
-        status: LibraryStatus | None = None,
-        categories: Sequence[LibraryCategory] = (),
-        sort: LibrarySort | None = None,
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
     ) -> AvailableInstructionPage:
-        """Return a filtered page of the workspace instruction library."""
+        """Return a filtered page of the workspace instruction catalog."""
         ...
 
     async def get_available_for_workspace(

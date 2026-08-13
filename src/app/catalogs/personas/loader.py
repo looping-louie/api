@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from ..library import LibraryCategory
 from ..instructions.entries import PersonaCatalogEntry
 from ..instructions.errors import CatalogLoadError
 from ..instructions.resource_loader import (
@@ -20,6 +19,7 @@ from ..instructions.resource_validation import (
 )
 from ..instructions.types import (
     AgentRole,
+    CatalogInstructionCategory,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -85,7 +85,7 @@ def load_persona_catalog(
                     manifest,
                     "version",
                 ),
-                category=LibraryCategory(
+                category=CatalogInstructionCategory(
                     require_text(manifest, "category")
                 ),
                 skill_ids=require_string_tuple(

@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from src.app.catalogs.library import (
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
 )
 from src.app.services.instructions import (
     AvailableInstructionDocument,
@@ -25,7 +25,7 @@ from .mapping import (
 
 
 class InstructionAvailabilityMixin:
-    """Provide workspace-library queries to the SQLite repository."""
+    """Provide workspace catalog queries to the SQLite repository."""
 
     async def list_available_for_workspace(
         self,
@@ -34,9 +34,9 @@ class InstructionAvailabilityMixin:
         instruction_type: InstructionType,
         search: str | None = None,
         include_deprecated: bool = False,
-        status: LibraryStatus | None = None,
-        categories: Sequence[LibraryCategory] = (),
-        sort: LibrarySort | None = None,
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
     ) -> AvailableInstructionPage:
@@ -99,7 +99,7 @@ class InstructionAvailabilityMixin:
                 ) = ?
             """
             parameters.append(
-                int(status == LibraryStatus.ENABLED)
+                int(status == CatalogInstructionStatus.ENABLED)
             )
 
         if categories:
@@ -132,7 +132,7 @@ class InstructionAvailabilityMixin:
                 i.updated_at,
                 json_extract(i.metadata_json, '$.category') AS category
             {from_where}
-            {self._library_order_clause(sort)}
+            {self._catalog_order_clause(sort)}
         """
         list_parameters = list(parameters)
 
@@ -180,10 +180,12 @@ class InstructionAvailabilityMixin:
         )
 
     @staticmethod
-    def _library_order_clause(sort: LibrarySort | None) -> str:
-        """Return a safe deterministic SQL ordering for a library query."""
+    def _catalog_order_clause(
+        sort: CatalogInstructionSort | None,
+    ) -> str:
+        """Return a safe deterministic SQL ordering for a catalog query."""
 
-        if sort == LibrarySort.ALPHABETICAL_DESC:
+        if sort == CatalogInstructionSort.ALPHABETICAL_DESC:
             return """
                 ORDER BY
                     i.name_key COLLATE NOCASE DESC,
@@ -191,7 +193,7 @@ class InstructionAvailabilityMixin:
                     i.id DESC
             """
 
-        if sort == LibrarySort.NEWEST:
+        if sort == CatalogInstructionSort.NEWEST:
             return """
                 ORDER BY
                     i.created_at DESC,
@@ -199,7 +201,7 @@ class InstructionAvailabilityMixin:
                     i.id ASC
             """
 
-        if sort == LibrarySort.OLDEST:
+        if sort == CatalogInstructionSort.OLDEST:
             return """
                 ORDER BY
                     i.created_at ASC,

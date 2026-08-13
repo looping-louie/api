@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import fields
 
-from src.app.catalogs.library import (
-    LIBRARY_PAGE_SIZE,
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CATALOG_INSTRUCTION_PAGE_SIZE,
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
 )
 
 from ..instructions import (
@@ -54,11 +54,11 @@ class PersonaService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-        status: LibraryStatus | None = None,
-        categories: Sequence[LibraryCategory] = (),
-        sort: LibrarySort | None = None,
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
         offset: int = 0,
-        limit: int = LIBRARY_PAGE_SIZE,
+        limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
     ) -> AvailableInstructionPage:
         """Return one filtered page of personas in the resolved workspace."""
 

@@ -1,4 +1,4 @@
-"""Integration tests for SQL-backed instruction library pagination."""
+"""Integration tests for SQL-backed catalog instruction pagination."""
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs.library import (
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
 )
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
@@ -27,9 +27,9 @@ def build_skill(index: int) -> InstructionDocument:
         minutes=index
     )
     category = (
-        LibraryCategory.SECURITY_PRIVACY
+        CatalogInstructionCategory.SECURITY_PRIVACY
         if index % 2 == 0
-        else LibraryCategory.SALES
+        else CatalogInstructionCategory.SALES
     )
     return InstructionDocument(
         id=f"skill-{index:02d}",
@@ -61,16 +61,16 @@ async def test_library_query_filters_sorts_and_pages_in_sql(
     page = await repository.list_available_for_workspace(
         workspace_id="workspace-1",
         instruction_type="skill",
-        categories=(LibraryCategory.SECURITY_PRIVACY,),
-        sort=LibrarySort.NEWEST,
+        categories=(CatalogInstructionCategory.SECURITY_PRIVACY,),
+        sort=CatalogInstructionSort.NEWEST,
         offset=3,
         limit=5,
     )
     empty_page = await repository.list_available_for_workspace(
         workspace_id="workspace-1",
         instruction_type="skill",
-        categories=(LibraryCategory.SECURITY_PRIVACY,),
-        sort=LibrarySort.NEWEST,
+        categories=(CatalogInstructionCategory.SECURITY_PRIVACY,),
+        sort=CatalogInstructionSort.NEWEST,
         offset=100,
         limit=5,
     )
@@ -108,8 +108,8 @@ async def test_library_query_filters_effective_workspace_status(
     page = await repository.list_available_for_workspace(
         workspace_id="workspace-1",
         instruction_type="skill",
-        status=LibraryStatus.DISABLED,
-        categories=(LibraryCategory.SECURITY_PRIVACY,),
+        status=CatalogInstructionStatus.DISABLED,
+        categories=(CatalogInstructionCategory.SECURITY_PRIVACY,),
         limit=12,
     )
 

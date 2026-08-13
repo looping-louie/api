@@ -6,11 +6,11 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import replace
 
-from src.app.catalogs.instructions import InstructionOrigin
-from src.app.catalogs.library import (
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
+    InstructionOrigin,
 )
 
 from ..shared.dependency_checker import DependencyChecker
@@ -69,13 +69,13 @@ class InstructionService:
         workspace_id: str,
         instruction_type: InstructionType,
         search: str | None = None,
-        status: LibraryStatus | None = None,
-        categories: Sequence[LibraryCategory] = (),
-        sort: LibrarySort | None = None,
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
     ) -> AvailableInstructionPage:
-        """Return a filtered page of the effective instruction library."""
+        """Return a filtered page of the effective instruction catalog."""
 
         require_instruction_type(instruction_type)
 

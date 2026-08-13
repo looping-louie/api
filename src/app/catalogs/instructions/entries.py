@@ -3,9 +3,9 @@
 import re
 from dataclasses import dataclass, field
 
-from ..library import LibraryCategory
 from .types import (
     AgentRole,
+    CatalogInstructionCategory,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -41,7 +41,7 @@ class CatalogInstructionEntry:
     key: str | None = None
     content_path: str | None = None
     checksum: str | None = None
-    category: LibraryCategory | None = None
+    category: CatalogInstructionCategory | None = None
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
@@ -85,9 +85,11 @@ class CatalogInstructionEntry:
 
         if self.category is not None and not isinstance(
             self.category,
-            LibraryCategory,
+            CatalogInstructionCategory,
         ):
-            raise ValueError("category must be a LibraryCategory.")
+            raise ValueError(
+                "category must be a CatalogInstructionCategory."
+            )
 
         if self.key is not None:
             require_non_empty_text(self.key, field_name="key")

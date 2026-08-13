@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from ..library import LibraryCategory
 from ..instructions.entries import SkillCatalogEntry
 from ..instructions.errors import CatalogLoadError
 from ..instructions.resource_loader import (
@@ -21,6 +20,7 @@ from ..instructions.resource_validation import (
 )
 from ..instructions.types import (
     AgentRole,
+    CatalogInstructionCategory,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -93,7 +93,7 @@ def load_skill_catalog(
                 reviewer_default_strictness=_load_strictness(
                     manifest,
                 ),
-                category=LibraryCategory(
+                category=CatalogInstructionCategory(
                     require_text(manifest, "category")
                 ),
                 phase=SkillPhase(

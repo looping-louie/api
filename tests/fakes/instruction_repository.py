@@ -3,10 +3,10 @@ from dataclasses import replace
 from typing import Sequence
 
 from src.app.catalogs.instructions import InstructionOrigin
-from src.app.catalogs.library import (
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
 )
 from src.app.services.instructions import (
     AvailableInstructionDocument,
@@ -130,13 +130,13 @@ class FakeInstructionRepository:
         instruction_type: InstructionType,
         search: str | None = None,
         include_deprecated: bool = False,
-        status: LibraryStatus | None = None,
-        categories: Sequence[LibraryCategory] = (),
-        sort: LibrarySort | None = None,
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
     ) -> AvailableInstructionPage:
-        """Return a filtered page with behavior matching SQLite persistence."""
+        """Return a filtered catalog page matching SQLite persistence."""
 
         documents = self._available_for_workspace(
             workspace_id=workspace_id,
@@ -156,7 +156,7 @@ class FakeInstructionRepository:
             ]
 
         if status is not None:
-            enabled = status == LibraryStatus.ENABLED
+            enabled = status == CatalogInstructionStatus.ENABLED
             documents = [
                 document
                 for document in documents
@@ -171,19 +171,19 @@ class FakeInstructionRepository:
                 if document.metadata.get("category") in category_values
             ]
 
-        if sort == LibrarySort.ALPHABETICAL_DESC:
+        if sort == CatalogInstructionSort.ALPHABETICAL_DESC:
             documents.sort(
                 key=self._available_sort_key,
                 reverse=True,
             )
-        elif sort == LibrarySort.NEWEST:
+        elif sort == CatalogInstructionSort.NEWEST:
             documents.sort(
                 key=lambda document: (
                     -document.created_at.timestamp(),
                     *self._available_sort_key(document),
                 )
             )
-        elif sort == LibrarySort.OLDEST:
+        elif sort == CatalogInstructionSort.OLDEST:
             documents.sort(
                 key=lambda document: (
                     document.created_at,
@@ -232,7 +232,7 @@ class FakeInstructionRepository:
     def _available_sort_key(
         document: AvailableInstructionDocument,
     ) -> tuple[str, str, str]:
-        """Return the deterministic alphabetical library sort key."""
+        """Return the deterministic alphabetical catalog sort key."""
 
         return (
             " ".join(document.name.strip().casefold().split()),

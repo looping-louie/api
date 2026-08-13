@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.library import (
-    LIBRARY_PAGE_SIZE,
-    LibraryCategory,
-    LibrarySort,
-    LibraryStatus,
+from src.app.catalogs.instructions import (
+    CATALOG_INSTRUCTION_PAGE_SIZE,
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
 )
 from src.app.schemas.persona import PersonaListResponse, PersonaSummaryResponse
 from src.app.services.personas import PersonaService
@@ -27,9 +27,9 @@ class PersonaListController:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-        status: LibraryStatus | None = None,
-        categories: Sequence[LibraryCategory] = (),
-        sort: LibrarySort | None = None,
+        status: CatalogInstructionStatus | None = None,
+        categories: Sequence[CatalogInstructionCategory] = (),
+        sort: CatalogInstructionSort | None = None,
         offset: int = 0,
     ) -> PersonaListResponse:
         """List persona summaries available in a workspace."""
@@ -41,7 +41,7 @@ class PersonaListController:
             categories=categories,
             sort=sort,
             offset=offset,
-            limit=LIBRARY_PAGE_SIZE,
+            limit=CATALOG_INSTRUCTION_PAGE_SIZE,
         )
         items = [
             PersonaSummaryResponse.model_validate(item)

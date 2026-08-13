@@ -6,7 +6,11 @@ from .entries import (
     SkillCatalogEntry,
 )
 from .types import (
+    CATALOG_INSTRUCTION_PAGE_SIZE,
     AgentRole,
+    CatalogInstructionCategory,
+    CatalogInstructionSort,
+    CatalogInstructionStatus,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -20,8 +24,12 @@ from .types import (
 
 
 __all__ = [
+    "CATALOG_INSTRUCTION_PAGE_SIZE",
     "AgentRole",
+    "CatalogInstructionCategory",
     "CatalogInstructionEntry",
+    "CatalogInstructionSort",
+    "CatalogInstructionStatus",
     "CatalogInstructionType",
     "InstructionCatalogMetadata",
     "InstructionOrigin",
