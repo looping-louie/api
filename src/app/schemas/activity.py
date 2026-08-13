@@ -9,7 +9,6 @@ from pydantic import Field, model_validator
 
 from .loop import (
     LoopAgentSchema,
-    LoopFlowValue,
     LoopOutputContractSchema,
     LoopStopConditionsSchema,
 )
@@ -31,11 +30,20 @@ class DirectLoopActivityConfig(RequestSchema):
     output_contract: LoopOutputContractSchema
 
 
+class RefinementLoopActivityConfig(RequestSchema):
+    """Configuration for a refinement loop activity."""
+
+    type: Literal['refinement_loop']
+    stop_conditions: LoopStopConditionsSchema
+    agents: list[LoopAgentSchema]
+    output_contract: LoopOutputContractSchema
+
+
 class LoopActivityConfig(RequestSchema):
-    """Configuration for loop variants pending their own Activity type."""
+    """Configuration for the roundtable loop pending its Activity type."""
 
     type: Literal['loop']
-    flow: LoopFlowValue
+    flow: Literal['roundtable']
     stop_conditions: LoopStopConditionsSchema
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
@@ -58,6 +66,7 @@ ActivityConfig = Annotated[
     ApprovalActivityConfig
     | QuizActivityConfig
     | DirectLoopActivityConfig
+    | RefinementLoopActivityConfig
     | LoopActivityConfig,
     Field(discriminator='type'),
 ]
@@ -68,7 +77,13 @@ class ActivityCreateRequest(RequestSchema):
 
     title: NonEmptyString
     description: str
-    type: Literal['approval', 'quiz', 'direct_loop', 'loop']
+    type: Literal[
+        'approval',
+        'quiz',
+        'direct_loop',
+        'refinement_loop',
+        'loop',
+    ]
     config: ActivityConfig
 
     @model_validator(mode='after')
@@ -108,7 +123,13 @@ class ActivityResponse(ResponseSchema):
     title: str
     description: str
     status: ActivityStatusValue
-    type: Literal['approval', 'quiz', 'direct_loop', 'loop']
+    type: Literal[
+        'approval',
+        'quiz',
+        'direct_loop',
+        'refinement_loop',
+        'loop',
+    ]
     config: ActivityConfig
     created_at: datetime
     created_by: str

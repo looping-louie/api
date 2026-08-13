@@ -149,6 +149,7 @@ class ActivityService:
             'approval',
             'quiz',
             'direct_loop',
+            'refinement_loop',
             'loop',
         ):
             raise ActivityValidationError(

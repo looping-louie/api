@@ -122,6 +122,16 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
         'type': 'quiz',
         'config': {'type': 'quiz', 'quiz': {'questions': []}},
     })
+    refinement = client.post('/api/v1/activities', json={
+        'title': 'Refine change', 'description': 'Review and refine a change.',
+        'type': 'refinement_loop',
+        'config': {
+            'type': 'refinement_loop',
+            'stop_conditions': {'max_tokens': 100},
+            'agents': [],
+            'output_contract': {'type': 'text', 'description': 'A result.'},
+        },
+    })
     patched = client.patch(f'/api/v1/activities/{activity_id}', json={'status': 'disabled'})
     changelog = client.get(f'/api/v1/activities/{activity_id}/changelog')
     deleted = client.delete(f'/api/v1/activities/{activity_id}')
@@ -135,6 +145,8 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     assert quiz.status_code == 201
     assert quiz.json()['type'] == 'quiz'
     assert quiz.json()['config']['quiz'] == {'questions': []}
+    assert refinement.status_code == 201
+    assert refinement.json()['type'] == 'refinement_loop'
     assert patched.json()['status'] == 'disabled'
     assert changelog.json()['items'][0]['change_type'] == 'disabled'
     assert changelog.json()['items'][0]['diff']['status'] == 'disabled'
@@ -200,6 +212,16 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
     })
     approval = client.post('/api/v1/activities', json={'title': 'Approval', 'description': '', 'type': 'approval', 'config': {'type': 'approval'}})
     mismatch = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'No run.'})
+    refinement = client.post('/api/v1/activities', json={
+        'title': 'Refinement', 'description': '', 'type': 'refinement_loop',
+        'config': {
+            'type': 'refinement_loop',
+            'stop_conditions': {'max_tokens': 100},
+            'agents': [],
+            'output_contract': {'type': 'text', 'description': 'A result.'},
+        },
+    })
+    refinement_run = client.post(f"/api/v1/activities/{refinement.json()['id']}/runs", json={'input': 'No run.'})
     client.patch(f'/api/v1/activities/{activity_id}', json={'status': 'disabled'})
     disabled = client.post(f'/api/v1/activities/{activity_id}/runs', json={'input': 'No run.'})
 
@@ -210,5 +232,7 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
     assert continued.json()['state'] == 'awaiting_generation'
     assert mismatch.status_code == 409
     assert mismatch.json()['error']['code'] == 'activity_run_unavailable'
+    assert refinement_run.status_code == 409
+    assert refinement_run.json()['error']['code'] == 'activity_run_unavailable'
     assert disabled.status_code == 409
     assert disabled.json()['error']['code'] == 'activity_run_unavailable'
