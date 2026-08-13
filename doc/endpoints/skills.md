@@ -17,6 +17,10 @@ The list endpoint returns at most 12 skills per request. Use `offset` to move
 through the filtered result. `status` accepts `enabled` or `disabled`;
 `category` may be repeated to select multiple business categories; and `sort`
 accepts `alphabetical-asc`, `alphabetical-desc`, `newest`, or `oldest`.
+Repeated categories use OR semantics. `newest` and `oldest` order by the
+skill's `created_at` timestamp, with name and ID providing stable tie-breakers.
+Status refers to effective workspace enablement, including workspace
+overrides of a built-in default.
 
 Skills use a deliberately small business taxonomy. The twelve supported
 categories are grouped as follows:

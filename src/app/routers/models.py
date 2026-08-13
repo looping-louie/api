@@ -72,7 +72,7 @@ async def list_models(
     lab: Annotated[
         list[ModelLab] | None,
         Query(
-            description="Filter by one or more lab slugs.",
+            description="Filter by one or more typed lab slugs.",
         ),
     ] = None,
     sort: Annotated[
@@ -105,7 +105,10 @@ async def list_models(
     include_deprecated: Annotated[
         bool,
         Query(
-            description="Include deprecated catalog entries.",
+            description=(
+                "Include deprecated entries when status is not supplied. "
+                "An explicit deprecated status always selects them."
+            ),
         ),
     ] = False,
 ) -> ModelListResponse:

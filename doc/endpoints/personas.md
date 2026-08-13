@@ -17,6 +17,10 @@ The list endpoint returns 12 personas per page and accepts `offset`, `search`,
 `status` (`enabled` or `disabled`), repeatable `category`, and `sort`
 (`alphabetical-asc`, `alphabetical-desc`, `newest`, or `oldest`). The
 `category` values use the same twelve company-area taxonomy as Skills.
+Repeated categories use OR semantics. `newest` and `oldest` order by the
+persona's `created_at` timestamp, with name and ID providing stable
+tie-breakers. Status refers to effective workspace enablement, including
+workspace overrides of a built-in default.
 
 ## Create Persona Request
 

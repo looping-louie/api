@@ -73,7 +73,12 @@ async def list_skills(
     ] = None,
     sort: Annotated[
         LibrarySort | None,
-        Query(description="Order the filtered skill catalog."),
+        Query(
+            description=(
+                "Order the filtered skill catalog. Date sorts use "
+                "created_at."
+            )
+        ),
     ] = None,
     offset: Annotated[
         int,

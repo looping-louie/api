@@ -71,7 +71,12 @@ async def list_personas(
     ] = None,
     sort: Annotated[
         LibrarySort | None,
-        Query(description="Order the filtered persona catalog."),
+        Query(
+            description=(
+                "Order the filtered persona catalog. Date sorts use "
+                "created_at."
+            )
+        ),
     ] = None,
     offset: Annotated[
         int,
