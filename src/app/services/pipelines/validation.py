@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from src.app.models.changelog import JsonObject
 from src.app.models.pipeline import (
-    PipelineActivityStep,
     PipelineDocument,
     PipelineStatus,
     PipelineStep,
 )
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
-    PipelineStepInput,
+    PipelineActivityInput,
 )
 
 
@@ -50,7 +49,7 @@ def normalize_status(value: object) -> PipelineStatus:
 
 def normalize_steps(
     values: object,
-) -> tuple[PipelineStep, ...]:
+) -> tuple[PipelineActivityInput, ...]:
     """Validate a complete ordered step collection."""
 
     if not isinstance(values, (tuple, list)):
@@ -64,19 +63,25 @@ def normalize_steps(
             message="must contain at least two steps",
         )
 
-    steps: list[PipelineStep] = []
+    steps: list[PipelineActivityInput] = []
     for position, value in enumerate(values):
-        if not isinstance(value, PipelineStepInput):
+        if not isinstance(value, PipelineActivityInput):
             raise InvalidPipelineStepsError(
                 field_name=f"steps.{position}",
-                message="must be a pipeline step",
+                message="must be an activity definition",
+            )
+        config = dict(value.config)
+        if value.type != config.get("type"):
+            raise InvalidPipelineStepsError(
+                field_name=f"steps.{position}.config.type",
+                message="must match the step type",
             )
         steps.append(
-            PipelineActivityStep(
-                activity_id=require_text(
-                    value.activity_id,
-                    f"steps.{position}.activity_id",
-                )
+            PipelineActivityInput(
+                title=require_text(value.title, f"steps.{position}.title"),
+                description=normalize_description(value.description),
+                type=require_text(value.type, f"steps.{position}.type"),
+                config=config,
             )
         )
     return tuple(steps)

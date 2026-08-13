@@ -13,7 +13,10 @@ immutable; they can be enabled or disabled.
 | `PATCH` | `/api/v1/skills/{skill_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/skills/{skill_id}` | Deletes a skill when it has no blocking dependencies. |
 
-## Create Skill Request
+## Create a skill
+
+`POST /api/v1/skills` creates a custom skill in the workspace supplied by
+`X-Workspace-ID`.
 
 | Field | Description |
 | ----- | ----------- |
@@ -26,31 +29,34 @@ Skill metadata may contain `applies_when`, a non-empty list of strings, and
 `default_strictness`. Strictness values are integers from 0 to 100 keyed by
 `prototype`, `mvp`, and `production`. Extra metadata fields are allowed.
 
+```http
+POST /api/v1/skills
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "API compatibility",
+  "description": "Detects breaking API changes.",
+  "instructions": "Compare routes and schemas with the documented contract.",
+  "metadata": {
+    "applies_when": [
+      "An HTTP contract changes"
+    ],
+    "default_strictness": {
+      "production": 100
+    }
+  }
+}
+```
+
 ## Patch Skill Request
 
 Include at least one of `name`, `description`, `instructions`, `metadata`, or
 `enabled`. Content changes require `expected_version`; an enabled-only change
 does not. `enabled` must be `true` or `false`, not `null`. Built-in content is
 immutable, but its enabled state can be patched.
-
-## Create Skill Example
-
-```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/skills \
-  -H "Content-Type: application/json" \
-  -H "X-Workspace-ID: workspace-id" \
-  -d '{
-    "name": "API compatibility",
-    "description": "Detects breaking API changes.",
-    "instructions": "Compare routes and schemas with the documented contract.",
-    "metadata": {
-      "applies_when": ["An HTTP contract changes"],
-      "default_strictness": {
-        "production": 100
-      }
-    }
-  }'
-```
 
 Write and get operations return the complete skill, including `id`,
 instructions, metadata, origin and capabilities, version, and timestamps. List

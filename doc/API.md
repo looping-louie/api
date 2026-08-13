@@ -13,7 +13,8 @@ The endpoint reference is organized by top-level router:
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Activities](endpoints/activities.md) manages reusable concrete Activity
   definitions, including Activity runs.
-- [Pipelines](endpoints/pipelines.md) manages ordered activity references.
+- [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
+  persists each supplied step as an independent Activity record.
 
 The API owns planning, generation, and reviewer decisions. The CLI owns local
 repository execution, including filesystem, Git, and workspace lifecycle

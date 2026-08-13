@@ -18,7 +18,7 @@ from tests.services.test_pipeline_service import build_service
 def build_client(*, tenant_service: TenantService) -> TestClient:
     """Build an authenticated pipeline application with in-memory storage."""
 
-    service, _, _ = build_service(tenant_service=tenant_service)
+    service, _ = build_service(tenant_service=tenant_service)
     app = FastAPI()
     app.state.pipeline_controller = PipelineController(
         pipeline_service=service,
@@ -53,10 +53,29 @@ def pipeline_payload(
             steps
             if steps is not None
             else [
-                {'activity_id': 'activity-1'},
-                {'activity_id': 'activity-2'},
+                activity_payload('Implementation activity'),
+                activity_payload('Validation activity'),
             ]
         ),
+    }
+
+
+def activity_payload(title: str) -> dict[str, object]:
+    """Build one valid inline Activity definition."""
+
+    return {
+        'title': title,
+        'description': 'Complete one pipeline stage.',
+        'type': 'direct_loop',
+        'config': {
+            'type': 'direct_loop',
+            'stop_conditions': {'max_iterations': 1},
+            'agents': [],
+            'output_contract': {
+                'type': 'text',
+                'description': 'A pipeline stage result.',
+            },
+        },
     }
 
 
@@ -70,18 +89,16 @@ def test_pipeline_crud_changelog_and_archival_routes(
     assert created_response.status_code == 201
     created = created_response.json()
     pipeline_id = created['id']
-    assert created['steps'] == [
-        {'activity_id': 'activity-1'},
-        {'activity_id': 'activity-2'},
-    ]
+    assert len(created['steps']) == 2
+    assert all(step['activity_id'] for step in created['steps'])
 
     fetched = client.get(f'/api/v1/pipelines/{pipeline_id}')
     patched = client.patch(
         f'/api/v1/pipelines/{pipeline_id}',
         json={
             'steps': [
-                {'activity_id': 'activity-2'},
-                {'activity_id': 'activity-1'},
+                activity_payload('Review activity'),
+                activity_payload('Approval activity'),
             ]
         },
     )
@@ -91,8 +108,9 @@ def test_pipeline_crud_changelog_and_archival_routes(
     archived = client.get('/api/v1/pipelines?status=archived')
 
     assert fetched.status_code == 200
-    assert patched.json()['steps'][0] == {'activity_id': 'activity-2'}
-    assert changelog.json()['items'][0]['diff']['steps']['order_changes']
+    assert patched.json()['steps'][0] != created['steps'][0]
+    assert changelog.json()['items'][0]['diff']['steps']['changed']
+    assert not changelog.json()['items'][0]['diff']['steps']['order_changes']
     assert deleted.json() == {'deleted': True}
     assert listed.json() == {'items': [], 'total': 0}
     assert archived.json()['total'] == 1
@@ -112,8 +130,8 @@ def test_invalid_pipeline_steps_use_stable_error_envelope(
     client = build_client(tenant_service=tenant_service)
     invalid_steps = (
         [],
-        [{'activity_id': 'activity-1'}],
-        [{}, {'activity_id': 'activity-2'}],
+        [activity_payload('Only activity')],
+        [{}, activity_payload('Valid activity')],
     )
     for steps in invalid_steps:
         response = client.post(
@@ -124,24 +142,19 @@ def test_invalid_pipeline_steps_use_stable_error_envelope(
         assert response.json()['error']['code'] == 'invalid_pipeline_steps'
 
 
-def test_missing_activity_reference_uses_not_found_error(
+def test_pipeline_creation_persists_inline_activity_definitions(
     tenant_service: TenantService,
 ) -> None:
-    """Missing activity references use the existing resource error contract."""
+    """Pipeline creation accepts definitions without pre-existing Activity IDs."""
 
     client = build_client(tenant_service=tenant_service)
     response = client.post(
         '/api/v1/pipelines',
-        json=pipeline_payload(
-            steps=[
-                {'activity_id': 'activity-1'},
-                {'activity_id': 'missing'},
-            ]
-        ),
+        json=pipeline_payload(),
     )
 
-    assert response.status_code == 404
-    assert response.json()['error']['code'] == 'referenced_resource_not_found'
+    assert response.status_code == 201
+    assert len(response.json()['steps']) == 2
 
 
 def test_generic_body_validation_also_uses_api_envelope(

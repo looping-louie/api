@@ -6,10 +6,13 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class PipelineStepInput:
-    """Untrusted pipeline step values passed to the service."""
+class PipelineActivityInput:
+    """Activity definition supplied for one pipeline step."""
 
-    activity_id: str
+    title: str
+    description: str
+    type: str
+    config: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,7 +21,7 @@ class PipelineCreate:
 
     title: str
     description: str
-    steps: tuple[PipelineStepInput, ...]
+    steps: tuple[PipelineActivityInput, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,7 +32,7 @@ class PipelinePatch:
     title: str | None = None
     description: str | None = None
     enabled: bool | None = None
-    steps: tuple[PipelineStepInput, ...] | None = None
+    steps: tuple[PipelineActivityInput, ...] | None = None
 
 
 class PipelineServiceError(Exception):

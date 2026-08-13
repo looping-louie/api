@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, Sequence
 
+from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDocument,
@@ -47,6 +48,18 @@ class PipelineRepository(Protocol):
 
         ...
 
+    async def create_with_activities(
+        self,
+        *,
+        document: PipelineDocument,
+        changelog_entry: PipelineChangelogEntry,
+        activity_documents: Sequence[ActivityDocument],
+        activity_changelog_entries: Sequence[ActivityChangelogEntry],
+    ) -> PipelineDocument:
+        """Atomically create a pipeline and its generated activities."""
+
+        ...
+
     async def update(
         self,
         *,
@@ -54,6 +67,18 @@ class PipelineRepository(Protocol):
         changelog_entry: PipelineChangelogEntry,
     ) -> bool:
         """Replace mutable pipeline data and append one entry."""
+
+        ...
+
+    async def update_with_activities(
+        self,
+        *,
+        document: PipelineDocument,
+        changelog_entry: PipelineChangelogEntry,
+        activity_documents: Sequence[ActivityDocument],
+        activity_changelog_entries: Sequence[ActivityChangelogEntry],
+    ) -> bool:
+        """Atomically replace a pipeline and persist generated activities."""
 
         ...
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDocument,
@@ -19,6 +20,8 @@ class FakePipelineRepository:
 
         self.documents: dict[tuple[str, str], PipelineDocument] = {}
         self.entries: list[PipelineChangelogEntry] = []
+        self.activity_documents: list[ActivityDocument] = []
+        self.activity_entries: list[ActivityChangelogEntry] = []
 
     async def list(
         self,
@@ -81,6 +84,23 @@ class FakePipelineRepository:
         self.entries.append(deepcopy(changelog_entry))
         return deepcopy(document)
 
+    async def create_with_activities(
+        self,
+        *,
+        document: PipelineDocument,
+        changelog_entry: PipelineChangelogEntry,
+        activity_documents: list[ActivityDocument],
+        activity_changelog_entries: list[ActivityChangelogEntry],
+    ) -> PipelineDocument:
+        """Create a pipeline with generated Activity records in memory."""
+
+        self.activity_documents.extend(deepcopy(activity_documents))
+        self.activity_entries.extend(deepcopy(activity_changelog_entries))
+        return await self.create(
+            document=document,
+            changelog_entry=changelog_entry,
+        )
+
     async def update(
         self,
         *,
@@ -89,6 +109,22 @@ class FakePipelineRepository:
     ) -> bool:
         """Replace a pipeline and append its entry."""
 
+        return self._replace(document, changelog_entry)
+
+    async def update_with_activities(
+        self,
+        *,
+        document: PipelineDocument,
+        changelog_entry: PipelineChangelogEntry,
+        activity_documents: list[ActivityDocument],
+        activity_changelog_entries: list[ActivityChangelogEntry],
+    ) -> bool:
+        """Replace a pipeline and retain generated Activities in memory."""
+
+        if (document.workspace_id, document.id) not in self.documents:
+            return False
+        self.activity_documents.extend(deepcopy(activity_documents))
+        self.activity_entries.extend(deepcopy(activity_changelog_entries))
         return self._replace(document, changelog_entry)
 
     async def archive(

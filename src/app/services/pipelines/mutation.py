@@ -17,7 +17,6 @@ from src.app.services.pipelines.types import (
 from src.app.services.pipelines.validation import (
     document_content,
     normalize_description,
-    normalize_steps,
     require_text,
     step_content,
 )
@@ -30,6 +29,7 @@ def apply_patch(
     *,
     actor_id: str,
     changed_at: datetime,
+    steps: tuple[PipelineStep, ...] | None = None,
 ) -> PipelineDocument:
     """Build and validate the complete candidate after a partial update."""
 
@@ -67,7 +67,12 @@ def apply_patch(
             "active" if values.pop("enabled") else "disabled"
         )
     if "steps" in values:
-        values["steps"] = normalize_steps(values["steps"])
+        if steps is None:
+            raise InvalidPipelineStepsError(
+                field_name="steps",
+                message="must contain activity definitions",
+            )
+        values["steps"] = steps
 
     return replace(
         current,

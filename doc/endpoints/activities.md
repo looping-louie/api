@@ -1,11 +1,13 @@
 # Activities
 
-Activities are workspace-scoped reusable units of work. The current supported
-types are `approval`, `quiz`, `direct_loop`, `refinement_loop`, and
-`roundtable_loop`. Approval activities represent human approval, and quiz
-activities collect human quiz responses. Direct and roundtable loop activities
-can create persisted runs; refinement, approval, and quiz execution are
-reserved for future pipeline orchestration.
+Activities are workspace-scoped, possibly reusable units of work. They can be
+created directly or generated when an inline definition is supplied while
+creating or updating a Pipeline. The current supported types are `approval`,
+`quiz`, `direct_loop`, `refinement_loop`, and `roundtable_loop`. Approval
+activities represent human approval, and quiz activities collect human quiz
+responses. Direct and roundtable loop activities can create persisted runs;
+refinement, approval, and quiz execution are reserved for future pipeline
+orchestration.
 
 ## Resource endpoints
 

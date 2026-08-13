@@ -1,7 +1,9 @@
 # Pipelines
 
-A pipeline stores an ordered sequence of activity references.
-The API manages and validates the definition but does not execute it.
+A pipeline stores an ordered sequence of Activity definitions. The API creates
+an independent persisted Activity record for every supplied step, then stores
+the generated Activity IDs in execution order. The API manages and validates
+the definition but does not execute it.
 
 ## Pipeline calls
 
@@ -22,9 +24,9 @@ pipelines are immutable and omitted from unfiltered listings.
 ## Create a pipeline
 
 `POST /api/v1/pipelines` creates an enabled pipeline in the workspace supplied
-by `X-Workspace-ID`. Create the referenced Activities first, then provide their
-IDs in execution order. Every referenced Activity must be active and belong to
-the same workspace. Repeating an Activity ID is allowed.
+by `X-Workspace-ID`. Supply complete Activity definitions in execution order.
+The API validates and persists each Activity in the same transaction, assigns
+each one an ID, and stores those IDs as Pipeline steps.
 
 ```http
 POST /api/v1/pipelines
@@ -38,13 +40,39 @@ Content-Type: application/json
   "description": "Review a release, collect readiness information, and request approval.",
   "steps": [
     {
-      "activity_id": "activity-release-review"
+      "title": "Review release plan",
+      "description": "Reach a shared decision about release readiness.",
+      "type": "roundtable_loop",
+      "config": {
+        "type": "roundtable_loop",
+        "stop_conditions": {
+          "max_iterations": 2
+        },
+        "agents": [],
+        "output_contract": {
+          "type": "text",
+          "description": "Release decision."
+        }
+      }
     },
     {
-      "activity_id": "activity-readiness-quiz"
+      "title": "Deployment readiness quiz",
+      "description": "Confirm operational readiness before deployment.",
+      "type": "quiz",
+      "config": {
+        "type": "quiz",
+        "quiz": {
+          "questions": []
+        }
+      }
     },
     {
-      "activity_id": "activity-production-approval"
+      "title": "Approve production release",
+      "description": "A release manager approves deployment.",
+      "type": "approval",
+      "config": {
+        "type": "approval"
+      }
     }
   ]
 }
@@ -56,7 +84,8 @@ over title and description, and optional `status` of `active`, `disabled`, or
 
 ## Pipeline steps
 
-A step contains only an active activity reference:
+A response step contains the generated ID of its independently persisted
+Activity:
 
 ```json
 {
@@ -64,8 +93,9 @@ A step contains only an active activity reference:
 }
 ```
 
-Every referenced activity must exist in the selected workspace and be active.
-Repeated activity references are allowed.
+Pipeline creation and step replacement both accept the same full Activity
+definition shape as `POST /api/v1/activities`. Replacing steps creates new
+Activity records; it does not modify or delete Activities from prior steps.
 
 Every create, patch, enablement change, and archival appends a changelog entry
 in the same transaction. Step diffs report additions, removals, positional

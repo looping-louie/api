@@ -13,15 +13,38 @@ immutable; they can be enabled or disabled.
 | `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
 
-## Create Persona Request
+## Create a persona
+
+`POST /api/v1/personas` creates a custom persona in the workspace supplied by
+`X-Workspace-ID`.
 
 | Field | Description |
 | ----- | ----------- |
 | `name` | Required non-empty display name. |
 | `description` | Optional description. Defaults to an empty string. |
 | `instructions` | Required non-empty complete persona instructions. |
-| `skill_ids` | Ordered IDs of skills associated with the persona. |
+| `skill_ids` | Unique ordered IDs of skills associated with the persona. |
 | `metadata` | Optional JSON object. Defaults to `{}`. |
+
+```http
+POST /api/v1/personas
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "API reviewer",
+  "description": "Reviews public API compatibility.",
+  "instructions": "Inspect every public contract and report breaking changes.",
+  "skill_ids": [
+    "skill-api-compatibility"
+  ],
+  "metadata": {
+    "team": "platform"
+  }
+}
+```
 
 ## Patch Persona Request
 
@@ -31,23 +54,6 @@ association; an empty list removes every skill. Content changes require
 `expected_version`; an enabled-only change does not. `enabled` must be `true`
 or `false`, not `null`. Built-in content is immutable, but its enabled state
 can be patched.
-
-## Create Persona Example
-
-```sh
-curl -s -X POST http://127.0.0.1:8000/api/v1/personas \
-  -H "Content-Type: application/json" \
-  -H "X-Workspace-ID: workspace-id" \
-  -d '{
-    "name": "API reviewer",
-    "description": "Reviews public API compatibility.",
-    "instructions": "Inspect every public contract and report breaking changes.",
-    "skill_ids": ["builtin:skill:security"],
-    "metadata": {
-      "team": "platform"
-    }
-  }'
-```
 
 Write and get operations return the complete persona, including `id`,
 instructions, `skill_ids`, metadata, origin and capabilities, version, and

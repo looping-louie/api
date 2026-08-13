@@ -7,6 +7,7 @@ from typing import Literal, Self
 
 from pydantic import model_validator
 
+from src.app.schemas.activity import ActivityCreateRequest
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
@@ -23,10 +24,8 @@ PipelineChangeTypeValue = Literal[
     "disabled",
     "archived",
 ]
-class PipelineActivityStepRequest(RequestSchema):
-    """Reference to an existing active workspace activity."""
-
-    activity_id: NonEmptyString
+class PipelineActivityStepRequest(ActivityCreateRequest):
+    """Activity definition created as one persisted pipeline step."""
 
 
 class PipelineCreateRequest(RequestSchema):

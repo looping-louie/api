@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
-from typing import Callable
+from typing import Callable, cast
 
+from src.app.models.activity import (
+    ActivityChangelogEntry,
+    ActivityDocument,
+    ActivityType,
+)
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDocument,
+    PipelineActivityStep,
 )
-from src.app.repositories.activities.repository import ActivityRepository
 from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
@@ -20,7 +25,6 @@ from src.app.services.pipelines.operations import (
     normalize_offset,
     normalize_search,
     require_pipeline,
-    validate_activity_references,
 )
 from src.app.services.pipelines.mutation import (
     apply_patch,
@@ -29,6 +33,7 @@ from src.app.services.pipelines.mutation import (
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
+    PipelineActivityInput,
     PipelineCreate,
     PipelineNotFoundError,
     PipelinePatch,
@@ -52,7 +57,6 @@ class PipelineService:
         self,
         *,
         repository: PipelineRepository,
-        activity_repository: ActivityRepository,
         tenant_service: TenantService,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
@@ -60,7 +64,6 @@ class PipelineService:
         """Store persistence, tenancy, and generated-value dependencies."""
 
         self._repository = repository
-        self._activity_repository = activity_repository
         self._tenant_service = tenant_service
         self._id_factory = id_factory
         self._clock = clock
@@ -133,15 +136,24 @@ class PipelineService:
             title=require_text(payload.title, "title"),
             description=normalize_description(payload.description),
             status="active",
-            steps=normalize_steps(payload.steps),
+            steps=(),
             created_at=now,
             created_by=actor_id,
             updated_at=now,
             updated_by=actor_id,
         )
-        await validate_activity_references(
-            self._activity_repository,
+        activities, activity_entries = self._build_activities(
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            inputs=normalize_steps(payload.steps),
+            now=now,
+        )
+        document = replace(
             document,
+            steps=tuple(
+                PipelineActivityStep(activity_id=activity.id)
+                for activity in activities
+            ),
         )
         entry = build_entry(
             id_factory=self._id_factory,
@@ -151,9 +163,11 @@ class PipelineService:
             changed_at=now,
             content=document_content(document),
         )
-        return await self._repository.create(
+        return await self._repository.create_with_activities(
             document=document,
             changelog_entry=entry,
+            activity_documents=activities,
+            activity_changelog_entries=activity_entries,
         )
 
     async def patch(
@@ -176,15 +190,26 @@ class PipelineService:
             pipeline_id=pipeline_id,
         )
         actor_id = require_text(user_id, "user_id")
+        activities: list[ActivityDocument] = []
+        activity_entries: list[ActivityChangelogEntry] = []
+        generated_steps = None
+        if payload.steps is not None:
+            activities, activity_entries = self._build_activities(
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                inputs=normalize_steps(payload.steps),
+                now=self._clock(),
+            )
+            generated_steps = tuple(
+                PipelineActivityStep(activity_id=activity.id)
+                for activity in activities
+            )
         updated = apply_patch(
             current,
             payload,
             actor_id=actor_id,
             changed_at=self._clock(),
-        )
-        await validate_activity_references(
-            self._activity_repository,
-            updated,
+            steps=generated_steps,
         )
         diff = changed_fields(current, updated, payload.provided_fields)
         if not diff:
@@ -200,10 +225,20 @@ class PipelineService:
             changed_at=updated.updated_at,
             diff=diff,
         )
-        if not await self._repository.update(
-            document=updated,
-            changelog_entry=entry,
-        ):
+        updated_persisted = (
+            await self._repository.update_with_activities(
+                document=updated,
+                changelog_entry=entry,
+                activity_documents=activities,
+                activity_changelog_entries=activity_entries,
+            )
+            if activities
+            else await self._repository.update(
+                document=updated,
+                changelog_entry=entry,
+            )
+        )
+        if not updated_persisted:
             raise PipelineNotFoundError(pipeline_id=pipeline_id)
         return updated
 
@@ -290,3 +325,61 @@ class PipelineService:
             requested_workspace_id=requested_workspace_id,
         )
         return tenant.workspace_id
+
+    def _build_activities(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        inputs: tuple[PipelineActivityInput, ...],
+        now: datetime,
+    ) -> tuple[list[ActivityDocument], list[ActivityChangelogEntry]]:
+        """Create independent active Activity documents for inline steps."""
+
+        documents: list[ActivityDocument] = []
+        entries: list[ActivityChangelogEntry] = []
+        for position, value in enumerate(inputs):
+            if value.type not in {
+                "approval",
+                "quiz",
+                "direct_loop",
+                "refinement_loop",
+                "roundtable_loop",
+            }:
+                raise InvalidPipelineStepsError(
+                    field_name=f"steps.{position}.type",
+                    message="must contain a supported activity type",
+                )
+            document = ActivityDocument(
+                id=self._id_factory(),
+                workspace_id=workspace_id,
+                title=value.title,
+                description=value.description,
+                status="active",
+                type=cast(ActivityType, value.type),
+                config=value.config,
+                created_at=now,
+                created_by=actor_id,
+                updated_at=now,
+                updated_by=actor_id,
+            )
+            documents.append(document)
+            entries.append(
+                ActivityChangelogEntry(
+                    id=self._id_factory(),
+                    activity_id=document.id,
+                    workspace_id=workspace_id,
+                    change_type="created",
+                    actor_id=actor_id,
+                    changed_at=now,
+                    diff=None,
+                    content={
+                        "title": document.title,
+                        "description": document.description,
+                        "status": document.status,
+                        "type": document.type,
+                        "config": document.config,
+                    },
+                )
+            )
+        return documents, entries

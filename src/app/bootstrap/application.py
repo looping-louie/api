@@ -291,7 +291,6 @@ async def configure_application(
     )
     app.state.pipeline_controller = build_pipeline_controller(
         database_path=resolved_settings.database_path,
-        activity_repository=activity_repository,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,

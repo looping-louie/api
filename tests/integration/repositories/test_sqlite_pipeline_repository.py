@@ -86,6 +86,107 @@ async def seed_activities(
         )
 
 
+def generated_activity(
+    *,
+    activity_id: str,
+) -> tuple[ActivityDocument, ActivityChangelogEntry]:
+    """Build one Activity and creation entry generated from a Pipeline step."""
+
+    document = ActivityDocument(
+        id=activity_id,
+        workspace_id='workspace-1',
+        title=f'Generated {activity_id}',
+        description='Created with a pipeline.',
+        status='active',
+        type='approval',
+        config={'type': 'approval'},
+        created_at=BASE_TIME,
+        created_by='user-1',
+        updated_at=BASE_TIME,
+        updated_by='user-1',
+    )
+    return document, ActivityChangelogEntry(
+        id=f'{activity_id}-entry',
+        activity_id=activity_id,
+        workspace_id='workspace-1',
+        change_type='created',
+        actor_id='user-1',
+        changed_at=BASE_TIME,
+        diff=None,
+        content={'id': activity_id},
+    )
+
+
+@pytest.mark.asyncio
+async def test_creates_generated_activities_with_pipeline_atomically(
+    sqlite_database_path: Path,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """Generated Activities persist independently with their Pipeline steps."""
+
+    await create_workspace(workspace_id='workspace-1')
+    repository = SqlitePipelineRepository(sqlite_database_path)
+    activity_repository = SqliteActivityRepository(sqlite_database_path)
+    first, first_entry = generated_activity(activity_id='generated-1')
+    second, second_entry = generated_activity(activity_id='generated-2')
+    document = replace(
+        build_pipeline(pipeline_id='pipeline-generated'),
+        steps=(
+            PipelineActivityStep(activity_id=first.id),
+            PipelineActivityStep(activity_id=second.id),
+        ),
+    )
+
+    await repository.create_with_activities(
+        document=document,
+        changelog_entry=entry(document, entry_id='pipeline-generated-entry'),
+        activity_documents=[first, second],
+        activity_changelog_entries=[first_entry, second_entry],
+    )
+
+    assert await activity_repository.get(
+        workspace_id='workspace-1',
+        activity_id=first.id,
+    ) == first
+    assert await repository.get(
+        workspace_id='workspace-1',
+        pipeline_id=document.id,
+    ) == document
+
+
+@pytest.mark.asyncio
+async def test_failed_generated_activity_insert_rolls_back_pipeline_creation(
+    sqlite_database_path: Path,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """A bundled create rolls back when one generated Activity conflicts."""
+
+    await create_workspace(workspace_id='workspace-1')
+    repository = SqlitePipelineRepository(sqlite_database_path)
+    first, first_entry = generated_activity(activity_id='generated-1')
+    duplicate, duplicate_entry = generated_activity(activity_id='generated-1')
+    document = replace(
+        build_pipeline(pipeline_id='pipeline-rollback'),
+        steps=(
+            PipelineActivityStep(activity_id=first.id),
+            PipelineActivityStep(activity_id=duplicate.id),
+        ),
+    )
+
+    with pytest.raises(Exception):
+        await repository.create_with_activities(
+            document=document,
+            changelog_entry=entry(document, entry_id='pipeline-rollback-entry'),
+            activity_documents=[first, duplicate],
+            activity_changelog_entries=[first_entry, duplicate_entry],
+        )
+
+    assert await repository.get(
+        workspace_id='workspace-1',
+        pipeline_id=document.id,
+    ) is None
+
+
 @pytest.mark.asyncio
 async def test_round_trips_ordered_activity_steps(
     sqlite_database_path: Path,
