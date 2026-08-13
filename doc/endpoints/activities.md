@@ -1,9 +1,10 @@
 # Activities
 
 Activities are workspace-scoped reusable units of work. The current supported
-types are `approval`, `loop`, and `human_gate`. Approval activities represent
-human approval. A loop activity can create persisted runs; human-gate execution
-is reserved for future pipeline orchestration.
+types are `approval`, `quiz`, and `loop`. Approval activities represent human
+approval, and quiz activities collect human quiz responses. A loop activity can
+create persisted runs; approval and quiz execution are reserved for future
+pipeline orchestration.
 
 ## Resource endpoints
 

@@ -117,31 +117,31 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     assert created.json()['type'] == 'loop'
     assert created.json()['config']['flow'] == 'direct'
 
-    gate = client.post('/api/v1/activities', json={
-        'title': 'Review gate', 'description': 'Approve the result.',
-        'type': 'human_gate',
-        'config': {'type': 'human_gate', 'gate_type': 'quiz', 'quiz': {'questions': []}},
+    quiz = client.post('/api/v1/activities', json={
+        'title': 'Review quiz', 'description': 'Answer the questions.',
+        'type': 'quiz',
+        'config': {'type': 'quiz', 'quiz': {'questions': []}},
     })
     patched = client.patch(f'/api/v1/activities/{activity_id}', json={'status': 'disabled'})
     changelog = client.get(f'/api/v1/activities/{activity_id}/changelog')
     deleted = client.delete(f'/api/v1/activities/{activity_id}')
     retained = client.get(f'/api/v1/activities/{activity_id}/changelog')
-    invalid_gate = client.post('/api/v1/activities', json={
+    invalid_quiz = client.post('/api/v1/activities', json={
         'title': 'Invalid', 'description': '',
-        'type': 'human_gate',
-        'config': {'type': 'human_gate', 'gate_type': 'approval', 'quiz': {}},
+        'type': 'quiz',
+        'config': {'type': 'quiz'},
     })
 
-    assert gate.status_code == 201
-    assert gate.json()['type'] == 'human_gate'
-    assert gate.json()['config']['quiz'] == {'questions': []}
+    assert quiz.status_code == 201
+    assert quiz.json()['type'] == 'quiz'
+    assert quiz.json()['config']['quiz'] == {'questions': []}
     assert patched.json()['status'] == 'disabled'
     assert changelog.json()['items'][0]['change_type'] == 'disabled'
     assert changelog.json()['items'][0]['diff']['status'] == 'disabled'
     assert deleted.json() == {'deleted': True}
     assert retained.status_code == 200
     assert retained.json()['items'][0]['change_type'] == 'deleted'
-    assert invalid_gate.status_code == 422
+    assert invalid_quiz.status_code == 422
 
 
 def test_activity_creates_approval_without_a_human_gate_wrapper(
@@ -175,8 +175,7 @@ def test_activity_patch_rejects_a_config_with_a_different_type(
         f"/api/v1/activities/{created.json()['id']}",
         json={
             'config': {
-                'type': 'human_gate',
-                'gate_type': 'approval',
+                'type': 'approval',
             },
         },
     )
@@ -199,8 +198,8 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
         'continuation_token': created.json()['continuation_token'], 'idempotency_key': 'snapshot-1',
         'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'workspace_metadata': {'workspace_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
     })
-    gate = client.post('/api/v1/activities', json={'title': 'Gate', 'description': '', 'type': 'human_gate', 'config': {'type': 'human_gate', 'gate_type': 'approval'}})
-    mismatch = client.post(f"/api/v1/activities/{gate.json()['id']}/runs", json={'input': 'No run.'})
+    approval = client.post('/api/v1/activities', json={'title': 'Approval', 'description': '', 'type': 'approval', 'config': {'type': 'approval'}})
+    mismatch = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'No run.'})
     client.patch(f'/api/v1/activities/{activity_id}', json={'status': 'disabled'})
     disabled = client.post(f'/api/v1/activities/{activity_id}/runs', json={'input': 'No run.'})
 

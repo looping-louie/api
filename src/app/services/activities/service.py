@@ -147,8 +147,8 @@ class ActivityService:
 
         if not isinstance(value, dict) or value.get('type') not in (
             'approval',
+            'quiz',
             'loop',
-            'human_gate',
         ):
             raise ActivityValidationError(
                 field_name='config',

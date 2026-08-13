@@ -195,6 +195,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0017_activity_catalog_installations",
         "0018_archive_builtin_activities",
             "0019_flatten_approval_activities",
+        "0020_flatten_quiz_activities",
     ]
     assert activity_rows == []
 
