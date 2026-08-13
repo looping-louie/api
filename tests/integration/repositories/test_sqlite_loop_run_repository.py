@@ -264,8 +264,11 @@ async def test_activity_owned_loop_run_preserves_legacy_loop_runs(
                 config_json, created_at, created_by, updated_at, updated_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
-            ('activity-1', 'workspace-1', 'Activity', '', 'active', 'loop', '{}',
-             timestamp.isoformat(), 'user-1', timestamp.isoformat(), 'user-1'),
+            (
+                'activity-1', 'workspace-1', 'Activity', '', 'active',
+                'direct_loop', '{"type":"direct_loop"}',
+                timestamp.isoformat(), 'user-1', timestamp.isoformat(), 'user-1',
+            ),
         )
         await connection.commit()
 

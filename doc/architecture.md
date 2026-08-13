@@ -291,8 +291,7 @@ This package defines typed internal domain state. It contains persisted
 documents, immutable changelog entries, availability projections, and values
 used between services and repositories. It does not define HTTP contracts.
 Activity definitions currently support `approval`, `quiz`, `direct_loop`,
-`refinement_loop`, and `loop` types while the remaining roundtable variant is
-flattened incrementally.
+`refinement_loop`, and `roundtable_loop` types.
 
 ```text
 models/

@@ -28,8 +28,9 @@ EXPECTED_CHECKSUMS = {
     '0018_archive_builtin_activities.sql': 'c247732633257e31c01578703b145cd987a4983f51813ffaa9dc2c634774d02d',
     '0019_flatten_approval_activities.sql': '664cea04e52bbcb824c57eb3b133748031130759b25765f5dc40f5180a42e26c',
     '0020_flatten_quiz_activities.sql': '765189cd23acee40cf99aaa0d263cba2cac7b3deeb00dc5f9281a0934f2843ea',
-    '0021_flatten_direct_loop_activities.sql': '29ef9d010466ffde278c1f182fd2f8b5fb78f7f6f3521a1b3a03a3694fb41635',
-    '0022_flatten_refinement_loop_activities.sql': '1b8b14b834246cc2010aaa7f07281bb3e39a90bbee8f4c8d82cce352b112689e',
+    '0021_flatten_direct_loop_activities.sql': '453b87a8de13621ee697dfddfac3ae22241c63eb5c2a15e03e4246631c03d8de',
+    '0022_flatten_refinement_loop_activities.sql': 'e3abeac8063f32987f774e7fbd496928081c773cbb2233f5385d55ea1e587402',
+    '0023_flatten_roundtable_loop_activities.sql': '6d833b7f37e14a0203c85bf3528d7b2191bf6e5f0dab1b9af751bff6f93c4ca7',
 }
 
 

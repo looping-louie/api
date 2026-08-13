@@ -107,6 +107,22 @@ def direct_loop_payload() -> dict[str, object]:
     }
 
 
+def roundtable_loop_payload() -> dict[str, object]:
+    """Return one valid roundtable loop activity body."""
+
+    return {
+        'title': 'Roundtable activity',
+        'description': 'Reach a shared decision.',
+        'type': 'roundtable_loop',
+        'config': {
+            'type': 'roundtable_loop',
+            'stop_conditions': {'max_tokens': 100},
+            'agents': [],
+            'output_contract': {'type': 'text', 'description': 'A result.'},
+        },
+    }
+
+
 def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: TenantService) -> None:
     """Create, read, update, audit, delete, and validate both activity types."""
 
@@ -132,6 +148,10 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
     })
+    roundtable = client.post(
+        '/api/v1/activities',
+        json=roundtable_loop_payload(),
+    )
     patched = client.patch(f'/api/v1/activities/{activity_id}', json={'status': 'disabled'})
     changelog = client.get(f'/api/v1/activities/{activity_id}/changelog')
     deleted = client.delete(f'/api/v1/activities/{activity_id}')
@@ -147,6 +167,8 @@ def test_activity_rest_crud_changelog_and_discriminated_configs(tenant_service: 
     assert quiz.json()['config']['quiz'] == {'questions': []}
     assert refinement.status_code == 201
     assert refinement.json()['type'] == 'refinement_loop'
+    assert roundtable.status_code == 201
+    assert roundtable.json()['type'] == 'roundtable_loop'
     assert patched.json()['status'] == 'disabled'
     assert changelog.json()['items'][0]['change_type'] == 'disabled'
     assert changelog.json()['items'][0]['diff']['status'] == 'disabled'
@@ -203,6 +225,14 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
     client = build_client(tenant_service=tenant_service)
     activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
     created = client.post(f'/api/v1/activities/{activity_id}/runs', json={'input': 'Create a file.'})
+    roundtable_id = client.post(
+        '/api/v1/activities',
+        json=roundtable_loop_payload(),
+    ).json()['id']
+    roundtable_run = client.post(
+        f'/api/v1/activities/{roundtable_id}/runs',
+        json={'input': 'Create a file.'},
+    )
     run_id = created.json()['id']
     listed = client.get(f'/api/v1/activities/{activity_id}/runs')
     fetched = client.get(f'/api/v1/activities/{activity_id}/runs/{run_id}')
@@ -227,6 +257,8 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
 
     assert created.status_code == 201
     assert created.json()['loop_id'] == activity_id
+    assert roundtable_run.status_code == 201
+    assert roundtable_run.json()['loop_id'] == roundtable_id
     assert listed.json()['items'][0]['id'] == run_id
     assert fetched.json()['id'] == run_id
     assert continued.json()['state'] == 'awaiting_generation'

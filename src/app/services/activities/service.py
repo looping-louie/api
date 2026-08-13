@@ -150,7 +150,7 @@ class ActivityService:
             'quiz',
             'direct_loop',
             'refinement_loop',
-            'loop',
+            'roundtable_loop',
         ):
             raise ActivityValidationError(
                 field_name='config',

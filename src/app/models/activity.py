@@ -15,7 +15,7 @@ ActivityType = Literal[
     'quiz',
     'direct_loop',
     'refinement_loop',
-    'loop',
+    'roundtable_loop',
 ]
 ActivityChangeType = Literal[
     'created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'

@@ -39,11 +39,10 @@ class RefinementLoopActivityConfig(RequestSchema):
     output_contract: LoopOutputContractSchema
 
 
-class LoopActivityConfig(RequestSchema):
-    """Configuration for the roundtable loop pending its Activity type."""
+class RoundtableLoopActivityConfig(RequestSchema):
+    """Configuration for a roundtable loop activity."""
 
-    type: Literal['loop']
-    flow: Literal['roundtable']
+    type: Literal['roundtable_loop']
     stop_conditions: LoopStopConditionsSchema
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
@@ -67,7 +66,7 @@ ActivityConfig = Annotated[
     | QuizActivityConfig
     | DirectLoopActivityConfig
     | RefinementLoopActivityConfig
-    | LoopActivityConfig,
+    | RoundtableLoopActivityConfig,
     Field(discriminator='type'),
 ]
 
@@ -82,7 +81,7 @@ class ActivityCreateRequest(RequestSchema):
         'quiz',
         'direct_loop',
         'refinement_loop',
-        'loop',
+        'roundtable_loop',
     ]
     config: ActivityConfig
 
@@ -128,7 +127,7 @@ class ActivityResponse(ResponseSchema):
         'quiz',
         'direct_loop',
         'refinement_loop',
-        'loop',
+        'roundtable_loop',
     ]
     config: ActivityConfig
     created_at: datetime

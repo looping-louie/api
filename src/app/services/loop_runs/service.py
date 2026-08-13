@@ -120,7 +120,7 @@ class LoopRunService:
     ) -> LoopRunDocument:
         """Create a run from an active loop activity configuration."""
 
-        activity = await self._active_loop_activity(
+        activity = await self._active_executable_activity(
             user_id=user_id,
             activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
@@ -240,7 +240,7 @@ class LoopRunService:
     ) -> LoopRunDocument:
         """Advance one checkpoint for an active loop activity run."""
 
-        await self._active_loop_activity(
+        await self._active_executable_activity(
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
@@ -563,7 +563,7 @@ class LoopRunService:
     ) -> tuple[list[LoopRunDocument], int]:
         """Return one page of runs for an active loop activity."""
 
-        await self._active_loop_activity(
+        await self._active_executable_activity(
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
@@ -592,7 +592,7 @@ class LoopRunService:
             raise RuntimeError('Loop generation is not configured.')
         return self._generation_service
 
-    async def _active_loop_activity(
+    async def _active_executable_activity(
         self,
         *,
         user_id: str,
@@ -607,8 +607,11 @@ class LoopRunService:
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if activity.type != 'direct_loop':
-            raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not direct_loop')
+        if activity.type not in ('direct_loop', 'roundtable_loop'):
+            raise ActivityRunUnavailableError(
+                activity_id=activity.id,
+                reason='type is not executable',
+            )
         if activity.status != 'active':
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
         return activity
@@ -617,11 +620,15 @@ class LoopRunService:
     def _activity_snapshot(activity: object) -> dict[str, object]:
         """Shape an activity loop configuration for existing generation logic."""
 
+        flow_by_type = {
+            'direct_loop': 'direct',
+            'roundtable_loop': 'roundtable',
+        }
         return {
             'id': getattr(activity, 'id'), 'title': getattr(activity, 'title'),
             'description': getattr(activity, 'description'),
             **dict(getattr(activity, 'config')),
-            'flow': 'direct',
+            'flow': flow_by_type[getattr(activity, 'type')],
         }
 
     async def _continue_activity_action(
