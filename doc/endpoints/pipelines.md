@@ -16,15 +16,15 @@ the definition but does not execute it.
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
 
-Creation requires a non-empty `title`, a `description`, and at least two steps.
-New pipelines are enabled. PATCH accepts `title`, `description`, `enabled`, and
+Creation requires a non-empty `name`, a `description`, and at least two steps.
+New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
 `steps`; supplying `steps` replaces the complete ordered array. Archived
 pipelines are immutable and omitted from unfiltered listings.
 
 ## List pipelines
 
 `GET /api/v1/pipelines` returns ten pipelines after the optional non-negative
-`offset`. `search` matches title and description case-insensitively, and
+`offset`. `search` matches name and description case-insensitively, and
 `status` accepts `active`, `disabled`, or `archived`. Each Pipeline resolves
 every stored step to its full persisted Activity.
 
@@ -40,14 +40,14 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "pipeline-production-release-review",
-      "title": "Production release review",
+      "name": "ProductionReleaseReview",
       "description": "Review a release, collect readiness information, and request approval.",
       "enabled": true,
       "steps": [
         {
           "id": "activity-release-review",
           "workspace_id": "workspace-acme",
-          "title": "Review release plan",
+          "name": "ReviewReleasePlan",
           "description": "Reach a shared decision about release readiness.",
           "status": "active",
           "type": "roundtable_loop",
@@ -69,7 +69,7 @@ Example response (`200 OK`):
         {
           "id": "activity-readiness-quiz",
           "workspace_id": "workspace-acme",
-          "title": "Deployment readiness quiz",
+          "name": "DeploymentReadinessQuiz",
           "description": "Confirm operational readiness before deployment.",
           "status": "active",
           "type": "quiz",
@@ -86,7 +86,7 @@ Example response (`200 OK`):
         {
           "id": "activity-production-approval",
           "workspace_id": "workspace-acme",
-          "title": "Approve production release",
+          "name": "ApproveProductionRelease",
           "description": "A release manager approves deployment.",
           "status": "active",
           "type": "approval",
@@ -120,14 +120,14 @@ Example response (`200 OK`):
 ```json
 {
   "id": "pipeline-production-release-review",
-  "title": "Production release review",
+  "name": "ProductionReleaseReview",
   "description": "Review a release, collect readiness information, and request approval.",
   "enabled": true,
   "steps": [
     {
       "id": "activity-release-review",
       "workspace_id": "workspace-acme",
-      "title": "Review release plan",
+      "name": "ReviewReleasePlan",
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -149,7 +149,7 @@ Example response (`200 OK`):
     {
       "id": "activity-readiness-quiz",
       "workspace_id": "workspace-acme",
-      "title": "Deployment readiness quiz",
+      "name": "DeploymentReadinessQuiz",
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
@@ -166,7 +166,7 @@ Example response (`200 OK`):
     {
       "id": "activity-production-approval",
       "workspace_id": "workspace-acme",
-      "title": "Approve production release",
+      "name": "ApproveProductionRelease",
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
@@ -198,11 +198,11 @@ Content-Type: application/json
 
 ```json
 {
-  "title": "Production release review",
+  "name": "ProductionReleaseReview",
   "description": "Review a release, collect readiness information, and request approval.",
   "steps": [
     {
-      "title": "Review release plan",
+      "name": "ReviewReleasePlan",
       "description": "Reach a shared decision about release readiness.",
       "type": "roundtable_loop",
       "config": {
@@ -217,7 +217,7 @@ Content-Type: application/json
       }
     },
     {
-      "title": "Deployment readiness quiz",
+      "name": "DeploymentReadinessQuiz",
       "description": "Confirm operational readiness before deployment.",
       "type": "quiz",
       "config": {
@@ -227,7 +227,7 @@ Content-Type: application/json
       }
     },
     {
-      "title": "Approve production release",
+      "name": "ApproveProductionRelease",
       "description": "A release manager approves deployment.",
       "type": "approval",
       "config": {}
@@ -241,14 +241,14 @@ Example response (`201 Created`):
 ```json
 {
   "id": "pipeline-production-release-review",
-  "title": "Production release review",
+  "name": "ProductionReleaseReview",
   "description": "Review a release, collect readiness information, and request approval.",
   "enabled": true,
   "steps": [
     {
       "id": "activity-release-review",
       "workspace_id": "workspace-acme",
-      "title": "Review release plan",
+      "name": "ReviewReleasePlan",
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -270,7 +270,7 @@ Example response (`201 Created`):
     {
       "id": "activity-readiness-quiz",
       "workspace_id": "workspace-acme",
-      "title": "Deployment readiness quiz",
+      "name": "DeploymentReadinessQuiz",
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
@@ -287,7 +287,7 @@ Example response (`201 Created`):
     {
       "id": "activity-production-approval",
       "workspace_id": "workspace-acme",
-      "title": "Approve production release",
+      "name": "ApproveProductionRelease",
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
@@ -305,7 +305,7 @@ Example response (`201 Created`):
 
 ## Update a pipeline
 
-`PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `title`,
+`PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `name`,
 `description`, `enabled`, and `steps`. Supplying `steps` replaces the complete
 ordered array and creates new independent Activity records from the supplied
 inline definitions. The response resolves every stored step to its full
@@ -328,14 +328,14 @@ Example response (`200 OK`):
 ```json
 {
   "id": "pipeline-production-release-review",
-  "title": "Production release review",
+  "name": "ProductionReleaseReview",
   "description": "Review a release, collect readiness information, and request approval.",
   "enabled": false,
   "steps": [
     {
       "id": "activity-release-review",
       "workspace_id": "workspace-acme",
-      "title": "Review release plan",
+      "name": "ReviewReleasePlan",
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -357,7 +357,7 @@ Example response (`200 OK`):
     {
       "id": "activity-readiness-quiz",
       "workspace_id": "workspace-acme",
-      "title": "Deployment readiness quiz",
+      "name": "DeploymentReadinessQuiz",
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
@@ -374,7 +374,7 @@ Example response (`200 OK`):
     {
       "id": "activity-production-approval",
       "workspace_id": "workspace-acme",
-      "title": "Approve production release",
+      "name": "ApproveProductionRelease",
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
@@ -391,7 +391,7 @@ Example response (`200 OK`):
 ```
 
 The list accepts a non-negative `offset`, optional case-insensitive `search`
-over title and description, and optional `status` of `active`, `disabled`, or
+over name and description, and optional `status` of `active`, `disabled`, or
 `archived`. Active pipelines sort before disabled and archived pipelines.
 
 Every Pipeline response resolves each step to the complete Activity

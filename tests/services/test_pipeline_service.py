@@ -20,11 +20,11 @@ from tests.conftest import IncrementingClock
 from tests.fakes.pipeline_repository import FakePipelineRepository
 
 
-def activity_step(title: str = 'Implementation activity') -> PipelineActivityInput:
+def activity_step(name: str = 'Implementation activity') -> PipelineActivityInput:
     """Build one inline direct-loop Activity input."""
 
     return PipelineActivityInput(
-        title=title,
+        name=name,
         description='Complete one stage.',
         type='direct_loop',
         config={
@@ -41,12 +41,12 @@ def activity_step(title: str = 'Implementation activity') -> PipelineActivityInp
 def payload(
     *,
     steps: tuple[PipelineActivityInput, ...] | None = None,
-    title: str = 'Implementation',
+    name: str = 'Implementation',
 ) -> PipelineCreate:
     """Build one valid create input."""
 
     return PipelineCreate(
-        title=title,
+        name=name,
         description='Implement and validate.',
         steps=(
             steps
@@ -168,7 +168,7 @@ async def test_enable_disable_archive_and_filtered_listing(
     service, repository = build_service(tenant_service=tenant_service)
     created = await service.create(
         user_id='user-1',
-        payload=payload(title='Knowledge validation'),
+        payload=payload(name='Knowledge validation'),
     )
     disabled = await service.patch(
         user_id='user-1',

@@ -46,7 +46,7 @@ class FakePipelineRepository:
             )
             and (
                 search is None
-                or search.casefold() in document.title.casefold()
+                or search.casefold() in document.name.casefold()
                 or search.casefold() in document.description.casefold()
             )
         ]

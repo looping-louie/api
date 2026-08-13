@@ -31,7 +31,7 @@ class PipelineActivityStepRequest(ActivityCreateRequest):
 class PipelineCreateRequest(RequestSchema):
     """Request body for creating an enabled pipeline."""
 
-    title: NonEmptyString
+    name: NonEmptyString
     description: str
     steps: list[PipelineActivityStepRequest]
 
@@ -39,7 +39,7 @@ class PipelineCreateRequest(RequestSchema):
 class PipelinePatchRequest(RequestSchema):
     """Partial mutable pipeline fields accepted by PATCH."""
 
-    title: NonEmptyString | None = None
+    name: NonEmptyString | None = None
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
@@ -60,7 +60,7 @@ class PipelineResponse(ResponseSchema):
     """Pipeline representation with full Activity definitions for each step."""
 
     id: str
-    title: str
+    name: str
     description: str
     enabled: bool
     steps: list[ActivityResponse]

@@ -43,14 +43,26 @@ Example response (`200 OK`):
     {
       "id": "activity-implementation",
       "workspace_id": "workspace-acme",
-      "title": "Implement requested change",
+      "name": "ImplementRequestedChange",
       "description": "Make and validate a focused code change.",
       "status": "active",
       "type": "direct_loop",
       "config": {
-        "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
-        "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
-        "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+        "stop_conditions": {
+          "max_iterations": 3,
+          "max_tokens": 12000
+        },
+        "agents": [
+          {
+            "model_id": "gpt-5",
+            "persona_id": "software-engineer",
+            "role": "generator"
+          }
+        ],
+        "output_contract": {
+          "type": "text",
+          "description": "A concise implementation summary and validation result."
+        }
       },
       "created_at": "2026-08-13T10:00:00Z",
       "created_by": "user-123",
@@ -78,14 +90,26 @@ Example response (`200 OK`):
 {
   "id": "activity-implementation",
   "workspace_id": "workspace-acme",
-  "title": "Implement requested change",
+  "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
   "type": "direct_loop",
   "config": {
-    "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
-    "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
-    "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+    "stop_conditions": {
+      "max_iterations": 3,
+      "max_tokens": 12000
+    },
+    "agents": [
+      {
+        "model_id": "gpt-5",
+        "persona_id": "software-engineer",
+        "role": "generator"
+      }
+    ],
+    "output_contract": {
+      "type": "text",
+      "description": "A concise implementation summary and validation result."
+    }
   },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
@@ -97,7 +121,7 @@ Example response (`200 OK`):
 ## Create an activity
 
 `POST /api/v1/activities` creates an active Activity in the workspace supplied
-by `X-Workspace-ID`. Every request needs a non-empty `title`, a `description`,
+by `X-Workspace-ID`. Every request needs a non-empty `name`, a `description`,
 a supported `type`, and a configuration matching that type.
 
 ### Direct loop
@@ -114,7 +138,7 @@ Content-Type: application/json
 
 ```json
 {
-  "title": "Implement requested change",
+  "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "type": "direct_loop",
   "config": {
@@ -143,14 +167,26 @@ Example response (`201 Created`):
 {
   "id": "activity-implementation",
   "workspace_id": "workspace-acme",
-  "title": "Implement requested change",
+  "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
   "type": "direct_loop",
   "config": {
-    "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
-    "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
-    "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+    "stop_conditions": {
+      "max_iterations": 3,
+      "max_tokens": 12000
+    },
+    "agents": [
+      {
+        "model_id": "gpt-5",
+        "persona_id": "software-engineer",
+        "role": "generator"
+      }
+    ],
+    "output_contract": {
+      "type": "text",
+      "description": "A concise implementation summary and validation result."
+    }
   },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
@@ -166,7 +202,7 @@ Agents can use the `generator`, `reviewer`, and `aggregator` roles.
 
 ```json
 {
-  "title": "Review release plan",
+  "name": "ReviewReleasePlan",
   "description": "Reach a shared decision about release readiness.",
   "type": "roundtable_loop",
   "config": {
@@ -197,8 +233,12 @@ Agents can use the `generator`, `reviewer`, and `aggregator` roles.
         "type": "object",
         "required": ["decision", "rationale"],
         "properties": {
-          "decision": {"type": "string"},
-          "rationale": {"type": "string"}
+          "decision": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
         }
       }
     }
@@ -212,18 +252,45 @@ Example response (`201 Created`):
 {
   "id": "activity-release-review",
   "workspace_id": "workspace-acme",
-  "title": "Review release plan",
+  "name": "ReviewReleasePlan",
   "description": "Reach a shared decision about release readiness.",
   "status": "active",
   "type": "roundtable_loop",
   "config": {
     "stop_conditions": {"max_iterations": 2},
     "agents": [
-      {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
-      {"model_id": "gpt-5", "persona_id": "quality-reviewer", "role": "reviewer"},
-      {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+      {
+        "model_id": "gpt-5",
+        "persona_id": "release-manager",
+        "role": "generator"
+      },
+      {
+        "model_id": "gpt-5",
+        "persona_id": "quality-reviewer",
+        "role": "reviewer"
+      },
+      {
+        "model_id": "gpt-5",
+        "persona_id": "technical-lead",
+        "role": "aggregator"
+      }
     ],
-    "output_contract": {"type": "json", "description": "The release decision and its rationale.", "schema": {"type": "object", "required": ["decision", "rationale"], "properties": {"decision": {"type": "string"}, "rationale": {"type": "string"}}}}
+    "output_contract": {
+      "type": "json",
+      "description": "The release decision and its rationale.",
+      "schema": {
+        "type": "object",
+        "required": ["decision", "rationale"],
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    }
   },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
@@ -240,7 +307,7 @@ runs.
 
 ```json
 {
-  "title": "Refine documentation draft",
+  "name": "RefineDocumentationDraft",
   "description": "Improve a draft through review iterations.",
   "type": "refinement_loop",
   "config": {
@@ -274,7 +341,7 @@ Example response (`201 Created`):
 {
   "id": "activity-documentation-refinement",
   "workspace_id": "workspace-acme",
-  "title": "Refine documentation draft",
+  "name": "RefineDocumentationDraft",
   "description": "Improve a draft through review iterations.",
   "status": "active",
   "type": "refinement_loop",
@@ -300,7 +367,7 @@ additional fields.
 
 ```json
 {
-  "title": "Approve production release",
+  "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "type": "approval",
   "config": {}
@@ -313,7 +380,7 @@ Example response (`201 Created`):
 {
   "id": "activity-production-approval",
   "workspace_id": "workspace-acme",
-  "title": "Approve production release",
+  "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "status": "active",
   "type": "approval",
@@ -332,7 +399,7 @@ application-defined and stored as supplied.
 
 ```json
 {
-  "title": "Deployment readiness quiz",
+  "name": "DeploymentReadinessQuiz",
   "description": "Confirm operational readiness before deployment.",
   "type": "quiz",
   "config": {
@@ -355,11 +422,21 @@ Example response (`201 Created`):
 {
   "id": "activity-deployment-quiz",
   "workspace_id": "workspace-acme",
-  "title": "Deployment readiness quiz",
+  "name": "DeploymentReadinessQuiz",
   "description": "Confirm operational readiness before deployment.",
   "status": "active",
   "type": "quiz",
-  "config": {"quiz": {"questions": [{"id": "rollback-tested", "prompt": "Has the rollback procedure been tested?", "required": true}]}},
+  "config": {
+    "quiz": {
+      "questions": [
+        {
+          "id": "rollback-tested",
+          "prompt": "Has the rollback procedure been tested?",
+          "required": true
+        }
+      ]
+    }
+  },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:00:00Z",
@@ -369,7 +446,7 @@ Example response (`201 Created`):
 
 ## Update an activity
 
-`PATCH /api/v1/activities/{activity_id}` accepts one or more of `title`,
+`PATCH /api/v1/activities/{activity_id}` accepts one or more of `name`,
 `description`, `status`, and `config`. `status` must be `active`, `disabled`,
 or `archived`. A replacement `config` must match the persisted immutable
 Activity type and must not include `type`.
@@ -392,14 +469,26 @@ Example response (`200 OK`):
 {
   "id": "activity-implementation",
   "workspace_id": "workspace-acme",
-  "title": "Implement requested change",
+  "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "disabled",
   "type": "direct_loop",
   "config": {
-    "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
-    "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
-    "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+    "stop_conditions": {
+      "max_iterations": 3,
+      "max_tokens": 12000
+    },
+    "agents": [
+      {
+        "model_id": "gpt-5",
+        "persona_id": "software-engineer",
+        "role": "generator"
+      }
+    ],
+    "output_contract": {
+      "type": "text",
+      "description": "A concise implementation summary and validation result."
+    }
   },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
@@ -537,7 +626,12 @@ Example response (`200 OK`):
       "change_type": "disabled",
       "actor_id": "user-123",
       "changed_at": "2026-08-13T10:15:00Z",
-      "diff": {"status": {"from": "active", "to": "disabled"}},
+      "diff": {
+        "status": {
+          "from": "active",
+          "to": "disabled"
+        }
+      },
       "content": null
     }
   ],

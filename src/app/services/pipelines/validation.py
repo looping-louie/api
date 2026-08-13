@@ -96,7 +96,7 @@ def normalize_steps(
             ) from error
         steps.append(
             PipelineActivityInput(
-                title=require_text(value.title, f"steps.{position}.title"),
+                name=require_text(value.name, f"steps.{position}.name"),
                 description=normalize_description(value.description),
                 type=require_text(value.type, f"steps.{position}.type"),
                 config=config,
@@ -116,7 +116,7 @@ def document_content(document: PipelineDocument) -> JsonObject:
 
     return {
         "id": document.id,
-        "title": document.title,
+        "name": document.name,
         "description": document.description,
         "enabled": document.enabled,
         "status": document.status,

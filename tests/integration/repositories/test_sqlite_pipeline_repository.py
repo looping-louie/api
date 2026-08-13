@@ -61,7 +61,7 @@ async def seed_activities(
         document = ActivityDocument(
             id=activity_id,
             workspace_id='workspace-1',
-            title=f'Activity {activity_id}',
+            name=f'Activity {activity_id}',
             description='Complete one stage.',
             status='active',
             type='direct_loop',
@@ -95,7 +95,7 @@ def generated_activity(
     document = ActivityDocument(
         id=activity_id,
         workspace_id='workspace-1',
-        title=f'Generated {activity_id}',
+        name=f'Generated {activity_id}',
         description='Created with a pipeline.',
         status='active',
         type='approval',
@@ -240,7 +240,7 @@ async def test_list_filters_searches_orders_and_paginates(
         status = "disabled" if position == 11 else "active"
         document = replace(
             build_pipeline(pipeline_id=f"pipeline-{position:02d}"),
-            title=f"Knowledge {position:02d}",
+            name=f"Knowledge {position:02d}",
             status=status,
             updated_at=BASE_TIME + timedelta(seconds=position),
         )
@@ -253,7 +253,7 @@ async def test_list_filters_searches_orders_and_paginates(
         )
     archived = replace(
         build_pipeline(pipeline_id="pipeline-archived"),
-        title="Archived knowledge",
+        name="Archived knowledge",
         status="archived",
     )
     await repository.create(

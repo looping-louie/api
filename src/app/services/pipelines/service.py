@@ -195,7 +195,7 @@ class PipelineService:
         document = PipelineDocument(
             id=self._id_factory(),
             workspace_id=workspace_id,
-            title=require_text(payload.title, "title"),
+            name=require_text(payload.name, "name"),
             description=normalize_description(payload.description),
             status="active",
             steps=(),
@@ -415,7 +415,7 @@ class PipelineService:
             document = ActivityDocument(
                 id=self._id_factory(),
                 workspace_id=workspace_id,
-                title=value.title,
+                name=value.name,
                 description=value.description,
                 status="active",
                 type=cast(ActivityType, value.type),
@@ -436,7 +436,7 @@ class PipelineService:
                     changed_at=now,
                     diff=None,
                     content={
-                        "title": document.title,
+                        "name": document.name,
                         "description": document.description,
                         "status": document.status,
                         "type": document.type,

@@ -30,7 +30,7 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "skill-api-compatibility",
-      "name": "API compatibility",
+      "name": "ApiCompatibility",
       "description": "Detects breaking API changes.",
       "origin": "custom",
       "enabled": true,
@@ -63,7 +63,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "skill-api-compatibility",
-  "name": "API compatibility",
+  "name": "ApiCompatibility",
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
@@ -107,7 +107,7 @@ Content-Type: application/json
 
 ```json
 {
-  "name": "API compatibility",
+  "name": "ApiCompatibility",
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
@@ -126,7 +126,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "skill-api-compatibility",
-  "name": "API compatibility",
+  "name": "ApiCompatibility",
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
@@ -174,7 +174,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "skill-api-compatibility",
-  "name": "API compatibility",
+  "name": "ApiCompatibility",
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {

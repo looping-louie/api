@@ -95,7 +95,7 @@ def direct_loop_payload() -> dict[str, object]:
     """Return one valid direct loop activity body."""
 
     return {
-        'title': 'Implementation activity',
+        'name': 'Implementation activity',
         'description': 'Produce a change.',
         'type': 'direct_loop',
         'config': {
@@ -110,7 +110,7 @@ def roundtable_loop_payload() -> dict[str, object]:
     """Return one valid roundtable loop activity body."""
 
     return {
-        'title': 'Roundtable activity',
+        'name': 'Roundtable activity',
         'description': 'Reach a shared decision.',
         'type': 'roundtable_loop',
         'config': {
@@ -132,12 +132,12 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     assert 'type' not in created.json()['config']
 
     quiz = client.post('/api/v1/activities', json={
-        'title': 'Review quiz', 'description': 'Answer the questions.',
+        'name': 'Review quiz', 'description': 'Answer the questions.',
         'type': 'quiz',
         'config': {'quiz': {'questions': []}},
     })
     refinement = client.post('/api/v1/activities', json={
-        'title': 'Refine change', 'description': 'Review and refine a change.',
+        'name': 'Refine change', 'description': 'Review and refine a change.',
         'type': 'refinement_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
@@ -154,7 +154,7 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     deleted = client.delete(f'/api/v1/activities/{activity_id}')
     retained = client.get(f'/api/v1/activities/{activity_id}/changelog')
     invalid_quiz = client.post('/api/v1/activities', json={
-        'title': 'Invalid', 'description': '',
+        'name': 'Invalid', 'description': '',
         'type': 'quiz',
         'config': {},
     })
@@ -192,7 +192,7 @@ def test_activity_creates_approval_without_a_human_gate_wrapper(
     client = build_client(tenant_service=tenant_service)
 
     created = client.post('/api/v1/activities', json={
-        'title': 'Release approval',
+        'name': 'Release approval',
         'description': 'Approve the release.',
         'type': 'approval',
         'config': {},
@@ -213,9 +213,29 @@ def test_activity_rejects_an_invalid_top_level_type(
     response = client.post(
         '/api/v1/activities',
         json={
-            'title': 'Invalid activity',
+            'name': 'Invalid activity',
             'description': 'Reject unsupported types.',
             'type': 'unsupported',
+            'config': {},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_activity_rejects_legacy_title_field(
+    tenant_service: TenantService,
+) -> None:
+    """Activity requests require the public name field."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/activities',
+        json={
+            'title': 'Legacy title',
+            'description': 'Reject the retired field.',
+            'type': 'approval',
             'config': {},
         },
     )
@@ -273,10 +293,10 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
         'continuation_token': created.json()['continuation_token'], 'idempotency_key': 'snapshot-1',
         'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'workspace_metadata': {'workspace_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
     })
-    approval = client.post('/api/v1/activities', json={'title': 'Approval', 'description': '', 'type': 'approval', 'config': {}})
+    approval = client.post('/api/v1/activities', json={'name': 'Approval', 'description': '', 'type': 'approval', 'config': {}})
     mismatch = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'No run.'})
     refinement = client.post('/api/v1/activities', json={
-        'title': 'Refinement', 'description': '', 'type': 'refinement_loop',
+        'name': 'Refinement', 'description': '', 'type': 'refinement_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
             'agents': [],

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class PipelineActivityInput:
     """Activity definition supplied for one pipeline step."""
 
-    title: str
+    name: str
     description: str
     type: str
     config: dict[str, object]
@@ -19,7 +19,7 @@ class PipelineActivityInput:
 class PipelineCreate:
     """User-managed values required to create a pipeline."""
 
-    title: str
+    name: str
     description: str
     steps: tuple[PipelineActivityInput, ...]
 
@@ -29,7 +29,7 @@ class PipelinePatch:
     """Partial pipeline changes with supplied-field tracking."""
 
     provided_fields: frozenset[str]
-    title: str | None = None
+    name: str | None = None
     description: str | None = None
     enabled: bool | None = None
     steps: tuple[PipelineActivityInput, ...] | None = None

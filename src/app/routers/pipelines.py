@@ -49,7 +49,7 @@ SearchQuery = Annotated[
     Query(
         min_length=1,
         max_length=200,
-        description="Case-insensitive title and description search.",
+        description="Case-insensitive name and description search.",
     ),
 ]
 PipelineIdPath = Annotated[str, Path(min_length=1)]

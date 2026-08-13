@@ -68,7 +68,7 @@ def build_pipeline(
     return PipelineDocument(
         id=pipeline_id,
         workspace_id=workspace_id,
-        title=f"Pipeline {pipeline_id}",
+        name=f"Pipeline {pipeline_id}",
         description="Run and approve.",
         status=status,  # type: ignore[arg-type]
         steps=(

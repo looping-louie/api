@@ -29,14 +29,14 @@ async def insert_pipeline(
     await connection.execute(
         """
         INSERT INTO pipelines (
-            id, workspace_id, title, description, status,
+            id, workspace_id, name, description, status,
             created_at, created_by, updated_at, updated_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             document.id,
             document.workspace_id,
-            document.title,
+            document.name,
             document.description,
             document.status,
             document.created_at.isoformat(),
@@ -120,7 +120,7 @@ async def to_document(
     return PipelineDocument(
         id=str(row["id"]),
         workspace_id=str(row["workspace_id"]),
-        title=str(row["title"]),
+        name=str(row["name"]),
         description=str(row["description"]),
         status=cast(PipelineStatus, row["status"]),
         steps=tuple(_to_step(step_row) for step_row in step_rows),
@@ -169,7 +169,7 @@ def list_filter(
         parameters.append(status)
     if search is not None:
         clauses.append(
-            "(LOWER(title) LIKE ? OR LOWER(description) LIKE ?)"
+            "(LOWER(name) LIKE ? OR LOWER(description) LIKE ?)"
         )
         pattern = f"%{search.casefold()}%"
         parameters.extend((pattern, pattern))

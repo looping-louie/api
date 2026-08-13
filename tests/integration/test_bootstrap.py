@@ -159,10 +159,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         ).fetchall()
         activity_rows = connection.execute(
             """
-            SELECT title
+            SELECT name
             FROM activities
             WHERE workspace_id = 'local-workspace'
-            ORDER BY title
+            ORDER BY name
             """
         ).fetchall()
 
@@ -200,6 +200,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0022_flatten_refinement_loop_activities",
         "0023_flatten_roundtable_loop_activities",
         "0024_remove_activity_config_type",
+        "0025_rename_activity_pipeline_titles",
     ]
     assert activity_rows == []
 

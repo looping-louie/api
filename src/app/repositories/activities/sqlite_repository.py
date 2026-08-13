@@ -65,7 +65,7 @@ class SqliteActivityRepository:
             try:
                 await connection.execute('BEGIN IMMEDIATE')
                 cursor = await connection.execute(
-                    'UPDATE activities SET title = ?, description = ?, status = ?, '
+                    'UPDATE activities SET name = ?, description = ?, status = ?, '
                     'activity_type = ?, config_json = ?, updated_at = ?, updated_by = ? '
                     'WHERE workspace_id = ? AND id = ?',
                     self._update_values(document),
@@ -134,7 +134,7 @@ class SqliteActivityRepository:
         """Map one activity row to its domain document."""
 
         return ActivityDocument(
-            id=row['id'], workspace_id=row['workspace_id'], title=row['title'],
+            id=row['id'], workspace_id=row['workspace_id'], name=row['name'],
             description=row['description'], status=row['status'], type=row['activity_type'],
             config=json.loads(row['config_json']), created_at=datetime.fromisoformat(row['created_at']),
             created_by=row['created_by'], updated_at=datetime.fromisoformat(row['updated_at']),
@@ -184,7 +184,7 @@ class SqliteActivityRepository:
         await connection.execute(
             'INSERT INTO activities VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (
-                document.id, document.workspace_id, document.title, document.description,
+                document.id, document.workspace_id, document.name, document.description,
                 document.status, document.type, json.dumps(document.config),
                 document.created_at.isoformat(), document.created_by, document.updated_at.isoformat(),
                 document.updated_by,
@@ -210,7 +210,7 @@ class SqliteActivityRepository:
         """Return values for the activity update statement."""
 
         return (
-            document.title, document.description, document.status, document.type,
+            document.name, document.description, document.status, document.type,
             json.dumps(document.config), document.updated_at.isoformat(), document.updated_by,
             document.workspace_id, document.id,
         )

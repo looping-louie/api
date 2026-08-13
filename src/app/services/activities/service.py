@@ -62,7 +62,7 @@ class ActivityService:
 
         return await self._require(await self._workspace_id(user_id, requested_workspace_id), activity_id)
 
-    async def create(self, *, user_id: str, title: str, description: str, activity_type: str, config: dict[str, object], requested_workspace_id: str | None = None) -> ActivityDocument:
+    async def create(self, *, user_id: str, name: str, description: str, activity_type: str, config: dict[str, object], requested_workspace_id: str | None = None) -> ActivityDocument:
         """Create a validated active activity and its initial changelog entry."""
 
         workspace_id = await self._workspace_id(user_id, requested_workspace_id)
@@ -71,7 +71,7 @@ class ActivityService:
         normalized_type = self._activity_type(activity_type)
         normalized_config = self._config(config, normalized_type)
         document = ActivityDocument(
-            id=self._id_factory(), workspace_id=workspace_id, title=self._text(title, 'title'),
+            id=self._id_factory(), workspace_id=workspace_id, name=self._text(name, 'name'),
             description=description.strip(), status='active', type=normalized_type,
             config=normalized_config, created_at=now, created_by=actor_id, updated_at=now,
             updated_by=actor_id,
@@ -90,7 +90,7 @@ class ActivityService:
             else current.config
         )
         updated = replace(
-            current, title=self._text(changes['title'], 'title') if 'title' in changes else current.title,
+            current, name=self._text(changes['name'], 'name') if 'name' in changes else current.name,
             description=str(changes['description']).strip() if 'description' in changes else current.description,
             status=changes.get('status', current.status), type=current.type, config=config,
             updated_at=self._clock(), updated_by=actor_id,
@@ -180,7 +180,7 @@ class ActivityService:
     def _content(document: ActivityDocument) -> dict[str, object]:
         """Return a complete immutable representation for history entries."""
 
-        return {'title': document.title, 'description': document.description, 'status': document.status, 'type': document.type, 'config': document.config}
+        return {'name': document.name, 'description': document.description, 'status': document.status, 'type': document.type, 'config': document.config}
 
     @staticmethod
     def _text(value: object, field_name: str) -> str:

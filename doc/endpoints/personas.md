@@ -30,7 +30,7 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "persona-api-reviewer",
-      "name": "API reviewer",
+      "name": "ApiReviewer",
       "description": "Reviews public API compatibility.",
       "origin": "custom",
       "enabled": true,
@@ -63,7 +63,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "persona-api-reviewer",
-  "name": "API reviewer",
+  "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
   "skill_ids": ["skill-api-compatibility"],
@@ -102,7 +102,7 @@ Content-Type: application/json
 
 ```json
 {
-  "name": "API reviewer",
+  "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
   "skill_ids": [
@@ -119,7 +119,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "persona-api-reviewer",
-  "name": "API reviewer",
+  "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
   "skill_ids": ["skill-api-compatibility"],
@@ -164,7 +164,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "persona-api-reviewer",
-  "name": "API reviewer",
+  "name": "ApiReviewer",
   "description": "Reviews public API compatibility and migration impact.",
   "instructions": "Inspect every public contract and report breaking changes.",
   "skill_ids": ["skill-api-compatibility"],

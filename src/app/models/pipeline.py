@@ -36,7 +36,7 @@ class PipelineDocument:
 
     id: str
     workspace_id: str
-    title: str
+    name: str
     description: str
     status: PipelineStatus
     steps: tuple[PipelineStep, ...]

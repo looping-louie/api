@@ -325,12 +325,12 @@ class SqlitePipelineRepository:
         cursor = await connection.execute(
             """
             UPDATE pipelines
-            SET title = ?, description = ?, status = ?,
+            SET name = ?, description = ?, status = ?,
                 updated_at = ?, updated_by = ?
             WHERE workspace_id = ? AND id = ?
             """,
             (
-                document.title,
+                document.name,
                 document.description,
                 document.status,
                 document.updated_at.isoformat(),
@@ -377,7 +377,7 @@ class SqlitePipelineRepository:
                 (
                     document.id,
                     document.workspace_id,
-                    document.title,
+                    document.name,
                     document.description,
                     document.status,
                     document.type,
@@ -409,7 +409,7 @@ class SqlitePipelineRepository:
         return ActivityDocument(
             id=str(row['id']),
             workspace_id=str(row['workspace_id']),
-            title=str(row['title']),
+            name=str(row['name']),
             description=str(row['description']),
             status=row['status'],
             type=row['activity_type'],

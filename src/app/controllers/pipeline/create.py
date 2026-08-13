@@ -31,7 +31,7 @@ class PipelineCreateController:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
             payload=PipelineCreate(
-                title=payload.title,
+                name=payload.name,
                 description=payload.description,
                 steps=pipeline_steps(payload.steps),
             ),

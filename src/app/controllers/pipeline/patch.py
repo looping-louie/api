@@ -34,7 +34,7 @@ class PipelinePatchController:
             requested_workspace_id=requested_workspace_id,
             payload=PipelinePatch(
                 provided_fields=frozenset(payload.model_fields_set),
-                title=payload.title,
+                name=payload.name,
                 description=payload.description,
                 enabled=payload.enabled,
                 steps=(

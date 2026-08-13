@@ -19,7 +19,7 @@ def pipeline_steps(
 def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
     """Translate one request step without applying business rules."""
     return PipelineActivityInput(
-        title=value.title,
+        name=value.name,
         description=value.description,
         type=value.type,
         config=value.config.model_dump(by_alias=True),
@@ -32,7 +32,7 @@ def pipeline_details_response(details: PipelineDetails) -> PipelineResponse:
     document = details.document
     return PipelineResponse(
         id=document.id,
-        title=document.title,
+        name=document.name,
         description=document.description,
         enabled=document.enabled,
         steps=[

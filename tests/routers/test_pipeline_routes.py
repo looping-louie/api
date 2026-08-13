@@ -41,13 +41,13 @@ def build_client(*, tenant_service: TenantService) -> TestClient:
 
 def pipeline_payload(
     *,
-    title: str = 'Implementation pipeline',
+    name: str = 'Implementation pipeline',
     steps: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """Build one valid pipeline creation body."""
 
     return {
-        'title': title,
+        'name': name,
         'description': 'Implement and validate.',
         'steps': (
             steps
@@ -60,11 +60,11 @@ def pipeline_payload(
     }
 
 
-def activity_payload(title: str) -> dict[str, object]:
+def activity_payload(name: str) -> dict[str, object]:
     """Build one valid inline Activity definition."""
 
     return {
-        'title': title,
+        'name': name,
         'description': 'Complete one pipeline stage.',
         'type': 'direct_loop',
         'config': {
@@ -90,7 +90,7 @@ def test_pipeline_crud_changelog_and_archival_routes(
     pipeline_id = created['id']
     assert len(created['steps']) == 2
     assert all(step['id'] for step in created['steps'])
-    assert [step['title'] for step in created['steps']] == [
+    assert [step['name'] for step in created['steps']] == [
         'Implementation activity',
         'Validation activity',
     ]
@@ -114,7 +114,7 @@ def test_pipeline_crud_changelog_and_archival_routes(
     assert fetched.status_code == 200
     assert fetched.json()['steps'] == created['steps']
     assert listed_before_update.json()['items'][0]['steps'] == created['steps']
-    assert [step['title'] for step in patched.json()['steps']] == [
+    assert [step['name'] for step in patched.json()['steps']] == [
         'Review activity',
         'Approval activity',
     ]
@@ -176,8 +176,27 @@ def test_generic_body_validation_also_uses_api_envelope(
     client = build_client(tenant_service=tenant_service)
     response = client.post(
         '/api/v1/pipelines',
-        json={'description': 'Missing title.', 'steps': []},
+        json={'description': 'Missing name.', 'steps': []},
     )
 
     assert response.status_code == 422
     assert 'error' in response.json() and 'detail' not in response.json()
+
+
+def test_pipeline_rejects_legacy_title_field(
+    tenant_service: TenantService,
+) -> None:
+    """Pipeline requests require the public name field."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/pipelines',
+        json={
+            'title': 'Legacy title',
+            'description': 'Reject the retired field.',
+            'steps': [activity_payload('First'), activity_payload('Second')],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'

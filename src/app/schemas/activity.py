@@ -92,7 +92,7 @@ def validate_activity_config(
 class ActivityCreateRequest(RequestSchema):
     """Request body for creating an activity."""
 
-    title: NonEmptyString
+    name: NonEmptyString
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
@@ -118,7 +118,7 @@ class ActivityCreateRequest(RequestSchema):
 class ActivityPatchRequest(RequestSchema):
     """Mutable activity fields accepted by PATCH."""
 
-    title: NonEmptyString | None = None
+    name: NonEmptyString | None = None
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None
@@ -140,7 +140,7 @@ class ActivityResponse(ResponseSchema):
 
     id: str
     workspace_id: str
-    title: str
+    name: str
     description: str
     status: ActivityStatusValue
     type: ActivityTypeValue

@@ -51,8 +51,8 @@ def apply_patch(
             )
         values[field_name] = value
 
-    if "title" in values:
-        values["title"] = require_text(values["title"], "title")
+    if "name" in values:
+        values["name"] = require_text(values["name"], "name")
     if "description" in values:
         values["description"] = normalize_description(
             values["description"]
