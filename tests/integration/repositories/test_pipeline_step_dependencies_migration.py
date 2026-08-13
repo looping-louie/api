@@ -6,6 +6,8 @@ import asyncio
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from src.app.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -79,9 +81,37 @@ def test_pipeline_step_dependencies_migration_preserves_existing_steps(
 
     migrations_path = tmp_path / 'migrations'
     migrations_path.mkdir()
-    migration_path = SQLITE_MIGRATIONS / '0027_pipeline_step_dependencies.sql'
-    (migrations_path / migration_path.name).write_text(
-        migration_path.read_text(encoding='utf-8'),
+    first_migration_path = SQLITE_MIGRATIONS / '0027_pipeline_step_dependencies.sql'
+    (migrations_path / first_migration_path.name).write_text(
+        first_migration_path.read_text(encoding='utf-8'),
+        encoding='utf-8',
+    )
+    asyncio.run(
+        run_sqlite_migrations(
+            database_path=database_path,
+            migrations_path=migrations_path,
+        )
+    )
+
+    connection = sqlite3.connect(database_path)
+    connection.execute(
+        """
+        INSERT INTO pipeline_step_dependencies (
+            workspace_id, pipeline_id, dependent_position,
+            dependency_activity_id, condition
+        )
+        VALUES ('workspace-1', 'pipeline-1', 1, 'activity-1', 'succeed')
+        """
+    )
+    connection.commit()
+    connection.close()
+
+    second_migration_path = (
+        SQLITE_MIGRATIONS
+        / '0028_rename_pipeline_dependency_success_condition.sql'
+    )
+    (migrations_path / second_migration_path.name).write_text(
+        second_migration_path.read_text(encoding='utf-8'),
         encoding='utf-8',
     )
     asyncio.run(
@@ -101,22 +131,23 @@ def test_pipeline_step_dependencies_migration_preserves_existing_steps(
         """,
         ('pipeline-1',),
     ).fetchall()
-    connection.execute(
-        """
-        INSERT INTO pipeline_step_dependencies (
-            workspace_id, pipeline_id, dependent_position,
-            dependency_activity_id, condition
-        )
-        VALUES ('workspace-1', 'pipeline-1', 1, 'activity-1', 'succeed')
-        """
-    )
     dependencies = connection.execute(
         """
         SELECT dependent_position, dependency_activity_id, condition
         FROM pipeline_step_dependencies
         """
     ).fetchall()
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            """
+            INSERT INTO pipeline_step_dependencies (
+                workspace_id, pipeline_id, dependent_position,
+                dependency_activity_id, condition
+            )
+            VALUES ('workspace-1', 'pipeline-1', 1, 'activity-1', 'succeed')
+            """
+        )
     connection.close()
 
     assert steps == [(0, 'activity-1'), (1, 'activity-2')]
-    assert dependencies == [(1, 'activity-1', 'succeed')]
+    assert dependencies == [(1, 'activity-1', 'success')]

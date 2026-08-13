@@ -133,12 +133,12 @@ def _normalize_dependencies(
             value.activity,
             f'steps.{position}.dependsOn.{dependency_position}.activity',
         )
-        if value.condition not in ('succeed', 'failure'):
+        if value.condition not in ('success', 'failure'):
             raise InvalidPipelineStepsError(
                 field_name=(
                     f'steps.{position}.dependsOn.{dependency_position}.condition'
                 ),
-                message='must be succeed or failure',
+                message='must be success or failure',
             )
         if activity in seen_activities:
             raise InvalidPipelineStepsError(

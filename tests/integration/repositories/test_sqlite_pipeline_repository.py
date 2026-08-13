@@ -214,7 +214,7 @@ async def test_round_trips_ordered_activity_steps_and_dependencies(
                 depends_on=(
                     PipelineStepDependency(
                         activity_id='activity-1',
-                        condition='succeed',
+                            condition='success',
                     ),
                 ),
             ),

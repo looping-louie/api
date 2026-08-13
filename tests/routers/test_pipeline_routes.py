@@ -187,7 +187,7 @@ def test_pipeline_returns_named_step_dependencies(
                 activity_payload('Prepare'),
                 activity_payload(
                     'Validate',
-                    [{'activity': 'Prepare', 'condition': 'succeed'}],
+                    [{'activity': 'Prepare', 'condition': 'success'}],
                 ),
             ],
         ),
@@ -196,8 +196,31 @@ def test_pipeline_returns_named_step_dependencies(
     assert response.status_code == 201
     assert response.json()['steps'][0]['dependsOn'] == []
     assert response.json()['steps'][1]['dependsOn'] == [
-        {'activity': 'Prepare', 'condition': 'succeed'},
+        {'activity': 'Prepare', 'condition': 'success'},
     ]
+
+
+def test_pipeline_rejects_retired_dependency_condition(
+    tenant_service: TenantService,
+) -> None:
+    """Pipeline dependency conditions must use success, not the retired succeed value."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(
+            steps=[
+                activity_payload('Prepare'),
+                activity_payload(
+                    'Validate',
+                    [{'activity': 'Prepare', 'condition': 'succeed'}],
+                ),
+            ],
+        ),
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'invalid_pipeline_steps'
 
 
 def test_generic_body_validation_also_uses_api_envelope(

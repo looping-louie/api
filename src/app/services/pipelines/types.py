@@ -11,7 +11,7 @@ class PipelineActivityDependencyInput:
     """Named condition required by one inline Activity definition."""
 
     activity: str
-    condition: Literal['succeed', 'failure']
+    condition: Literal['success', 'failure']
 
 
 @dataclass(frozen=True, slots=True)

@@ -18,7 +18,7 @@ PipelineChangeType = Literal[
     "disabled",
     "archived",
 ]
-PipelineDependencyCondition = Literal['succeed', 'failure']
+PipelineDependencyCondition = Literal['success', 'failure']
 
 
 @dataclass(frozen=True, slots=True)

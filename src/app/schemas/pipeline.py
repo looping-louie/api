@@ -30,14 +30,14 @@ class PipelineStepDependencyRequest(RequestSchema):
     """One named Activity condition required by a pipeline step."""
 
     activity: NonEmptyString
-    condition: Literal['succeed', 'failure']
+    condition: Literal['success', 'failure']
 
 
 class PipelineStepDependencyResponse(ResponseSchema):
     """One named Activity condition returned for a pipeline step."""
 
     activity: str
-    condition: Literal['succeed', 'failure']
+    condition: Literal['success', 'failure']
 
 
 class PipelineActivityStepRequest(ActivityCreateRequest):

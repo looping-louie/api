@@ -205,6 +205,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0025_rename_activity_pipeline_titles",
         "0026_persona_models",
         "0027_pipeline_step_dependencies",
+        "0028_rename_pipeline_dependency_success_condition",
     ]
     assert activity_rows == []
 

@@ -42,7 +42,7 @@ def activity_step(
     )
 
 
-def dependency(activity: str, condition: str = 'succeed') -> PipelineActivityDependencyInput:
+def dependency(activity: str, condition: str = 'success') -> PipelineActivityDependencyInput:
     """Build one named pipeline dependency condition."""
 
     return PipelineActivityDependencyInput(
@@ -156,9 +156,9 @@ async def test_create_resolves_named_dependency_graph(
 
     assert created.steps[0].depends_on == ()
     assert created.steps[1].depends_on[0].activity_id == created.steps[0].activity_id
-    assert created.steps[1].depends_on[0].condition == 'succeed'
+    assert created.steps[1].depends_on[0].condition == 'success'
     assert [item.condition for item in created.steps[2].depends_on] == [
-        'succeed',
+        'success',
         'failure',
     ]
     assert [item.activity_id for item in created.steps[2].depends_on] == [

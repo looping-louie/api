@@ -35,6 +35,7 @@ EXPECTED_CHECKSUMS = {
     '0025_rename_activity_pipeline_titles.sql': 'c308d42f36d283e970cba711ca602c875cf617aa4c277c21b5eff50856c1aa89',
     '0026_persona_models.sql': 'd14f15e67a978e4166de6507a080f3d92d45e0123831d4508c65a017b94456dc',
     '0027_pipeline_step_dependencies.sql': '8890234d866e4c8fadeb44dddfd04dfcc7b60c51dda510bb7b2766fdc7e10b54',
+    '0028_rename_pipeline_dependency_success_condition.sql': 'be2996fa5d047da5d324e025fbf04fffce9fc0b7514d2bfcb4e09a8e6e0839ea',
 }
 
 

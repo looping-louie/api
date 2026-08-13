@@ -24,7 +24,7 @@ New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
 pipelines are immutable and omitted from unfiltered listings.
 
 Each step has a `dependsOn` array. Every item contains an `activity` name from
-another step and a `condition` of `succeed` or `failure`. The array can be
+another step and a `condition` of `success` or `failure`. The array can be
 empty. Dependency targets must be unambiguous and the graph cannot contain
 cycles.
 
@@ -79,7 +79,7 @@ Example response (`200 OK`):
           "workspace_id": "workspace-acme",
           "name": "DeploymentReadinessQuiz",
           "dependsOn": [
-            {"activity": "ReviewReleasePlan", "condition": "succeed"}
+            {"activity": "ReviewReleasePlan", "condition": "success"}
           ],
           "description": "Confirm operational readiness before deployment.",
           "status": "active",
@@ -99,7 +99,7 @@ Example response (`200 OK`):
           "workspace_id": "workspace-acme",
           "name": "ApproveProductionRelease",
           "dependsOn": [
-            {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+            {"activity": "DeploymentReadinessQuiz", "condition": "success"},
             {"activity": "ReviewReleasePlan", "condition": "failure"}
           ],
           "description": "A release manager approves deployment.",
@@ -167,7 +167,7 @@ Example response (`200 OK`):
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+        {"activity": "ReviewReleasePlan", "condition": "success"}
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
@@ -187,7 +187,7 @@ Example response (`200 OK`):
       "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
         {"activity": "ReviewReleasePlan", "condition": "failure"}
       ],
       "description": "A release manager approves deployment.",
@@ -243,7 +243,7 @@ Content-Type: application/json
     {
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+        {"activity": "ReviewReleasePlan", "condition": "success"}
       ],
       "description": "Confirm operational readiness before deployment.",
       "type": "quiz",
@@ -256,7 +256,7 @@ Content-Type: application/json
     {
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
         {"activity": "ReviewReleasePlan", "condition": "failure"}
       ],
       "description": "A release manager approves deployment.",
@@ -304,7 +304,7 @@ Example response (`201 Created`):
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+        {"activity": "ReviewReleasePlan", "condition": "success"}
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
@@ -324,7 +324,7 @@ Example response (`201 Created`):
       "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
         {"activity": "ReviewReleasePlan", "condition": "failure"}
       ],
       "description": "A release manager approves deployment.",
@@ -399,7 +399,7 @@ Example response (`200 OK`):
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "succeed"}
+        {"activity": "ReviewReleasePlan", "condition": "success"}
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
@@ -419,7 +419,7 @@ Example response (`200 OK`):
       "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "succeed"},
+        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
         {"activity": "ReviewReleasePlan", "condition": "failure"}
       ],
       "description": "A release manager approves deployment.",
