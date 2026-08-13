@@ -49,6 +49,8 @@ def test_list_models_route(
     model_controller: ModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
+    """List responses honor provider and effective availability filters."""
+
     provider_state_repository.seed(
         workspace_id="workspace-1",
         state=ProviderConnectionState(
@@ -91,6 +93,8 @@ def test_list_models_route(
 def test_list_models_filters_sorts_and_paginates(
     model_controller: ModelController,
 ) -> None:
+    """The route composes repeated labs, date sorting, and fixed pages."""
+
     client = TestClient(build_app(controller=model_controller))
 
     first_page = client.get(
@@ -133,6 +137,8 @@ def test_describe_model_route(
     model_controller: ModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
+    """Describe exposes the selected model and workspace availability."""
+
     provider_state_repository.seed(
         workspace_id="workspace-1",
         state=ProviderConnectionState(
@@ -163,6 +169,8 @@ def test_describe_model_route(
 def test_describe_missing_model_returns_404(
     model_controller: ModelController,
 ) -> None:
+    """Unknown model identifiers produce the public not-found error."""
+
     client = TestClient(
         build_app(
             controller=model_controller,
@@ -180,6 +188,8 @@ def test_describe_missing_model_returns_404(
 def test_models_routes_require_authentication(
     model_controller: ModelController,
 ) -> None:
+    """Every model route rejects requests without an authenticated user."""
+
     client = TestClient(
         build_app(
             controller=model_controller,
@@ -197,20 +207,27 @@ def test_models_routes_require_authentication(
     )
 
 
-def test_list_models_validates_query_enums(
+def test_list_models_validates_query_values(
     model_controller: ModelController,
 ) -> None:
+    """Invalid enum, range, and text filters are rejected before dispatch."""
+
     client = TestClient(
         build_app(
             controller=model_controller,
         )
     )
 
-    response = client.get(
-        "/api/v1/models",
-        params={
-            "provider_id": "unsupported-provider",
-        },
+    invalid_queries = (
+        {"provider_id": "unsupported-provider"},
+        {"lab": "unsupported-lab"},
+        {"status": "unsupported-status"},
+        {"sort": "unsupported-sort"},
+        {"offset": "-1"},
+        {"search": ""},
     )
 
-    assert response.status_code == 422
+    for params in invalid_queries:
+        response = client.get("/api/v1/models", params=params)
+
+        assert response.status_code == 422, params

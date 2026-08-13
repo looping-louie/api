@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from src.app.catalogs.models import (
     ModelCapability,
+    ModelLab,
     ModelSort,
     ModelStatus,
 )
@@ -69,7 +70,7 @@ async def list_models(
         ),
     ] = None,
     lab: Annotated[
-        list[str] | None,
+        list[ModelLab] | None,
         Query(
             description="Filter by one or more lab slugs.",
         ),

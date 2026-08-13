@@ -14,6 +14,7 @@ from src.app.catalogs.models import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.provider import ProviderCredential
@@ -76,6 +77,7 @@ def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
         id='model-1',
         name='Model',
         vendor='Test',
+        lab=ModelLab.OPENAI,
         family='Test',
         description='Test model.',
         released_at=date(2026, 1, 1),

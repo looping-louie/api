@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from typing import Sequence
 
 from src.app.catalogs.models import (
     MODEL_CATALOG,
     ModelCapability,
     ModelCatalogEntry,
+    ModelLab,
     ModelPricing,
     ModelSort,
     ModelStatus,
@@ -53,7 +53,7 @@ class ModelCatalogService:
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
-        labs: Sequence[str] = (),
+        labs: Sequence[ModelLab] = (),
         sort: ModelSort | None = None,
         available: bool | None = None,
         search: str | None = None,
@@ -66,10 +66,7 @@ class ModelCatalogService:
             requested_workspace_id=requested_workspace_id,
         )
         normalized_search = self._normalize_search(search)
-        normalized_labs = frozenset(
-            self._normalize_lab(lab)
-            for lab in labs
-        )
+        selected_labs = frozenset(labs)
 
         models = [
             model
@@ -79,7 +76,7 @@ class ModelCatalogService:
                 provider_id=provider_id,
                 capability=capability,
                 model_status=model_status,
-                labs=normalized_labs,
+                labs=selected_labs,
                 search=normalized_search,
                 include_deprecated=include_deprecated,
             )
@@ -184,7 +181,7 @@ class ModelCatalogService:
         provider_id: ProviderId | None,
         capability: ModelCapability | None,
         model_status: ModelStatus | None,
-        labs: frozenset[str],
+        labs: frozenset[ModelLab],
         search: str | None,
         include_deprecated: bool,
     ) -> bool:
@@ -200,7 +197,7 @@ class ModelCatalogService:
         if model_status is not None and model.status != model_status:
             return False
 
-        if labs and self._model_lab(model) not in labs:
+        if labs and model.lab not in labs:
             return False
 
         if capability is not None and capability not in model.capabilities:
@@ -372,27 +369,6 @@ class ModelCatalogService:
 
         normalized = search.strip().casefold()
         return normalized or None
-
-    @staticmethod
-    def _normalize_lab(value: str) -> str:
-        """Normalize vendor labels to stable catalog-filter slugs."""
-
-        normalized = re.sub(
-            r"[^a-z0-9]+",
-            "-",
-            value.strip().casefold(),
-        ).strip("-")
-        return {
-            "mistral-ai": "mistral",
-            "moonshot-ai": "moonshot",
-            "z-ai": "z",
-        }.get(normalized, normalized)
-
-    @classmethod
-    def _model_lab(cls, model: ModelCatalogEntry) -> str:
-        """Return the public lab slug for a catalog model."""
-
-        return cls._normalize_lab(model.vendor)
 
     @staticmethod
     def _sort_summaries(

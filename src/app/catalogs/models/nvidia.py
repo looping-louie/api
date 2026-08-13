@@ -8,6 +8,7 @@ from .types import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
 )
 
 
@@ -16,6 +17,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="inkling",
         name="Inkling",
         vendor="Thinking Machines",
+        lab=ModelLab.THINKING_MACHINES,
         family="Inkling",
         description=(
             "Efficient general-purpose reasoning model with adjustable "
@@ -37,6 +39,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="mistral-medium-3.5-128b",
         name="Mistral Medium 3.5 128B",
         vendor="Mistral AI",
+        lab=ModelLab.MISTRAL,
         family="Mistral Medium",
         description=(
             "Frontier-class 128B multimodal model with configurable "
@@ -58,6 +61,7 @@ NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="deepseek-v4-flash",
         name="DeepSeek V4 Flash",
         vendor="DeepSeek",
+        lab=ModelLab.DEEPSEEK,
         family="DeepSeek V4",
         description=(
             "Fast, low-cost reasoning model recommended for high-volume "

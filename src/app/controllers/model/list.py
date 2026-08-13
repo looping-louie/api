@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.models import ModelCapability, ModelSort, ModelStatus
+from src.app.catalogs.models import (
+    ModelCapability,
+    ModelLab,
+    ModelSort,
+    ModelStatus,
+)
 from src.app.catalogs.providers import ProviderId
 from src.app.schemas.model import ModelListResponse, ModelSummaryResponse
 from src.app.services.models.service import ModelCatalogService
@@ -28,7 +33,7 @@ class ModelListController:
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
-        labs: Sequence[str] = (),
+        labs: Sequence[ModelLab] = (),
         sort: ModelSort | None = None,
         offset: int = 0,
         available: bool | None = None,

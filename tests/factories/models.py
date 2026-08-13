@@ -8,6 +8,7 @@ from src.app.catalogs.models import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
     ModelPricing,
     ModelStatus,
 )
@@ -43,6 +44,7 @@ def build_model(
     model_id: str = "model-1",
     name: str = "Model One",
     vendor: str = "Vendor",
+    lab: ModelLab = ModelLab.OPENAI,
     family: str = "Family",
     description: str = "Test model",
     released_at: date = date(2026, 1, 1),
@@ -58,6 +60,7 @@ def build_model(
         id=model_id,
         name=name,
         vendor=vendor,
+        lab=lab,
         family=family,
         description=description,
         released_at=released_at,
