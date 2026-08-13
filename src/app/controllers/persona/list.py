@@ -33,14 +33,18 @@ class PersonaListController:
         offset: int = 0,
     ) -> PersonaListResponse:
         """List persona summaries available in a workspace."""
-        summaries = await self._persona_service.list(
+        page = await self._persona_service.list(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
             search=search,
             status=status,
             categories=categories,
             sort=sort,
+            offset=offset,
+            limit=LIBRARY_PAGE_SIZE,
         )
-        page = summaries[offset : offset + LIBRARY_PAGE_SIZE]
-        items = [PersonaSummaryResponse.model_validate(item) for item in page]
-        return PersonaListResponse(items=items, total=len(summaries))
+        items = [
+            PersonaSummaryResponse.model_validate(item)
+            for item in page.items
+        ]
+        return PersonaListResponse(items=items, total=page.total)

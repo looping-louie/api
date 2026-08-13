@@ -33,14 +33,18 @@ class SkillListController:
         offset: int = 0,
     ) -> SkillListResponse:
         """List skill summaries available in a workspace."""
-        summaries = await self._skill_service.list(
+        page = await self._skill_service.list(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
             search=search,
             status=status,
             categories=categories,
             sort=sort,
+            offset=offset,
+            limit=LIBRARY_PAGE_SIZE,
         )
-        page = summaries[offset : offset + LIBRARY_PAGE_SIZE]
-        items = [SkillSummaryResponse.model_validate(item) for item in page]
-        return SkillListResponse(items=items, total=len(summaries))
+        items = [
+            SkillSummaryResponse.model_validate(item)
+            for item in page.items
+        ]
+        return SkillListResponse(items=items, total=page.total)

@@ -9,6 +9,11 @@ from typing import Callable, Literal, Mapping, Protocol, Sequence
 from uuid import uuid4
 
 from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.library import (
+    LibraryCategory,
+    LibrarySort,
+    LibraryStatus,
+)
 
 
 InstructionType = Literal["persona", "skill"]
@@ -93,6 +98,27 @@ class AvailableInstructionSummary:
         """Return whether the workspace may fork this definition."""
 
         return not self.deprecated
+
+
+@dataclass(frozen=True, slots=True)
+class AvailableInstructionPage(Sequence[AvailableInstructionSummary]):
+    """One filtered page of a workspace's effective instruction library."""
+
+    items: tuple[AvailableInstructionSummary, ...]
+    total: int
+
+    def __len__(self) -> int:
+        """Return the number of summaries in this page."""
+
+        return len(self.items)
+
+    def __getitem__(
+        self,
+        index: int | slice,
+    ) -> AvailableInstructionSummary | tuple[AvailableInstructionSummary, ...]:
+        """Return one summary or a slice from the current page."""
+
+        return self.items[index]
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,8 +217,13 @@ class InstructionRepository(Protocol):
         instruction_type: InstructionType,
         search: str | None = None,
         include_deprecated: bool = False,
-    ) -> Sequence[AvailableInstructionSummary]:
-        """Return the effective instruction library for a workspace."""
+        status: LibraryStatus | None = None,
+        categories: Sequence[LibraryCategory] = (),
+        sort: LibrarySort | None = None,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> AvailableInstructionPage:
+        """Return a filtered page of the workspace instruction library."""
         ...
 
     async def get_available_for_workspace(

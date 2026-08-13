@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from src.app.catalogs.library import (
+    LIBRARY_PAGE_SIZE,
     LibraryCategory,
     LibrarySort,
     LibraryStatus,
@@ -12,12 +13,11 @@ from src.app.catalogs.library import (
 
 from ..instructions import (
     AvailableInstructionDocument,
-    AvailableInstructionSummary,
+    AvailableInstructionPage,
     InstructionCreate,
     InstructionDocument,
     InstructionService,
     InstructionUpdate,
-    filter_and_sort_instruction_summaries,
 )
 from ..shared.tenant import TenantService
 from .metadata_validator import (
@@ -48,25 +48,25 @@ class SkillService:
         status: LibraryStatus | None = None,
         categories: Sequence[LibraryCategory] = (),
         sort: LibrarySort | None = None,
-    ) -> list[AvailableInstructionSummary]:
-        """List skills available in the resolved workspace."""
+        offset: int = 0,
+        limit: int = LIBRARY_PAGE_SIZE,
+    ) -> AvailableInstructionPage:
+        """Return one filtered page of skills in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
 
-        summaries = await self._instruction_service.list(
+        return await self._instruction_service.list(
             workspace_id=workspace_id,
             instruction_type="skill",
             search=search,
-        )
-
-        return filter_and_sort_instruction_summaries(
-            summaries,
             status=status,
             categories=categories,
             sort=sort,
+            offset=offset,
+            limit=limit,
         )
 
     async def describe(

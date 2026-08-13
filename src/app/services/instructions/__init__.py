@@ -3,9 +3,9 @@
 from .service import (
     InstructionService,
 )
-from .listing import filter_and_sort_instruction_summaries
 from .types import (
     AvailableInstructionDocument,
+    AvailableInstructionPage,
     AvailableInstructionSummary,
     BuiltinInstructionImmutableError,
     InstructionCreate,
@@ -26,6 +26,7 @@ from .types import (
 
 __all__ = [
     "AvailableInstructionDocument",
+    "AvailableInstructionPage",
     "AvailableInstructionSummary",
     "BuiltinInstructionImmutableError",
     "InstructionCreate",
@@ -42,5 +43,4 @@ __all__ = [
     "InstructionValidationError",
     "InstructionVersionConflictError",
     "InvalidInstructionTypeError",
-    "filter_and_sort_instruction_summaries",
 ]
