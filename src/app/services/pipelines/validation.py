@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
+from pydantic import ValidationError
+
 from src.app.models.changelog import JsonObject
+from src.app.schemas.activity import validate_activity_config
 from src.app.models.pipeline import (
     PipelineDocument,
-    PipelineHumanGateStep,
-    PipelineLoopStep,
-    PipelineQuizConfig,
     PipelineStatus,
     PipelineStep,
 )
 from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
-    PipelineQuizConfigInput,
-    PipelineStepInput,
-    UnsupportedHumanGateTypeError,
-    UnsupportedPipelineStepError,
+    PipelineActivityDependencyInput,
+    PipelineActivityInput,
 )
 
 
@@ -55,7 +53,7 @@ def normalize_status(value: object) -> PipelineStatus:
 
 def normalize_steps(
     values: object,
-) -> tuple[PipelineStep, ...]:
+) -> tuple[PipelineActivityInput, ...]:
     """Validate a complete ordered step collection."""
 
     if not isinstance(values, (tuple, list)):
@@ -69,131 +67,169 @@ def normalize_steps(
             message="must contain at least two steps",
         )
 
-    steps: list[PipelineStep] = []
+    steps: list[PipelineActivityInput] = []
     for position, value in enumerate(values):
-        if not isinstance(value, PipelineStepInput):
+        if not isinstance(value, PipelineActivityInput):
             raise InvalidPipelineStepsError(
                 field_name=f"steps.{position}",
-                message="must be a pipeline step",
+                message="must be an activity definition",
             )
-        steps.append(_normalize_step(value, position))
+        if value.type not in {
+            'approval',
+            'quiz',
+            'direct_loop',
+            'refinement_loop',
+            'roundtable_loop',
+        }:
+            raise InvalidPipelineStepsError(
+                field_name=f'steps.{position}.type',
+                message='must contain a supported activity type',
+            )
+        try:
+            config = validate_activity_config(
+                activity_type=value.type,
+                value=value.config,
+            ).model_dump(by_alias=True)
+        except ValidationError as error:
+            raise InvalidPipelineStepsError(
+                field_name=f'steps.{position}.config',
+                message=error.errors()[0]['msg'],
+            ) from error
+        steps.append(
+            PipelineActivityInput(
+                name=require_text(value.name, f"steps.{position}.name"),
+                description=normalize_description(value.description),
+                type=require_text(value.type, f"steps.{position}.type"),
+                config=config,
+                depends_on=_normalize_dependencies(value.depends_on, position),
+            )
+        )
+    _validate_dependency_graph(steps)
     return tuple(steps)
 
 
-def _normalize_step(
-    value: PipelineStepInput,
+def _normalize_dependencies(
+    values: object,
     position: int,
-) -> PipelineStep:
-    """Normalize one supported step while preserving its position."""
+) -> tuple[PipelineActivityDependencyInput, ...]:
+    """Normalize named dependency conditions for one inline Activity."""
 
-    if value.type == "loop":
-        if value.gate_type is not None or value.config is not None:
-            raise InvalidPipelineStepsError(
-                field_name=f"steps.{position}",
-                message="loop steps only accept loop_id",
-            )
-        return PipelineLoopStep(
-            type="loop",
-            loop_id=require_text(
-                value.loop_id,
-                f"steps.{position}.loop_id",
-            ),
-        )
-    if value.type != "human_gate":
-        raise UnsupportedPipelineStepError(step_type=value.type)
-    if value.loop_id is not None:
+    if not isinstance(values, tuple):
         raise InvalidPipelineStepsError(
-            field_name=f"steps.{position}",
-            message="human gates do not accept loop_id",
+            field_name=f'steps.{position}.dependsOn',
+            message='must be an array',
         )
-    return _normalize_gate(value, position)
-
-
-def _normalize_gate(
-    value: PipelineStepInput,
-    position: int,
-) -> PipelineHumanGateStep:
-    """Normalize approval and quiz gate-specific configuration."""
-
-    if value.gate_type == "approval":
-        if value.config is not None:
+    dependencies: list[PipelineActivityDependencyInput] = []
+    seen_activities: set[str] = set()
+    for dependency_position, value in enumerate(values):
+        if not isinstance(value, PipelineActivityDependencyInput):
             raise InvalidPipelineStepsError(
-                field_name=f"steps.{position}.config",
-                message="must not be supplied for approval gates",
+                field_name=(
+                    f'steps.{position}.dependsOn.{dependency_position}'
+                ),
+                message='must be an Activity dependency',
             )
-        return PipelineHumanGateStep(
-            type="human_gate",
-            gate_type="approval",
-            config=None,
+        activity = require_text(
+            value.activity,
+            f'steps.{position}.dependsOn.{dependency_position}.activity',
         )
-    if value.gate_type != "quiz":
-        raise UnsupportedHumanGateTypeError(gate_type=value.gate_type)
-    if value.config is None:
-        raise InvalidPipelineStepsError(
-            field_name=f"steps.{position}.config",
-            message="is required for quiz gates",
-        )
-    return PipelineHumanGateStep(
-        type="human_gate",
-        gate_type="quiz",
-        config=_normalize_quiz_config(value.config, position),
-    )
-
-
-def _normalize_quiz_config(
-    value: PipelineQuizConfigInput,
-    position: int,
-) -> PipelineQuizConfig:
-    """Validate positive quiz limits and their cross-field invariant."""
-
-    fields = {
-        "minimum_correct_answers": value.minimum_correct_answers,
-        "question_count": value.question_count,
-        "option_count": value.option_count,
-    }
-    minimums = {
-        "minimum_correct_answers": 1,
-        "question_count": 1,
-        "option_count": 2,
-    }
-    for field_name, field_value in fields.items():
-        if (
-            isinstance(field_value, bool)
-            or not isinstance(field_value, int)
-            or field_value < minimums[field_name]
-        ):
+        if value.condition not in ('success', 'failure'):
             raise InvalidPipelineStepsError(
-                field_name=f"steps.{position}.config.{field_name}",
-                message=f"must be at least {minimums[field_name]}",
+                field_name=(
+                    f'steps.{position}.dependsOn.{dependency_position}.condition'
+                ),
+                message='must be success or failure',
             )
-    if value.minimum_correct_answers > value.question_count:
-        raise InvalidPipelineStepsError(
-            field_name=(
-                f"steps.{position}.config.minimum_correct_answers"
-            ),
-            message="cannot exceed question_count",
+        if activity in seen_activities:
+            raise InvalidPipelineStepsError(
+                field_name=f'steps.{position}.dependsOn',
+                message='must not contain duplicate dependencies',
+            )
+        seen_activities.add(activity)
+        dependencies.append(
+            PipelineActivityDependencyInput(
+                activity=activity,
+                condition=value.condition,
+            )
         )
-    return PipelineQuizConfig(**fields)
+    return tuple(dependencies)
+
+
+def _validate_dependency_graph(
+    steps: list[PipelineActivityInput],
+) -> None:
+    """Require unique names and an acyclic graph of named dependencies."""
+
+    positions_by_name: dict[str, list[int]] = {}
+    for position, step in enumerate(steps):
+        positions_by_name.setdefault(step.name, []).append(position)
+
+    dependencies_by_position: dict[int, tuple[int, ...]] = {}
+    for position, step in enumerate(steps):
+        dependencies: list[int] = []
+        for dependency_position, dependency in enumerate(step.depends_on):
+            target_positions = positions_by_name.get(dependency.activity, [])
+            if not target_positions:
+                raise InvalidPipelineStepsError(
+                    field_name=(
+                        f'steps.{position}.dependsOn.{dependency_position}.activity'
+                    ),
+                    message='must reference a step Activity name',
+                )
+            if len(target_positions) != 1:
+                raise InvalidPipelineStepsError(
+                    field_name=(
+                        f'steps.{position}.dependsOn.{dependency_position}.activity'
+                    ),
+                    message='must reference a uniquely named step Activity',
+                )
+            target_position = target_positions[0]
+            if target_position == position:
+                raise InvalidPipelineStepsError(
+                    field_name=(
+                        f'steps.{position}.dependsOn.{dependency_position}.activity'
+                    ),
+                    message='must not reference its own Activity',
+                )
+            dependencies.append(target_position)
+        dependencies_by_position[position] = tuple(dependencies)
+
+    visiting: set[int] = set()
+    visited: set[int] = set()
+
+    def visit(position: int) -> None:
+        """Reject one traversal edge that returns to an active path."""
+
+        if position in visiting:
+            raise InvalidPipelineStepsError(
+                field_name='steps',
+                message='must not contain dependency cycles',
+            )
+        if position in visited:
+            return
+        visiting.add(position)
+        for target_position in dependencies_by_position[position]:
+            visit(target_position)
+        visiting.remove(position)
+        visited.add(position)
+
+    for position in dependencies_by_position:
+        visit(position)
 
 
 def step_content(step: PipelineStep) -> JsonObject:
     """Serialize one domain step without adding execution data."""
 
-    if isinstance(step, PipelineLoopStep):
-        return {"type": "loop", "loop_id": step.loop_id}
-    content: JsonObject = {
-        "type": "human_gate",
-        "gate_type": step.gate_type,
+    return {
+        'activity_id': step.activity_id,
+        'depends_on': [
+            {
+                'activity_id': dependency.activity_id,
+                'condition': dependency.condition,
+            }
+            for dependency in step.depends_on
+        ],
     }
-    if step.config is not None:
-        content["config"] = {
-            "minimum_correct_answers": (
-                step.config.minimum_correct_answers
-            ),
-            "question_count": step.config.question_count,
-            "option_count": step.config.option_count,
-        }
-    return content
 
 
 def document_content(document: PipelineDocument) -> JsonObject:
@@ -201,7 +237,7 @@ def document_content(document: PipelineDocument) -> JsonObject:
 
     return {
         "id": document.id,
-        "title": document.title,
+        "name": document.name,
         "description": document.description,
         "enabled": document.enabled,
         "status": document.status,

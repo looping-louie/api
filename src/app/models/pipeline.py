@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
 
 
@@ -17,35 +18,26 @@ PipelineChangeType = Literal[
     "disabled",
     "archived",
 ]
+PipelineDependencyCondition = Literal['success', 'failure']
 
 
 @dataclass(frozen=True, slots=True)
-class PipelineQuizConfig:
-    """Validated quiz-generation limits stored in a pipeline."""
+class PipelineStepDependency:
+    """Execution condition required from one preceding Activity."""
 
-    minimum_correct_answers: int
-    question_count: int
-    option_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class PipelineLoopStep:
-    """Reference to one active loop."""
-
-    type: Literal["loop"]
-    loop_id: str
+    activity_id: str
+    condition: PipelineDependencyCondition
 
 
 @dataclass(frozen=True, slots=True)
-class PipelineHumanGateStep:
-    """Approval or quiz checkpoint in a pipeline."""
+class PipelineActivityStep:
+    """Reference to one active workspace activity."""
 
-    type: Literal["human_gate"]
-    gate_type: Literal["approval", "quiz"]
-    config: PipelineQuizConfig | None
+    activity_id: str
+    depends_on: tuple[PipelineStepDependency, ...] = ()
 
 
-PipelineStep = PipelineLoopStep | PipelineHumanGateStep
+PipelineStep = PipelineActivityStep
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +46,7 @@ class PipelineDocument:
 
     id: str
     workspace_id: str
-    title: str
+    name: str
     description: str
     status: PipelineStatus
     steps: tuple[PipelineStep, ...]
@@ -68,6 +60,14 @@ class PipelineDocument:
         """Expose active state through the public boolean contract."""
 
         return self.status == "active"
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineDetails:
+    """Pipeline definition and Activity documents resolved in step order."""
+
+    document: PipelineDocument
+    activities: tuple[ActivityDocument, ...]
 
 
 @dataclass(frozen=True, slots=True)

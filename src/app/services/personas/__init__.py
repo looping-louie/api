@@ -2,19 +2,23 @@
 
 from .service import PersonaService
 from .types import (
-	AvailablePersonaDocument,
-	PersonaCreate,
-	PersonaDocument,
-	PersonaSkillRepository,
-	PersonaUpdate,
+    AvailablePersonaDocument,
+    AvailablePersonaSummary,
+    PersonaCreate,
+    PersonaDocument,
+    PersonaModelRepository,
+    PersonaSkillRepository,
+    PersonaUpdate,
 )
 
 
 __all__ = [
-	"AvailablePersonaDocument",
-	"PersonaCreate",
-	"PersonaDocument",
-	"PersonaService",
-	"PersonaSkillRepository",
-	"PersonaUpdate",
+    "AvailablePersonaDocument",
+    "AvailablePersonaSummary",
+    "PersonaCreate",
+    "PersonaDocument",
+    "PersonaModelRepository",
+    "PersonaService",
+    "PersonaSkillRepository",
+    "PersonaUpdate",
 ]

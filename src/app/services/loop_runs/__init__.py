@@ -2,6 +2,7 @@
 
 from .service import LoopRunService
 from .types import (
+	ActivityRunUnavailableError,
 	Clock,
 	IdFactory,
 	LoopRunNotFoundError,
@@ -10,6 +11,7 @@ from .types import (
 )
 
 __all__ = [
+	'ActivityRunUnavailableError',
 	'Clock',
 	'IdFactory',
 	'LoopRunNotFoundError',

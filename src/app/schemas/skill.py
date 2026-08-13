@@ -7,6 +7,8 @@ from typing import Self
 
 from pydantic import ConfigDict, Field, StrictBool, model_validator
 
+from src.app.catalogs.instructions import CatalogInstructionCategory
+
 from .shared import (
     InstructionCapabilitiesResponse,
     ListResponse,
@@ -39,6 +41,7 @@ class SkillMetadata(RequestSchema):
         min_length=1,
     )
     default_strictness: SkillDefaultStrictness | None = None
+    category: CatalogInstructionCategory | None = None
 
 
 class SkillCreateRequest(RequestSchema):
@@ -106,6 +109,8 @@ class SkillSummaryResponse(
     ResourceSummaryResponse,
 ):
     """Lightweight skill returned by list operations."""
+
+    category: CatalogInstructionCategory | None = None
 
 
 class SkillResponse(InstructionCapabilitiesResponse):

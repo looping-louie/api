@@ -219,6 +219,11 @@ async def test_workspace_library_combines_visible_origins(
         for instruction in workspace_1
         if instruction.id == "marketplace-skill"
     )
+    security = next(
+        instruction
+        for instruction in workspace_1
+        if instruction.id == "builtin:skill:security"
+    )
     foreign_custom = (
         await repository.get_available_for_workspace(
             workspace_id="workspace-1",
@@ -228,6 +233,7 @@ async def test_workspace_library_combines_visible_origins(
     )
 
     assert "builtin:skill:security" in workspace_1_ids
+    assert security.category == "security_privacy"
     assert "custom-workspace-1" in workspace_1_ids
     assert "custom-workspace-2" not in workspace_1_ids
     assert "marketplace-skill" in workspace_1_ids

@@ -13,11 +13,14 @@ from src.app.services.instructions import (
     InstructionUpdate,
 )
 from src.app.services.shared.tenant import TenantService
+from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.skills import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,
 )
+from tests.fakes.persona_model_repository import FakePersonaModelRepository
+from tests.fakes.reference_repository import FakeReferenceRepository
 
 
 @pytest.mark.asyncio
@@ -35,6 +38,10 @@ async def test_api_custom_is_immediately_available_to_execution(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
+        persona_model_repository=FakePersonaModelRepository(),
+        reference_resolver=ReferenceResolver(
+            repository=FakeReferenceRepository(),
+        ),
     )
     runtime_service = ExecutionInstructionLibraryService(
         repository=instruction_repository,

@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
 import aiosqlite
 
+from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
 from src.app.models.pipeline import (
     PipelineChangelogEntry,
+    PipelineDetails,
     PipelineDocument,
     PipelineStatus,
 )
@@ -95,6 +99,45 @@ class SqlitePipelineRepository:
                 return None
             return await to_document(connection, row)
 
+    async def get_with_activities(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+    ) -> PipelineDetails | None:
+        """Return one pipeline with Activity documents in step order."""
+
+        async with self._connect() as connection:
+            row = await self._get_row(
+                connection,
+                workspace_id,
+                pipeline_id,
+            )
+            if row is None:
+                return None
+            document = await to_document(connection, row)
+            cursor = await connection.execute(
+                """
+                SELECT activities.*
+                FROM pipeline_steps
+                JOIN activities
+                    ON activities.workspace_id = pipeline_steps.workspace_id
+                    AND activities.id = pipeline_steps.activity_id
+                WHERE pipeline_steps.workspace_id = ?
+                    AND pipeline_steps.pipeline_id = ?
+                ORDER BY pipeline_steps.position ASC
+                """,
+                (workspace_id, pipeline_id),
+            )
+            try:
+                activity_rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return PipelineDetails(
+            document=document,
+            activities=tuple(self._activity_document(row) for row in activity_rows),
+        )
+
     async def create(
         self,
         *,
@@ -106,6 +149,33 @@ class SqlitePipelineRepository:
         async with self._connect() as connection:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
+                await insert_pipeline(connection, document)
+                await insert_steps(connection, document)
+                await insert_changelog(connection, changelog_entry)
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+        return document
+
+    async def create_with_activities(
+        self,
+        *,
+        document: PipelineDocument,
+        changelog_entry: PipelineChangelogEntry,
+        activity_documents: list[ActivityDocument],
+        activity_changelog_entries: list[ActivityChangelogEntry],
+    ) -> PipelineDocument:
+        """Create generated activities, a pipeline, and all changelogs atomically."""
+
+        async with self._connect() as connection:
+            try:
+                await connection.execute("BEGIN IMMEDIATE")
+                await self._insert_activities(
+                    connection,
+                    activity_documents,
+                    activity_changelog_entries,
+                )
                 await insert_pipeline(connection, document)
                 await insert_steps(connection, document)
                 await insert_changelog(connection, changelog_entry)
@@ -130,6 +200,43 @@ class SqlitePipelineRepository:
                 if not updated:
                     await connection.rollback()
                     return False
+                await connection.execute(
+                    """
+                    DELETE FROM pipeline_steps
+                    WHERE workspace_id = ? AND pipeline_id = ?
+                    """,
+                    (document.workspace_id, document.id),
+                )
+                await insert_steps(connection, document)
+                await insert_changelog(connection, changelog_entry)
+                await connection.commit()
+                return True
+            except Exception:
+                await connection.rollback()
+                raise
+
+    async def update_with_activities(
+        self,
+        *,
+        document: PipelineDocument,
+        changelog_entry: PipelineChangelogEntry,
+        activity_documents: list[ActivityDocument],
+        activity_changelog_entries: list[ActivityChangelogEntry],
+    ) -> bool:
+        """Persist generated activities and replace pipeline steps atomically."""
+
+        async with self._connect() as connection:
+            try:
+                await connection.execute("BEGIN IMMEDIATE")
+                updated = await self._update_row(connection, document)
+                if not updated:
+                    await connection.rollback()
+                    return False
+                await self._insert_activities(
+                    connection,
+                    activity_documents,
+                    activity_changelog_entries,
+                )
                 await connection.execute(
                     """
                     DELETE FROM pipeline_steps
@@ -218,12 +325,12 @@ class SqlitePipelineRepository:
         cursor = await connection.execute(
             """
             UPDATE pipelines
-            SET title = ?, description = ?, status = ?,
+            SET name = ?, description = ?, status = ?,
                 updated_at = ?, updated_by = ?
             WHERE workspace_id = ? AND id = ?
             """,
             (
-                document.title,
+                document.name,
                 document.description,
                 document.status,
                 document.updated_at.isoformat(),
@@ -253,6 +360,65 @@ class SqlitePipelineRepository:
             return await cursor.fetchone()
         finally:
             await cursor.close()
+
+    @staticmethod
+    async def _insert_activities(
+        connection: aiosqlite.Connection,
+        documents: list[ActivityDocument],
+        entries: list[ActivityChangelogEntry],
+    ) -> None:
+        """Insert generated activities and their creation changelogs."""
+
+        if len(documents) != len(entries):
+            raise ValueError("Activity documents and changelog entries must align.")
+        for document, entry in zip(documents, entries, strict=True):
+            await connection.execute(
+                "INSERT INTO activities VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    document.id,
+                    document.workspace_id,
+                    document.name,
+                    document.description,
+                    document.status,
+                    document.type,
+                    json.dumps(document.config),
+                    document.created_at.isoformat(),
+                    document.created_by,
+                    document.updated_at.isoformat(),
+                    document.updated_by,
+                ),
+            )
+            await connection.execute(
+                "INSERT INTO activity_changelog_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    entry.id,
+                    entry.activity_id,
+                    entry.workspace_id,
+                    entry.change_type,
+                    entry.actor_id,
+                    entry.changed_at.isoformat(),
+                    json.dumps(entry.diff) if entry.diff is not None else None,
+                    json.dumps(entry.content) if entry.content is not None else None,
+                ),
+            )
+
+    @staticmethod
+    def _activity_document(row: aiosqlite.Row) -> ActivityDocument:
+        """Map one resolved pipeline Activity row to its domain document."""
+
+        return ActivityDocument(
+            id=str(row['id']),
+            workspace_id=str(row['workspace_id']),
+            name=str(row['name']),
+            description=str(row['description']),
+            status=row['status'],
+            type=row['activity_type'],
+            config=json.loads(row['config_json']),
+            created_at=datetime.fromisoformat(row['created_at']),
+            created_by=str(row['created_by']),
+            updated_at=datetime.fromisoformat(row['updated_at']),
+            updated_by=str(row['updated_by']),
+        )
 
     @asynccontextmanager
     async def _connect(self) -> AsyncIterator[aiosqlite.Connection]:

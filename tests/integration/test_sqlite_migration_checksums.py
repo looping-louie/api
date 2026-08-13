@@ -21,6 +21,21 @@ EXPECTED_CHECKSUMS = {
     '0011_loop_run_checkpoints.sql': 'b8e9eacfd52da0438a8dac747cf77e13b92b066a1ec5d8f10d42d3b25d306ad3',
     '0012_expand_loop_run_states.sql': '0e2c0d72f6fd8a8aa6d103b7dda5dbb9c3dc773e103b4278ad7f068bc7e70fc8',
     '0013_repair_loop_run_idempotency.sql': 'fe367df6b131dbf944c053008f324cc4faf103656c6091745ab1808fba597e62',
+    '0014_activities.sql': 'ba267422801bcfbc4a31da5fbc2edea8f014b267af21484026b13ce9bb42b1f4',
+    '0015_pipeline_activity_steps.sql': '63ff3ae6ab2e8fd1f322ba246e8ee30cd216b5b87db7e3f9bd1b6b4cda0f7f57',
+    '0016_activity_loop_runs.sql': '74f01fef75b9e2007a40b7bc7891455f6e2d2b757b2486c424f4f550d821c4c7',
+    '0017_activity_catalog_installations.sql': '545540d77ae10358d14a72511fd6045cd07415864bbff0948f87e388384cb2c8',
+    '0018_archive_builtin_activities.sql': 'c247732633257e31c01578703b145cd987a4983f51813ffaa9dc2c634774d02d',
+    '0019_flatten_approval_activities.sql': '664cea04e52bbcb824c57eb3b133748031130759b25765f5dc40f5180a42e26c',
+    '0020_flatten_quiz_activities.sql': '765189cd23acee40cf99aaa0d263cba2cac7b3deeb00dc5f9281a0934f2843ea',
+    '0021_flatten_direct_loop_activities.sql': '453b87a8de13621ee697dfddfac3ae22241c63eb5c2a15e03e4246631c03d8de',
+    '0022_flatten_refinement_loop_activities.sql': 'e3abeac8063f32987f774e7fbd496928081c773cbb2233f5385d55ea1e587402',
+    '0023_flatten_roundtable_loop_activities.sql': '337a276775f4e786a2b4e6adc9ae8b222a54ea467992f493b3d2c4ab651b9482',
+    '0024_remove_activity_config_type.sql': '4b3d69fd0f64f40c039b9fc663cd5ff64b1f85210c8fce7e96357a9af7ff94a1',
+    '0025_rename_activity_pipeline_titles.sql': 'c308d42f36d283e970cba711ca602c875cf617aa4c277c21b5eff50856c1aa89',
+    '0026_persona_models.sql': 'd14f15e67a978e4166de6507a080f3d92d45e0123831d4508c65a017b94456dc',
+    '0027_pipeline_step_dependencies.sql': '8890234d866e4c8fadeb44dddfd04dfcc7b60c51dda510bb7b2766fdc7e10b54',
+    '0028_rename_pipeline_dependency_success_condition.sql': 'be2996fa5d047da5d324e025fbf04fffce9fc0b7514d2bfcb4e09a8e6e0839ea',
 }
 
 

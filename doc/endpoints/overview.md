@@ -13,13 +13,14 @@ operations.
 - [Models](models.md) exposes the curated model catalog.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
-- [Loops](loops.md) manages stored multi-agent loop definitions and nested loop
-  runs.
-- [Pipelines](pipelines.md) manages ordered loop and human-gate definitions.
+- [Activities](activities.md) manages reusable concrete Activity definitions
+  and their Activity runs.
+- [Pipelines](pipelines.md) manages ordered Activity definitions and persists
+  each supplied step as an independent Activity record.
 
 ## Versioned API conventions
 
-All provider, model, persona, skill, loop, and pipeline routes use the
+All provider, model, persona, skill, activity, and pipeline routes use the
 `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
@@ -31,14 +32,14 @@ the API returns `409 workspace_selection_required`.
 List operations return an object with `items` and `total`, except
 `GET /api/v1/providers`, which returns a JSON array. The optional `search`
 query parameter accepted by resource lists is case-insensitive and must contain
-between 1 and 200 characters. Loop and loop-changelog lists instead accept a
+between 1 and 200 characters. Activity and activity-changelog lists accept a
 non-negative `offset` and always return at most ten items. Pipeline lists also
 use fixed ten-item pages, support `status` and `search`, and exclude archived
 pipelines unless `status=archived` is requested.
 
 Create operations return `201 Created`. Persona and skill content updates use
 optimistic concurrency and require the current positive integer
-`expected_version`; loop updates do not.
+`expected_version`; activity updates do not.
 
 Successful deletes return:
 

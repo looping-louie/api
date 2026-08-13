@@ -11,10 +11,10 @@ The endpoint reference is organized by top-level router:
 - [Models](endpoints/models.md) exposes the curated model catalog.
 - [Personas](endpoints/personas.md) manages persona instructions.
 - [Skills](endpoints/skills.md) manages skill instructions.
-- [Loops](endpoints/loops.md) manages stored multi-agent loop definitions and
-  nested loop runs.
-- [Pipelines](endpoints/pipelines.md) manages ordered loop and human-gate
-  definitions.
+- [Activities](endpoints/activities.md) manages reusable concrete Activity
+  definitions, including Activity runs.
+- [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
+  persists each supplied step as an independent Activity record.
 
 The API owns planning, generation, and reviewer decisions. The CLI owns local
 repository execution, including filesystem, Git, and workspace lifecycle

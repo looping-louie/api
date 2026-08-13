@@ -49,7 +49,7 @@ SearchQuery = Annotated[
     Query(
         min_length=1,
         max_length=200,
-        description="Case-insensitive title and description search.",
+        description="Case-insensitive name and description search.",
     ),
 ]
 PipelineIdPath = Annotated[str, Path(min_length=1)]
@@ -101,14 +101,14 @@ async def create_pipeline(
 @router.get(
     "/{pipeline_id}",
     response_model=PipelineResponse,
-    summary="Get pipeline",
+    summary="Describe pipeline",
 )
 async def get_pipeline(
     context: ContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
 ) -> PipelineResponse:
-    """Return one complete pipeline."""
+    """Return one complete pipeline with its Activity definitions."""
 
     return await controller.get(
         user_id=context.user_id,
@@ -128,7 +128,7 @@ async def patch_pipeline(
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
 ) -> PipelineResponse:
-    """Update supplied mutable pipeline fields."""
+    """Update supplied mutable pipeline fields and resolve Activities."""
 
     return await controller.patch(
         user_id=context.user_id,

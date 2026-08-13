@@ -5,6 +5,8 @@ from __future__ import annotations
 from src.app.schemas.pipeline import PipelineResponse
 from src.app.services.pipelines.service import PipelineService
 
+from .utils import pipeline_details_response
+
 
 class PipelineDescribeController:
     """Return one complete pipeline definition."""
@@ -21,9 +23,9 @@ class PipelineDescribeController:
         requested_workspace_id: str | None = None,
     ) -> PipelineResponse:
         """Return one complete pipeline."""
-        document = await self._pipeline_service.get(
+        details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=pipeline_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return PipelineResponse.model_validate(document)
+        return pipeline_details_response(details)

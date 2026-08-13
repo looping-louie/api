@@ -1,5 +1,8 @@
+"""Factories for deterministic curated-model test data."""
+
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from src.app.catalogs.models import (
@@ -7,6 +10,7 @@ from src.app.catalogs.models import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
     ModelPricing,
     ModelStatus,
 )
@@ -42,8 +46,10 @@ def build_model(
     model_id: str = "model-1",
     name: str = "Model One",
     vendor: str = "Vendor",
+    lab: ModelLab = ModelLab.OPENAI,
     family: str = "Family",
     description: str = "Test model",
+    released_at: date = date(2026, 1, 1),
     status: ModelStatus = ModelStatus.ACTIVE,
     capabilities: frozenset[ModelCapability] | None = None,
     deployments: tuple[ModelDeployment, ...] | None = None,
@@ -56,8 +62,10 @@ def build_model(
         id=model_id,
         name=name,
         vendor=vendor,
+        lab=lab,
         family=family,
         description=description,
+        released_at=released_at,
         capabilities=capabilities
         or frozenset(
             {

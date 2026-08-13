@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 from .types import (
     AgentRole,
+    CatalogInstructionCategory,
     CatalogInstructionType,
     InstructionCatalogMetadata,
     InstructionOrigin,
@@ -40,6 +41,7 @@ class CatalogInstructionEntry:
     key: str | None = None
     content_path: str | None = None
     checksum: str | None = None
+    category: CatalogInstructionCategory | None = None
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
@@ -80,6 +82,14 @@ class CatalogInstructionEntry:
 
         if not isinstance(self.deprecated, bool):
             raise ValueError("deprecated must be a boolean.")
+
+        if self.category is not None and not isinstance(
+            self.category,
+            CatalogInstructionCategory,
+        ):
+            raise ValueError(
+                "category must be a CatalogInstructionCategory."
+            )
 
         if self.key is not None:
             require_non_empty_text(self.key, field_name="key")
@@ -164,7 +174,6 @@ class SkillCatalogEntry(CatalogInstructionEntry):
     """Catalog definition of a reusable skill."""
 
     reviewer_default_strictness: ReviewerStrictnessDefaults | None = None
-    category: str | None = None
     phase: SkillPhase | None = None
     artifacts: tuple[SkillArtifact, ...] = field(default_factory=tuple)
     output: SkillOutput | None = None
@@ -179,12 +188,6 @@ class SkillCatalogEntry(CatalogInstructionEntry):
         """Validate skill-specific metadata after shared catalog fields."""
 
         super(SkillCatalogEntry, self).__post_init__()
-
-        if self.category is not None:
-            require_non_empty_text(
-                self.category,
-                field_name="category",
-            )
 
         if self.phase is not None and not isinstance(
             self.phase,
@@ -224,6 +227,7 @@ class PersonaCatalogEntry(CatalogInstructionEntry):
         """Validate persona skill associations and default roles."""
 
         super(PersonaCatalogEntry, self).__post_init__()
+
         require_unique_non_empty_strings(
             self.skill_ids,
             field_name="skill_ids",

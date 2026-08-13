@@ -13,7 +13,7 @@ from src.app.services.shared.reference_resolver import ResourceReference
 
 
 class SqliteDependencyRepository:
-    """Read loop-to-persona dependencies from SQLite."""
+    """Read resource dependencies from SQLite."""
 
     def __init__(
         self,
@@ -31,10 +31,10 @@ class SqliteDependencyRepository:
     ) -> list[DependencyUsage]:
         """Return resources currently referencing the target."""
 
-        if target.resource_type == "loop":
+        if target.resource_type == "activity":
             return await self._find_pipeline_usages(
                 workspace_id=workspace_id,
-                loop_id=target.resource_id,
+            activity_id=target.resource_id,
             )
         if target.resource_type == "persona":
             return await self._find_loop_usages(
@@ -86,19 +86,19 @@ class SqliteDependencyRepository:
         self,
         *,
         workspace_id: str,
-        loop_id: str,
+        activity_id: str,
     ) -> list[DependencyUsage]:
-        """Return pipelines containing one loop reference."""
+        """Return pipelines containing one activity reference."""
 
         async with self._connect() as connection:
             cursor = await connection.execute(
                 """
                 SELECT DISTINCT pipeline_id
                 FROM pipeline_steps
-                WHERE workspace_id = ? AND loop_id = ?
+                WHERE workspace_id = ? AND activity_id = ?
                 ORDER BY pipeline_id ASC
                 """,
-                (workspace_id, loop_id),
+                (workspace_id, activity_id),
             )
             try:
                 rows = await cursor.fetchall()
@@ -111,7 +111,7 @@ class SqliteDependencyRepository:
                     resource_type="pipeline",
                     resource_id=str(row["pipeline_id"]),
                 ),
-                relation="loop",
+                relation="activity",
             )
             for row in rows
         ]

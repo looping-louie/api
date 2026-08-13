@@ -20,6 +20,33 @@ class ModelStatus(StrEnum):
     PREVIEW = "preview"
 
 
+class ModelSort(StrEnum):
+    """Supported ordering for model catalog queries."""
+
+    ALPHABETICAL_ASC = "alphabetical-asc"
+    ALPHABETICAL_DESC = "alphabetical-desc"
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
+class ModelLab(StrEnum):
+    """Organization responsible for developing a catalog model."""
+
+    ANTHROPIC = "anthropic"
+    DEEP_COGITO = "deep-cogito"
+    DEEPSEEK = "deepseek"
+    GOOGLE = "google"
+    META = "meta"
+    MINIMAX = "minimax"
+    MISTRAL = "mistral"
+    MOONSHOT = "moonshot"
+    NVIDIA = "nvidia"
+    OPENAI = "openai"
+    QWEN = "qwen"
+    THINKING_MACHINES = "thinking-machines"
+    Z = "z"
+
+
 class ModelEndpoint(StrEnum):
     """Provider API used to invoke a model deployment."""
 
@@ -71,8 +98,10 @@ class ModelCatalogEntry:
     id: str
     name: str
     vendor: str
+    lab: ModelLab
     family: str
     description: str
+    released_at: date
     capabilities: frozenset[ModelCapability]
     deployments: tuple[ModelDeployment, ...]
     status: ModelStatus = ModelStatus.ACTIVE

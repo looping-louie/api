@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
-from src.app.controllers.loop import LoopController
+from src.app.controllers.activity import ActivityController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -42,10 +42,15 @@ EXPECTED_TABLES = {
     "loop_run_idempotency",
     "pipelines",
     "pipeline_steps",
+    "pipeline_step_dependencies",
     "pipeline_changelog_entries",
     "provider_credentials",
+    "persona_models",
     "persona_skills",
     "workspace_instruction_settings",
+    "activities",
+    "activity_catalog_installations",
+    "activity_changelog_entries",
 }
 
 
@@ -106,8 +111,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
             SkillController,
         )
         assert isinstance(
-            app.state.loop_controller,
-            LoopController,
+            app.state.activity_controller,
+            ActivityController,
         )
         assert isinstance(
             app.state.loop_run_controller,
@@ -154,12 +159,12 @@ def test_bootstrap_configures_application_and_runs_migrations(
             ORDER BY version ASC
             """
         ).fetchall()
-        loop_rows = connection.execute(
+        activity_rows = connection.execute(
             """
-            SELECT title
-            FROM loops
+            SELECT name
+            FROM activities
             WHERE workspace_id = 'local-workspace'
-            ORDER BY title
+            ORDER BY name
             """
         ).fetchall()
 
@@ -184,13 +189,25 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0009_pipelines",
         "0010_loop_runs",
         "0011_loop_run_checkpoints",
-            "0012_expand_loop_run_states",
-            "0013_repair_loop_run_idempotency",
+        "0012_expand_loop_run_states",
+        "0013_repair_loop_run_idempotency",
+        "0014_activities",
+        "0015_pipeline_activity_steps",
+        "0016_activity_loop_runs",
+        "0017_activity_catalog_installations",
+        "0018_archive_builtin_activities",
+            "0019_flatten_approval_activities",
+        "0020_flatten_quiz_activities",
+        "0021_flatten_direct_loop_activities",
+        "0022_flatten_refinement_loop_activities",
+        "0023_flatten_roundtable_loop_activities",
+        "0024_remove_activity_config_type",
+        "0025_rename_activity_pipeline_titles",
+        "0026_persona_models",
+        "0027_pipeline_step_dependencies",
+        "0028_rename_pipeline_dependency_success_condition",
     ]
-    assert [str(row[0]) for row in loop_rows] == [
-        "plan implementation",
-        "shape ideas",
-    ]
+    assert activity_rows == []
 
 
 @pytest.mark.asyncio

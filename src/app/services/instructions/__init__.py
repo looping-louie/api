@@ -5,6 +5,7 @@ from .service import (
 )
 from .types import (
     AvailableInstructionDocument,
+    AvailableInstructionPage,
     AvailableInstructionSummary,
     BuiltinInstructionImmutableError,
     InstructionCreate,
@@ -25,6 +26,7 @@ from .types import (
 
 __all__ = [
     "AvailableInstructionDocument",
+    "AvailableInstructionPage",
     "AvailableInstructionSummary",
     "BuiltinInstructionImmutableError",
     "InstructionCreate",

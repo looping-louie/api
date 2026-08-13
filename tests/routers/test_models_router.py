@@ -6,6 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
+from src.app.catalogs.models import (
+    MODEL_CATALOG_BY_ID,
+    ModelLab,
+)
 from src.app.catalogs.providers import ProviderId
 from src.app.controllers.model import ModelController
 from src.app.routers.models import router as models_router
@@ -33,6 +37,8 @@ def build_app(
             request: Request,
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
+            """Inject the authenticated user required by route dependencies."""
+
             request.state.user_id = "user-1"
             return await call_next(request)
 
@@ -49,6 +55,8 @@ def test_list_models_route(
     model_controller: ModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
+    """List responses honor provider and effective availability filters."""
+
     provider_state_repository.seed(
         workspace_id="workspace-1",
         state=ProviderConnectionState(
@@ -76,6 +84,8 @@ def test_list_models_route(
     body = response.json()
 
     assert body["total"] > 0
+    assert len(body["items"]) <= 24
+    assert all("released_at" in item for item in body["items"])
     assert all(
         item["available"] is True
         for item in body["items"]
@@ -86,10 +96,66 @@ def test_list_models_route(
     )
 
 
+def test_list_models_filters_sorts_and_paginates(
+    model_controller: ModelController,
+) -> None:
+    """The route composes repeated labs, date sorting, and fixed pages."""
+
+    client = TestClient(build_app(controller=model_controller))
+
+    first_page = client.get(
+        "/api/v1/models",
+        params=[
+            ("include_deprecated", "true"),
+            ("lab", "openai"),
+            ("lab", "anthropic"),
+            ("sort", "newest"),
+            ("offset", "0"),
+        ],
+    )
+
+    assert first_page.status_code == 200
+    body = first_page.json()
+    assert body["items"]
+    assert all(
+        MODEL_CATALOG_BY_ID[item["id"]].lab
+        in {ModelLab.OPENAI, ModelLab.ANTHROPIC}
+        for item in body["items"]
+    )
+    release_dates = [item["released_at"] for item in body["items"]]
+    assert release_dates == sorted(release_dates, reverse=True)
+
+    all_models = client.get(
+        "/api/v1/models",
+        params={"include_deprecated": "true", "offset": "0"},
+    ).json()
+    second_page = client.get(
+        "/api/v1/models",
+        params={"include_deprecated": "true", "offset": "24"},
+    ).json()
+
+    assert all_models["total"] > 24
+    assert len(all_models["items"]) == 24
+    assert len(second_page["items"]) == min(
+        all_models["total"] - 24,
+        24,
+    )
+    assert second_page["total"] == all_models["total"]
+    assert {
+        item["id"]
+        for item in all_models["items"]
+    }.isdisjoint(
+        item["id"]
+        for item in second_page["items"]
+    )
+
+
 def test_describe_model_route(
     model_controller: ModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
+    """Describe exposes the selected model and workspace availability."""
+
     provider_state_repository.seed(
         workspace_id="workspace-1",
         state=ProviderConnectionState(
@@ -120,6 +186,8 @@ def test_describe_model_route(
 def test_describe_missing_model_returns_404(
     model_controller: ModelController,
 ) -> None:
+    """Unknown model identifiers produce the public not-found error."""
+
     client = TestClient(
         build_app(
             controller=model_controller,
@@ -137,6 +205,8 @@ def test_describe_missing_model_returns_404(
 def test_models_routes_require_authentication(
     model_controller: ModelController,
 ) -> None:
+    """Every model route rejects requests without an authenticated user."""
+
     client = TestClient(
         build_app(
             controller=model_controller,
@@ -154,20 +224,27 @@ def test_models_routes_require_authentication(
     )
 
 
-def test_list_models_validates_query_enums(
+def test_list_models_validates_query_values(
     model_controller: ModelController,
 ) -> None:
+    """Invalid enum, range, and text filters are rejected before dispatch."""
+
     client = TestClient(
         build_app(
             controller=model_controller,
         )
     )
 
-    response = client.get(
-        "/api/v1/models",
-        params={
-            "provider_id": "unsupported-provider",
-        },
+    invalid_queries = (
+        {"provider_id": "unsupported-provider"},
+        {"lab": "unsupported-lab"},
+        {"status": "unsupported-status"},
+        {"sort": "unsupported-sort"},
+        {"offset": "-1"},
+        {"search": ""},
     )
 
-    assert response.status_code == 422
+    for params in invalid_queries:
+        response = client.get("/api/v1/models", params=params)
+
+        assert response.status_code == 422, params

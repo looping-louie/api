@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from src.app.schemas.pipeline import PipelineCreateRequest, PipelineResponse
+from src.app.schemas.pipeline import (
+    PipelineCreateRequest,
+    PipelineResponse,
+)
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import PipelineCreate
 
-from .utils import pipeline_steps
+from .utils import pipeline_details_response, pipeline_steps
 
 
 class PipelineCreateController:
@@ -28,9 +31,14 @@ class PipelineCreateController:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
             payload=PipelineCreate(
-                title=payload.title,
+                name=payload.name,
                 description=payload.description,
                 steps=pipeline_steps(payload.steps),
             ),
         )
-        return PipelineResponse.model_validate(document)
+        details = await self._pipeline_service.describe(
+            user_id=user_id,
+            pipeline_id=document.id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return pipeline_details_response(details)

@@ -83,6 +83,7 @@ def test_persona_rest_crud_routes(
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
     assert described.status_code == 200
+    assert described.json()['model'] is None
     assert described.json()["instructions"] == (
         "Review every public API contract."
     )
@@ -192,6 +193,10 @@ def test_patch_changes_builtin_enabled_state_without_version(
         {
             "expected_version": 1,
             "skill_ids": ["skill-1", "skill-1"],
+        },
+        {
+            "expected_version": 1,
+            "metadata": {"category": "unsupported"},
         },
     ],
 )

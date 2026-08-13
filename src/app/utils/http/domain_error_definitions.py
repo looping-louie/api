@@ -2,6 +2,10 @@
 
 from fastapi import status
 
+from src.app.services.activities.service import (
+    ActivityNotFoundError,
+    ActivityValidationError,
+)
 from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
@@ -11,6 +15,7 @@ from src.app.services.loops.types import (
     LoopValidationError,
 )
 from src.app.services.loop_runs import (
+    ActivityRunUnavailableError,
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )
@@ -30,8 +35,6 @@ from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelineNotFoundError,
-    UnsupportedHumanGateTypeError,
-    UnsupportedPipelineStepError,
 )
 from src.app.services.providers.connection import ProviderConnectionError
 from src.app.services.providers.errors import (
@@ -154,6 +157,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="loop_not_found",
         details_builder=_loop_details,
     ),
+    ActivityNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='activity_not_found',
+    ),
     LoopRunNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code="loop_run_not_found",
@@ -161,6 +168,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     LoopRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code="loop_run_unavailable",
+    ),
+    ActivityRunUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='activity_run_unavailable',
     ),
     LoopRunTokenConflictError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
@@ -184,16 +195,6 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="invalid_pipeline_steps",
         details_builder=_validation_details,
-    ),
-    UnsupportedPipelineStepError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="unsupported_pipeline_step",
-        details_builder=unsupported_step_details,
-    ),
-    UnsupportedHumanGateTypeError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="unsupported_human_gate_type",
-        details_builder=unsupported_gate_details,
     ),
     ReferenceValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -243,6 +244,11 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     LoopValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="loop_validation_error",
+        details_builder=_validation_details,
+    ),
+    ActivityValidationError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code='activity_validation_error',
         details_builder=_validation_details,
     ),
     ArchivedLoopImmutableError: ErrorDefinition(

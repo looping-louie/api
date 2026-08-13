@@ -187,34 +187,34 @@ class SqliteMigrationRunner:
         migration: Migration,
     ) -> None:
         """Apply one migration and record it atomically."""
-        version_literal = self._sqlite_literal(
-            migration.version,
+        disables_foreign_keys = (
+            'PRAGMA foreign_keys = OFF;' in migration.sql
         )
-        checksum_literal = self._sqlite_literal(
-            migration.checksum,
-        )
+        if disables_foreign_keys:
+            await connection.execute('PRAGMA foreign_keys = OFF')
+            await connection.commit()
 
         script = f"""
         BEGIN IMMEDIATE;
 
         {migration.sql.rstrip()}
-
-        INSERT INTO schema_migrations (
-            version,
-            checksum,
-            applied_at
-        )
-        VALUES (
-            {version_literal},
-            {checksum_literal},
-            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-        );
-
-        COMMIT;
         """
 
         try:
             await connection.executescript(script)
+            await self._validate_foreign_keys(connection)
+            await connection.execute(
+                """
+                INSERT INTO schema_migrations (
+                    version,
+                    checksum,
+                    applied_at
+                )
+                VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+                """,
+                (migration.version, migration.checksum),
+            )
+            await connection.commit()
         except aiosqlite.Error as exc:
             await connection.rollback()
 
@@ -222,6 +222,25 @@ class SqliteMigrationRunner:
                 f"Failed to apply migration "
                 f"'{migration.version}' from '{migration.path}'."
             ) from exc
+        finally:
+            if disables_foreign_keys:
+                await connection.execute('PRAGMA foreign_keys = ON')
+
+    @staticmethod
+    async def _validate_foreign_keys(
+        connection: aiosqlite.Connection,
+    ) -> None:
+        """Reject a migration that leaves a broken foreign-key reference."""
+
+        cursor = await connection.execute('PRAGMA foreign_key_check')
+        try:
+            violation = await cursor.fetchone()
+        finally:
+            await cursor.close()
+        if violation is not None:
+            raise MigrationExecutionError(
+                'Migration leaves foreign-key violations.'
+            )
 
     @staticmethod
     def _validate_checksum(
@@ -244,16 +263,6 @@ class SqliteMigrationRunner:
         return hashlib.sha256(
             sql.encode("utf-8")
         ).hexdigest()
-
-    @staticmethod
-    def _sqlite_literal(value: str) -> str:
-        """Quote a trusted string as a SQLite literal."""
-        escaped = value.replace(
-            "'",
-            "''",
-        )
-        return f"'{escaped}'"
-
 
 async def run_sqlite_migrations(
     *,

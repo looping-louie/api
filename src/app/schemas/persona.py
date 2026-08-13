@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Self
+from typing import Self
 
-from pydantic import Field, StrictBool, model_validator
+from pydantic import ConfigDict, Field, StrictBool, model_validator
+
+from src.app.catalogs.instructions import CatalogInstructionCategory
 
 from .shared import (
     InstructionCapabilitiesResponse,
@@ -17,14 +19,26 @@ from .shared import (
 )
 
 
+class PersonaMetadata(RequestSchema):
+    """Structured and extensible metadata belonging to a persona."""
+
+    model_config = ConfigDict(
+        extra="allow",
+        str_strip_whitespace=True,
+    )
+
+    category: CatalogInstructionCategory | None = None
+
+
 class PersonaCreateRequest(RequestSchema):
     """Request body for creating a persona."""
 
     name: NonEmptyString
     description: str = ""
     instructions: NonEmptyString
+    model: NonEmptyString | None = None
     skill_ids: list[NonEmptyString] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: PersonaMetadata = Field(default_factory=PersonaMetadata)
 
     @model_validator(mode="after")
     def validate_creation(self) -> Self:
@@ -47,8 +61,9 @@ class PersonaPatchRequest(RequestSchema):
     name: NonEmptyString | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
+    model: NonEmptyString | None = None
     skill_ids: list[NonEmptyString] | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: PersonaMetadata | None = None
     enabled: StrictBool | None = None
 
     @model_validator(mode="after")
@@ -59,6 +74,7 @@ class PersonaPatchRequest(RequestSchema):
             self.name,
             self.description,
             self.instructions,
+            self.model,
             self.skill_ids,
             self.metadata,
         )
@@ -93,6 +109,7 @@ class PersonaPatchRequest(RequestSchema):
                 self.name,
                 self.description,
                 self.instructions,
+                self.model,
                 self.skill_ids,
                 self.metadata,
             )
@@ -105,6 +122,9 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
+    model: str | None
+    category: CatalogInstructionCategory | None = None
+
 
 class PersonaResponse(InstructionCapabilitiesResponse):
     """Complete persona returned by describe and write operations."""
@@ -113,8 +133,9 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     name: str
     description: str
     instructions: str
+    model: str | None
     skill_ids: list[str]
-    metadata: dict[str, Any]
+    metadata: PersonaMetadata
     version: PositiveInteger
     created_at: datetime
     updated_at: datetime

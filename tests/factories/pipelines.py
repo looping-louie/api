@@ -12,9 +12,8 @@ from src.app.models.loop import (
     LoopStopConditions,
 )
 from src.app.models.pipeline import (
+    PipelineActivityStep,
     PipelineDocument,
-    PipelineHumanGateStep,
-    PipelineLoopStep,
 )
 
 
@@ -69,16 +68,12 @@ def build_pipeline(
     return PipelineDocument(
         id=pipeline_id,
         workspace_id=workspace_id,
-        title=f"Pipeline {pipeline_id}",
+        name=f"Pipeline {pipeline_id}",
         description="Run and approve.",
         status=status,  # type: ignore[arg-type]
         steps=(
-            PipelineLoopStep(type="loop", loop_id="loop-1"),
-            PipelineHumanGateStep(
-                type="human_gate",
-                gate_type="approval",
-                config=None,
-            ),
+            PipelineActivityStep(activity_id="activity-1"),
+            PipelineActivityStep(activity_id="activity-2"),
         ),
         created_at=BASE_TIME,
         created_by="user-1",

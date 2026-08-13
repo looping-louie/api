@@ -9,6 +9,7 @@ from .types import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
+    ModelLab,
     ModelStatus,
 )
 
@@ -18,8 +19,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="gpt-5.6-sol",
         name="GPT-5.6 Sol",
         vendor="OpenAI",
+        lab=ModelLab.OPENAI,
         family="GPT-5.6",
         description="OpenAI flagship for complex reasoning and coding.",
+        released_at=date(2026, 7, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -37,8 +40,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="gpt-5.6-terra",
         name="GPT-5.6 Terra",
         vendor="OpenAI",
+        lab=ModelLab.OPENAI,
         family="GPT-5.6",
         description="Balanced OpenAI model for quality, latency and cost.",
+        released_at=date(2026, 7, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -56,8 +61,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="gpt-5.6-luna",
         name="GPT-5.6 Luna",
         vendor="OpenAI",
+        lab=ModelLab.OPENAI,
         family="GPT-5.6",
         description="Cost-efficient OpenAI model for high-volume workloads.",
+        released_at=date(2026, 7, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -75,8 +82,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="claude-fable-5",
         name="Claude Fable 5",
         vendor="Anthropic",
+        lab=ModelLab.ANTHROPIC,
         family="Claude 5",
         description="Anthropic model for long-running and demanding agents.",
+        released_at=date(2026, 6, 9),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -94,8 +103,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="claude-opus-4.8",
         name="Claude Opus 4.8",
         vendor="Anthropic",
+        lab=ModelLab.ANTHROPIC,
         family="Claude 4",
         description="Anthropic model for agentic coding and enterprise work.",
+        released_at=date(2026, 5, 28),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -113,8 +124,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="claude-sonnet-5",
         name="Claude Sonnet 5",
         vendor="Anthropic",
+        lab=ModelLab.ANTHROPIC,
         family="Claude 5",
         description="Anthropic model balancing speed and intelligence.",
+        released_at=date(2026, 6, 30),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -137,8 +150,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="claude-haiku-4.5",
         name="Claude Haiku 4.5",
         vendor="Anthropic",
+        lab=ModelLab.ANTHROPIC,
         family="Claude 4",
         description="Fast Anthropic model for cost-sensitive workloads.",
+        released_at=date(2025, 10, 15),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -156,8 +171,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="kimi-k2.6",
         name="Kimi K2.6",
         vendor="Moonshot AI",
+        lab=ModelLab.MOONSHOT,
         family="Kimi",
         description="Multimodal reasoning model for agents and tool use.",
+        released_at=date(2026, 4, 20),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(
@@ -174,8 +191,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="glm-5.2",
         name="GLM-5.2",
         vendor="Z.ai",
+        lab=ModelLab.Z,
         family="GLM",
         description="Reasoning and coding model for long-horizon agents.",
+        released_at=date(2026, 6, 16),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -201,8 +220,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="glm-5.1",
         name="GLM-5.1",
         vendor="Z.ai",
+        lab=ModelLab.Z,
         family="GLM",
         description="Previous GLM reasoning and function-calling model.",
+        released_at=date(2026, 4, 7),
         capabilities=frozenset(
             {
                 ModelCapability.TEXT,
@@ -230,8 +251,10 @@ PRIMARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
         id="kimi-k2.7-code",
         name="Kimi K2.7 Code",
         vendor="Moonshot AI",
+        lab=ModelLab.MOONSHOT,
         family="Kimi",
         description="Kimi model specialised in coding agents.",
+        released_at=date(2026, 6, 12),
         capabilities=GENERAL_REASONING,
         deployments=(
             ModelDeployment(

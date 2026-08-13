@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
-    PositiveInteger,
     RequestSchema,
     ResponseSchema,
 )
@@ -24,75 +24,47 @@ PipelineChangeTypeValue = Literal[
     "disabled",
     "archived",
 ]
-OptionCount = Annotated[int, Field(ge=2, strict=True)]
 
 
-class PipelineQuizConfigRequest(RequestSchema):
-    """Required quiz threshold with default question and option counts."""
+class PipelineStepDependencyRequest(RequestSchema):
+    """One named Activity condition required by a pipeline step."""
 
-    minimum_correct_answers: PositiveInteger
-    question_count: PositiveInteger = 10
-    option_count: OptionCount = 3
-
-    @model_validator(mode="after")
-    def validate_threshold(self) -> Self:
-        """Reject thresholds that cannot be met by the quiz."""
-
-        if self.minimum_correct_answers > self.question_count:
-            raise ValueError(
-                "minimum_correct_answers cannot exceed question_count."
-            )
-        return self
+    activity: NonEmptyString
+    condition: Literal['success', 'failure']
 
 
-class PipelineLoopStepRequest(RequestSchema):
-    """Reference to an existing active loop."""
+class PipelineStepDependencyResponse(ResponseSchema):
+    """One named Activity condition returned for a pipeline step."""
 
-    type: Literal["loop"]
-    loop_id: NonEmptyString
-
-
-class PipelineHumanGateStepRequest(RequestSchema):
-    """Approval or configured quiz human checkpoint."""
-
-    type: Literal["human_gate"]
-    gate_type: Literal["approval", "quiz"]
-    config: PipelineQuizConfigRequest | None = None
-
-    @model_validator(mode="after")
-    def validate_gate_config(self) -> Self:
-        """Require quiz configuration and forbid approval configuration."""
-
-        if self.gate_type == "quiz" and self.config is None:
-            raise ValueError("config is required for quiz gates.")
-        if self.gate_type == "approval" and self.config is not None:
-            raise ValueError(
-                "config must not be supplied for approval gates."
-            )
-        return self
+    activity: str
+    condition: Literal['success', 'failure']
 
 
-PipelineStepRequest = Annotated[
-    PipelineLoopStepRequest | PipelineHumanGateStepRequest,
-    Field(discriminator="type"),
-]
+class PipelineActivityStepRequest(ActivityCreateRequest):
+    """Activity definition created as one persisted pipeline step."""
+
+    depends_on: list[PipelineStepDependencyRequest] = Field(
+        default_factory=list,
+        validation_alias='dependsOn',
+        serialization_alias='dependsOn',
+    )
 
 
 class PipelineCreateRequest(RequestSchema):
     """Request body for creating an enabled pipeline."""
 
-    title: NonEmptyString
+    name: NonEmptyString
     description: str
-    steps: list[PipelineStepRequest]
+    steps: list[PipelineActivityStepRequest]
 
 
 class PipelinePatchRequest(RequestSchema):
     """Partial mutable pipeline fields accepted by PATCH."""
 
-    title: NonEmptyString | None = None
+    name: NonEmptyString | None = None
     description: str | None = None
     enabled: bool | None = None
-    steps: list[PipelineStepRequest] | None = None
+    steps: list[PipelineActivityStepRequest] | None = None
 
     @model_validator(mode="after")
     def require_supplied_non_null_change(self) -> Self:
@@ -106,43 +78,23 @@ class PipelinePatchRequest(RequestSchema):
         return self
 
 
-class PipelineQuizConfigResponse(ResponseSchema):
-    """Stored quiz-generation limits."""
+class PipelineActivityStepResponse(ActivityResponse):
+    """Pipeline Activity with its graph dependencies."""
 
-    minimum_correct_answers: int
-    question_count: int
-    option_count: int
-
-
-class PipelineLoopStepResponse(ResponseSchema):
-    """Stored loop reference."""
-
-    type: Literal["loop"]
-    loop_id: str
-
-
-class PipelineHumanGateStepResponse(ResponseSchema):
-    """Stored human checkpoint."""
-
-    type: Literal["human_gate"]
-    gate_type: Literal["approval", "quiz"]
-    config: PipelineQuizConfigResponse | None = None
-
-
-PipelineStepResponse = Annotated[
-    PipelineLoopStepResponse | PipelineHumanGateStepResponse,
-    Field(discriminator="type"),
-]
+    depends_on: list[PipelineStepDependencyResponse] = Field(
+        default_factory=list,
+        serialization_alias='dependsOn',
+    )
 
 
 class PipelineResponse(ResponseSchema):
-    """Complete public pipeline definition."""
+    """Pipeline representation with full Activity definitions for each step."""
 
     id: str
-    title: str
+    name: str
     description: str
     enabled: bool
-    steps: list[PipelineStepResponse]
+    steps: list[PipelineActivityStepResponse]
     created_at: datetime
     updated_at: datetime
 

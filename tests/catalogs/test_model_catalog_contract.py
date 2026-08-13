@@ -8,6 +8,7 @@ from src.app.catalogs.models import (
     MODEL_CATALOG,
     ModelCatalogEntry,
     ModelCatalogValidationError,
+    ModelLab,
     validate_model_catalog,
 )
 from src.app.catalogs.providers import (
@@ -54,6 +55,22 @@ def test_rejects_duplicate_model_ids() -> None:
     with pytest.raises(
         ModelCatalogValidationError,
         match="Duplicate model catalog id",
+    ):
+        validate_model_catalog(catalog)
+
+
+def test_rejects_unknown_model_lab() -> None:
+    """Catalog validation rejects labs outside the public typed taxonomy."""
+
+    catalog = (
+        build_model(
+            lab=cast(ModelLab, "unknown-lab"),
+        ),
+    )
+
+    with pytest.raises(
+        ModelCatalogValidationError,
+        match="unknown lab",
     ):
         validate_model_catalog(catalog)
 

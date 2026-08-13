@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import Mapping, Protocol, Sequence
 
@@ -62,6 +63,7 @@ class ModelSummary:
     vendor: str
     family: str
     description: str
+    released_at: date
     capabilities: frozenset[ModelCapability]
     status: ModelStatus
     providers: tuple[ProviderId, ...]
@@ -79,6 +81,7 @@ class ModelDocument:
     vendor: str
     family: str
     description: str
+    released_at: date
     capabilities: frozenset[ModelCapability]
     status: ModelStatus
     replacement_model_id: str | None
@@ -307,4 +310,3 @@ class ModelAvailabilityService:
             )
 
         return normalized
-

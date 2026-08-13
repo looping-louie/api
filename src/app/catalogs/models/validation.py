@@ -2,11 +2,13 @@
 
 import re
 from collections.abc import Sequence
+from datetime import date
 
 from ..providers import PROVIDER_CATALOG, ProviderCatalogEntry, ProviderId
 from .types import (
     ModelCatalogEntry,
     ModelCatalogValidationError,
+    ModelLab,
 )
 
 
@@ -40,6 +42,17 @@ def validate_model_catalog(
         if not model.deployments:
             raise ModelCatalogValidationError(
                 f"Model '{model.id}' must define at least one deployment."
+            )
+
+        if not isinstance(model.released_at, date):
+            raise ModelCatalogValidationError(
+                f"Model '{model.id}' must define a valid release date."
+            )
+
+        if not isinstance(model.lab, ModelLab):
+            raise ModelCatalogValidationError(
+                f"Model '{model.id}' references unknown lab "
+                f"'{model.lab}'."
             )
 
         seen_model_ids.add(model.id)

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from src.app.schemas.pipeline import PipelinePatchRequest, PipelineResponse
+from src.app.schemas.pipeline import (
+    PipelinePatchRequest,
+    PipelineResponse,
+)
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import PipelinePatch
 
-from .utils import pipeline_steps
+from .utils import pipeline_details_response, pipeline_steps
 
 
 class PipelinePatchController:
@@ -31,7 +34,7 @@ class PipelinePatchController:
             requested_workspace_id=requested_workspace_id,
             payload=PipelinePatch(
                 provided_fields=frozenset(payload.model_fields_set),
-                title=payload.title,
+                name=payload.name,
                 description=payload.description,
                 enabled=payload.enabled,
                 steps=(
@@ -41,4 +44,9 @@ class PipelinePatchController:
                 ),
             ),
         )
-        return PipelineResponse.model_validate(document)
+        details = await self._pipeline_service.describe(
+            user_id=user_id,
+            pipeline_id=document.id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return pipeline_details_response(details)

@@ -244,3 +244,51 @@ async def test_loop_run_transition_persists_apply_checkpoint(
     assert completed.state == 'completed'
     assert completed.next_action == 'none'
     assert completed.continuation_token is None
+
+
+@pytest.mark.asyncio
+async def test_activity_owned_loop_run_preserves_legacy_loop_runs(
+    sqlite_database_path: Path,
+    create_workspace: object,
+) -> None:
+    """Activity-owned runs coexist with legacy loop-owned runs after migration."""
+
+    await create_workspace(workspace_id='workspace-1')
+    timestamp = datetime(2026, 8, 12, tzinfo=UTC)
+    async with aiosqlite.connect(sqlite_database_path) as connection:
+        await connection.execute('PRAGMA foreign_keys = ON')
+        await connection.execute(
+            '''
+            INSERT INTO activities (
+                    id, workspace_id, name, description, status, activity_type,
+                config_json, created_at, created_by, updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'activity-1', 'workspace-1', 'Activity', '', 'active',
+                'direct_loop', '{"type":"direct_loop"}',
+                timestamp.isoformat(), 'user-1', timestamp.isoformat(), 'user-1',
+            ),
+        )
+        await connection.commit()
+
+    repository = SqliteLoopRunRepository(sqlite_database_path)
+    document = LoopRunDocument(
+        id='activity-run-1', workspace_id='workspace-1', loop_id='activity-1',
+        activity_id='activity-1', input='Create a file.', status='in_progress',
+        state='awaiting_snapshot', next_action='collect_snapshot', iteration=1,
+        token_revision=0, continuation_token='token-0',
+        loop_snapshot={'id': 'activity-1', 'flow': 'direct'}, execution_context={},
+        created_at=timestamp, created_by='user-1', updated_at=timestamp,
+    )
+
+    await repository.create(document=document)
+    stored = await repository.get_for_activity(
+        workspace_id='workspace-1', activity_id='activity-1', run_id='activity-run-1',
+    )
+    legacy_scope = await repository.get(
+        workspace_id='workspace-1', loop_id='activity-1', run_id='activity-run-1',
+    )
+
+    assert stored == document
+    assert legacy_scope is None
