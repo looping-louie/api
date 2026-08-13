@@ -51,6 +51,31 @@ Content-Type: application/json
 }
 ```
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "skill-api-compatibility",
+  "name": "API compatibility",
+  "description": "Detects breaking API changes.",
+  "instructions": "Compare routes and schemas with the documented contract.",
+  "metadata": {
+    "applies_when": ["An HTTP contract changes"],
+    "default_strictness": {"production": 100}
+  },
+  "origin": "custom",
+  "enabled": true,
+  "editable": true,
+  "duplicable": true,
+  "deprecated": false,
+  "catalog_version": null,
+  "source_instruction_id": null,
+  "version": 1,
+  "created_at": "2026-08-13T10:00:00Z",
+  "updated_at": "2026-08-13T10:00:00Z"
+}
+```
+
 ## Patch Skill Request
 
 Include at least one of `name`, `description`, `instructions`, `metadata`, or

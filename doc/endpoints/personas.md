@@ -46,6 +46,29 @@ Content-Type: application/json
 }
 ```
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "persona-api-reviewer",
+  "name": "API reviewer",
+  "description": "Reviews public API compatibility.",
+  "instructions": "Inspect every public contract and report breaking changes.",
+  "skill_ids": ["skill-api-compatibility"],
+  "metadata": {"team": "platform"},
+  "origin": "custom",
+  "enabled": true,
+  "editable": true,
+  "duplicable": true,
+  "deprecated": false,
+  "catalog_version": null,
+  "source_instruction_id": null,
+  "version": 1,
+  "created_at": "2026-08-13T10:00:00Z",
+  "updated_at": "2026-08-13T10:00:00Z"
+}
+```
+
 ## Patch Persona Request
 
 Include at least one of `name`, `description`, `instructions`, `skill_ids`,

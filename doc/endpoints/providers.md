@@ -37,5 +37,23 @@ curl -s -X PATCH http://127.0.0.1:8000/api/v1/providers/openai \
   }'
 ```
 
+Example response (`200 OK`):
+
+```json
+{
+  "provider": "openai",
+  "name": "OpenAI",
+  "description": "OpenAI model provider.",
+  "logo_url": "https://example.invalid/openai.svg",
+  "requires_api_key": true,
+  "configured": true,
+  "enabled": true,
+  "key_trimmed": "prov****************",
+  "base_url": null,
+  "model_count": 3,
+  "model_catalog_note": "Availability depends on this workspace configuration."
+}
+```
+
 Provider GET and PATCH responses contain metadata plus `configured`, `enabled`,
 `key_trimmed`, `base_url`, `model_count`, and `model_catalog_note`.

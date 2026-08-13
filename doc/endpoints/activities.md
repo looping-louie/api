@@ -68,6 +68,28 @@ Content-Type: application/json
 }
 ```
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "activity-implementation",
+  "workspace_id": "workspace-acme",
+  "title": "Implement requested change",
+  "description": "Make and validate a focused code change.",
+  "status": "active",
+  "type": "direct_loop",
+  "config": {
+    "stop_conditions": {"max_iterations": 3, "max_tokens": 12000},
+    "agents": [{"model_id": "gpt-5", "persona_id": "software-engineer", "role": "generator"}],
+    "output_contract": {"type": "text", "description": "A concise implementation summary and validation result."}
+  },
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:00:00Z",
+  "updated_by": "user-123"
+}
+```
+
 ### Roundtable loop
 
 Use a roundtable loop for an executable discussion between specialised agents.
@@ -115,6 +137,32 @@ Agents can use the `generator`, `reviewer`, and `aggregator` roles.
 }
 ```
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "activity-release-review",
+  "workspace_id": "workspace-acme",
+  "title": "Review release plan",
+  "description": "Reach a shared decision about release readiness.",
+  "status": "active",
+  "type": "roundtable_loop",
+  "config": {
+    "stop_conditions": {"max_iterations": 2},
+    "agents": [
+      {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
+      {"model_id": "gpt-5", "persona_id": "quality-reviewer", "role": "reviewer"},
+      {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+    ],
+    "output_contract": {"type": "json", "description": "The release decision and its rationale.", "schema": {"type": "object", "required": ["decision", "rationale"], "properties": {"decision": {"type": "string"}, "rationale": {"type": "string"}}}}
+  },
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:00:00Z",
+  "updated_by": "user-123"
+}
+```
+
 ### Refinement loop
 
 Use a refinement loop to store a multi-pass improvement definition. It has the
@@ -151,6 +199,31 @@ runs.
 }
 ```
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "activity-documentation-refinement",
+  "workspace_id": "workspace-acme",
+  "title": "Refine documentation draft",
+  "description": "Improve a draft through review iterations.",
+  "status": "active",
+  "type": "refinement_loop",
+  "config": {
+    "stop_conditions": {"timeout_seconds": 900},
+    "agents": [
+      {"model_id": "gpt-5", "persona_id": "technical-writer", "role": "generator"},
+      {"model_id": "gpt-5", "persona_id": "documentation-reviewer", "role": "reviewer"}
+    ],
+    "output_contract": {"type": "files", "description": "An updated API guide.", "files": ["doc/API.md"]}
+  },
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:00:00Z",
+  "updated_by": "user-123"
+}
+```
+
 ### Approval
 
 Use an approval activity for a human decision. Its configuration has no
@@ -162,6 +235,24 @@ additional fields.
   "description": "A release manager must approve deployment to production.",
   "type": "approval",
   "config": {}
+}
+```
+
+Example response (`201 Created`):
+
+```json
+{
+  "id": "activity-production-approval",
+  "workspace_id": "workspace-acme",
+  "title": "Approve production release",
+  "description": "A release manager must approve deployment to production.",
+  "status": "active",
+  "type": "approval",
+  "config": {},
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:00:00Z",
+  "updated_by": "user-123"
 }
 ```
 
@@ -189,6 +280,24 @@ application-defined and stored as supplied.
 }
 ```
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "activity-deployment-quiz",
+  "workspace_id": "workspace-acme",
+  "title": "Deployment readiness quiz",
+  "description": "Confirm operational readiness before deployment.",
+  "status": "active",
+  "type": "quiz",
+  "config": {"quiz": {"questions": [{"id": "rollback-tested", "prompt": "Has the rollback procedure been tested?", "required": true}]}},
+  "created_at": "2026-08-13T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:00:00Z",
+  "updated_by": "user-123"
+}
+```
+
 ## Loop activity runs
 
 Only active activities with `type: "direct_loop"` or
@@ -207,6 +316,26 @@ Run creation accepts the existing request body:
 ```json
 {
   "input": "Implement the requested change."
+}
+```
+
+Example response (`201 Created`):
+
+```json
+{
+  "id": "run-implementation-001",
+  "loop_id": "activity-implementation",
+  "input": "Implement the requested change.",
+  "status": "in_progress",
+  "state": "awaiting_snapshot",
+  "next_action": "collect_snapshot",
+  "iteration": 1,
+  "token_revision": 1,
+  "continuation_token": "continuation-token",
+  "created_at": "2026-08-13T10:05:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-13T10:05:00Z",
+  "payload": {}
 }
 ```
 
