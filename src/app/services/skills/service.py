@@ -13,6 +13,7 @@ from ..instructions import (
     InstructionDocument,
     InstructionService,
     InstructionUpdate,
+    filter_and_sort_instruction_summaries,
 )
 from ..shared.tenant import TenantService
 from .metadata_validator import (
@@ -57,71 +58,11 @@ class SkillService:
             search=search,
         )
 
-        if status is not None:
-            enabled = status == SkillStatus.ENABLED
-            summaries = [
-                summary
-                for summary in summaries
-                if summary.enabled is enabled
-            ]
-
-        if categories:
-            selected_categories = {
-                category.value
-                for category in categories
-            }
-            summaries = [
-                summary
-                for summary in summaries
-                if summary.category in selected_categories
-            ]
-
-        return self._sort_summaries(summaries, sort=sort)
-
-    @staticmethod
-    def _sort_summaries(
-        summaries: list[AvailableInstructionSummary],
-        *,
-        sort: SkillSort | None,
-    ) -> list[AvailableInstructionSummary]:
-        """Return a stable ordering for one filtered skill collection."""
-
-        if sort == SkillSort.ALPHABETICAL_DESC:
-            return sorted(
-                summaries,
-                key=lambda summary: (
-                    summary.name.casefold(),
-                    summary.id,
-                ),
-                reverse=True,
-            )
-
-        if sort == SkillSort.NEWEST:
-            return sorted(
-                summaries,
-                key=lambda summary: (
-                    -summary.created_at.timestamp(),
-                    summary.name.casefold(),
-                    summary.id,
-                ),
-            )
-
-        if sort == SkillSort.OLDEST:
-            return sorted(
-                summaries,
-                key=lambda summary: (
-                    summary.created_at,
-                    summary.name.casefold(),
-                    summary.id,
-                ),
-            )
-
-        return sorted(
+        return filter_and_sort_instruction_summaries(
             summaries,
-            key=lambda summary: (
-                summary.name.casefold(),
-                summary.id,
-            ),
+            status=status,
+            categories=categories,
+            sort=sort,
         )
 
     async def describe(

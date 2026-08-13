@@ -6,6 +6,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
+from src.app.catalogs.instructions import (
+    InstructionCategory,
+    InstructionSort,
+    InstructionStatus,
+)
 from src.app.controllers.persona import PersonaController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.persona import (
@@ -53,6 +58,28 @@ async def list_personas(
             max_length=200,
         ),
     ] = None,
+    persona_status: Annotated[
+        InstructionStatus | None,
+        Query(
+            alias="status",
+            description="Filter by workspace enablement state.",
+        ),
+    ] = None,
+    category: Annotated[
+        list[InstructionCategory] | None,
+        Query(description="Filter by one or more business categories."),
+    ] = None,
+    sort: Annotated[
+        InstructionSort | None,
+        Query(description="Order the filtered persona catalog."),
+    ] = None,
+    offset: Annotated[
+        int,
+        Query(
+            ge=0,
+            description="Number of filtered personas to skip. Page size is 12.",
+        ),
+    ] = 0,
 ) -> PersonaListResponse:
     """List persona metadata without returning full instructions."""
 
@@ -60,6 +87,10 @@ async def list_personas(
         user_id=context.user_id,
         requested_workspace_id=context.requested_workspace_id,
         search=search,
+        status=persona_status,
+        categories=category or (),
+        sort=sort,
+        offset=offset,
     )
 
 

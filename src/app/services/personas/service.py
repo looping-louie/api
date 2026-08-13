@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import fields
+
+from src.app.catalogs.instructions import (
+    InstructionCategory,
+    InstructionSort,
+    InstructionStatus,
+)
 
 from ..instructions import (
     AvailableInstructionDocument,
@@ -10,6 +17,7 @@ from ..instructions import (
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
+    filter_and_sort_instruction_summaries,
 )
 from ..shared.tenant import TenantService
 from .types import (
@@ -46,6 +54,9 @@ class PersonaService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
+        status: InstructionStatus | None = None,
+        categories: Sequence[InstructionCategory] = (),
+        sort: InstructionSort | None = None,
     ) -> list[AvailableInstructionSummary]:
         """List personas available in the resolved workspace."""
 
@@ -54,10 +65,16 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.list(
+        summaries = await self._instruction_service.list(
             workspace_id=workspace_id,
             instruction_type="persona",
             search=search,
+        )
+        return filter_and_sort_instruction_summaries(
+            summaries,
+            status=status,
+            categories=categories,
+            sort=sort,
         )
 
     async def describe(

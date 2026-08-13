@@ -13,6 +13,11 @@ immutable; they can be enabled or disabled.
 | `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
 
+The list endpoint returns 12 personas per page and accepts `offset`, `search`,
+`status` (`enabled` or `disabled`), repeatable `category`, and `sort`
+(`alphabetical-asc`, `alphabetical-desc`, `newest`, or `oldest`). The
+`category` values use the same twelve company-area taxonomy as Skills.
+
 ## Create Persona Request
 
 | Field | Description |
@@ -21,7 +26,7 @@ immutable; they can be enabled or disabled.
 | `description` | Optional description. Defaults to an empty string. |
 | `instructions` | Required non-empty complete persona instructions. |
 | `skill_ids` | Ordered IDs of skills associated with the persona. |
-| `metadata` | Optional JSON object. Defaults to `{}`. |
+| `metadata` | Optional JSON object. `category`, when present, must use the shared company-area taxonomy. Defaults to `{}`. |
 
 ## Patch Persona Request
 
@@ -52,4 +57,5 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/personas \
 Write and get operations return the complete persona, including `id`,
 instructions, `skill_ids`, metadata, origin and capabilities, version, and
 timestamps. Deleting a custom skill automatically removes its ID from every
-associated persona. List items omit instructions, skill IDs, and metadata.
+associated persona. List items omit instructions, skill IDs, and metadata but
+include their top-level category.

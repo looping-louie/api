@@ -21,6 +21,7 @@ from ..instructions.types import (
     AgentRole,
     CatalogInstructionType,
     InstructionCatalogMetadata,
+    InstructionCategory,
     InstructionOrigin,
 )
 
@@ -83,6 +84,9 @@ def load_persona_catalog(
                 catalog_version=require_positive_integer(
                     manifest,
                     "version",
+                ),
+                category=InstructionCategory(
+                    require_text(manifest, "category")
                 ),
                 skill_ids=require_string_tuple(
                     manifest,

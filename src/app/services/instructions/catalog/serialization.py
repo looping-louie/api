@@ -21,6 +21,12 @@ def serialize_catalog_metadata(entry: CatalogInstructionEntry) -> str:
             for role in entry.metadata.applies_to
         ),
         "applies_when": list(entry.metadata.applies_when),
+        "category": (
+            entry.category.value
+            if isinstance(entry, (SkillCatalogEntry, PersonaCatalogEntry))
+            and entry.category is not None
+            else None
+        ),
     }
 
     if isinstance(entry, SkillCatalogEntry):
@@ -30,7 +36,6 @@ def serialize_catalog_metadata(entry: CatalogInstructionEntry) -> str:
                     artifact.value
                     for artifact in entry.artifacts
                 ],
-                "category": entry.category,
                 "output": (
                     entry.output.value
                     if entry.output is not None

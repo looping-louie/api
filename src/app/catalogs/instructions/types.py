@@ -16,6 +16,39 @@ class InstructionOrigin(StrEnum):
     MARKETPLACE = "marketplace"
 
 
+class InstructionCategory(StrEnum):
+    """Broad company area responsible for an instruction."""
+
+    SOFTWARE_ENGINEERING = "software_engineering"
+    QUALITY_RELIABILITY = "quality_reliability"
+    SECURITY_PRIVACY = "security_privacy"
+    DATA_AI = "data_ai"
+    PRODUCT_DISCOVERY_STRATEGY = "product_discovery_strategy"
+    PRODUCT_DESIGN_UX = "product_design_ux"
+    DELIVERY_PLANNING = "delivery_planning"
+    CONTENT_BRAND = "content_brand"
+    GROWTH_ACQUISITION = "growth_acquisition"
+    RESEARCH_ANALYTICS = "research_analytics"
+    SALES = "sales"
+    CUSTOMER_SUCCESS_SUPPORT = "customer_success_support"
+
+
+class InstructionStatus(StrEnum):
+    """Workspace availability states accepted by catalog listings."""
+
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+
+
+class InstructionSort(StrEnum):
+    """Supported ordering for instruction catalog queries."""
+
+    ALPHABETICAL_ASC = "alphabetical-asc"
+    ALPHABETICAL_DESC = "alphabetical-desc"
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
 class CatalogInstructionType(StrEnum):
     """Instruction kinds supported by the curated catalog."""
 

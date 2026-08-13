@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Self
+from typing import Self
 
-from pydantic import Field, StrictBool, model_validator
+from pydantic import ConfigDict, Field, StrictBool, model_validator
+
+from src.app.catalogs.instructions import InstructionCategory
 
 from .shared import (
     InstructionCapabilitiesResponse,
@@ -17,6 +19,17 @@ from .shared import (
 )
 
 
+class PersonaMetadata(RequestSchema):
+    """Structured and extensible metadata belonging to a persona."""
+
+    model_config = ConfigDict(
+        extra="allow",
+        str_strip_whitespace=True,
+    )
+
+    category: InstructionCategory | None = None
+
+
 class PersonaCreateRequest(RequestSchema):
     """Request body for creating a persona."""
 
@@ -24,7 +37,7 @@ class PersonaCreateRequest(RequestSchema):
     description: str = ""
     instructions: NonEmptyString
     skill_ids: list[NonEmptyString] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: PersonaMetadata = Field(default_factory=PersonaMetadata)
 
     @model_validator(mode="after")
     def validate_creation(self) -> Self:
@@ -48,7 +61,7 @@ class PersonaPatchRequest(RequestSchema):
     description: str | None = None
     instructions: NonEmptyString | None = None
     skill_ids: list[NonEmptyString] | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: PersonaMetadata | None = None
     enabled: StrictBool | None = None
 
     @model_validator(mode="after")
@@ -105,6 +118,8 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
+    category: InstructionCategory | None = None
+
 
 class PersonaResponse(InstructionCapabilitiesResponse):
     """Complete persona returned by describe and write operations."""
@@ -114,7 +129,7 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     description: str
     instructions: str
     skill_ids: list[str]
-    metadata: dict[str, Any]
+    metadata: PersonaMetadata
     version: PositiveInteger
     created_at: datetime
     updated_at: datetime

@@ -22,6 +22,7 @@ from ..instructions.types import (
     AgentRole,
     CatalogInstructionType,
     InstructionCatalogMetadata,
+    InstructionCategory,
     InstructionOrigin,
     ProjectPhase,
     ReviewerStrictnessDefaults,
@@ -29,7 +30,6 @@ from ..instructions.types import (
     SkillOutput,
     SkillPhase,
 )
-from .types import SkillCategory
 
 
 SKILL_CATALOG_DIR = Path(__file__).parent
@@ -93,7 +93,7 @@ def load_skill_catalog(
                 reviewer_default_strictness=_load_strictness(
                     manifest,
                 ),
-                category=SkillCategory(
+                category=InstructionCategory(
                     require_text(manifest, "category")
                 ),
                 phase=SkillPhase(

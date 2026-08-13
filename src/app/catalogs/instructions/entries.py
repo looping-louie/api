@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from .types import (
     AgentRole,
     CatalogInstructionType,
+    InstructionCategory,
     InstructionCatalogMetadata,
     InstructionOrigin,
     ReviewerStrictnessDefaults,
@@ -164,7 +165,7 @@ class SkillCatalogEntry(CatalogInstructionEntry):
     """Catalog definition of a reusable skill."""
 
     reviewer_default_strictness: ReviewerStrictnessDefaults | None = None
-    category: str | None = None
+    category: InstructionCategory | None = None
     phase: SkillPhase | None = None
     artifacts: tuple[SkillArtifact, ...] = field(default_factory=tuple)
     output: SkillOutput | None = None
@@ -180,11 +181,11 @@ class SkillCatalogEntry(CatalogInstructionEntry):
 
         super(SkillCatalogEntry, self).__post_init__()
 
-        if self.category is not None:
-            require_non_empty_text(
-                self.category,
-                field_name="category",
-            )
+        if self.category is not None and not isinstance(
+            self.category,
+            InstructionCategory,
+        ):
+            raise ValueError("category must be an InstructionCategory.")
 
         if self.phase is not None and not isinstance(
             self.phase,
@@ -213,6 +214,7 @@ class PersonaCatalogEntry(CatalogInstructionEntry):
 
     skill_ids: tuple[str, ...] = field(default_factory=tuple)
     default_for: frozenset[AgentRole] = field(default_factory=frozenset)
+    category: InstructionCategory | None = None
 
     @property
     def instruction_type(self) -> CatalogInstructionType:
@@ -224,6 +226,13 @@ class PersonaCatalogEntry(CatalogInstructionEntry):
         """Validate persona skill associations and default roles."""
 
         super(PersonaCatalogEntry, self).__post_init__()
+
+        if self.category is not None and not isinstance(
+            self.category,
+            InstructionCategory,
+        ):
+            raise ValueError("category must be an InstructionCategory.")
+
         require_unique_non_empty_strings(
             self.skill_ids,
             field_name="skill_ids",

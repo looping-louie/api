@@ -3,6 +3,7 @@
 from .service import (
     InstructionService,
 )
+from .listing import filter_and_sort_instruction_summaries
 from .types import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
@@ -41,4 +42,5 @@ __all__ = [
     "InstructionValidationError",
     "InstructionVersionConflictError",
     "InvalidInstructionTypeError",
+    "filter_and_sort_instruction_summaries",
 ]
