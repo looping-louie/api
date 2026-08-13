@@ -348,10 +348,22 @@ Example response (`201 Created`):
   "config": {
     "stop_conditions": {"timeout_seconds": 900},
     "agents": [
-      {"model_id": "gpt-5", "persona_id": "technical-writer", "role": "generator"},
-      {"model_id": "gpt-5", "persona_id": "documentation-reviewer", "role": "reviewer"}
+      {
+        "model_id": "gpt-5",
+        "persona_id": "technical-writer",
+        "role": "generator"
+      },
+      {
+        "model_id": "gpt-5",
+        "persona_id": "documentation-reviewer",
+        "role": "reviewer"
+      }
     ],
-    "output_contract": {"type": "files", "description": "An updated API guide.", "files": ["doc/API.md"]}
+    "output_contract": {
+      "type": "files",
+      "description": "An updated API guide.",
+      "files": ["doc/API.md"]
+    }
   },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",

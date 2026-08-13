@@ -8,6 +8,7 @@ from typing import Protocol, TypeVar
 
 from ..instructions import (
     AvailableInstructionDocument,
+    AvailableInstructionSummary,
     InstructionCreate,
     InstructionDocument,
     InstructionUpdate,
@@ -18,6 +19,7 @@ from ..instructions import (
 class PersonaCreate(InstructionCreate):
     """Content and associations required to create a persona."""
 
+    model: str | None = None
     skill_ids: tuple[str, ...] = ()
 
 
@@ -25,6 +27,7 @@ class PersonaCreate(InstructionCreate):
 class PersonaUpdate(InstructionUpdate):
     """Partial persona content and association changes."""
 
+    model: str | None = None
     skill_ids: tuple[str, ...] | None = None
 
 
@@ -32,6 +35,7 @@ class PersonaUpdate(InstructionUpdate):
 class PersonaDocument(InstructionDocument):
     """Custom persona document with its associated skills."""
 
+    model: str | None = None
     skill_ids: tuple[str, ...] = ()
 
 
@@ -39,11 +43,20 @@ class PersonaDocument(InstructionDocument):
 class AvailablePersonaDocument(AvailableInstructionDocument):
     """Workspace-visible persona document with associated skills."""
 
+    model: str | None = None
     skill_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class AvailablePersonaSummary(AvailableInstructionSummary):
+    """Workspace-visible persona summary with its selected model."""
+
+    model: str | None = None
 
 
 PersonaBaseDocument = InstructionDocument | AvailableInstructionDocument
 PersonaResultDocument = PersonaDocument | AvailablePersonaDocument
+PersonaSummaryDocument = AvailablePersonaSummary
 DocumentType = TypeVar("DocumentType", bound=PersonaBaseDocument)
 
 
@@ -61,4 +74,21 @@ class PersonaSkillRepository(Protocol):
         skill_ids: Sequence[str],
     ) -> None:
         """Replace every skill associated with a persona."""
+        ...
+
+
+class PersonaModelRepository(Protocol):
+    """Persistence contract for optional persona-model associations."""
+
+    async def get_for_persona(self, *, persona_id: str) -> str | None:
+        """Return the associated model identifier when one exists."""
+        ...
+
+    async def replace_for_persona(
+        self,
+        *,
+        persona_id: str,
+        model_id: str | None,
+    ) -> None:
+        """Store or remove the optional model association."""
         ...

@@ -253,6 +253,7 @@ repositories/
 |   |-- availability.py            Persists workspace availability settings
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
+|   |-- persona_model_repository.py Persists optional persona-model associations
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations

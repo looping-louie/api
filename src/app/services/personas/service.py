@@ -6,19 +6,25 @@ from dataclasses import fields
 
 from ..instructions import (
     AvailableInstructionDocument,
-    AvailableInstructionSummary,
     InstructionCreate,
     InstructionService,
     InstructionUpdate,
 )
 from ..shared.tenant import TenantService
+from ..shared.reference_resolver import (
+    ReferenceResolver,
+    ResourceReference,
+)
 from .types import (
     AvailablePersonaDocument,
+    AvailablePersonaSummary,
     DocumentType,
     PersonaBaseDocument,
     PersonaCreate,
     PersonaDocument,
+    PersonaModelRepository,
     PersonaResultDocument,
+    PersonaSummaryDocument,
     PersonaSkillRepository,
     PersonaUpdate,
 )
@@ -33,12 +39,16 @@ class PersonaService:
         tenant_service: TenantService,
         instruction_service: InstructionService,
         persona_skill_repository: PersonaSkillRepository,
+        persona_model_repository: PersonaModelRepository,
+        reference_resolver: ReferenceResolver,
     ) -> None:
         """Initialize workspace resolution and shared instruction behavior."""
 
         self._tenant_service = tenant_service
         self._instruction_service = instruction_service
         self._persona_skill_repository = persona_skill_repository
+        self._persona_model_repository = persona_model_repository
+        self._reference_resolver = reference_resolver
 
     async def list(
         self,
@@ -46,7 +56,7 @@ class PersonaService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
-    ) -> list[AvailableInstructionSummary]:
+    ) -> list[PersonaSummaryDocument]:
         """List personas available in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -54,11 +64,23 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.list(
+        summaries = await self._instruction_service.list(
             workspace_id=workspace_id,
             instruction_type="persona",
             search=search,
         )
+        return [
+            AvailablePersonaSummary(
+                **{
+                    field.name: getattr(summary, field.name)
+                    for field in fields(summary)
+                },
+                model=await self._persona_model_repository.get_for_persona(
+                    persona_id=summary.id,
+                ),
+            )
+            for summary in summaries
+        ]
 
     async def describe(
         self,
@@ -126,6 +148,10 @@ class PersonaService:
             workspace_id=workspace_id,
             skill_ids=payload.skill_ids,
         )
+        await self._require_model(
+            workspace_id=workspace_id,
+            model_id=payload.model,
+        )
 
         document = await self._instruction_service.create(
             workspace_id=workspace_id,
@@ -141,8 +167,13 @@ class PersonaService:
             persona_id=document.id,
             skill_ids=payload.skill_ids,
         )
+        await self._persona_model_repository.replace_for_persona(
+            persona_id=document.id,
+            model_id=payload.model,
+        )
         return self._to_persona_document(
             document,
+            model=payload.model,
             skill_ids=payload.skill_ids,
         )
 
@@ -165,6 +196,10 @@ class PersonaService:
                 workspace_id=workspace_id,
                 skill_ids=payload.skill_ids,
             )
+        await self._require_model(
+            workspace_id=workspace_id,
+            model_id=payload.model,
+        )
 
         document = await self._instruction_service.update(
             workspace_id=workspace_id,
@@ -182,6 +217,11 @@ class PersonaService:
             await self._persona_skill_repository.replace_for_persona(
                 persona_id=persona_id,
                 skill_ids=payload.skill_ids,
+            )
+        if payload.model is not None:
+            await self._persona_model_repository.replace_for_persona(
+                persona_id=persona_id,
+                model_id=payload.model,
             )
         return await self._with_skill_ids(document)
 
@@ -229,8 +269,12 @@ class PersonaService:
         skill_ids = await self._persona_skill_repository.list_for_persona(
             persona_id=document.id,
         )
+        model = await self._persona_model_repository.get_for_persona(
+            persona_id=document.id,
+        )
         return self._to_persona_document(
             document,
+            model=model,
             skill_ids=skill_ids,
         )
 
@@ -238,6 +282,7 @@ class PersonaService:
     def _to_persona_document(
         document: PersonaBaseDocument,
         *,
+        model: str | None,
         skill_ids: tuple[str, ...],
     ) -> PersonaResultDocument:
         """Convert a generic instruction into its persona representation."""
@@ -250,12 +295,29 @@ class PersonaService:
         if isinstance(document, AvailableInstructionDocument):
             return AvailablePersonaDocument(
                 **values,
+                model=model,
                 skill_ids=skill_ids,
             )
 
         return PersonaDocument(
             **values,
+            model=model,
             skill_ids=skill_ids,
+        )
+
+    async def _require_model(
+        self,
+        *,
+        workspace_id: str,
+        model_id: str | None,
+    ) -> None:
+        """Require a supplied Persona model to resolve in the workspace."""
+
+        if model_id is None:
+            return
+        await self._reference_resolver.require_many(
+            workspace_id=workspace_id,
+            references=[ResourceReference("model", model_id)],
         )
 
     async def _resolve_workspace_id(

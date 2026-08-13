@@ -23,6 +23,7 @@ class PersonaCreateRequest(RequestSchema):
     name: NonEmptyString
     description: str = ""
     instructions: NonEmptyString
+    model: NonEmptyString | None = None
     skill_ids: list[NonEmptyString] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -47,6 +48,7 @@ class PersonaPatchRequest(RequestSchema):
     name: NonEmptyString | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
+    model: NonEmptyString | None = None
     skill_ids: list[NonEmptyString] | None = None
     metadata: dict[str, Any] | None = None
     enabled: StrictBool | None = None
@@ -59,6 +61,7 @@ class PersonaPatchRequest(RequestSchema):
             self.name,
             self.description,
             self.instructions,
+            self.model,
             self.skill_ids,
             self.metadata,
         )
@@ -93,6 +96,7 @@ class PersonaPatchRequest(RequestSchema):
                 self.name,
                 self.description,
                 self.instructions,
+                self.model,
                 self.skill_ids,
                 self.metadata,
             )
@@ -105,6 +109,8 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
+    model: str | None
+
 
 class PersonaResponse(InstructionCapabilitiesResponse):
     """Complete persona returned by describe and write operations."""
@@ -113,6 +119,7 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     name: str
     description: str
     instructions: str
+    model: str | None
     skill_ids: list[str]
     metadata: dict[str, Any]
     version: PositiveInteger

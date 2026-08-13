@@ -44,6 +44,7 @@ EXPECTED_TABLES = {
     "pipeline_steps",
     "pipeline_changelog_entries",
     "provider_credentials",
+    "persona_models",
     "persona_skills",
     "workspace_instruction_settings",
     "activities",
@@ -201,6 +202,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0023_flatten_roundtable_loop_activities",
         "0024_remove_activity_config_type",
         "0025_rename_activity_pipeline_titles",
+        "0026_persona_models",
     ]
     assert activity_rows == []
 

@@ -16,6 +16,7 @@ from src.app.services.shared.tenant import (
     TenantService,
     WorkspaceMembership,
 )
+from src.app.services.shared.reference_resolver import ReferenceResolver
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
@@ -23,12 +24,16 @@ from tests.fakes.instruction_repository import (
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,
 )
+from tests.fakes.persona_model_repository import FakePersonaModelRepository
+from tests.fakes.reference_repository import FakeReferenceRepository
 from tests.services.test_instruction_service import seed_builtin
 
 
 def build_persona_service(
     instruction_service: InstructionService,
     persona_skill_repository: FakePersonaSkillRepository | None = None,
+    persona_model_repository: FakePersonaModelRepository | None = None,
+    reference_repository: FakeReferenceRepository | None = None,
 ) -> PersonaService:
     """Build a persona service with one default workspace membership."""
 
@@ -48,6 +53,13 @@ def build_persona_service(
         persona_skill_repository=(
             persona_skill_repository
             or FakePersonaSkillRepository()
+        ),
+        persona_model_repository=(
+            persona_model_repository
+            or FakePersonaModelRepository()
+        ),
+        reference_resolver=ReferenceResolver(
+            repository=reference_repository or FakeReferenceRepository(),
         ),
     )
 
@@ -192,3 +204,72 @@ async def test_persona_service_manages_skill_associations(
     )
     assert created.skill_ids == (skill.id,)
     assert updated.skill_ids == ()
+
+
+@pytest.mark.asyncio
+async def test_persona_service_manages_optional_model_associations(
+    instruction_service: InstructionService,
+) -> None:
+    """Persona models are optional and supplied models must resolve."""
+
+    reference_repository = FakeReferenceRepository()
+    reference_repository.seed(
+        workspace_id='workspace-1',
+        resource_type='model',
+        resource_id='model-1',
+        value=object(),
+    )
+    service = build_persona_service(
+        instruction_service,
+        reference_repository=reference_repository,
+    )
+
+    legacy = await service.create(
+        user_id='user-1',
+        payload=PersonaCreate(
+            name='Legacy reviewer',
+            description='',
+            instructions='Review existing changes.',
+        ),
+    )
+    created = await service.create(
+        user_id='user-1',
+        payload=PersonaCreate(
+            name='Model reviewer',
+            description='',
+            instructions='Review model-specific changes.',
+            model='model-1',
+        ),
+    )
+    updated = await service.update(
+        user_id='user-1',
+        persona_id=legacy.id,
+        payload=PersonaUpdate(
+            expected_version=1,
+            model='model-1',
+        ),
+    )
+
+    assert legacy.model is None
+    assert created.model == 'model-1'
+    assert updated.model == 'model-1'
+
+
+@pytest.mark.asyncio
+async def test_persona_service_rejects_unknown_model(
+    instruction_service: InstructionService,
+) -> None:
+    """A Persona cannot select a model absent from the configured catalog."""
+
+    service = build_persona_service(instruction_service)
+
+    with pytest.raises(Exception, match="model 'missing-model'"):
+        await service.create(
+            user_id='user-1',
+            payload=PersonaCreate(
+                name='Missing model reviewer',
+                description='',
+                instructions='Review the model association.',
+                model='missing-model',
+            ),
+        )

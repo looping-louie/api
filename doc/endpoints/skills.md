@@ -68,7 +68,9 @@ Example response (`200 OK`):
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
     "applies_when": ["An HTTP contract changes"],
-    "default_strictness": {"production": 100}
+    "default_strictness": {
+      "production": 100
+    }
   },
   "origin": "custom",
   "enabled": true,
@@ -131,7 +133,9 @@ Example response (`201 Created`):
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
     "applies_when": ["An HTTP contract changes"],
-    "default_strictness": {"production": 100}
+    "default_strictness": {
+      "production": 100
+    }
   },
   "origin": "custom",
   "enabled": true,
@@ -163,8 +167,13 @@ Content-Type: application/json
 {
   "expected_version": 1,
   "metadata": {
-    "applies_when": ["An HTTP contract changes", "A migration changes persisted data"],
-    "default_strictness": {"production": 100}
+    "applies_when": [
+      "An HTTP contract changes",
+      "A migration changes persisted data"
+    ],
+    "default_strictness": {
+      "production": 100
+    }
   }
 }
 ```
@@ -178,8 +187,13 @@ Example response (`200 OK`):
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
-    "applies_when": ["An HTTP contract changes", "A migration changes persisted data"],
-    "default_strictness": {"production": 100}
+    "applies_when": [
+      "An HTTP contract changes",
+      "A migration changes persisted data"
+    ],
+    "default_strictness": {
+      "production": 100
+    }
   },
   "origin": "custom",
   "enabled": true,

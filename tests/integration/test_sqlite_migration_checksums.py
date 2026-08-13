@@ -33,6 +33,7 @@ EXPECTED_CHECKSUMS = {
     '0023_flatten_roundtable_loop_activities.sql': '337a276775f4e786a2b4e6adc9ae8b222a54ea467992f493b3d2c4ab651b9482',
     '0024_remove_activity_config_type.sql': '4b3d69fd0f64f40c039b9fc663cd5ff64b1f85210c8fce7e96357a9af7ff94a1',
     '0025_rename_activity_pipeline_titles.sql': 'c308d42f36d283e970cba711ca602c875cf617aa4c277c21b5eff50856c1aa89',
+    '0026_persona_models.sql': '9ef5e37c142701189202e0aca4c8340ee1b304cce317b006155ba5ba57ca2c9e',
 }
 
 

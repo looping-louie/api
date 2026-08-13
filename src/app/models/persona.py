@@ -12,6 +12,7 @@ from src.app.models.instruction import (
 class PersonaDocument(InstructionDocument):
     """Custom persona document with its associated skills."""
 
+    model: str | None = None
     skill_ids: tuple[str, ...] = ()
 
 
@@ -19,4 +20,5 @@ class PersonaDocument(InstructionDocument):
 class AvailablePersonaDocument(AvailableInstructionDocument):
     """Workspace-visible persona document with associated skills."""
 
+    model: str | None = None
     skill_ids: tuple[str, ...] = ()

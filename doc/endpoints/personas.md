@@ -17,6 +17,8 @@ immutable; they can be enabled or disabled.
 
 `GET /api/v1/personas` returns summary metadata without instructions, skill
 IDs, or metadata. An optional `search` matches eligible persona content.
+`model` is the optional configured model ID assigned to the Persona; Personas
+created before this field was introduced return `null`.
 
 ```http
 GET /api/v1/personas?search=api
@@ -32,6 +34,7 @@ Example response (`200 OK`):
       "id": "persona-api-reviewer",
       "name": "ApiReviewer",
       "description": "Reviews public API compatibility.",
+      "model": "kimi-k2.6",
       "origin": "custom",
       "enabled": true,
       "editable": true,
@@ -51,7 +54,7 @@ Example response (`200 OK`):
 ## Describe a persona
 
 `GET /api/v1/personas/{persona_id}` returns the complete persona, including
-instructions, associated skill IDs, and metadata.
+instructions, its optional model ID, associated skill IDs, and metadata.
 
 ```http
 GET /api/v1/personas/persona-api-reviewer
@@ -66,6 +69,7 @@ Example response (`200 OK`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
+  "model": "kimi-k2.6",
   "skill_ids": ["skill-api-compatibility"],
   "metadata": {"team": "platform"},
   "origin": "custom",
@@ -91,6 +95,7 @@ Example response (`200 OK`):
 | `name` | Required non-empty display name. |
 | `description` | Optional description. Defaults to an empty string. |
 | `instructions` | Required non-empty complete persona instructions. |
+| `model` | Optional ID of a configured model. |
 | `skill_ids` | Unique ordered IDs of skills associated with the persona. |
 | `metadata` | Optional JSON object. Defaults to `{}`. |
 
@@ -105,6 +110,7 @@ Content-Type: application/json
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
+  "model": "kimi-k2.6",
   "skill_ids": [
     "skill-api-compatibility"
   ],
@@ -122,6 +128,7 @@ Example response (`201 Created`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
+  "model": "kimi-k2.6",
   "skill_ids": ["skill-api-compatibility"],
   "metadata": {"team": "platform"},
   "origin": "custom",
@@ -139,7 +146,7 @@ Example response (`201 Created`):
 
 ## Update a persona
 
-Include at least one of `name`, `description`, `instructions`, `skill_ids`,
+Include at least one of `name`, `description`, `instructions`, `model`, `skill_ids`,
 `metadata`, or `enabled`. Supplying `skill_ids` replaces the complete
 association; an empty list removes every skill. Content changes require
 `expected_version`; an enabled-only change does not. `enabled` must be `true`
@@ -155,6 +162,7 @@ Content-Type: application/json
 ```json
 {
   "expected_version": 1,
+  "model": "kimi-k2.6",
   "description": "Reviews public API compatibility and migration impact."
 }
 ```
@@ -167,6 +175,7 @@ Example response (`200 OK`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility and migration impact.",
   "instructions": "Inspect every public contract and report breaking changes.",
+  "model": "kimi-k2.6",
   "skill_ids": ["skill-api-compatibility"],
   "metadata": {"team": "platform"},
   "origin": "custom",
@@ -183,6 +192,6 @@ Example response (`200 OK`):
 ```
 
 Write and describe operations return the complete persona, including `id`,
-instructions, `skill_ids`, metadata, origin and capabilities, version, and
-timestamps. Deleting a custom skill automatically removes its ID from every
+instructions, `model`, `skill_ids`, metadata, origin and capabilities, version,
+and timestamps. Deleting a custom skill automatically removes its ID from every
 associated persona. List items omit instructions, skill IDs, and metadata.
