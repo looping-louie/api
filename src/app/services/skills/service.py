@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+from src.app.catalogs.skills import SkillCategory, SkillSort, SkillStatus
+
 from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
@@ -36,6 +40,9 @@ class SkillService:
         user_id: str,
         requested_workspace_id: str | None = None,
         search: str | None = None,
+        status: SkillStatus | None = None,
+        categories: Sequence[SkillCategory] = (),
+        sort: SkillSort | None = None,
     ) -> list[AvailableInstructionSummary]:
         """List skills available in the resolved workspace."""
 
@@ -44,10 +51,77 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.list(
+        summaries = await self._instruction_service.list(
             workspace_id=workspace_id,
             instruction_type="skill",
             search=search,
+        )
+
+        if status is not None:
+            enabled = status == SkillStatus.ENABLED
+            summaries = [
+                summary
+                for summary in summaries
+                if summary.enabled is enabled
+            ]
+
+        if categories:
+            selected_categories = {
+                category.value
+                for category in categories
+            }
+            summaries = [
+                summary
+                for summary in summaries
+                if summary.category in selected_categories
+            ]
+
+        return self._sort_summaries(summaries, sort=sort)
+
+    @staticmethod
+    def _sort_summaries(
+        summaries: list[AvailableInstructionSummary],
+        *,
+        sort: SkillSort | None,
+    ) -> list[AvailableInstructionSummary]:
+        """Return a stable ordering for one filtered skill collection."""
+
+        if sort == SkillSort.ALPHABETICAL_DESC:
+            return sorted(
+                summaries,
+                key=lambda summary: (
+                    summary.name.casefold(),
+                    summary.id,
+                ),
+                reverse=True,
+            )
+
+        if sort == SkillSort.NEWEST:
+            return sorted(
+                summaries,
+                key=lambda summary: (
+                    -summary.created_at.timestamp(),
+                    summary.name.casefold(),
+                    summary.id,
+                ),
+            )
+
+        if sort == SkillSort.OLDEST:
+            return sorted(
+                summaries,
+                key=lambda summary: (
+                    summary.created_at,
+                    summary.name.casefold(),
+                    summary.id,
+                ),
+            )
+
+        return sorted(
+            summaries,
+            key=lambda summary: (
+                summary.name.casefold(),
+                summary.id,
+            ),
         )
 
     async def describe(

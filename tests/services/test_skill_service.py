@@ -55,6 +55,7 @@ async def test_create_skill_with_valid_metadata(
             description="Reviews security risks",
             instructions="Review the code for security vulnerabilities.",
             metadata={
+                "category": "security_privacy",
                 "applies_when": ["backend", "api"],
                 "default_strictness": {
                     "prototype": 30,
@@ -66,7 +67,28 @@ async def test_create_skill_with_valid_metadata(
     )
 
     assert created.instruction_type == "skill"
+    assert created.metadata["category"] == "security_privacy"
     assert created.metadata["applies_when"] == ["backend", "api"]
+
+
+@pytest.mark.asyncio
+async def test_create_skill_rejects_unknown_category(
+    instruction_service: InstructionService,
+) -> None:
+    """Custom skills use the same stable taxonomy as packaged skills."""
+
+    service = build_skill_service(instruction_service)
+
+    with pytest.raises(SkillValidationError):
+        await service.create(
+            user_id="user-1",
+            payload=InstructionCreate(
+                name="Unknown area",
+                description="Uses an unsupported category.",
+                instructions="Review the supplied work.",
+                metadata={"category": "miscellaneous"},
+            ),
+        )
 
 
 @pytest.mark.asyncio

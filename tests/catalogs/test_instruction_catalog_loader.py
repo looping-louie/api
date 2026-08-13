@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 import src.app.bootstrap.application as bootstrap
 from src.app.catalogs.instructions.resource_loader import CatalogLoadError
+from src.app.catalogs.skills import SkillCategory
 from src.app.catalogs.instructions import (
     PersonaCatalogEntry,
     SkillCatalogEntry,
@@ -65,6 +66,19 @@ def test_loaders_return_immutable_typed_entries() -> None:
 
     with pytest.raises(FrozenInstanceError):
         catalog.skills[0].name = "Changed"  # type: ignore[misc]
+
+
+def test_skill_catalog_uses_the_stable_business_taxonomy() -> None:
+    """Every packaged skill uses one of the twelve supported categories."""
+
+    skills = load_skill_catalog()
+
+    assert len(SkillCategory) == 12
+    assert all(
+        isinstance(skill.category, SkillCategory)
+        for skill in skills
+    )
+    assert all(skill.catalog_version == 2 for skill in skills)
 
 
 def test_checksum_is_deterministic() -> None:

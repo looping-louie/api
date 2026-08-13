@@ -29,6 +29,7 @@ from ..instructions.types import (
     SkillOutput,
     SkillPhase,
 )
+from .types import SkillCategory
 
 
 SKILL_CATALOG_DIR = Path(__file__).parent
@@ -92,7 +93,9 @@ def load_skill_catalog(
                 reviewer_default_strictness=_load_strictness(
                     manifest,
                 ),
-                category=require_text(manifest, "category"),
+                category=SkillCategory(
+                    require_text(manifest, "category")
+                ),
                 phase=SkillPhase(
                     require_text(manifest, "phase")
                 ),

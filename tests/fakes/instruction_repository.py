@@ -168,6 +168,11 @@ class FakeInstructionRepository:
                 version=document.version,
                 created_at=document.created_at,
                 updated_at=document.updated_at,
+                category=(
+                    str(document.metadata["category"])
+                    if document.metadata.get("category") is not None
+                    else None
+                ),
             )
             for document in documents
         ]

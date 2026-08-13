@@ -71,6 +71,7 @@ class AvailableInstructionSummary:
     version: int
     created_at: datetime
     updated_at: datetime
+    category: str | None = None
 
     @property
     def selectable(self) -> bool:

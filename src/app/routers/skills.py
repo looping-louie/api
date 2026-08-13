@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
+from src.app.catalogs.skills import SkillCategory, SkillSort, SkillStatus
 from src.app.controllers.skill import SkillController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.skill import (
@@ -53,6 +54,30 @@ async def list_skills(
             max_length=200,
         ),
     ] = None,
+    skill_status: Annotated[
+        SkillStatus | None,
+        Query(
+            alias="status",
+            description="Filter by workspace enablement state.",
+        ),
+    ] = None,
+    category: Annotated[
+        list[SkillCategory] | None,
+        Query(
+            description="Filter by one or more business categories.",
+        ),
+    ] = None,
+    sort: Annotated[
+        SkillSort | None,
+        Query(description="Order the filtered skill catalog."),
+    ] = None,
+    offset: Annotated[
+        int,
+        Query(
+            ge=0,
+            description="Number of filtered skills to skip. Page size is 12.",
+        ),
+    ] = 0,
 ) -> SkillListResponse:
     """List skill metadata without returning full instructions."""
 
@@ -60,6 +85,10 @@ async def list_skills(
         user_id=context.user_id,
         requested_workspace_id=context.requested_workspace_id,
         search=search,
+        status=skill_status,
+        categories=category or (),
+        sort=sort,
+        offset=offset,
     )
 
 

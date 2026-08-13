@@ -95,6 +95,11 @@ def to_available_summary(
         version=int(row["version"]),
         created_at=parse_datetime(row["created_at"]),
         updated_at=parse_datetime(row["updated_at"]),
+        category=(
+            str(row["category"])
+            if row["category"] is not None
+            else None
+        ),
     )
 
 

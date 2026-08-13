@@ -49,7 +49,8 @@ class InstructionAvailabilityMixin:
                 i.catalog_version,
                 i.version,
                 i.created_at,
-                i.updated_at
+                i.updated_at,
+                json_extract(i.metadata_json, '$.category') AS category
             FROM instructions AS i
             LEFT JOIN workspace_instruction_settings AS settings
                 ON settings.instruction_id = i.id
