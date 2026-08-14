@@ -55,6 +55,8 @@ EXPECTED_TABLES = {
     "activity_runs",
     "activity_run_checkpoints",
     "activity_run_idempotency",
+    "pipeline_runs",
+    "pipeline_run_steps",
 }
 
 
@@ -215,6 +217,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0027_pipeline_step_dependencies",
         "0028_rename_pipeline_dependency_success_condition",
         "0029_activity_runs",
+            "0030_pipeline_runs",
     ]
     assert activity_rows == []
 

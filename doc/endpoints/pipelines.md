@@ -4,8 +4,8 @@ A pipeline stores a declared sequence of Activity definitions. The API creates
 an independent persisted Activity record for every supplied step, then stores
 the generated Activity IDs in that display order. A step can declare `dependsOn`
 conditions for other named steps, forming an acyclic execution graph that
-controls execution eligibility. The API manages and validates the definition
-but does not execute it.
+controls execution eligibility. Pipeline runs persist a frozen graph and select
+one eligible Activity run at a time.
 
 ## Pipeline calls
 
@@ -14,6 +14,9 @@ but does not execute it.
 | `GET` | `/api/v1/pipelines` | Lists ten filtered pipelines after an offset. |
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a pipeline run and selects its first Activity run. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
@@ -27,6 +30,17 @@ Each step has a `dependsOn` array. Every item contains an `activity` name from
 another step and a `condition` of `success` or `failure`. The array can be
 empty. Dependency targets must be unambiguous and the graph cannot contain
 cycles.
+
+## Execute pipelines
+
+`POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
+every scheduled Activity. The response includes `current_activity_run` while
+the pipeline run is `in_progress`. The CLI executes that child run through its
+existing local repository, filesystem, and Git checkpoints, then calls the
+pipeline run's `continue` endpoint. The API evaluates `success` and `failure`
+dependencies against the child result, skips impossible branches, and selects
+the next eligible step in declared order. The pipeline completes after every
+step is completed, failed, or skipped.
 
 ## List pipelines
 

@@ -325,6 +325,7 @@ async def configure_application(
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
+        activity_run_repository=activity_run_repository,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,

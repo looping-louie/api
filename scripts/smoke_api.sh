@@ -24,6 +24,7 @@ ACTIVITY_ID=""
 ACTIVITY_RUN_ID=""
 ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
+PIPELINE_RUN_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
 PROVIDER_STATE_CAPTURED=0
@@ -548,6 +549,13 @@ PIPELINE_ID="$(
 
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
+pipeline_run_response="$(
+    request POST "/pipelines/${PIPELINE_ID}/runs" \
+        '{"input":"Produce a pipeline smoke-test answer."}'
+)"
+PIPELINE_RUN_ID="$(printf '%s' "${pipeline_run_response}" | json_field "id")"
+request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" >/dev/null
+request POST "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/continue" '{}' >/dev/null
 request \
     PATCH \
     "/pipelines/${PIPELINE_ID}" \
