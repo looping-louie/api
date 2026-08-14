@@ -15,7 +15,7 @@ from src.app.repositories.shared.dependency_repository import (
 from src.app.services.shared.reference_resolver import ResourceReference
 from tests.factories.pipelines import build_pipeline
 from tests.integration.conftest import WorkspaceFactory
-from tests.integration.repositories.test_sqlite_pipeline_repository import (
+from tests.integration.repositories.pipelines.test_sqlite_pipeline_repository import (
     entry,
     seed_activities,
 )

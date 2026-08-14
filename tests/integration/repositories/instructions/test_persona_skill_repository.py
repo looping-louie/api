@@ -14,7 +14,7 @@ from src.app.repositories.instructions.persona_skill_repository import (
 from src.app.repositories.instructions.persona_model_repository import (
     SqlitePersonaModelRepository,
 )
-from tests.integration.repositories.test_sqlite_instruction_repository import (
+from tests.integration.repositories.instructions.test_sqlite_instruction_repository import (
     build_instruction,
 )
 

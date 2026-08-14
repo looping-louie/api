@@ -13,7 +13,7 @@ from src.app.repositories.loops.sqlite_repository import (
 )
 from src.app.services.shared.reference_resolver import ResourceReference
 from tests.integration.conftest import WorkspaceFactory
-from tests.integration.repositories.test_sqlite_loop_repository import (
+from tests.integration.repositories.loops.test_sqlite_loop_repository import (
     entry,
     loop_document,
 )
