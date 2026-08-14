@@ -1,9 +1,9 @@
 """Controller for describing loop runs."""
 
-from src.app.schemas.loop_run import LoopRunResponse
+from src.app.schemas.loop_run import ActivityRunResponse, LoopRunResponse
 from src.app.services.loop_runs import LoopRunService
 
-from .utils import loop_run_response
+from .utils import activity_run_response, loop_run_response
 
 
 class LoopRunDescribeController:
@@ -33,7 +33,7 @@ class LoopRunDescribeController:
         activity_id: str,
         run_id: str,
         requested_workspace_id: str | None = None,
-    ) -> LoopRunResponse:
+    ) -> ActivityRunResponse:
         """Return one activity-owned run."""
         document = await self._loop_run_service.get_for_activity(
             user_id=user_id,
@@ -41,6 +41,6 @@ class LoopRunDescribeController:
             run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return loop_run_response(document)
+        return activity_run_response(document)
 
     _loop_run_service: LoopRunService

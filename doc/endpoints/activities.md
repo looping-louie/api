@@ -25,6 +25,13 @@ include a `type` field; its required shape is selected by the top-level type.
 The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
 
+## Activity runs
+
+Direct and roundtable loop activities expose persisted executions at
+`/api/v1/activities/{activity_id}/runs`. Each run response identifies its
+owning definition with `activity_id`; it does not expose a legacy loop
+identifier.
+
 ## List activities
 
 `GET /api/v1/activities` returns ten activities after the optional

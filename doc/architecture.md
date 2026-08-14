@@ -9,12 +9,12 @@ provider.
 
 ## Ownership boundaries
 
-The API owns resource management, loop-run state, prompt generation, model
+The API owns resource management, activity-run state, prompt generation, model
 decisions, and checkpoint transitions. The CLI owns workspace lifecycle,
 repository inspection, filesystem changes, Git operations, and multi-step
 workflow progression.
 
-The API and CLI coordinate through the loop-run checkpoint protocol documented
+The API and CLI coordinate through the activity-run checkpoint protocol documented
 in [Execution](components/execution.md). The API never mutates the target
 repository directly, and the CLI does not make model or reviewer decisions.
 

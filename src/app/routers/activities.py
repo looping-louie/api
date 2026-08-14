@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.loop_run import LoopRunController
-from src.app.schemas.loop_run import LoopRunCreateRequest, LoopRunContinueRequest, LoopRunListResponse, LoopRunResponse
+from src.app.schemas.loop_run import ActivityRunListResponse, ActivityRunResponse, LoopRunCreateRequest, LoopRunContinueRequest
 from src.app.schemas.activity import ActivityChangelogListResponse, ActivityCreateRequest, ActivityListResponse, ActivityPatchRequest, ActivityResponse
 from src.app.schemas.shared import DeleteResponse
 
@@ -37,29 +37,29 @@ async def create_activity(payload: ActivityCreateRequest, context: ContextDepend
     return await controller.create(user_id=context.user_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
 
 
-@router.get('/{activity_id}/runs', response_model=LoopRunListResponse, summary='List activity runs')
-async def list_activity_runs(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, offset: OffsetQuery = 0) -> LoopRunListResponse:
+@router.get('/{activity_id}/runs', response_model=ActivityRunListResponse, summary='List activity runs')
+async def list_activity_runs(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, offset: OffsetQuery = 0) -> ActivityRunListResponse:
     """Return runs created from the selected loop activity."""
 
     return await controller.list_for_activity(user_id=context.user_id, activity_id=activity_id, offset=offset, requested_workspace_id=context.requested_workspace_id)
 
 
-@router.post('/{activity_id}/runs', response_model=LoopRunResponse, status_code=status.HTTP_201_CREATED, summary='Create activity run')
-async def create_activity_run(payload: LoopRunCreateRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath) -> LoopRunResponse:
+@router.post('/{activity_id}/runs', response_model=ActivityRunResponse, status_code=status.HTTP_201_CREATED, summary='Create activity run')
+async def create_activity_run(payload: LoopRunCreateRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath) -> ActivityRunResponse:
     """Create a run from the selected active loop activity."""
 
     return await controller.create_for_activity(user_id=context.user_id, activity_id=activity_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
 
 
-@router.get('/{activity_id}/runs/{run_id}', response_model=LoopRunResponse, summary='Get activity run')
-async def get_activity_run(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> LoopRunResponse:
+@router.get('/{activity_id}/runs/{run_id}', response_model=ActivityRunResponse, summary='Get activity run')
+async def get_activity_run(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Return one run beneath the activity that created it."""
 
     return await controller.get_for_activity(user_id=context.user_id, activity_id=activity_id, run_id=run_id, requested_workspace_id=context.requested_workspace_id)
 
 
-@router.post('/{activity_id}/runs/{run_id}/continue', response_model=LoopRunResponse, summary='Continue activity run')
-async def continue_activity_run(payload: LoopRunContinueRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> LoopRunResponse:
+@router.post('/{activity_id}/runs/{run_id}/continue', response_model=ActivityRunResponse, summary='Continue activity run')
+async def continue_activity_run(payload: LoopRunContinueRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Advance one activity-owned CLI checkpoint."""
 
     return await controller.continue_for_activity(user_id=context.user_id, activity_id=activity_id, run_id=run_id, payload=payload, requested_workspace_id=context.requested_workspace_id)

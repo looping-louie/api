@@ -308,9 +308,9 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
     disabled = client.post(f'/api/v1/activities/{activity_id}/runs', json={'input': 'No run.'})
 
     assert created.status_code == 201
-    assert created.json()['loop_id'] == activity_id
+    assert created.json()['activity_id'] == activity_id
     assert roundtable_run.status_code == 201
-    assert roundtable_run.json()['loop_id'] == roundtable_id
+    assert roundtable_run.json()['activity_id'] == roundtable_id
     assert listed.json()['items'][0]['id'] == run_id
     assert fetched.json()['id'] == run_id
     assert continued.json()['state'] == 'awaiting_generation'

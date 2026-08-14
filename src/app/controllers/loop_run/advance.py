@@ -1,13 +1,14 @@
 """Controller for advancing loop-run checkpoints."""
 
 from src.app.schemas.loop_run import (
+    ActivityRunResponse,
     LoopRunCollectSnapshotResult,
     LoopRunContinueRequest,
     LoopRunResponse,
 )
 from src.app.services.loop_runs import LoopRunService
 
-from .utils import action_result, loop_run_response
+from .utils import action_result, activity_run_response, loop_run_response
 
 
 class LoopRunAdvanceController:
@@ -61,7 +62,7 @@ class LoopRunAdvanceController:
         run_id: str,
         payload: LoopRunContinueRequest,
         requested_workspace_id: str | None = None,
-    ) -> LoopRunResponse:
+    ) -> ActivityRunResponse:
         """Advance one activity-owned CLI checkpoint."""
         action = payload.result.get('action')
         result = (
@@ -81,6 +82,6 @@ class LoopRunAdvanceController:
             result=result,
             requested_workspace_id=requested_workspace_id,
         )
-        return loop_run_response(document)
+        return activity_run_response(document)
 
     _loop_run_service: LoopRunService
