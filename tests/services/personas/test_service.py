@@ -26,7 +26,7 @@ from tests.fakes.persona_skill_repository import (
 )
 from tests.fakes.persona_model_repository import FakePersonaModelRepository
 from tests.fakes.reference_repository import FakeReferenceRepository
-from tests.services.test_instruction_service import seed_builtin
+from tests.services.instructions.test_service import seed_builtin
 
 
 def build_persona_service(

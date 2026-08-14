@@ -12,8 +12,8 @@ from src.app.routers.skills import router as skills_router
 from src.app.services.instructions import InstructionService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
-from tests.services.test_instruction_service import seed_builtin
-from tests.services.test_skill_service import build_skill_service
+from tests.services.instructions.test_service import seed_builtin
+from tests.services.skills.test_service import build_skill_service
 
 
 def build_app(*, controller: SkillController) -> FastAPI:

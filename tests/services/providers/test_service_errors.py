@@ -12,7 +12,7 @@ from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
 )
 from tests.fakes.provider_repository import FakeProviderRepository
-from tests.services.test_provider_service import patch_provider
+from tests.services.providers.test_service import patch_provider
 
 
 @pytest.mark.asyncio

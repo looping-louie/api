@@ -24,7 +24,7 @@ from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.loop_repository import FakeLoopRepository
 from tests.fakes.reference_repository import FakeReferenceRepository
-from tests.services.test_loop_service import build_service, seed_references
+from tests.services.loops.test_service import build_service, seed_references
 
 
 class FakeLoopRunRepository:

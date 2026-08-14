@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from src.app.controllers.persona import PersonaController
 from src.app.services.instructions import InstructionService
 from tests.routers.test_persona_routes import build_app
-from tests.services.test_persona_service import build_persona_service
+from tests.services.personas.test_service import build_persona_service
 
 
 @pytest.fixture

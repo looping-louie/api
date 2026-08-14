@@ -13,8 +13,8 @@ from src.app.routers.personas import router as personas_router
 from src.app.services.instructions import InstructionService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
-from tests.services.test_instruction_service import seed_builtin
-from tests.services.test_persona_service import build_persona_service
+from tests.services.instructions.test_service import seed_builtin
+from tests.services.personas.test_service import build_persona_service
 
 
 def build_app(*, controller: PersonaController) -> FastAPI:

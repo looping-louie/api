@@ -12,7 +12,7 @@ from src.app.controllers.pipeline import PipelineController
 from src.app.routers.pipelines import router as pipelines_router
 from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers
-from tests.services.test_pipeline_service import build_service
+from tests.services.pipelines.test_service import build_service
 
 
 def build_client(*, tenant_service: TenantService) -> TestClient:

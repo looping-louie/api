@@ -16,7 +16,7 @@ from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
 )
-from tests.services.test_instruction_service import seed_builtin
+from tests.services.instructions.test_service import seed_builtin
 
 
 def build_skill_service(

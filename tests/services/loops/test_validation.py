@@ -14,7 +14,7 @@ from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from tests.fakes.loop_repository import FakeLoopRepository
 from tests.fakes.reference_repository import FakeReferenceRepository
-from tests.services.test_loop_service import (
+from tests.services.loops.test_service import (
     agent,
     build_service,
     payload,

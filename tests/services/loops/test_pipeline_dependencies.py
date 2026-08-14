@@ -14,7 +14,7 @@ from tests.fakes.dependency_checker import (
 )
 from tests.fakes.loop_repository import FakeLoopRepository
 from tests.fakes.reference_repository import FakeReferenceRepository
-from tests.services.test_loop_service import (
+from tests.services.loops.test_service import (
     build_service,
     payload,
     seed_references,
