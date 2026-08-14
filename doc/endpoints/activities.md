@@ -577,7 +577,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "run-implementation-001",
-  "loop_id": "activity-implementation",
+  "activity_id": "activity-implementation",
   "input": "Implement the requested change.",
   "status": "in_progress",
   "state": "awaiting_snapshot",
@@ -620,8 +620,8 @@ Example response (`201 Created`):
 }
 ```
 
-Checkpoint responses and continuation payloads are identical to the legacy
-loop-run protocol. Requests for inactive or non-loop activities return
+Checkpoint responses and continuation payloads use the activity-run protocol.
+Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`.
 
 ## List activity changelog entries

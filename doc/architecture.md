@@ -49,6 +49,9 @@ services/
 |-- __init__.py                    Declares the services package
 |-- activities/
 |   `-- service.py                 Manages definitions and changelog history
+|-- activity_runs/
+|   `-- service.py                 Creates, reads, and advances activity-owned
+|                                  execution checkpoints
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
@@ -70,7 +73,7 @@ services/
 |   |-- generation.py              Orchestrates model calls for direct and
 |   |                              roundtable runs
 |   |-- service.py                 Creates, reads, and advances records through
-|   |                              checkpoints
+|   |                              legacy loop checkpoints
 |   |-- types.py                   Defines contracts and domain errors
 |   `-- validation.py              Normalizes and validates input
 |-- loops/

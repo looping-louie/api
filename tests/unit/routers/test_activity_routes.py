@@ -12,11 +12,10 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from src.app.controllers.activity import ActivityController
-from src.app.controllers.loop_run import LoopRunController
-from src.app.models.loop_run import LoopRunDocument
+from src.app.controllers.activity_run import ActivityRunController
+from src.app.models.activity_run import ActivityRunDocument
 from src.app.routers.activities import router as activities_router
-from src.app.services.loop_runs import LoopRunService
-from src.app.services.loops.service import LoopService
+from src.app.services.activity_runs import ActivityRunService
 from src.app.services.activities.service import ActivityService
 from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers
@@ -29,33 +28,33 @@ class FakeActivityRunRepository:
     def __init__(self) -> None:
         """Initialize an empty activity-owned run collection."""
 
-        self.documents: dict[str, LoopRunDocument] = {}
+        self.documents: dict[str, ActivityRunDocument] = {}
 
-    async def create(self, *, document: LoopRunDocument) -> LoopRunDocument:
+    async def create(self, *, document: ActivityRunDocument) -> ActivityRunDocument:
         """Store one newly created run."""
 
         self.documents[document.id] = document
         return document
 
-    async def get_for_activity(self, *, workspace_id: str, activity_id: str, run_id: str) -> LoopRunDocument | None:
+    async def get(self, *, workspace_id: str, activity_id: str, run_id: str) -> ActivityRunDocument | None:
         """Return a run only for its parent activity."""
 
         document = self.documents.get(run_id)
         return document if document is not None and document.workspace_id == workspace_id and document.activity_id == activity_id else None
 
-    async def list_for_activity(self, *, workspace_id: str, activity_id: str, offset: int, limit: int) -> tuple[list[LoopRunDocument], int]:
+    async def list(self, *, workspace_id: str, activity_id: str, offset: int, limit: int) -> tuple[list[ActivityRunDocument], int]:
         """Return a deterministic page for one activity."""
 
         values = [document for document in self.documents.values() if document.workspace_id == workspace_id and document.activity_id == activity_id]
         return values[offset:offset + limit], len(values)
 
-    async def transition_for_activity(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None) -> LoopRunDocument:
+    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None) -> ActivityRunDocument:
         """Advance the snapshot checkpoint for the in-memory route fixture."""
 
         current = self.documents[run_id]
         assert current.workspace_id == workspace_id and current.activity_id == activity_id
         assert current.continuation_token == continuation_token and current.next_action == expected_action
-        updated = LoopRunDocument(id=current.id, workspace_id=current.workspace_id, loop_id=current.loop_id, input=current.input, status=status, state=cast(object, state), next_action=cast(object, next_action), iteration=iteration or current.iteration, token_revision=current.token_revision + 1, continuation_token=next_continuation_token, loop_snapshot=current.loop_snapshot, execution_context=execution_context, created_at=current.created_at, created_by=current.created_by, updated_at=updated_at, activity_id=current.activity_id)
+        updated = ActivityRunDocument(id=current.id, workspace_id=current.workspace_id, activity_id=current.activity_id, input=current.input, status=cast(object, status), state=cast(object, state), next_action=cast(object, next_action), iteration=iteration or current.iteration, token_revision=current.token_revision + 1, continuation_token=next_continuation_token, activity_snapshot=current.activity_snapshot, execution_context=execution_context, created_at=current.created_at, created_by=current.created_by, updated_at=updated_at)
         self.documents[run_id] = updated
         return updated
 
@@ -72,9 +71,9 @@ def build_client(*, tenant_service: TenantService) -> TestClient:
     )
     app = FastAPI()
     app.state.activity_controller = ActivityController(activity_service=service)
-    app.state.loop_run_controller = LoopRunController(loop_run_service=LoopRunService(
+    app.state.activity_run_controller = ActivityRunController(activity_run_service=ActivityRunService(
         repository=cast(object, FakeActivityRunRepository()),
-        loop_service=cast(LoopService, object()), activity_service=service,
+        activity_service=service,
         tenant_service=tenant_service, id_factory=lambda: f'run-{next(identifiers)}',
         token_factory=lambda: 'continuation-token', clock=lambda: datetime(2026, 8, 12, tzinfo=UTC),
     ))
