@@ -84,7 +84,7 @@ def test_failed_initial_request_does_not_modify_provider(
 
 def _script_path() -> Path:
     """Return the repository smoke script path."""
-    return Path(__file__).resolve().parents[1] / "scripts" / "smoke_api.sh"
+    return Path(__file__).resolve().parents[2] / "scripts" / "smoke_api.sh"
 
 
 def _normalize_path(path: str) -> str:

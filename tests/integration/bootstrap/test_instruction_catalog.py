@@ -26,7 +26,7 @@ from src.app.services.instructions.catalog import (
 
 
 MIGRATIONS_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "migrations"
     / "sqlite"
 )

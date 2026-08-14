@@ -16,7 +16,7 @@ from src.app.repositories.instructions.repository import (
 from src.app.services.instructions.catalog import (
     InstructionCatalogSynchronizer,
 )
-from tests.instruction_availability_helpers import (
+from tests.integration.repositories.instructions.helpers import (
     insert_custom,
     insert_marketplace,
     normalize,
@@ -24,7 +24,7 @@ from tests.instruction_availability_helpers import (
 
 
 MIGRATIONS_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[4]
     / "migrations"
     / "sqlite"
 )

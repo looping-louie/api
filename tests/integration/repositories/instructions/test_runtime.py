@@ -22,7 +22,7 @@ from src.app.services.shared.tenant import (
     WorkspaceMembership,
 )
 from tests.fakes.tenant_repository import FakeTenantRepository
-from tests.test_instruction_repository_availability import (
+from tests.integration.repositories.instructions.test_availability import (
     TIMESTAMP,
     library_database,
 )
