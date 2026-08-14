@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from src.app.bootstrap.pipeline import build_pipeline_controller
 from src.app.controllers.activity import ActivityController
+from src.app.controllers.activity_run import ActivityRunController
 from src.app.catalogs.instructions.loader import (
     InstructionCatalog,
     load_instruction_catalog,
@@ -26,6 +27,9 @@ from src.app.repositories.activities.sqlite_repository import (
 )
 from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
+)
+from src.app.repositories.activity_runs.sqlite_repository import (
+    SqliteActivityRunRepository,
 )
 from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
@@ -75,6 +79,7 @@ from src.app.services.instructions.catalog import (
 from src.app.services.loops.service import LoopService
 from src.app.services.activities.service import ActivityService
 from src.app.services.loop_runs import LoopRunService
+from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
@@ -178,6 +183,9 @@ async def configure_application(
     loop_run_repository = SqliteLoopRunRepository(
         resolved_settings.database_path,
     )
+    activity_run_repository = SqliteActivityRunRepository(
+        resolved_settings.database_path,
+    )
     provider_repository = SqliteProviderRepository(
         database,
     )
@@ -274,6 +282,19 @@ async def configure_application(
         ),
         instruction_library_service=execution_instruction_library_service,
     )
+    activity_run_service = ActivityRunService(
+        repository=activity_run_repository,
+        activity_service=activity_service,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
+        model_execution_service=ModelExecutionService(
+            model_catalog_service=model_catalog_service,
+            provider_repository=provider_repository,
+            secret_service=secret_service,
+        ),
+        instruction_library_service=execution_instruction_library_service,
+    )
     provider_service = ProviderService(
         repository=provider_repository,
         tenant_service=tenant_service,
@@ -293,6 +314,9 @@ async def configure_application(
     )
     app.state.activity_controller = ActivityController(
         activity_service=activity_service,
+    )
+    app.state.activity_run_controller = ActivityRunController(
+        activity_run_service=activity_run_service,
     )
     app.state.loop_run_controller = LoopRunController(
         loop_run_service=loop_run_service,
