@@ -1,18 +1,17 @@
 """Controller for advancing loop-run checkpoints."""
 
 from src.app.schemas.loop_run import (
-    ActivityRunResponse,
     LoopRunCollectSnapshotResult,
     LoopRunContinueRequest,
     LoopRunResponse,
 )
 from src.app.services.loop_runs import LoopRunService
 
-from .utils import action_result, activity_run_response, loop_run_response
+from .utils import action_result, loop_run_response
 
 
 class LoopRunAdvanceController:
-    """Advance loop-run checkpoints from loops or activities."""
+    """Advance loop-run checkpoints from loop definitions."""
 
     async def continue_collect_snapshot(
         self,
@@ -53,35 +52,5 @@ class LoopRunAdvanceController:
                 requested_workspace_id=requested_workspace_id,
             )
         return loop_run_response(document)
-
-    async def continue_for_activity(
-        self,
-        *,
-        user_id: str,
-        activity_id: str,
-        run_id: str,
-        payload: LoopRunContinueRequest,
-        requested_workspace_id: str | None = None,
-    ) -> ActivityRunResponse:
-        """Advance one activity-owned CLI checkpoint."""
-        action = payload.result.get('action')
-        result = (
-            LoopRunCollectSnapshotResult.model_validate(payload.result).model_dump(
-                mode='json'
-            )
-            if action == 'collect_snapshot'
-            else action_result(payload.result).model_dump(mode='json')
-        )
-        document = await self._loop_run_service.continue_for_activity(
-            user_id=user_id,
-            activity_id=activity_id,
-            run_id=run_id,
-            continuation_token=payload.continuation_token,
-            idempotency_key=payload.idempotency_key,
-            action=str(action),
-            result=result,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return activity_run_response(document)
 
     _loop_run_service: LoopRunService

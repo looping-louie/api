@@ -1,13 +1,13 @@
 """Controller for listing loop runs."""
 
-from src.app.schemas.loop_run import ActivityRunListResponse, LoopRunListResponse
+from src.app.schemas.loop_run import LoopRunListResponse
 from src.app.services.loop_runs import LoopRunService
 
-from .utils import activity_run_response, loop_run_response
+from .utils import loop_run_response
 
 
 class LoopRunListController:
-    """Return loop-run pages from loops or activities."""
+    """Return loop-run pages from loop definitions."""
 
     async def list(
         self,
@@ -26,26 +26,6 @@ class LoopRunListController:
         )
         return LoopRunListResponse(
             items=[loop_run_response(item) for item in documents],
-            total=total,
-        )
-
-    async def list_for_activity(
-        self,
-        *,
-        user_id: str,
-        activity_id: str,
-        offset: int,
-        requested_workspace_id: str | None = None,
-    ) -> ActivityRunListResponse:
-        """Return one activity-owned run page."""
-        documents, total = await self._loop_run_service.list_for_activity(
-            user_id=user_id,
-            activity_id=activity_id,
-            offset=offset,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return ActivityRunListResponse(
-            items=[activity_run_response(item) for item in documents],
             total=total,
         )
 

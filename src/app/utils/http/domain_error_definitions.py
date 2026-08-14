@@ -6,6 +6,7 @@ from src.app.services.activities.service import (
     ActivityNotFoundError,
     ActivityValidationError,
 )
+from src.app.services.activity_runs.types import ActivityRunUnavailableError
 from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
@@ -15,7 +16,6 @@ from src.app.services.loops.types import (
     LoopValidationError,
 )
 from src.app.services.loop_runs import (
-    ActivityRunUnavailableError,
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )

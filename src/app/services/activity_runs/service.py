@@ -9,9 +9,10 @@ from typing import Mapping
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.services.activities.service import ActivityService
+from src.app.services.activity_runs.types import ActivityRunUnavailableError
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.loop_runs.generation import LoopRunGenerationService
-from src.app.services.loop_runs.types import ActivityRunUnavailableError, LoopRunNotFoundError
+from src.app.services.loop_runs.types import LoopRunNotFoundError
 from src.app.services.loops.types import LoopValidationError
 from src.app.services.model_execution import ModelExecutionService
 from src.app.services.shared.pagination import PAGE_SIZE
