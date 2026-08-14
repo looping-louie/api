@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 
 
-MIGRATIONS_PATH = Path(__file__).resolve().parents[2] / 'migrations' / 'sqlite'
+MIGRATIONS_PATH = Path(__file__).resolve().parents[3] / 'migrations' / 'sqlite'
 
 EXPECTED_CHECKSUMS = {
     '0001_tenants.sql': 'dd4f59d728ca96da8090ab956b23d1c8ee23055097c6ce9aa01023854191a060',

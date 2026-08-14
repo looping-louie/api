@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from tests.integration.repositories.test_instruction_catalog_migration import (
+from tests.integration.migrations.test_instruction_catalog_migration import (
     apply_migrations,
     insert_instruction,
     insert_workspace,
