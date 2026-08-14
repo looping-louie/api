@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
 from src.app.controllers.activity import ActivityController
+from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -116,6 +117,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.activity_controller,
             ActivityController,
+        )
+        assert isinstance(
+            app.state.activity_run_controller,
+            ActivityRunController,
         )
         assert isinstance(
             app.state.loop_run_controller,

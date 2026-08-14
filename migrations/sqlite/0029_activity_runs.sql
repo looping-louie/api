@@ -138,7 +138,17 @@ INSERT INTO activity_run_idempotency (
 )
 SELECT
     idempotency.workspace_id, idempotency.run_id, idempotency.token_revision,
-    idempotency.idempotency_key, idempotency.response_json, idempotency.created_at
+    idempotency.idempotency_key,
+    json_remove(
+        json_set(
+            idempotency.response_json,
+            '$.activity_snapshot',
+            json_extract(idempotency.response_json, '$.loop_snapshot')
+        ),
+        '$.loop_id',
+        '$.loop_snapshot'
+    ),
+    idempotency.created_at
 FROM loop_run_idempotency AS idempotency
 JOIN loop_runs AS run
     ON run.workspace_id = idempotency.workspace_id
