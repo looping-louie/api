@@ -9,6 +9,7 @@ from src.app.services.loop_runs.generation import (
     LoopRunGenerationService,
     _json_object_payload,
 )
+from src.app.services.loops.types import LoopValidationError
 from src.app.services.model_execution import ModelExecutionResult
 
 
@@ -43,6 +44,78 @@ class InvalidThenValidModelExecutionService:
             output_tokens=1,
             duration_ms=1,
         )
+
+
+class RoundtableModelExecutionService:
+    """Return proposals and an operation plan for known roundtable roles."""
+
+    def __init__(self) -> None:
+        """Track model IDs invoked during roundtable generation."""
+
+        self.model_ids: list[str] = []
+
+    async def execute(
+        self,
+        *,
+        model_id: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return a proposal for generators and a final plan for the aggregator."""
+
+        self.model_ids.append(model_id)
+        text = (
+            '{"operations":[{"operation":"create","path":"output.txt",'
+            '"content":"created"}],"commit_message":"feat: create output"}'
+            if model_id == 'aggregator-model'
+            else '{"proposal":"create output.txt"}'
+        )
+        return ModelExecutionResult(
+            text=text,
+            provider_id=ProviderId.TOGETHER,
+            model_id=model_id,
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_roundtable_generation_does_not_execute_reviewers() -> None:
+    """Roundtable aggregation invokes generators and its aggregator only."""
+
+    model_execution_service = RoundtableModelExecutionService()
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+    snapshot = {
+        'flow': 'roundtable',
+        'agents': [
+            {'model_id': 'generator-1', 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_id': 'generator-2', 'persona_id': 'persona-2', 'role': 'generator'},
+            {'model_id': 'reviewer-model', 'persona_id': 'persona-3', 'role': 'reviewer'},
+            {'model_id': 'aggregator-model', 'persona_id': 'persona-4', 'role': 'aggregator'},
+        ],
+        'output_contract': {},
+    }
+
+    context = await service.generate_context(
+        loop_snapshot=snapshot,
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert context['runtime_artifacts']['operations'][0]['path'] == 'output.txt'
+    assert model_execution_service.model_ids == [
+        'generator-1',
+        'generator-2',
+        'aggregator-model',
+    ]
+    with pytest.raises(LoopValidationError):
+        service.require_executable_flow(snapshot)
 
 
 @pytest.mark.asyncio

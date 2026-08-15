@@ -21,24 +21,23 @@ role.
 `src/app/services/loops/validation.py` validates agent role cardinality for
 three loop flows:
 
-- `direct`: at least one agent and at most one aggregator;
-- `refinement`: exactly one generator, at least one reviewer, and at most one
-  aggregator;
-- `roundtable`: at least two generators and exactly one aggregator. Reviewers
-  are optional.
+| Type of loop | Number of generators | Number of reviewers | Number of aggregators |
+| --- | --- | --- | --- |
+| Direct | Exactly 1 | 0 | 0 |
+| Refinement | Exactly 1 | At least 1 | 0 |
+| Roundtable | At least 2 | 0 | Exactly 1 |
 
-These rules define valid loop resources. They do not by themselves execute
-agents.
+These rules define valid loop resources. They also apply to loop-backed
+activities, including inline Pipeline activities.
 
 ## Implemented loop-run behavior
 
 The loop-run executor in `src/app/services/loop_runs/service.py` supports
 `direct` and `roundtable` loops.
 
-A direct loop executes one generator and turns its JSON response into file
-operations. A roundtable executes every generator, sends the proposals to every
-reviewer, and sends the proposals and critique to one aggregator. The
-aggregator returns the final JSON file-operation plan.
+A direct loop executes its generator and turns its JSON response into file
+operations. A roundtable executes every generator and sends their proposals to
+its aggregator. The aggregator returns the final JSON file-operation plan.
 
 Only the final operation plan reaches the CLI `apply_operations` and
 `commit_if_allowed` checkpoints. The executor still rejects `refinement` flow.
@@ -59,31 +58,13 @@ default instruction-library role.
 Roundtable execution follows this sequence:
 
 1. Each generator produces a proposal.
-2. Each reviewer evaluates the generator proposals and provides critique.
-3. The aggregator synthesizes the proposals and critique into one final result.
+2. The aggregator synthesizes the proposals into one final result.
 
 Only the aggregator's final operation plan reaches the CLI `apply_operations`
 and `commit_if_allowed` checkpoints. The CLI does not apply individual generator
 proposals.
 
-Roundtable does not yet use `max_iterations` for reviewer-triggered retries.
-Iteration-based refinement remains a later enhancement.
-
-## Alternative roundtable modeling
-
-The selected sequence is not the only valid roundtable design. These
-alternatives remain available if product requirements change:
-
-- **Post-aggregation review gate:** the aggregator first synthesizes generator
-  proposals. Reviewers then evaluate the consolidated result. A rejection starts
-  another generator and aggregation iteration, bounded by `max_iterations`.
-- **Advisory reviewers:** reviewers produce critique artefacts for users or later
-  workflows, but their feedback neither changes the aggregator prompt nor blocks
-  the final aggregated result.
-
-The post-aggregation model treats reviewer output as a revision gate. The
-advisory model treats it as non-blocking information. Neither model is
-implemented in the current loop-run executor.
+Refinement loops are structurally validated but cannot currently create runs.
 
 ## Related files
 

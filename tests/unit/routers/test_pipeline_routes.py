@@ -263,27 +263,35 @@ def test_pipeline_rejects_legacy_title_field(
     assert response.json()['error']['code'] == 'request_validation_error'
 
 
-def test_pipeline_rejects_direct_loop_without_generator(
+def test_pipeline_rejects_invalid_direct_loop_roles(
     tenant_service: TenantService,
 ) -> None:
-    """Inline direct-loop steps must be runnable before a pipeline is persisted."""
+    """Inline direct-loop steps must have one generator and no other roles."""
 
     client = build_client(tenant_service=tenant_service)
-    response = client.post(
-        '/api/v1/pipelines',
-        json=pipeline_payload(
-            steps=[
-                {
-                    **activity_payload('Implementation activity'),
-                    'config': {
-                        **activity_payload('Implementation activity')['config'],
-                        'agents': [],
-                    },
-                },
-                activity_payload('Validation activity'),
-            ],
-        ),
+    invalid_agents = (
+        [],
+        [
+            {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+        ],
     )
+    for agents in invalid_agents:
+        response = client.post(
+            '/api/v1/pipelines',
+            json=pipeline_payload(
+                steps=[
+                    {
+                        **activity_payload('Implementation activity'),
+                        'config': {
+                            **activity_payload('Implementation activity')['config'],
+                            'agents': agents,
+                        },
+                    },
+                    activity_payload('Validation activity'),
+                ],
+            ),
+        )
 
-    assert response.status_code == 422
-    assert response.json()['error']['code'] == 'invalid_pipeline_steps'
+        assert response.status_code == 422
+        assert response.json()['error']['code'] == 'invalid_pipeline_steps'

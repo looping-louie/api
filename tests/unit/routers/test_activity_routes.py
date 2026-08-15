@@ -114,7 +114,11 @@ def roundtable_loop_payload() -> dict[str, object]:
         'type': 'roundtable_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
-            'agents': [],
+            'agents': [
+                {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+                {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'generator'},
+                {'model_id': 'model-3', 'persona_id': 'persona-3', 'role': 'aggregator'},
+            ],
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
     }
@@ -140,7 +144,10 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
         'type': 'refinement_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
-            'agents': [],
+            'agents': [
+                {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+                {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+            ],
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
     })
@@ -202,6 +209,55 @@ def test_direct_loop_requires_a_generator_agent(
 
     assert response.status_code == 422
     assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_loop_activities_reject_invalid_role_combinations(
+    tenant_service: TenantService,
+) -> None:
+    """Activity schemas reject roles forbidden by each loop type."""
+
+    client = build_client(tenant_service=tenant_service)
+    invalid_payloads = [
+        {
+            **direct_loop_payload(),
+            'config': {
+                **direct_loop_payload()['config'],
+                'agents': [
+                    {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+                    {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+                ],
+            },
+        },
+        {
+            **roundtable_loop_payload(),
+            'config': {
+                **roundtable_loop_payload()['config'],
+                'agents': [
+                    *roundtable_loop_payload()['config']['agents'],
+                    {'model_id': 'model-4', 'persona_id': 'persona-4', 'role': 'reviewer'},
+                ],
+            },
+        },
+        {
+            'name': 'Invalid refinement',
+            'description': 'Reject aggregation.',
+            'type': 'refinement_loop',
+            'config': {
+                'stop_conditions': {'max_tokens': 100},
+                'agents': [
+                    {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+                    {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+                    {'model_id': 'model-3', 'persona_id': 'persona-3', 'role': 'aggregator'},
+                ],
+                'output_contract': {'type': 'text', 'description': 'A result.'},
+            },
+        },
+    ]
+
+    for payload in invalid_payloads:
+        response = client.post('/api/v1/activities', json=payload)
+        assert response.status_code == 422
+        assert response.json()['error']['code'] == 'request_validation_error'
 
 
 def test_activity_creates_approval_without_a_human_gate_wrapper(
@@ -319,7 +375,10 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
         'name': 'Refinement', 'description': '', 'type': 'refinement_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
-            'agents': [],
+                'agents': [
+                    {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+                    {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+                ],
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
     })

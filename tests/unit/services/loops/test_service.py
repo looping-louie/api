@@ -140,7 +140,7 @@ def service(
 @pytest.mark.parametrize(
     ("flow", "agents"),
     [
-        ("direct", (agent(1, "reviewer"),)),
+        ("direct", (agent(1, "generator"),)),
         (
             "refinement",
             (agent(1, "generator"), agent(2, "reviewer")),
@@ -187,7 +187,7 @@ async def test_patch_replaces_agents_and_records_only_changed_field(
         user_id="user-1",
         payload=payload(),
     )
-    replacement = (agent(2, "reviewer", agent_id="agent-explicit"),)
+    replacement = (agent(2, "generator", agent_id="agent-explicit"),)
 
     updated = await service.patch(
         user_id="user-1",

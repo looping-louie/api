@@ -135,7 +135,8 @@ a supported `type`, and a configuration matching that type.
 
 Use a direct loop for an executable single-agent task. `max_iterations`,
 `max_tokens`, and `timeout_seconds` are optional individually, but at least one
-stop condition and one `generator` agent are required.
+stop condition and exactly one `generator` agent are required. Direct loops do
+not allow `reviewer` or `aggregator` agents.
 
 ```http
 POST /api/v1/activities
@@ -205,7 +206,8 @@ Example response (`201 Created`):
 ### Roundtable loop
 
 Use a roundtable loop for an executable discussion between specialised agents.
-Agents can use the `generator`, `reviewer`, and `aggregator` roles.
+It requires at least two `generator` agents and exactly one `aggregator` agent.
+Roundtable loops do not allow `reviewer` agents.
 
 ```json
 {
@@ -224,8 +226,8 @@ Agents can use the `generator`, `reviewer`, and `aggregator` roles.
       },
       {
         "model_id": "gpt-5",
-        "persona_id": "quality-reviewer",
-        "role": "reviewer"
+        "persona_id": "quality-engineer",
+        "role": "generator"
       },
       {
         "model_id": "gpt-5",
@@ -273,8 +275,8 @@ Example response (`201 Created`):
       },
       {
         "model_id": "gpt-5",
-        "persona_id": "quality-reviewer",
-        "role": "reviewer"
+        "persona_id": "quality-engineer",
+        "role": "generator"
       },
       {
         "model_id": "gpt-5",
@@ -308,9 +310,9 @@ Example response (`201 Created`):
 
 ### Refinement loop
 
-Use a refinement loop to store a multi-pass improvement definition. It has the
-same configuration shape as executable loop types, but cannot currently create
-runs.
+Use a refinement loop to store a multi-pass improvement definition. It requires
+exactly one `generator`, at least one `reviewer`, and no `aggregator`. It cannot
+currently create runs.
 
 ```json
 {
