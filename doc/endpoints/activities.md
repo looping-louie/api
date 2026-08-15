@@ -135,7 +135,7 @@ a supported `type`, and a configuration matching that type.
 
 Use a direct loop for an executable single-agent task. `max_iterations`,
 `max_tokens`, and `timeout_seconds` are optional individually, but at least one
-stop condition is required.
+stop condition and one `generator` agent are required.
 
 ```http
 POST /api/v1/activities

@@ -32,7 +32,13 @@ def activity_step(
         type='direct_loop',
         config={
             'stop_conditions': {'max_iterations': 1},
-            'agents': [],
+            'agents': [
+                {
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                }
+            ],
             'output_contract': {
                 'type': 'text',
                 'description': 'A pipeline stage result.',

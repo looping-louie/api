@@ -72,7 +72,13 @@ def activity_payload(
         'type': 'direct_loop',
         'config': {
             'stop_conditions': {'max_iterations': 1},
-            'agents': [],
+            'agents': [
+                {
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                }
+            ],
             'output_contract': {
                 'type': 'text',
                 'description': 'A pipeline stage result.',
@@ -255,3 +261,29 @@ def test_pipeline_rejects_legacy_title_field(
 
     assert response.status_code == 422
     assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_pipeline_rejects_direct_loop_without_generator(
+    tenant_service: TenantService,
+) -> None:
+    """Inline direct-loop steps must be runnable before a pipeline is persisted."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(
+            steps=[
+                {
+                    **activity_payload('Implementation activity'),
+                    'config': {
+                        **activity_payload('Implementation activity')['config'],
+                        'agents': [],
+                    },
+                },
+                activity_payload('Validation activity'),
+            ],
+        ),
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'invalid_pipeline_steps'

@@ -183,6 +183,27 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     assert 'error' in legacy_config_type.json()
 
 
+def test_direct_loop_requires_a_generator_agent(
+    tenant_service: TenantService,
+) -> None:
+    """Direct loops reject configurations that cannot generate an operation plan."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/activities',
+        json={
+            **direct_loop_payload(),
+            'config': {
+                **direct_loop_payload()['config'],
+                'agents': [],
+            },
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
 def test_activity_creates_approval_without_a_human_gate_wrapper(
     tenant_service: TenantService,
 ) -> None:

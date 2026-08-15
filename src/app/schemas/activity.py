@@ -35,6 +35,14 @@ class DirectLoopActivityConfig(RequestSchema):
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
 
+    @model_validator(mode='after')
+    def require_generator(self) -> 'DirectLoopActivityConfig':
+        """Require an agent that can produce the direct loop's operation plan."""
+
+        if not any(agent.role == 'generator' for agent in self.agents):
+            raise ValueError('Direct loop requires at least one generator.')
+        return self
+
 
 class RefinementLoopActivityConfig(RequestSchema):
     """Configuration for a refinement loop activity."""
