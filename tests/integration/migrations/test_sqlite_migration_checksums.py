@@ -36,7 +36,7 @@ EXPECTED_CHECKSUMS = {
     '0026_persona_models.sql': 'd14f15e67a978e4166de6507a080f3d92d45e0123831d4508c65a017b94456dc',
     '0027_pipeline_step_dependencies.sql': '8890234d866e4c8fadeb44dddfd04dfcc7b60c51dda510bb7b2766fdc7e10b54',
     '0028_rename_pipeline_dependency_success_condition.sql': 'be2996fa5d047da5d324e025fbf04fffce9fc0b7514d2bfcb4e09a8e6e0839ea',
-    '0029_activity_runs.sql': '93077f6d3a15688c1423e197aa34bdf1caaa6de8f168e4328671ab78912a2631',
+    '0029_activity_runs.sql': '9aff5fae10b681cd1c588d0a585825bd5e6c2a9dc98fee374426e9da71b43178',
     '0030_pipeline_runs.sql': 'cc5916003e221e197c08d514f41b1764564e0eafce787120fc3b382b81530b97',
 }
 

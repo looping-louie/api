@@ -160,6 +160,12 @@ SQLite migration files are immutable once committed. Do not edit an existing
 migration for any reason, including whitespace or terminal-newline changes.
 Create a new forward migration instead.
 
+Migration checksums cover exact file bytes. An editor-inserted terminal newline
+after a migration has been applied changes its checksum and blocks application
+startup for that database. The `.editorconfig` exception for
+`migrations/**/*.sql` prevents automatic save-time whitespace rewrites; it does
+not make post-application edits safe.
+
 Every new SQLite migration must be added to the checksum manifest in
 `tests/integration/migrations/test_sqlite_migration_checksums.py`. That test
 protects the exact bytes of committed migrations and must pass before the

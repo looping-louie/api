@@ -125,7 +125,8 @@ class SqliteMigrationRunner:
                     f"Invalid migration filename: {path.name}"
                 )
 
-            sql = path.read_text(encoding="utf-8")
+            migration_bytes = path.read_bytes()
+            sql = migration_bytes.decode("utf-8")
 
             if not sql.strip():
                 raise MigrationError(
@@ -137,7 +138,9 @@ class SqliteMigrationRunner:
                     version=match.group("version"),
                     path=path,
                     sql=sql,
-                    checksum=self._calculate_checksum(sql),
+                    checksum=self._calculate_checksum(
+                        migration_bytes,
+                    ),
                 )
             )
 
@@ -258,11 +261,22 @@ class SqliteMigrationRunner:
         )
 
     @staticmethod
-    def _calculate_checksum(sql: str) -> str:
-        """Calculate the stable SHA-256 checksum for migration SQL."""
-        return hashlib.sha256(
-            sql.encode("utf-8")
-        ).hexdigest()
+    def _calculate_checksum(migration_bytes: bytes) -> str:
+        """Hash exact bytes so even editor-added newlines are detected.
+
+        SQLite records this checksum when applying a migration. Hashing raw
+        bytes preserves the immutable migration contract across application,
+        tests, and Git commits.
+
+        The previous string-based implementation decoded the file and hashed
+        its UTF-8 encoding. Although valid UTF-8 normally round-trips to the
+        same bytes, it made the checksum contract appear to be based on SQL
+        text rather than the file artifact. Accepting ``migration_bytes``
+        makes byte-for-byte identity explicit: a terminal newline or any other
+        file-byte change produces a different checksum and is rejected after
+        application.
+        """
+        return hashlib.sha256(migration_bytes).hexdigest()
 
 async def run_sqlite_migrations(
     *,
