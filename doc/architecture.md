@@ -317,8 +317,8 @@ models/
 
 - [Execution](components/execution.md) describes persisted runs, checkpoints,
   prompts, review, finalisation, artefacts, and metrics.
-- [Loops and roles](components/loops-and-roles.md) defines loop flows, agent
-  roles, and the loop-run behavior implemented today.
+- [Activities](components/activities.md) defines Activity categories, loop
+  roles, and supported Activity-run behavior.
 - [Instruction catalog](components/instruction-catalog.md) describes builtin
   instruction ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records provider and model-catalog
