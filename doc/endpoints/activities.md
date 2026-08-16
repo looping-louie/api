@@ -5,9 +5,10 @@ created directly or generated when an inline definition is supplied while
 creating or updating a Pipeline. The current supported types are `approval`,
 `quiz`, `direct_loop`, `refinement_loop`, and `roundtable_loop`. Approval
 activities represent human approval, and quiz activities collect human quiz
-responses. Direct and roundtable loop activities can create persisted runs;
-refinement, approval, and quiz execution are reserved for future pipeline
-orchestration.
+responses. Direct, refinement, and roundtable loop activities can create
+persisted runs. Refinement runs add reviewer approval and retry checkpoints
+after local application. Approval and quiz execution are reserved for future
+pipeline orchestration.
 
 ## Resource endpoints
 
@@ -27,7 +28,7 @@ configurations against the persisted activity type.
 
 ## Activity runs
 
-Direct and roundtable loop activities expose persisted executions at
+Direct, refinement, and roundtable loop activities expose persisted executions at
 `/api/v1/activities/{activity_id}/runs`. Each run response identifies its
 owning definition with `activity_id`; it does not expose a legacy loop
 identifier.
@@ -310,9 +311,10 @@ Example response (`201 Created`):
 
 ### Refinement loop
 
-Use a refinement loop to store a multi-pass improvement definition. It requires
-exactly one `generator`, at least one `reviewer`, and no `aggregator`. It cannot
-currently create runs.
+Use a refinement loop for an iterative improvement task. It requires exactly
+one `generator`, at least one `reviewer`, and no `aggregator`. After applying a
+generated plan, reviewers approve the changed files or request a new iteration
+within the configured `max_iterations` limit.
 
 ```json
 {

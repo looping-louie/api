@@ -79,6 +79,98 @@ class RoundtableModelExecutionService:
         )
 
 
+class RefinementModelExecutionService:
+    """Return a generator plan and a rejected reviewer decision."""
+
+    def __init__(self) -> None:
+        """Track invoked model IDs and generator prompts."""
+
+        self.model_ids: list[str] = []
+        self.generator_prompts: list[str] = []
+
+    async def execute(
+        self,
+        *,
+        model_id: str,
+        prompt: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return a role-appropriate JSON response for refinement execution."""
+
+        self.model_ids.append(model_id)
+        if model_id == 'generator-model':
+            self.generator_prompts.append(prompt)
+            text = (
+                '{"operations":[{"operation":"create","path":"output.txt",'
+                '"content":"created"}],"commit_message":"feat: create output"}'
+            )
+        else:
+            text = '{"approved":false,"feedback":"Add a regression test."}'
+        return ModelExecutionResult(
+            text=text,
+            provider_id=ProviderId.TOGETHER,
+            model_id=model_id,
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
+    """Refinement generators receive the rejected review from the prior iteration."""
+
+    model_execution_service = RefinementModelExecutionService()
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+    snapshot = {
+        'flow': 'refinement',
+        'agents': [
+            {'model_id': 'generator-model', 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_id': 'reviewer-model', 'persona_id': 'persona-2', 'role': 'reviewer'},
+        ],
+        'output_contract': {},
+    }
+
+    context = await service.generate_context(
+        loop_snapshot=snapshot,
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={
+            'repo_context': 'Repository context.',
+            'review_result': {
+                'approved': False,
+                'reviewers': [{'feedback': 'Add a regression test.'}],
+            },
+        },
+    )
+    review = await service.generate_review_context(
+        loop_snapshot=snapshot,
+        workspace_id='workspace-1',
+        input_text='Create an output file.',
+        context=context,
+        final_diff='diff --git a/output.txt b/output.txt',
+        changed_file_contents={'output.txt': 'created'},
+    )
+
+    assert context['runtime_artifacts']['operations'][0]['path'] == 'output.txt'
+    assert 'Previous reviewer feedback to address' in model_execution_service.generator_prompts[0]
+    assert review == {
+        'approved': False,
+        'reviewers': [
+            {
+                'persona_id': 'persona-2',
+                'approved': False,
+                'feedback': 'Add a regression test.',
+            },
+        ],
+    }
+
+
 @pytest.mark.asyncio
 async def test_roundtable_generation_does_not_execute_reviewers() -> None:
     """Roundtable aggregation invokes generators and its aggregator only."""

@@ -348,8 +348,8 @@ def test_activity_patch_rejects_legacy_nested_config_type(
     assert response.json()['error']['details']['field'] == 'config'
 
 
-def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activities(tenant_service: TenantService) -> None:
-    """Only active loop activities create, read, and advance their own runs."""
+def test_activity_loop_run_routes_scope_runs_and_reject_human_gate_activities(tenant_service: TenantService) -> None:
+    """Active loop activities create runs while human gates remain unavailable."""
 
     client = build_client(tenant_service=tenant_service)
     activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
@@ -395,7 +395,7 @@ def test_activity_loop_run_routes_scope_runs_and_reject_non_executable_activitie
     assert continued.json()['state'] == 'awaiting_generation'
     assert mismatch.status_code == 409
     assert mismatch.json()['error']['code'] == 'activity_run_unavailable'
-    assert refinement_run.status_code == 409
-    assert refinement_run.json()['error']['code'] == 'activity_run_unavailable'
+    assert refinement_run.status_code == 201
+    assert refinement_run.json()['activity_id'] == refinement.json()['id']
     assert disabled.status_code == 409
     assert disabled.json()['error']['code'] == 'activity_run_unavailable'

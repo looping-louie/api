@@ -1,4 +1,4 @@
-"""Model orchestration for direct and roundtable loop runs."""
+"""Model orchestration for direct, refinement, and roundtable loop runs."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ class LoopRunGenerationService:
         input_text: str,
         context: dict[str, object],
     ) -> dict[str, object]:
-        """Generate a final operation plan for a direct or roundtable loop."""
+        """Generate a final operation plan for a loop activity."""
 
         instruction_library = await self._load_instruction_library(
             user_id=user_id,

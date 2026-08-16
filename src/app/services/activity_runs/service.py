@@ -175,8 +175,11 @@ class ActivityRunService:
         )
         context = dict(document.execution_context)
         if action == 'collect_snapshot':
+            previous_review = context.get('review_result')
             context = dict(result)
             context.pop('action', None)
+            if isinstance(previous_review, Mapping):
+                context['review_result'] = dict(previous_review)
             if self._generation_service is None:
                 return await self._transition(
                     document=document, workspace_id=workspace.workspace_id,
@@ -280,7 +283,11 @@ class ActivityRunService:
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if activity.type not in ('direct_loop', 'roundtable_loop'):
+        if activity.type not in (
+            'direct_loop',
+            'refinement_loop',
+            'roundtable_loop',
+        ):
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not executable')
         if activity.status != 'active':
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
@@ -290,7 +297,11 @@ class ActivityRunService:
     def _snapshot(activity: object) -> dict[str, object]:
         """Shape an activity configuration for the shared generation engine."""
 
-        flow = {'direct_loop': 'direct', 'roundtable_loop': 'roundtable'}
+        flow = {
+            'direct_loop': 'direct',
+            'refinement_loop': 'refinement',
+            'roundtable_loop': 'roundtable',
+        }
         return {
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),

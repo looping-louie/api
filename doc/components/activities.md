@@ -14,7 +14,7 @@ are `active`, `disabled`, and `archived`.
 | Category | Activity type | Purpose | Activity runs |
 | --- | --- | --- | --- |
 | Loop | `direct_loop` | Produce one model-generated operation plan. | Supported |
-| Loop | `refinement_loop` | Define an iterative generator and reviewer flow. | Not supported |
+| Loop | `refinement_loop` | Run an iterative generator and reviewer flow. | Supported |
 | Loop | `roundtable_loop` | Synthesize proposals from multiple generators. | Supported |
 | Human gate | `approval` | Represent a human approval decision. | Not supported |
 | Human gate | `quiz` | Collect a human quiz response. | Not supported |
@@ -45,9 +45,9 @@ checkpoints. It does not allow reviewer or aggregator agents.
 ### Refinement Loop
 
 A `refinement_loop` stores a multi-pass improvement definition. It requires one
-generator and one or more reviewers, without an aggregator. The configuration
-is validated and may be used in a Pipeline, but refinement Activities cannot
-currently create persisted runs.
+generator and one or more reviewers, without an aggregator. It creates a plan,
+collects reviewer approval after local application, and retries from a fresh
+repository snapshot when reviewers reject the change within `max_iterations`.
 
 ### Roundtable Loop
 
@@ -74,10 +74,10 @@ A `quiz` Activity collects a human quiz response. Its configuration requires a
 
 ## Activity Runs
 
-`direct_loop` and `roundtable_loop` Activities expose persisted runs. Each run
-identifies its owning Activity by `activity_id`; it does not expose a legacy
-loop identifier. The run executor resolves configured agent personas from the
-instruction library before invoking their models.
+Loop Activities expose persisted runs. Each run identifies its owning Activity
+by `activity_id`; it does not expose a legacy loop identifier. The run executor
+resolves configured agent personas from the instruction library before invoking
+their models.
 
 ## Related Files
 
