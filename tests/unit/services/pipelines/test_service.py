@@ -120,17 +120,33 @@ async def test_create_preserves_order_and_duplicates(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('steps', [(), (activity_step(),)])
-async def test_create_rejects_fewer_than_two_steps(
+@pytest.mark.parametrize('steps', [()])
+async def test_create_rejects_empty_steps(
     tenant_service: TenantService,
     steps: tuple[PipelineActivityInput, ...],
 ) -> None:
-    """Complete validation rejects empty and single-step pipelines."""
+    """Complete validation rejects empty pipelines."""
 
     service, _ = build_service(tenant_service=tenant_service)
 
     with pytest.raises(InvalidPipelineStepsError):
         await service.create(user_id='user-1', payload=payload(steps=steps))
+
+
+@pytest.mark.asyncio
+async def test_create_supports_one_step(
+    tenant_service: TenantService,
+) -> None:
+    """One valid Activity definition creates a runnable pipeline."""
+
+    service, repository = build_service(tenant_service=tenant_service)
+    created = await service.create(
+        user_id='user-1',
+        payload=payload(steps=(activity_step(),)),
+    )
+
+    assert len(created.steps) == 1
+    assert len(repository.activity_documents) == 1
 
 
 @pytest.mark.asyncio

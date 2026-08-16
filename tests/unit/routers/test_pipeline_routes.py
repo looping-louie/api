@@ -145,17 +145,26 @@ def test_pipeline_crud_changelog_and_archival_routes(
     assert conflict.json()['error']['code'] == 'pipeline_archived'
 
 
-def test_invalid_pipeline_steps_use_stable_error_envelope(
+def test_pipeline_accepts_one_step_and_rejects_invalid_steps(
     tenant_service: TenantService,
 ) -> None:
-    """Missing activity IDs and short arrays use validation envelopes."""
+    """One valid step is sufficient, while empty and malformed arrays fail."""
 
     client = build_client(tenant_service=tenant_service)
+    single_step_response = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(steps=[activity_payload('Only activity')]),
+    )
     invalid_steps = (
         [],
-        [activity_payload('Only activity')],
         [{}, activity_payload('Valid activity')],
     )
+
+    assert single_step_response.status_code == 201
+    assert [step['name'] for step in single_step_response.json()['steps']] == [
+        'Only activity',
+    ]
+
     for steps in invalid_steps:
         response = client.post(
             '/api/v1/pipelines',

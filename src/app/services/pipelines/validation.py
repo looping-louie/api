@@ -61,10 +61,10 @@ def normalize_steps(
             field_name="steps",
             message="must be an array",
         )
-    if len(values) < 2:
+    if not values:
         raise InvalidPipelineStepsError(
             field_name="steps",
-            message="must contain at least two steps",
+            message="must contain at least one step",
         )
 
     steps: list[PipelineActivityInput] = []

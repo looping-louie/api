@@ -21,7 +21,7 @@ one eligible Activity run at a time.
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
 
-Creation requires a non-empty `name`, a `description`, and at least two steps.
+Creation requires a non-empty `name`, a `description`, and at least one step.
 New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
 `steps`; supplying `steps` replaces the complete ordered array. Archived
 pipelines are immutable and omitted from unfiltered listings.
