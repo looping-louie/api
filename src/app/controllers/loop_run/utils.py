@@ -1,6 +1,7 @@
 """Shared schema translations for loop-run controllers."""
 
 from src.app.schemas.loop_run import (
+    ActivityRunResponse,
     LoopRunApplyOperationsResult,
     LoopRunCommitResult,
     LoopRunResponse,
@@ -26,6 +27,15 @@ def action_result(
 def loop_run_response(document: object) -> LoopRunResponse:
     """Expose runtime artifacts without leaking full execution context."""
     response = LoopRunResponse.model_validate(document)
+    context = getattr(document, 'execution_context', {})
+    artifacts = context.get('runtime_artifacts', {}) if isinstance(context, dict) else {}
+    return response.model_copy(update={'payload': artifacts})
+
+
+def activity_run_response(document: object) -> ActivityRunResponse:
+    """Expose an activity-owned runtime artifact without its legacy loop alias."""
+
+    response = ActivityRunResponse.model_validate(document)
     context = getattr(document, 'execution_context', {})
     artifacts = context.get('runtime_artifacts', {}) if isinstance(context, dict) else {}
     return response.model_copy(update={'payload': artifacts})

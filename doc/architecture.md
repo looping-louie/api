@@ -9,12 +9,12 @@ provider.
 
 ## Ownership boundaries
 
-The API owns resource management, loop-run state, prompt generation, model
+The API owns resource management, activity-run state, prompt generation, model
 decisions, and checkpoint transitions. The CLI owns workspace lifecycle,
 repository inspection, filesystem changes, Git operations, and multi-step
 workflow progression.
 
-The API and CLI coordinate through the loop-run checkpoint protocol documented
+The API and CLI coordinate through the activity-run checkpoint protocol documented
 in [Execution](components/execution.md). The API never mutates the target
 repository directly, and the CLI does not make model or reviewer decisions.
 
@@ -49,6 +49,9 @@ services/
 |-- __init__.py                    Declares the services package
 |-- activities/
 |   `-- service.py                 Manages definitions and changelog history
+|-- activity_runs/
+|   `-- service.py                 Creates, reads, and advances activity-owned
+|                                  execution checkpoints
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
@@ -70,7 +73,7 @@ services/
 |   |-- generation.py              Orchestrates model calls for direct and
 |   |                              roundtable runs
 |   |-- service.py                 Creates, reads, and advances records through
-|   |                              checkpoints
+|   |                              legacy loop checkpoints
 |   |-- types.py                   Defines contracts and domain errors
 |   `-- validation.py              Normalizes and validates input
 |-- loops/
@@ -314,8 +317,8 @@ models/
 
 - [Execution](components/execution.md) describes persisted runs, checkpoints,
   prompts, review, finalisation, artefacts, and metrics.
-- [Loops and roles](components/loops-and-roles.md) defines loop flows, agent
-  roles, and the loop-run behavior implemented today.
+- [Activities](components/activities.md) defines Activity categories, loop
+  roles, and supported Activity-run behavior.
 - [Instruction catalog](components/instruction-catalog.md) describes builtin
   instruction ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records provider and model-catalog

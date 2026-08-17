@@ -41,6 +41,16 @@ Create operations return `201 Created`. Persona and skill content updates use
 optimistic concurrency and require the current positive integer
 `expected_version`; activity updates do not.
 
+## Shared Field Formats
+
+The following format applies to every `name` field on Activity, Pipeline, and
+Persona create and update requests, including inline Activity definitions in a
+Pipeline.
+
+| Field | JSON type | Required | Restrictions |
+| ----- | --------- | -------- | ------------ |
+| `name` | String | Yes on create; no on update | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+
 Successful deletes return:
 
 ```json

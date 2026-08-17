@@ -34,16 +34,6 @@ class LoopRunRepository(Protocol):
         """Return one loop run within its parent loop."""
         raise NotImplementedError
 
-    async def get_for_activity(
-        self,
-        *,
-        workspace_id: str,
-        activity_id: str,
-        run_id: str,
-    ) -> LoopRunDocument | None:
-        """Return one loop run within its parent activity."""
-        raise NotImplementedError
-
     async def list(
         self,
         *,
@@ -53,17 +43,6 @@ class LoopRunRepository(Protocol):
         limit: int,
     ) -> tuple[Sequence[LoopRunDocument], int]:
         """Return one page of loop runs and its unpaginated total."""
-        raise NotImplementedError
-
-    async def list_for_activity(
-        self,
-        *,
-        workspace_id: str,
-        activity_id: str,
-        offset: int,
-        limit: int,
-    ) -> tuple[Sequence[LoopRunDocument], int]:
-        """Return one page of runs and its total for an activity."""
         raise NotImplementedError
 
     async def continue_collect_snapshot(
@@ -98,24 +77,4 @@ class LoopRunRepository(Protocol):
         iteration: int | None = None,
     ) -> LoopRunDocument:
         """Persist one validated checkpoint transition or return its replay."""
-        raise NotImplementedError
-
-    async def transition_for_activity(
-        self,
-        *,
-        workspace_id: str,
-        activity_id: str,
-        run_id: str,
-        continuation_token: str,
-        idempotency_key: str,
-        expected_action: str,
-        status: str,
-        state: str,
-        next_action: str,
-        next_continuation_token: str | None,
-        execution_context: dict[str, object],
-        updated_at: datetime,
-        iteration: int | None = None,
-    ) -> LoopRunDocument:
-        """Persist one validated activity-owned checkpoint transition."""
         raise NotImplementedError

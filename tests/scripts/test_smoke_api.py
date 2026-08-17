@@ -20,6 +20,7 @@ PATH_PARAMETERS = {
     "model_id": "model_id",
     "PERSONA_ID": "persona_id",
     "PIPELINE_ID": "pipeline_id",
+    "PIPELINE_RUN_ID": "run_id",
     "SMOKE_PROVIDER_ID": "provider_id",
     "SKILL_ID": "skill_id",
 }

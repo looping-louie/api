@@ -47,10 +47,26 @@ def service(
             "direct",
             (agent(1, "aggregator"), agent(2, "aggregator")),
         ),
+        (
+            "direct",
+            (agent(1, "generator"), agent(2, "generator")),
+        ),
+        (
+            "direct",
+            (agent(1, "generator"), agent(2, "reviewer")),
+        ),
         ("refinement", (agent(1, "generator"),)),
         (
             "refinement",
             (agent(1, "generator"), agent(2, "generator")),
+        ),
+        (
+            "refinement",
+            (
+                agent(1, "generator"),
+                agent(2, "reviewer"),
+                agent(3, "aggregator"),
+            ),
         ),
         (
             "roundtable",
@@ -59,6 +75,15 @@ def service(
         (
             "roundtable",
             (agent(1, "generator"), agent(2, "generator")),
+        ),
+        (
+            "roundtable",
+            (
+                agent(1, "generator"),
+                agent(2, "generator"),
+                agent(3, "reviewer"),
+                agent(4, "aggregator"),
+            ),
         ),
     ],
 )

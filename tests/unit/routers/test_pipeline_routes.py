@@ -41,7 +41,7 @@ def build_client(*, tenant_service: TenantService) -> TestClient:
 
 def pipeline_payload(
     *,
-    name: str = 'Implementation pipeline',
+    name: str = 'Implementation_pipeline',
     steps: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """Build one valid pipeline creation body."""
@@ -53,8 +53,8 @@ def pipeline_payload(
             steps
             if steps is not None
             else [
-                activity_payload('Implementation activity'),
-                activity_payload('Validation activity'),
+                activity_payload('Implementation_activity'),
+                activity_payload('Validation_activity'),
             ]
         ),
     }
@@ -72,7 +72,13 @@ def activity_payload(
         'type': 'direct_loop',
         'config': {
             'stop_conditions': {'max_iterations': 1},
-            'agents': [],
+            'agents': [
+                {
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                }
+            ],
             'output_contract': {
                 'type': 'text',
                 'description': 'A pipeline stage result.',
@@ -97,8 +103,8 @@ def test_pipeline_crud_changelog_and_archival_routes(
     assert len(created['steps']) == 2
     assert all(step['id'] for step in created['steps'])
     assert [step['name'] for step in created['steps']] == [
-        'Implementation activity',
-        'Validation activity',
+        'Implementation_activity',
+        'Validation_activity',
     ]
 
     fetched = client.get(f'/api/v1/pipelines/{pipeline_id}')
@@ -107,8 +113,8 @@ def test_pipeline_crud_changelog_and_archival_routes(
         f'/api/v1/pipelines/{pipeline_id}',
         json={
             'steps': [
-                activity_payload('Review activity'),
-                activity_payload('Approval activity'),
+                    activity_payload('Review_activity'),
+                    activity_payload('Approval_activity'),
             ]
         },
     )
@@ -121,8 +127,8 @@ def test_pipeline_crud_changelog_and_archival_routes(
     assert fetched.json()['steps'] == created['steps']
     assert listed_before_update.json()['items'][0]['steps'] == created['steps']
     assert [step['name'] for step in patched.json()['steps']] == [
-        'Review activity',
-        'Approval activity',
+            'Review_activity',
+            'Approval_activity',
     ]
     assert all(step['id'] for step in patched.json()['steps'])
     assert patched.json()['steps'][0]['id'] != created['steps'][0]['id']
@@ -139,17 +145,26 @@ def test_pipeline_crud_changelog_and_archival_routes(
     assert conflict.json()['error']['code'] == 'pipeline_archived'
 
 
-def test_invalid_pipeline_steps_use_stable_error_envelope(
+def test_pipeline_accepts_one_step_and_rejects_invalid_steps(
     tenant_service: TenantService,
 ) -> None:
-    """Missing activity IDs and short arrays use validation envelopes."""
+    """One valid step is sufficient, while empty and malformed arrays fail."""
 
     client = build_client(tenant_service=tenant_service)
+    single_step_response = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(steps=[activity_payload('Only_activity')]),
+    )
     invalid_steps = (
         [],
-        [activity_payload('Only activity')],
         [{}, activity_payload('Valid activity')],
     )
+
+    assert single_step_response.status_code == 201
+    assert [step['name'] for step in single_step_response.json()['steps']] == [
+            'Only_activity',
+    ]
+
     for steps in invalid_steps:
         response = client.post(
             '/api/v1/pipelines',
@@ -157,6 +172,27 @@ def test_invalid_pipeline_steps_use_stable_error_envelope(
         )
         assert response.status_code == 422
         assert response.json()['error']['code'] == 'invalid_pipeline_steps'
+
+
+def test_pipeline_rejects_invalid_pipeline_and_activity_names(
+    tenant_service: TenantService,
+) -> None:
+    """Pipeline and inline Activity names share the resource-name contract."""
+
+    client = build_client(tenant_service=tenant_service)
+    invalid_pipeline = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(name='Invalid pipeline'),
+    )
+    invalid_activity = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(steps=[activity_payload('Invalid activity')]),
+    )
+
+    assert invalid_pipeline.status_code == 422
+    assert invalid_pipeline.json()['error']['code'] == 'request_validation_error'
+    assert invalid_activity.status_code == 422
+    assert invalid_activity.json()['error']['code'] == 'invalid_pipeline_steps'
 
 
 def test_pipeline_creation_persists_inline_activity_definitions(
@@ -255,3 +291,37 @@ def test_pipeline_rejects_legacy_title_field(
 
     assert response.status_code == 422
     assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_pipeline_rejects_invalid_direct_loop_roles(
+    tenant_service: TenantService,
+) -> None:
+    """Inline direct-loop steps must have one generator and no other roles."""
+
+    client = build_client(tenant_service=tenant_service)
+    invalid_agents = (
+        [],
+        [
+            {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+        ],
+    )
+    for agents in invalid_agents:
+        response = client.post(
+            '/api/v1/pipelines',
+            json=pipeline_payload(
+                steps=[
+                    {
+                        **activity_payload('Implementation activity'),
+                        'config': {
+                            **activity_payload('Implementation activity')['config'],
+                            'agents': agents,
+                        },
+                    },
+                    activity_payload('Validation activity'),
+                ],
+            ),
+        )
+
+        assert response.status_code == 422
+        assert response.json()['error']['code'] == 'invalid_pipeline_steps'

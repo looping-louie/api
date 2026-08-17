@@ -98,14 +98,16 @@ Example response (`200 OK`):
 `POST /api/v1/personas` creates a custom persona in the workspace supplied by
 `X-Workspace-ID`.
 
-| Field | Description |
-| ----- | ----------- |
-| `name` | Required non-empty display name. |
-| `description` | Optional description. Defaults to an empty string. |
-| `instructions` | Required non-empty complete persona instructions. |
-| `model` | Optional ID of a configured model. |
-| `skill_ids` | Unique ordered IDs of skills associated with the persona. |
-| `metadata` | Optional JSON object. `category`, when present, must use the shared company-area taxonomy. Defaults to `{}`. |
+| Field | JSON type | Create | Update | Restrictions |
+| ----- | --------- | ------ | ------ | ------------ |
+| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `description` | String | Optional | Optional | Defaults to an empty string on create. May be empty. |
+| `instructions` | String | Required | Optional | Must not be empty. |
+| `model` | String or `null` | Optional | Optional | References an available configured model. `null` removes the assigned model on update. |
+| `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to `[]` on create. |
+| `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to `{}` on create. |
+| `expected_version` | Integer | Not allowed | Required for content changes | Positive current Persona version. Not required for an enablement-only update. |
+| `enabled` | Boolean | Not allowed | Optional | Enables or disables the Persona in the selected workspace. |
 
 ```http
 POST /api/v1/personas

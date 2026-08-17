@@ -6,6 +6,7 @@ from src.app.services.activities.service import (
     ActivityNotFoundError,
     ActivityValidationError,
 )
+from src.app.services.activity_runs.types import ActivityRunUnavailableError
 from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
@@ -15,7 +16,6 @@ from src.app.services.loops.types import (
     LoopValidationError,
 )
 from src.app.services.loop_runs import (
-    ActivityRunUnavailableError,
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )
@@ -35,6 +35,10 @@ from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineArchivedError,
     PipelineNotFoundError,
+)
+from src.app.services.pipeline_runs import (
+    PipelineRunNotFoundError,
+    PipelineRunUnavailableError,
 )
 from src.app.services.providers.connection import ProviderConnectionError
 from src.app.services.providers.errors import (
@@ -190,6 +194,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_409_CONFLICT,
         code="pipeline_archived",
         details_builder=pipeline_details,
+    ),
+    PipelineRunNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='pipeline_run_not_found',
+    ),
+    PipelineRunUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='pipeline_run_unavailable',
     ),
     InvalidPipelineStepsError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

@@ -58,7 +58,7 @@ def test_persona_rest_crud_routes(
     created = client.post(
         "/api/v1/personas",
         json={
-            "name": "API Reviewer",
+                "name": "API_Reviewer",
             "description": "Reviews API contracts.",
             "instructions": "Review every public API contract.",
             "metadata": {"team": "platform"},
@@ -134,7 +134,7 @@ def test_persona_routes_create_and_replace_skill_associations(
     created = client.post(
         "/api/v1/personas",
         json={
-            "name": "Platform reviewer",
+            "name": "Platform_reviewer",
             "instructions": "Review platform changes.",
             "skill_ids": [first_skill.id, second_skill.id],
         },
@@ -223,6 +223,28 @@ def test_direct_creation_requires_name_and_instructions(
     response = client.post("/api/v1/personas", json={})
 
     assert response.status_code == 422
+
+
+def test_persona_rejects_invalid_names_on_create_and_patch(
+    persona_controller: PersonaController,
+) -> None:
+    """Persona names reject spaces and forbidden symbols on every write path."""
+
+    client = TestClient(build_app(controller=persona_controller))
+    invalid_create = client.post(
+        '/api/v1/personas',
+        json={
+            'name': 'Invalid persona',
+            'instructions': 'Review the change.',
+        },
+    )
+    invalid_patch = client.patch(
+        '/api/v1/personas/persona-1',
+        json={'expected_version': 1, 'name': 'Invalid/name'},
+    )
+
+    assert invalid_create.status_code == 422
+    assert invalid_patch.status_code == 422
 
 
 def test_only_new_persona_routes_are_published(
