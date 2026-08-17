@@ -19,6 +19,7 @@ from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
+from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
@@ -53,6 +54,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 from src.app.repositories.providers.repository import (
     SqliteProviderRepository,
 )
+from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.providers.state_repository import (
     ProviderStateRepositoryAdapter,
 )
@@ -93,6 +95,7 @@ from src.app.services.providers.connection import (
     HttpProviderConnectionService,
 )
 from src.app.services.providers.service import ProviderService
+from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
@@ -191,6 +194,7 @@ async def configure_application(
     provider_repository = SqliteProviderRepository(
         database,
     )
+    linked_service_repository = SqliteLinkedServiceRepository(database)
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -309,6 +313,15 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    linked_service_service = LinkedServiceService(
+        repository=linked_service_repository,
+        tenant_service=tenant_service,
+        secret_service=secret_service,
+        connection_service=HttpProviderConnectionService(),
+        catalog=PROVIDER_CATALOG,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
 
     app.state.persona_controller = PersonaController(
         persona_service=persona_service,
@@ -338,6 +351,9 @@ async def configure_application(
     app.state.catalog_controller = catalog_controller
     app.state.provider_controller = ProviderController(
         provider_service=provider_service,
+    )
+    app.state.linked_service_controller = LinkedServiceController(
+        linked_service_service=linked_service_service,
     )
 
     app.state.database = database

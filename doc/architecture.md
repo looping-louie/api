@@ -305,6 +305,7 @@ models/
 |-- instruction.py                 Defines persisted and available resource data
 |-- loop.py                        Defines definitions, agents, output, and history
 |-- loop_run.py                    Defines execution state and checkpoints
+|-- linked_service.py              Defines workspace-owned provider connections
 |-- model.py                       Defines catalog and availability projections
 |-- persona.py                     Defines resource documents with skill links
 |-- pipeline.py                    Defines definitions, steps, and history
@@ -323,6 +324,8 @@ models/
   instruction ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records provider and model-catalog
   boundaries.
+- Linked Services persist independent workspace-owned provider connections and
+  derive their available deployment models from the static catalog.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

@@ -45,6 +45,10 @@ from src.app.services.providers.errors import (
     ProviderConfigurationError,
     UnknownProviderError,
 )
+from src.app.services.linked_services import (
+    LinkedServiceNameConflictError,
+    LinkedServiceNotFoundError,
+)
 from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
     ResourceInUseError,
@@ -97,6 +101,7 @@ from .pipeline_error_details import (
     unsupported_gate_details,
     unsupported_step_details,
 )
+from .domain_error_details import _linked_service_not_found_details
 
 
 ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
@@ -302,5 +307,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_502_BAD_GATEWAY,
         code="provider_connection_error",
         public_message="The provider connection could not be established.",
+    ),
+    LinkedServiceNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='linked_service_not_found',
+        details_builder=_linked_service_not_found_details,
+    ),
+    LinkedServiceNameConflictError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='linked_service_name_conflict',
     ),
 }

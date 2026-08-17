@@ -17,6 +17,7 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.provider import ProviderController
+from src.app.controllers.linked_services import LinkedServiceController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -216,6 +217,18 @@ def get_provider_controller(
         request,
         attribute_name="provider_controller",
         expected_type=ProviderController,
+    )
+
+
+def get_linked_service_controller(
+    request: Request,
+) -> LinkedServiceController:
+    """Return the configured linked-service controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='linked_service_controller',
+        expected_type=LinkedServiceController,
     )
 
 
