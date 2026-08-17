@@ -26,6 +26,30 @@ New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
 `steps`; supplying `steps` replaces the complete ordered array. Archived
 pipelines are immutable and omitted from unfiltered listings.
 
+## Pipeline Definition Schema
+
+`POST /api/v1/pipelines` accepts the following JSON properties. `PATCH` accepts
+the mutable properties marked as optional; it rejects an empty request.
+
+| Property | JSON type | Create | Update | Restrictions |
+| -------- | --------- | ------ | ------ | ------------ |
+| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `description` | String | Required | Optional | May be empty. |
+| `steps` | Array of Activity definitions | Required | Optional | Contains at least one step. Replaces the complete ordered step collection when supplied. |
+| `enabled` | Boolean | Not allowed | Optional | Enables or disables the Pipeline. |
+
+Every item in `steps` uses the Activity definition schema. Its `name` follows
+the same name restrictions as the Pipeline name. Each item can also contain a
+`dependsOn` array.
+
+| Step property | JSON type | Required | Restrictions |
+| ------------- | --------- | -------- | ------------ |
+| `name` | String | Yes | Uses the shared Activity and Pipeline name format. Must be unique within this Pipeline when referenced by `dependsOn`. |
+| `description` | String | Yes | May be empty. |
+| `type` | String | Yes | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. |
+| `config` | Object | Yes | Matches the selected Activity type. |
+| `dependsOn` | Array | No | Defaults to `[]`. Every item names another unique step and uses a `success` or `failure` condition. The resulting graph must be acyclic. |
+
 Each step has a `dependsOn` array. Every item contains an `activity` name from
 another step and a `condition` of `success` or `failure`. The array can be
 empty. Dependency targets must be unambiguous and the graph cannot contain

@@ -13,6 +13,7 @@ from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
     RequestSchema,
+    ResourceName,
     ResponseSchema,
 )
 
@@ -54,7 +55,7 @@ class PipelineActivityStepRequest(ActivityCreateRequest):
 class PipelineCreateRequest(RequestSchema):
     """Request body for creating an enabled pipeline."""
 
-    name: NonEmptyString
+    name: ResourceName
     description: str
     steps: list[PipelineActivityStepRequest]
 
@@ -62,7 +63,7 @@ class PipelineCreateRequest(RequestSchema):
 class PipelinePatchRequest(RequestSchema):
     """Partial mutable pipeline fields accepted by PATCH."""
 
-    name: NonEmptyString | None = None
+    name: ResourceName | None = None
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None

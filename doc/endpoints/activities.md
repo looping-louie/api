@@ -26,6 +26,30 @@ include a `type` field; its required shape is selected by the top-level type.
 The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
 
+## Activity Definition Schema
+
+`POST /api/v1/activities` accepts the following JSON properties. `PATCH`
+accepts the mutable properties marked as optional; it rejects an empty request.
+
+| Property | JSON type | Create | Update | Restrictions |
+| -------- | --------- | ------ | ------ | ------------ |
+| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `description` | String | Required | Optional | May be empty. |
+| `type` | String | Required | Not allowed | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. Immutable after creation. |
+| `config` | Object | Required | Optional | Shape is selected by `type`. Does not contain a nested `type` property. |
+| `status` | String | Not allowed | Optional | One of `active`, `disabled`, or `archived`. |
+
+The following table describes the required `config` shape for every Activity
+type.
+
+| Activity type | Required `config` properties | Restrictions |
+| ------------- | ---------------------------- | ------------ |
+| `approval` | None | `config` must be an empty object. |
+| `quiz` | `quiz` | `quiz` is an object containing the quiz definition. |
+| `direct_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator; no reviewer or aggregator. |
+| `refinement_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator, at least one reviewer, and no aggregator. |
+| `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
+
 ## Activity runs
 
 Direct, refinement, and roundtable loop activities expose persisted executions at

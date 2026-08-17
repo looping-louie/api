@@ -12,7 +12,7 @@ from .loop import (
     LoopOutputContractSchema,
     LoopStopConditionsSchema,
 )
-from .shared import ListResponse, NonEmptyString, RequestSchema, ResponseSchema
+from .shared import ListResponse, RequestSchema, ResourceName, ResponseSchema
 
 
 ActivityStatusValue = Literal['active', 'disabled', 'archived']
@@ -128,7 +128,7 @@ def validate_activity_config(
 class ActivityCreateRequest(RequestSchema):
     """Request body for creating an activity."""
 
-    name: NonEmptyString
+    name: ResourceName
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
@@ -154,7 +154,7 @@ class ActivityCreateRequest(RequestSchema):
 class ActivityPatchRequest(RequestSchema):
     """Mutable activity fields accepted by PATCH."""
 
-    name: NonEmptyString | None = None
+    name: ResourceName | None = None
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None

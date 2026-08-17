@@ -15,6 +15,7 @@ from .shared import (
     NonEmptyString,
     PositiveInteger,
     RequestSchema,
+    ResourceName,
     ResourceSummaryResponse,
 )
 
@@ -33,7 +34,7 @@ class PersonaMetadata(RequestSchema):
 class PersonaCreateRequest(RequestSchema):
     """Request body for creating a persona."""
 
-    name: NonEmptyString
+    name: ResourceName
     description: str = ""
     instructions: NonEmptyString
     model: NonEmptyString | None = None
@@ -58,7 +59,7 @@ class PersonaPatchRequest(RequestSchema):
     """Fields that may change for an available persona."""
 
     expected_version: PositiveInteger | None = None
-    name: NonEmptyString | None = None
+    name: ResourceName | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
     model: NonEmptyString | None = None

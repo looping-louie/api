@@ -33,7 +33,7 @@ async def test_persona_controller_patches_and_creates(
     copied = await controller.create(
         user_id='user-1',
         payload=PersonaCreateRequest(
-            name='Workspace Lead',
+                name='Workspace_Lead',
             instructions='Lead workspace reviews.',
         ),
     )

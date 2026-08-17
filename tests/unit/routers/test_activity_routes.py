@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from itertools import count
 from typing import cast
 
+import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
@@ -94,7 +95,7 @@ def direct_loop_payload() -> dict[str, object]:
     """Return one valid direct loop activity body."""
 
     return {
-        'name': 'Implementation activity',
+        'name': 'Implementation_activity',
         'description': 'Produce a change.',
         'type': 'direct_loop',
         'config': {
@@ -109,7 +110,7 @@ def roundtable_loop_payload() -> dict[str, object]:
     """Return one valid roundtable loop activity body."""
 
     return {
-        'name': 'Roundtable activity',
+        'name': 'Roundtable_activity',
         'description': 'Reach a shared decision.',
         'type': 'roundtable_loop',
         'config': {
@@ -135,12 +136,12 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     assert 'type' not in created.json()['config']
 
     quiz = client.post('/api/v1/activities', json={
-        'name': 'Review quiz', 'description': 'Answer the questions.',
+        'name': 'Review_quiz', 'description': 'Answer the questions.',
         'type': 'quiz',
         'config': {'quiz': {'questions': []}},
     })
     refinement = client.post('/api/v1/activities', json={
-        'name': 'Refine change', 'description': 'Review and refine a change.',
+        'name': 'Refine_change', 'description': 'Review and refine a change.',
         'type': 'refinement_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
@@ -211,6 +212,54 @@ def test_direct_loop_requires_a_generator_agent(
     assert response.json()['error']['code'] == 'request_validation_error'
 
 
+@pytest.mark.parametrize(
+    'name',
+    [
+        '-invalid',
+        '.invalid',
+        'invalid+name',
+        'invalid?name',
+        'invalid/name',
+        'invalid<name',
+        'invalid>name',
+        'invalid*name',
+        'invalid%name',
+        'invalid&name',
+        'invalid:name',
+        'invalid name',
+        'a' * 141,
+    ],
+)
+def test_activity_rejects_invalid_names(
+    tenant_service: TenantService,
+    name: str,
+) -> None:
+    """Activity names follow the shared resource-name contract."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/activities',
+        json={**direct_loop_payload(), 'name': name},
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
+def test_activity_accepts_maximum_length_name(
+    tenant_service: TenantService,
+) -> None:
+    """Activity names may contain exactly 140 valid characters."""
+
+    client = build_client(tenant_service=tenant_service)
+    response = client.post(
+        '/api/v1/activities',
+        json={**direct_loop_payload(), 'name': 'a' * 140},
+    )
+
+    assert response.status_code == 201
+
+
 def test_loop_activities_reject_invalid_role_combinations(
     tenant_service: TenantService,
 ) -> None:
@@ -268,7 +317,7 @@ def test_activity_creates_approval_without_a_human_gate_wrapper(
     client = build_client(tenant_service=tenant_service)
 
     created = client.post('/api/v1/activities', json={
-        'name': 'Release approval',
+        'name': 'Release_approval',
         'description': 'Approve the release.',
         'type': 'approval',
         'config': {},

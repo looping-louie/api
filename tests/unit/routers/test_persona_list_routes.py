@@ -35,7 +35,7 @@ def test_list_personas_filters_sorts_and_paginates(
         created = client.post(
             "/api/v1/personas",
             json={
-                "name": f"Persona {index:02d}",
+                    "name": f"Persona_{index:02d}",
                 "description": "Catalog query fixture.",
                 "instructions": "Act as this persona.",
                 "metadata": {
@@ -70,7 +70,7 @@ def test_list_personas_filters_sorts_and_paginates(
     assert first_page.status_code == 200
     assert first_page.json()["total"] == 14
     assert len(first_page.json()["items"]) == 12
-    assert first_page.json()["items"][0]["name"] == "Persona 13"
+    assert first_page.json()["items"][0]["name"] == "Persona_13"
     assert second_page.status_code == 200
     assert second_page.json()["total"] == 14
     assert len(second_page.json()["items"]) == 2
