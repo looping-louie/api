@@ -302,6 +302,8 @@ PROVIDER_WAS_ENABLED="${provider_enabled}"
 PROVIDER_STATE_CAPTURED=1
 
 request GET "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
+request GET "/catalog/providers" >/dev/null
+request GET "/catalog/models" >/dev/null
 
 if [[ "${provider_configured}" == "0" ]]; then
     if [[ "${provider_requires_key}" == "1" \

@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from src.app.bootstrap.pipeline import build_pipeline_controller
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.catalog import CatalogController
 from src.app.catalogs.instructions.loader import (
     InstructionCatalog,
     load_instruction_catalog,
@@ -78,6 +79,7 @@ from src.app.services.instructions.catalog import (
 )
 from src.app.services.loops.service import LoopService
 from src.app.services.activities.service import ActivityService
+from src.app.services.catalog import CatalogService
 from src.app.services.loop_runs import LoopRunService
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
@@ -225,6 +227,9 @@ async def configure_application(
         tenant_service=tenant_service,
         availability_service=model_availability_service,
     )
+    catalog_controller = CatalogController(
+        catalog_service=CatalogService(),
+    )
 
     reference_repository = CompositeReferenceRepository(
         instruction_repository=instruction_repository,
@@ -330,6 +335,7 @@ async def configure_application(
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
     )
+    app.state.catalog_controller = catalog_controller
     app.state.provider_controller = ProviderController(
         provider_service=provider_service,
     )

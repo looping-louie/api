@@ -9,6 +9,7 @@ from fastapi import Header, HTTPException, Request, status
 
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.catalog import CatalogController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.pipeline import PipelineController
@@ -191,6 +192,18 @@ def get_model_controller(
         request,
         attribute_name="model_controller",
         expected_type=ModelController,
+    )
+
+
+def get_catalog_controller(
+    request: Request,
+) -> CatalogController:
+    """Return the configured controller for static catalogs."""
+
+    return _get_controller(
+        request,
+        attribute_name='catalog_controller',
+        expected_type=CatalogController,
     )
 
 
