@@ -46,6 +46,7 @@ EXPECTED_TABLES = {
     "pipeline_step_dependencies",
     "pipeline_changelog_entries",
     "provider_credentials",
+    "linked_services",
     "persona_models",
     "persona_skills",
     "workspace_instruction_settings",
@@ -217,7 +218,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0027_pipeline_step_dependencies",
         "0028_rename_pipeline_dependency_success_condition",
         "0029_activity_runs",
-            "0030_pipeline_runs",
+        "0030_pipeline_runs",
+        "0031_linked_services",
     ]
     assert activity_rows == []
 
