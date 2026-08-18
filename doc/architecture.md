@@ -327,8 +327,9 @@ models/
   boundaries.
 - Linked Services persist independent workspace-owned provider connections and
   derive their available deployment models from the static catalog. Persona
-  linked-service selections retain the legacy Persona model association while
-  requiring an enabled, configured service with an active compatible deployment.
+  linked-service selections replace the deprecated legacy Persona model
+  association for new configuration while requiring an enabled, configured
+  service with an active compatible deployment.
   During execution, a Persona selection routes its model request through that
   specific service. Loop agent model IDs remain required only for legacy
   Personas without a selection.

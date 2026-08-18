@@ -301,3 +301,20 @@ def test_only_new_persona_routes_are_published(
             "delete",
         },
     }
+
+
+def test_persona_legacy_model_is_deprecated_in_openapi(
+    persona_controller: PersonaController,
+) -> None:
+    """OpenAPI marks legacy Persona model fields as deprecated."""
+
+    client = TestClient(build_app(controller=persona_controller))
+    schemas = client.get('/openapi.json').json()['components']['schemas']
+
+    for schema_name in (
+        'PersonaCreateRequest',
+        'PersonaPatchRequest',
+        'PersonaSummaryResponse',
+        'PersonaResponse',
+    ):
+        assert schemas[schema_name]['properties']['model']['deprecated'] is True

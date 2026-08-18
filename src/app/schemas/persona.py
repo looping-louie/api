@@ -50,7 +50,14 @@ class PersonaCreateRequest(RequestSchema):
     name: ResourceName
     description: str = ""
     instructions: NonEmptyString
-    model: NonEmptyString | None = None
+    model: NonEmptyString | None = Field(
+        default=None,
+        description=(
+            'Legacy model selection. Use linked_service with config.model '
+            'for new Personas.'
+        ),
+        json_schema_extra={'deprecated': True},
+    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[NonEmptyString] = Field(default_factory=list)
@@ -88,7 +95,14 @@ class PersonaPatchRequest(RequestSchema):
     name: ResourceName | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
-    model: NonEmptyString | None = None
+    model: NonEmptyString | None = Field(
+        default=None,
+        description=(
+            'Legacy model selection. Use linked_service with config.model '
+            'for new Personas.'
+        ),
+        json_schema_extra={'deprecated': True},
+    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[NonEmptyString] | None = None
@@ -167,7 +181,10 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
-    model: str | None
+    model: str | None = Field(
+        description='Legacy model selection retained for compatibility.',
+        json_schema_extra={'deprecated': True},
+    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     category: CatalogInstructionCategory | None = None
@@ -180,7 +197,10 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     name: str
     description: str
     instructions: str
-    model: str | None
+    model: str | None = Field(
+        description='Legacy model selection retained for compatibility.',
+        json_schema_extra={'deprecated': True},
+    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[str]
