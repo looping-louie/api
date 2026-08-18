@@ -17,6 +17,7 @@ from src.app.catalogs.models import (
     ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
+from src.app.models.linked_service import LinkedService
 from src.app.models.provider import ProviderCredential
 from src.app.services.model_execution import (
     ModelDeploymentUnavailableError,
@@ -27,16 +28,16 @@ from src.app.services.model_execution import (
 class FakeModelCatalogService:
     """Return one catalog model for execution-service tests."""
 
-    def __init__(self, model: ModelCatalogEntry) -> None:
+    def __init__(self, model_entry: ModelCatalogEntry) -> None:
         """Store the test model returned by require_model."""
 
-        self.model = model
+        self._model_entry = model_entry
 
     def require_model(self, model_id: str) -> ModelCatalogEntry:
         """Return the configured model when its ID matches."""
 
-        assert model_id == self.model.id
-        return self.model
+        assert model_id == self._model_entry.id
+        return self._model_entry
 
 
 class FakeProviderRepository:
@@ -58,6 +59,27 @@ class FakeProviderRepository:
         """Return one stored provider credential."""
 
         return self.credentials.get((workspace_id, provider))
+
+
+class FakeLinkedServiceRepository:
+    """Store workspace linked services in memory."""
+
+    def __init__(self, linked_services: list[LinkedService]) -> None:
+        """Index linked services by workspace and immutable identifier."""
+
+        self._linked_services = {
+            (linked_service.workspace_id, linked_service.id): linked_service
+            for linked_service in linked_services
+        }
+
+    async def get(
+        self,
+        workspace_id: str,
+        service_id: str,
+    ) -> LinkedService | None:
+        """Return one linked service owned by the workspace."""
+
+        return self._linked_services.get((workspace_id, service_id))
 
 
 class FakeSecretService:
@@ -106,10 +128,31 @@ def credential(provider: ProviderId) -> ProviderCredential:
     )
 
 
+def linked_service(provider: ProviderId) -> LinkedService:
+    """Build one enabled configured linked service."""
+
+    now = datetime(2026, 8, 3, tzinfo=UTC)
+    return LinkedService(
+        id='linked-service-1',
+        workspace_id='workspace-1',
+        name='Selected provider',
+        provider_type=provider.value,
+        enabled=True,
+        key_trimmed='test-****************',
+        key_ciphertext='ciphertext',
+        key_version=1,
+        base_url=f'https://{provider}.linked.example/v1',
+        version=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
 def service(
     *,
     model_entry: ModelCatalogEntry,
     credentials: list[ProviderCredential],
+    linked_services: list[LinkedService] = (),
     handler: Any,
 ) -> ModelExecutionService:
     """Build the executor with a transport that captures no real network calls."""
@@ -119,6 +162,7 @@ def service(
         model_catalog_service=FakeModelCatalogService(model_entry),
         provider_repository=FakeProviderRepository(credentials),
         secret_service=FakeSecretService(),
+        linked_service_repository=FakeLinkedServiceRepository(linked_services),
         client=client,
     )
 
@@ -235,6 +279,48 @@ async def test_executes_chat_completion_in_json_mode() -> None:
     )
 
     assert result.text == '{"ok": true}'
+
+
+@pytest.mark.asyncio
+async def test_executes_model_through_selected_linked_service() -> None:
+    """Selected linked services override legacy provider credentials."""
+
+    deployment = ModelDeployment(
+        provider_id=ProviderId.TOGETHER,
+        provider_model_id='vendor/model-1',
+        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Assert execution uses the selected service URL and credential."""
+
+        assert request.url == (
+            'https://together.linked.example/v1/chat/completions'
+        )
+        assert request.headers['authorization'] == 'Bearer test-key'
+        return httpx.Response(
+            200,
+            json={
+                'choices': [{'message': {'content': 'Generated text.'}}],
+            },
+        )
+
+    executor = service(
+        model_entry=model(deployment),
+        credentials=[],
+        linked_services=[linked_service(ProviderId.TOGETHER)],
+        handler=handler,
+    )
+
+    result = await executor.execute_with_linked_service(
+        workspace_id='workspace-1',
+        linked_service_id='linked-service-1',
+        model_id='model-1',
+        prompt='User prompt.',
+    )
+
+    assert result.model_id == 'model-1'
+    assert result.provider_id == ProviderId.TOGETHER
 
 
 @pytest.mark.asyncio

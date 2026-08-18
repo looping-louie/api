@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import pytest
 
+from src.app.catalogs.instructions import InstructionOrigin
 from src.app.catalogs.providers import ProviderId
+from src.app.services.execution_instructions import (
+    ExecutionInstruction,
+    ExecutionInstructionLibrary,
+)
 from src.app.services.loop_runs.generation import (
     LoopRunGenerationService,
     _json_object_payload,
 )
 from src.app.services.loops.types import LoopValidationError
 from src.app.services.model_execution import ModelExecutionResult
+from src.app.services.personas import PersonaLinkedServiceSelection
 
 
 class InvalidThenValidModelExecutionService:
@@ -77,6 +83,56 @@ class RoundtableModelExecutionService:
             output_tokens=1,
             duration_ms=1,
         )
+
+
+class LinkedServiceModelExecutionService:
+    """Record requests routed through a Persona linked-service selection."""
+
+    def __init__(self) -> None:
+        """Initialize recorded routing requests."""
+
+        self.requests: list[tuple[str, str]] = []
+
+    async def execute(self, **_: object) -> ModelExecutionResult:
+        """Fail when the selected Persona route is unexpectedly ignored."""
+
+        raise AssertionError('Legacy model execution must not be used.')
+
+    async def execute_with_linked_service(
+        self,
+        *,
+        linked_service_id: str,
+        model_id: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return a valid plan using the recorded selected route."""
+
+        self.requests.append((linked_service_id, model_id))
+        return ModelExecutionResult(
+            text=(
+                '{"operations":[{"operation":"create","path":"output.txt",'
+                '"content":"created"}],"commit_message":"feat: create output"}'
+            ),
+            provider_id=ProviderId.TOGETHER,
+            model_id=model_id,
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+class StaticInstructionLibraryService:
+    """Return one prebuilt execution instruction library."""
+
+    def __init__(self, library: ExecutionInstructionLibrary) -> None:
+        """Store the library returned for generation."""
+
+        self._library = library
+
+    async def load(self, **_: object) -> ExecutionInstructionLibrary:
+        """Return the fixed execution library."""
+
+        return self._library
 
 
 class RefinementModelExecutionService:
@@ -249,6 +305,64 @@ async def test_generation_retries_one_invalid_json_response() -> None:
     ]
     assert len(model_execution_service.prompts) == 2
     assert 'Return a complete JSON object only' in model_execution_service.prompts[1]
+
+
+@pytest.mark.asyncio
+async def test_generation_prefers_persona_linked_service_selection() -> None:
+    """Persona selection overrides the legacy model stored on a loop agent."""
+
+    model_execution_service = LinkedServiceModelExecutionService()
+    library = ExecutionInstructionLibrary(
+        workspace_id='workspace-1',
+        skills={},
+        personas={
+            'persona-1': ExecutionInstruction(
+                id='persona-1',
+                source_id='persona-1',
+                instruction_type='persona',
+                origin=InstructionOrigin.CUSTOM,
+                version=1,
+                catalog_version=None,
+                name='Persona',
+                description='Selected Persona.',
+                content='Persona instructions.',
+                metadata={},
+                linked_service_selection=PersonaLinkedServiceSelection(
+                    linked_service_id='linked-service-1',
+                    model_id='selected-model',
+                ),
+            ),
+        },
+        skill_aliases={},
+        persona_aliases={'persona-1': 'persona-1'},
+    )
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=StaticInstructionLibraryService(library),
+    )
+
+    await service.generate_context(
+        loop_snapshot={
+            'flow': 'direct',
+            'agents': [
+                {
+                    'model_id': 'legacy-model',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+            'output_contract': {},
+        },
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert model_execution_service.requests == [
+        ('linked-service-1', 'selected-model'),
+    ]
 
 
 class FencedJsonModelExecutionService:

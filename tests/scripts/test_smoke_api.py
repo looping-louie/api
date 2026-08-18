@@ -17,6 +17,7 @@ PATH_PARAMETERS = {
     "ACTIVITY_RUN_ID": "run_id",
     "LOOP_ID": "loop_id",
     "LOOP_RUN_ID": "run_id",
+    "LINKED_SERVICE_ID": "service_id",
     "model_id": "model_id",
     "PERSONA_ID": "persona_id",
     "PIPELINE_ID": "pipeline_id",

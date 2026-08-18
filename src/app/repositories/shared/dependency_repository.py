@@ -41,7 +41,49 @@ class SqliteDependencyRepository:
                 workspace_id=workspace_id,
                 persona_id=target.resource_id,
             )
+        if target.resource_type == 'linked_service':
+            return await self._find_persona_usages(
+                workspace_id=workspace_id,
+                linked_service_id=target.resource_id,
+            )
         return []
+
+    async def _find_persona_usages(
+        self,
+        *,
+        workspace_id: str,
+        linked_service_id: str,
+    ) -> list[DependencyUsage]:
+        """Return personas selecting one linked service."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT selections.persona_id
+                FROM persona_linked_service_selections AS selections
+                JOIN instructions
+                    ON instructions.id = selections.persona_id
+                WHERE instructions.owner_workspace_id = ?
+                    AND selections.linked_service_id = ?
+                ORDER BY selections.persona_id ASC
+                ''',
+                (workspace_id, linked_service_id),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+
+        return [
+            DependencyUsage(
+                source=ResourceReference(
+                    resource_type='persona',
+                    resource_id=str(row['persona_id']),
+                ),
+                relation='linked_service',
+            )
+            for row in rows
+        ]
 
     async def _find_loop_usages(
         self,

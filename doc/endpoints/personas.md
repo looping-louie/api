@@ -17,8 +17,11 @@ immutable; they can be enabled or disabled.
 
 `GET /api/v1/personas` returns summary metadata without instructions, skill
 IDs, or metadata. An optional `search` matches eligible persona content.
-`model` is the optional configured model ID assigned to the Persona; Personas
-created before this field was introduced return `null`.
+`model` is a deprecated legacy configured model ID; Personas created before
+linked-service selections return its legacy value or `null`.
+`linked_service` and `config` are returned together when the Persona uses a
+linked-service selection. New Personas should use that pair; the legacy `model`
+field remains available only for backward compatibility.
 
 The endpoint returns 12 personas per page and accepts `offset`, `search`,
 `status` (`enabled` or `disabled`), repeatable `category`, and `sort`
@@ -62,7 +65,8 @@ Example response (`200 OK`):
 ## Describe a persona
 
 `GET /api/v1/personas/{persona_id}` returns the complete persona, including
-instructions, its optional model ID, associated skill IDs, and metadata.
+instructions, its deprecated legacy model ID when present, associated skill IDs,
+and metadata.
 
 ```http
 GET /api/v1/personas/persona-api-reviewer
@@ -103,7 +107,9 @@ Example response (`200 OK`):
 | `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Optional | Optional | Defaults to an empty string on create. May be empty. |
 | `instructions` | String | Required | Optional | Must not be empty. |
-| `model` | String or `null` | Optional | Optional | References an available configured model. `null` removes the assigned model on update. |
+| `model` | String or `null` | Optional | Optional | Deprecated legacy selection. References an available configured model. `null` removes the assigned model on update. New Personas should use `linked_service` and `config.model`. |
+| `linked_service` | Object or `null` | Optional | Optional | Must be supplied together with `config`; has `type: "LinkedServiceReference"` and immutable `reference_id`. The selected service must belong to the workspace, be enabled, and be configured. |
+| `config` | Object or `null` | Optional | Optional | Must be supplied together with `linked_service`; contains `model`, which requires an active deployment for the linked service provider type. |
 | `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to `[]` on create. |
 | `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to `{}` on create. |
 | `expected_version` | Integer | Not allowed | Required for content changes | Positive current Persona version. Not required for an enablement-only update. |
@@ -120,7 +126,13 @@ Content-Type: application/json
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "model": "kimi-k2.6",
+  "linked_service": {
+    "type": "LinkedServiceReference",
+    "reference_id": "linked-service-openai-primary"
+  },
+  "config": {
+    "model": "gpt-5"
+  },
   "skill_ids": [
     "skill-api-compatibility"
   ],
@@ -138,7 +150,14 @@ Example response (`201 Created`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "model": "kimi-k2.6",
+  "model": null,
+  "linked_service": {
+    "type": "LinkedServiceReference",
+    "reference_id": "linked-service-openai-primary"
+  },
+  "config": {
+    "model": "gpt-5"
+  },
   "skill_ids": ["skill-api-compatibility"],
   "metadata": {"team": "platform"},
   "origin": "custom",
@@ -156,8 +175,10 @@ Example response (`201 Created`):
 
 ## Update a persona
 
-Include at least one of `name`, `description`, `instructions`, `model`, `skill_ids`,
-`metadata`, or `enabled`. Supplying `skill_ids` replaces the complete
+Include at least one of `name`, `description`, `instructions`, `model`,
+`linked_service`, `config`, `skill_ids`, `metadata`, or `enabled`. `model` is
+deprecated; new model selections use `linked_service` and `config`. Supplying
+`skill_ids` replaces the complete
 association; an empty list removes every skill. Content changes require
 `expected_version`; an enabled-only change does not. `enabled` must be `true`
 or `false`, not `null`. Built-in content is immutable, but its enabled state
@@ -172,7 +193,6 @@ Content-Type: application/json
 ```json
 {
   "expected_version": 1,
-  "model": "kimi-k2.6",
   "description": "Reviews public API compatibility and migration impact."
 }
 ```
@@ -202,7 +222,8 @@ Example response (`200 OK`):
 ```
 
 Write and describe operations return the complete persona, including `id`,
-instructions, `model`, `skill_ids`, metadata, origin and capabilities, version,
-and timestamps. Deleting a custom skill automatically removes its ID from every
-associated persona. List items omit instructions, skill IDs, and metadata but
-include their top-level category.
+instructions, legacy `model`, optional `linked_service` and `config`,
+`skill_ids`, metadata, origin and capabilities, version, and timestamps.
+Deleting a custom skill automatically removes its ID from every associated
+persona. A linked service selected by a Persona cannot be deleted. List items
+omit instructions, skill IDs, and metadata but include their top-level category.

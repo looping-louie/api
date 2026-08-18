@@ -8,6 +8,7 @@ from src.app.services.providers.errors import (
     ProviderConfigurationError,
     UnknownProviderError,
 )
+from src.app.services.linked_services import LinkedServiceNotFoundError
 from src.app.services.shared.dependency_checker import ResourceInUseError
 from src.app.services.instructions import (
     InstructionNotFoundError,
@@ -28,6 +29,17 @@ def _unknown_provider_details(error: Exception) -> ErrorDetails:
     return {
         "resource_type": "provider",
         "resource_id": error.provider_id,
+    }
+
+
+def _linked_service_not_found_details(error: Exception) -> ErrorDetails:
+    """Return the missing linked-service identity."""
+
+    assert isinstance(error, LinkedServiceNotFoundError)
+
+    return {
+        'resource_type': 'linked_service',
+        'resource_id': error.service_id,
     }
 
 

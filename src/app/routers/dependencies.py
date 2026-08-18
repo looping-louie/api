@@ -9,6 +9,7 @@ from fastapi import Header, HTTPException, Request, status
 
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.catalog import CatalogController
 from src.app.controllers.loop import LoopController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.pipeline import PipelineController
@@ -16,6 +17,7 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.provider import ProviderController
+from src.app.controllers.linked_services import LinkedServiceController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -194,6 +196,18 @@ def get_model_controller(
     )
 
 
+def get_catalog_controller(
+    request: Request,
+) -> CatalogController:
+    """Return the configured controller for static catalogs."""
+
+    return _get_controller(
+        request,
+        attribute_name='catalog_controller',
+        expected_type=CatalogController,
+    )
+
+
 def get_provider_controller(
     request: Request,
 ) -> ProviderController:
@@ -203,6 +217,18 @@ def get_provider_controller(
         request,
         attribute_name="provider_controller",
         expected_type=ProviderController,
+    )
+
+
+def get_linked_service_controller(
+    request: Request,
+) -> LinkedServiceController:
+    """Return the configured linked-service controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='linked_service_controller',
+        expected_type=LinkedServiceController,
     )
 
 

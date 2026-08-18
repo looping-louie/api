@@ -15,10 +15,14 @@ from src.app.services.loops.types import (
     LoopPatch,
     LoopValidationError,
 )
+from src.app.services.personas import PersonaLinkedServiceSelection
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.loop_repository import FakeLoopRepository
+from tests.fakes.persona_linked_service_selection_repository import (
+    FakePersonaLinkedServiceSelectionRepository,
+)
 from tests.fakes.loop_run_retention_repository import (
     FakeLoopRunRetentionRepository,
 )
@@ -31,6 +35,7 @@ def build_service(
     repository: FakeLoopRepository,
     tenant_service: TenantService,
     reference_resolver: ReferenceResolver,
+    persona_linked_service_selection_repository: FakePersonaLinkedServiceSelectionRepository | None = None,
     dependency_checker: FakeDependencyChecker | None = None,
     loop_run_repository: FakeLoopRunRetentionRepository | None = None,
 ) -> LoopService:
@@ -41,6 +46,10 @@ def build_service(
         repository=repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+            or FakePersonaLinkedServiceSelectionRepository()
+        ),
         dependency_checker=dependency_checker or FakeDependencyChecker(),
         loop_run_repository=(
             loop_run_repository or FakeLoopRunRetentionRepository()
@@ -174,6 +183,47 @@ async def test_create_supports_each_flow(
     assert repository.entries[-1].change_type == "created"
     assert repository.entries[-1].actor_id == "user-1"
     assert repository.entries[-1].content["id"] == created.id
+
+
+@pytest.mark.asyncio
+async def test_create_allows_persona_selection_without_legacy_model(
+    repository: FakeLoopRepository,
+    tenant_service: TenantService,
+    reference_resolver: ReferenceResolver,
+    reference_repository: FakeReferenceRepository,
+) -> None:
+    """A Persona linked-service selection makes a loop model ID unnecessary."""
+
+    seed_references(reference_repository)
+    selection_repository = FakePersonaLinkedServiceSelectionRepository()
+    await selection_repository.replace_for_persona(
+        persona_id='persona-1',
+        selection=PersonaLinkedServiceSelection(
+            linked_service_id='linked-service-1',
+            model_id='model-1',
+        ),
+    )
+    loop_service = build_service(
+        repository=repository,
+        tenant_service=tenant_service,
+        reference_resolver=reference_resolver,
+        persona_linked_service_selection_repository=selection_repository,
+    )
+
+    created = await loop_service.create(
+        user_id='user-1',
+        payload=payload(
+            agents=(
+                LoopAgentInput(
+                    model_id=None,
+                    persona_id='persona-1',
+                    role='generator',
+                ),
+            ),
+        ),
+    )
+
+    assert created.agents[0].model_id is None
 
 
 @pytest.mark.asyncio

@@ -157,6 +157,34 @@ def test_persona_routes_create_and_replace_skill_associations(
     assert patched.json()["skill_ids"] == [second_skill.id]
 
 
+def test_persona_routes_accept_linked_service_selection(
+    persona_controller: PersonaController,
+) -> None:
+    """POST returns the new linked-service selection without removing model."""
+
+    client = TestClient(build_app(controller=persona_controller))
+    response = client.post(
+        '/api/v1/personas',
+        json={
+            'name': 'Service_reviewer',
+            'instructions': 'Review service-backed work.',
+            'linked_service': {
+                'type': 'LinkedServiceReference',
+                'reference_id': 'linked-service-1',
+            },
+            'config': {'model': 'service-model'},
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()['model'] is None
+    assert response.json()['linked_service'] == {
+        'type': 'LinkedServiceReference',
+        'reference_id': 'linked-service-1',
+    }
+    assert response.json()['config'] == {'model': 'service-model'}
+
+
 def test_patch_changes_builtin_enabled_state_without_version(
     persona_controller: PersonaController,
     instruction_repository: FakeInstructionRepository,
@@ -193,6 +221,13 @@ def test_patch_changes_builtin_enabled_state_without_version(
         {
             "expected_version": 1,
             "skill_ids": ["skill-1", "skill-1"],
+        },
+        {
+            'expected_version': 1,
+            'linked_service': {
+                'type': 'LinkedServiceReference',
+                'reference_id': 'linked-service-1',
+            },
         },
         {
             "expected_version": 1,
@@ -266,3 +301,20 @@ def test_only_new_persona_routes_are_published(
             "delete",
         },
     }
+
+
+def test_persona_legacy_model_is_deprecated_in_openapi(
+    persona_controller: PersonaController,
+) -> None:
+    """OpenAPI marks legacy Persona model fields as deprecated."""
+
+    client = TestClient(build_app(controller=persona_controller))
+    schemas = client.get('/openapi.json').json()['components']['schemas']
+
+    for schema_name in (
+        'PersonaCreateRequest',
+        'PersonaPatchRequest',
+        'PersonaSummaryResponse',
+        'PersonaResponse',
+    ):
+        assert schemas[schema_name]['properties']['model']['deprecated'] is True

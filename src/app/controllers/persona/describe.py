@@ -5,6 +5,8 @@ from __future__ import annotations
 from src.app.schemas.persona import PersonaResponse
 from src.app.services.personas import PersonaService
 
+from .response import persona_response
+
 
 class PersonaDescribeController:
     """Return one complete persona visible in a workspace."""
@@ -26,4 +28,4 @@ class PersonaDescribeController:
             persona_id=persona_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return PersonaResponse.model_validate(document)
+        return persona_response(document)

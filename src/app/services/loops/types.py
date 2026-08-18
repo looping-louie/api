@@ -14,7 +14,7 @@ from src.app.models.loop import (
 class LoopAgentInput:
     """Agent values accepted by create and patch operations."""
 
-    model_id: str
+    model_id: str | None
     persona_id: str
     role: str
     id: str | None = None

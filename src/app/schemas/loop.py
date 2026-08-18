@@ -57,7 +57,7 @@ class LoopAgentSchema(RequestSchema):
     """Agent assignment accepted in loop writes."""
 
     id: NonEmptyString | None = None
-    model_id: NonEmptyString
+    model_id: NonEmptyString | None = None
     persona_id: NonEmptyString
     role: LoopRoleValue
 
@@ -131,7 +131,7 @@ class LoopAgentResponse(ResponseSchema):
     """Stored loop agent with its generated identifier."""
 
     id: str
-    model_id: str
+    model_id: str | None
     persona_id: str
     role: LoopRoleValue
 

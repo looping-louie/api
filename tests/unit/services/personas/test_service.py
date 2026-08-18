@@ -5,6 +5,7 @@ import pytest
 from src.app.catalogs.instructions import InstructionOrigin
 from src.app.services.personas import (
     PersonaCreate,
+    PersonaLinkedServiceSelection,
     PersonaService,
     PersonaUpdate,
 )
@@ -25,15 +26,42 @@ from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,
 )
 from tests.fakes.persona_model_repository import FakePersonaModelRepository
+from tests.fakes.persona_linked_service_selection_repository import (
+    FakePersonaLinkedServiceSelectionRepository,
+)
 from tests.fakes.reference_repository import FakeReferenceRepository
 from tests.unit.services.instructions.test_service import seed_builtin
+
+
+class FakeLinkedServiceSelectionValidator:
+    """Capture persona linked-service selection validation calls."""
+
+    def __init__(self) -> None:
+        """Initialize an empty validation call log."""
+
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def require_available_selection(
+        self,
+        *,
+        workspace_id: str,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Record the selection that persona creation asks to validate."""
+
+        self.calls.append((workspace_id, service_id, model_id))
 
 
 def build_persona_service(
     instruction_service: InstructionService,
     persona_skill_repository: FakePersonaSkillRepository | None = None,
     persona_model_repository: FakePersonaModelRepository | None = None,
+    persona_linked_service_selection_repository: (
+        FakePersonaLinkedServiceSelectionRepository | None
+    ) = None,
     reference_repository: FakeReferenceRepository | None = None,
+    linked_service_service: FakeLinkedServiceSelectionValidator | None = None,
 ) -> PersonaService:
     """Build a persona service with one default workspace membership."""
 
@@ -57,6 +85,13 @@ def build_persona_service(
         persona_model_repository=(
             persona_model_repository
             or FakePersonaModelRepository()
+        ),
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+            or FakePersonaLinkedServiceSelectionRepository()
+        ),
+        linked_service_service=(
+            linked_service_service or FakeLinkedServiceSelectionValidator()
         ),
         reference_resolver=ReferenceResolver(
             repository=reference_repository or FakeReferenceRepository(),
@@ -253,6 +288,40 @@ async def test_persona_service_manages_optional_model_associations(
     assert legacy.model is None
     assert created.model == 'model-1'
     assert updated.model == 'model-1'
+
+
+@pytest.mark.asyncio
+async def test_persona_service_persists_validated_linked_service_selection(
+    instruction_service: InstructionService,
+) -> None:
+    """New selections coexist with the legacy persona model association."""
+
+    validator = FakeLinkedServiceSelectionValidator()
+    service = build_persona_service(
+        instruction_service,
+        linked_service_service=validator,
+    )
+
+    created = await service.create(
+        user_id='user-1',
+        payload=PersonaCreate(
+            name='Service reviewer',
+            description='',
+            instructions='Review service-backed work.',
+            linked_service_selection=PersonaLinkedServiceSelection(
+                linked_service_id='linked-service-1',
+                model_id='service-model',
+            ),
+        ),
+    )
+    described = await service.describe(user_id='user-1', persona_id=created.id)
+
+    assert created.model is None
+    assert described.linked_service_selection == PersonaLinkedServiceSelection(
+        linked_service_id='linked-service-1',
+        model_id='service-model',
+    )
+    assert validator.calls == [('workspace-1', 'linked-service-1', 'service-model')]
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,10 @@ operations.
 
 ## Endpoint reference
 
+- [Catalog](catalog.md) exposes static provider and model definitions.
 - [Providers](providers.md) manages model-provider configuration.
+- [Linked Services](linked-services.md) manages workspace-owned provider
+  connections.
 - [Models](models.md) exposes the curated model catalog.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
@@ -20,8 +23,8 @@ operations.
 
 ## Versioned API conventions
 
-All provider, model, persona, skill, activity, and pipeline routes use the
-`/api/v1` prefix.
+All catalog, provider, linked-service, model, persona, skill, activity, and
+pipeline routes use the `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` as that user. A request may

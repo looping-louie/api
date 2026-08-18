@@ -101,6 +101,7 @@ class LoopRunGenerationService:
                 instruction_library=instruction_library,
             ),
             context=context,
+            instruction_library=instruction_library,
         )
     async def _generate_roundtable_context(
         self,
@@ -133,6 +134,7 @@ class LoopRunGenerationService:
                     prompt=proposal_prompt,
                     instruction_library=instruction_library,
                 ),
+                instruction_library,
             )
             for agent in generators
         ]
@@ -154,6 +156,7 @@ class LoopRunGenerationService:
                 instruction_library=instruction_library,
             ),
             context=context,
+            instruction_library=instruction_library,
         )
 
     async def _generate_operation_context(
@@ -163,6 +166,7 @@ class LoopRunGenerationService:
         agent: Mapping[str, object],
         prompt: str,
         context: dict[str, object],
+        instruction_library: ExecutionInstructionLibrary | None = None,
     ) -> dict[str, object]:
         """Generate one non-empty CLI operation plan with one corrective retry."""
 
@@ -172,6 +176,7 @@ class LoopRunGenerationService:
                 workspace_id,
                 agent,
                 retry_prompt,
+                instruction_library,
             )
             try:
                 return self._with_runtime_artifacts(context, generated)
@@ -317,20 +322,41 @@ class LoopRunGenerationService:
         workspace_id: str,
         agent: Mapping[str, object],
         prompt: str,
+        instruction_library: ExecutionInstructionLibrary | None = None,
     ) -> dict[str, object]:
         """Execute one configured agent and require a JSON object response."""
 
         role = str(agent['role'])
         model_id = str(agent['model_id'])
+        linked_service_selection = (
+            instruction_library.persona_linked_service_selection(
+                str(agent['persona_id']),
+            )
+            if instruction_library is not None
+            else None
+        )
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
-                result = await self._model_execution_service.execute(
-                    workspace_id=workspace_id,
-                    model_id=model_id,
-                    prompt=retry_prompt,
-                    json_mode=True,
-                )
+                if linked_service_selection is None:
+                    result = await self._model_execution_service.execute(
+                        workspace_id=workspace_id,
+                        model_id=model_id,
+                        prompt=retry_prompt,
+                        json_mode=True,
+                    )
+                else:
+                    result = (
+                        await self._model_execution_service.execute_with_linked_service(
+                            workspace_id=workspace_id,
+                            linked_service_id=(
+                                linked_service_selection.linked_service_id
+                            ),
+                            model_id=linked_service_selection.model_id,
+                            prompt=retry_prompt,
+                            json_mode=True,
+                        )
+                    )
             except ModelExecutionError as error:
                 LOGGER.warning(
                     'Loop agent execution failed: role=%s model_id=%s error=%s',

@@ -14,7 +14,9 @@ from src.app.catalogs.models import (
     ModelEndpoint,
 )
 from src.app.catalogs.providers import ProviderId
+from src.app.models.linked_service import LinkedService
 from src.app.models.provider import ProviderCredential
+from src.app.repositories.linked_services import LinkedServiceRepository
 from src.app.repositories.providers.repository import ProviderRepository
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.providers.secret import SecretService
@@ -57,6 +59,7 @@ class ModelExecutionService:
         model_catalog_service: ModelCatalogService,
         provider_repository: ProviderRepository,
         secret_service: SecretService,
+        linked_service_repository: LinkedServiceRepository | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         """Store catalog, credential, secret, and HTTP dependencies."""
@@ -64,6 +67,7 @@ class ModelExecutionService:
         self._model_catalog_service = model_catalog_service
         self._provider_repository = provider_repository
         self._secret_service = secret_service
+        self._linked_service_repository = linked_service_repository
         self._client = client
 
     async def execute(
@@ -104,6 +108,50 @@ class ModelExecutionService:
             duration_ms=round((perf_counter() - start) * 1000),
         )
 
+    async def execute_with_linked_service(
+        self,
+        *,
+        workspace_id: str,
+        linked_service_id: str,
+        model_id: str,
+        prompt: str,
+        system_prompt: str | None = None,
+        json_mode: bool = False,
+    ) -> ModelExecutionResult:
+        """Invoke one logical model through its selected linked service."""
+
+        linked_service = await self._require_linked_service(
+            workspace_id=workspace_id,
+            linked_service_id=linked_service_id,
+        )
+        model = self._model_catalog_service.require_model(model_id)
+        deployment = self._deployment_for_linked_service(
+            model=model,
+            linked_service=linked_service,
+        )
+        credential = _credential_from_linked_service(linked_service)
+        api_key = self._decrypt_api_key(credential)
+        start = perf_counter()
+
+        try:
+            response = await self._post_completion(
+                deployment=deployment,
+                credential=credential,
+                api_key=api_key,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                json_mode=json_mode,
+            )
+        finally:
+            api_key = None
+
+        return self._to_result(
+            response=response,
+            deployment=deployment,
+            model_id=model.id,
+            duration_ms=round((perf_counter() - start) * 1000),
+        )
+
     async def _resolve_deployment(
         self,
         *,
@@ -122,6 +170,48 @@ class ModelExecutionService:
 
         raise ModelDeploymentUnavailableError(
             f"Model '{model.id}' has no enabled configured deployment."
+        )
+
+    async def _require_linked_service(
+        self,
+        *,
+        workspace_id: str,
+        linked_service_id: str,
+    ) -> LinkedService:
+        """Return an enabled configured linked service in the workspace."""
+
+        if self._linked_service_repository is None:
+            raise ModelDeploymentUnavailableError(
+                'Linked-service execution is not configured.'
+            )
+        linked_service = await self._linked_service_repository.get(
+            workspace_id,
+            linked_service_id,
+        )
+        if (
+            linked_service is None
+            or not linked_service.enabled
+            or linked_service.base_url is None
+        ):
+            raise ModelDeploymentUnavailableError(
+                f"Linked service '{linked_service_id}' is unavailable."
+            )
+        return linked_service
+
+    @staticmethod
+    def _deployment_for_linked_service(
+        *,
+        model: ModelCatalogEntry,
+        linked_service: LinkedService,
+    ) -> ModelDeployment:
+        """Return the selected service provider's deployment for a model."""
+
+        for deployment in model.deployments:
+            if deployment.provider_id.value == linked_service.provider_type:
+                return deployment
+        raise ModelDeploymentUnavailableError(
+            f"Model '{model.id}' is unavailable through linked service "
+            f"'{linked_service.id}'."
         )
 
     def _decrypt_api_key(self, credential: ProviderCredential) -> str | None:
@@ -335,3 +425,24 @@ def _usage_value(
         if isinstance(value, int) and value >= 0:
             return value
     return 0
+
+
+def _credential_from_linked_service(
+    linked_service: LinkedService,
+) -> ProviderCredential:
+    """Adapt linked-service credentials for existing provider request code."""
+
+    return ProviderCredential(
+        id=linked_service.id,
+        workspace_id=linked_service.workspace_id,
+        provider=linked_service.provider_type,
+        enabled=linked_service.enabled,
+        enabled_by=None,
+        enabled_on=None,
+        key_trimmed=linked_service.key_trimmed,
+        key_ciphertext=linked_service.key_ciphertext,
+        key_version=linked_service.key_version,
+        base_url=linked_service.base_url,
+        created_at=linked_service.created_at,
+        updated_at=linked_service.updated_at,
+    )

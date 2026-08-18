@@ -13,6 +13,8 @@ from src.app.catalogs.instructions import (
 from src.app.schemas.persona import PersonaListResponse, PersonaSummaryResponse
 from src.app.services.personas import PersonaService
 
+from .response import persona_summary_response
+
 
 class PersonaListController:
     """List persona summaries available in a workspace."""
@@ -44,7 +46,7 @@ class PersonaListController:
             limit=CATALOG_INSTRUCTION_PAGE_SIZE,
         )
         items = [
-            PersonaSummaryResponse.model_validate(item)
+            persona_summary_response(item)
             for item in page.items
         ]
         return PersonaListResponse(items=items, total=page.total)
