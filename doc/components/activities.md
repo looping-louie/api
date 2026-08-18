@@ -22,7 +22,9 @@ are `active`, `disabled`, and `archived`.
 ## Loop Activities
 
 Loop Activities configure one or more model agents, stop conditions, and an
-output contract. An agent combines a model, persona, and one role:
+output contract. An agent combines a Persona and one role with either a legacy
+model ID or that Persona's linked-service model selection. A selection-only
+agent requires a Persona visible in the Activity workspace.
 
 - `generator`: produces a candidate solution or proposed output;
 - `reviewer`: evaluates a candidate and provides feedback for refinement;
