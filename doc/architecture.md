@@ -329,6 +329,8 @@ models/
   derive their available deployment models from the static catalog. Persona
   linked-service selections retain the legacy Persona model association while
   requiring an enabled, configured service with an active compatible deployment.
+  During execution, a Persona selection routes its model request through that
+  specific service; loop agent model IDs remain the fallback for legacy Personas.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

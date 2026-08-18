@@ -223,6 +223,9 @@ async def configure_application(
             repository=instruction_repository,
             persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
+            persona_linked_service_selection_repository=(
+                persona_linked_service_selection_repository
+            ),
         )
     )
     validation_service = ValidationService(
@@ -309,6 +312,7 @@ async def configure_application(
             model_catalog_service=model_catalog_service,
             provider_repository=provider_repository,
             secret_service=secret_service,
+            linked_service_repository=linked_service_repository,
         ),
         instruction_library_service=execution_instruction_library_service,
     )
@@ -322,6 +326,7 @@ async def configure_application(
             model_catalog_service=model_catalog_service,
             provider_repository=provider_repository,
             secret_service=secret_service,
+            linked_service_repository=linked_service_repository,
         ),
         instruction_library_service=execution_instruction_library_service,
     )
