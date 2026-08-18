@@ -15,6 +15,9 @@ from src.app.models.activity import (
 )
 from src.app.repositories.activities.repository import ActivityRepository
 from src.app.schemas.activity import validate_activity_config
+from src.app.services.personas.types import (
+    PersonaLinkedServiceSelectionRepository,
+)
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 
@@ -42,11 +45,12 @@ class ActivityValidationError(Exception):
 class ActivityService:
     """Coordinate validated activity operations for one resolved workspace."""
 
-    def __init__(self, *, repository: ActivityRepository, tenant_service: TenantService, id_factory: Callable[[], str], clock: Callable[[], datetime]) -> None:
+    def __init__(self, *, repository: ActivityRepository, tenant_service: TenantService, persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository, id_factory: Callable[[], str], clock: Callable[[], datetime]) -> None:
         """Store persistence, tenancy, identifier, and time dependencies."""
 
         self._repository = repository
         self._tenant_service = tenant_service
+        self._persona_linked_service_selection_repository = persona_linked_service_selection_repository
         self._id_factory = id_factory
         self._clock = clock
 
@@ -70,6 +74,7 @@ class ActivityService:
         now = self._clock()
         normalized_type = self._activity_type(activity_type)
         normalized_config = self._config(config, normalized_type)
+        await self._require_agent_model_sources(config=normalized_config)
         document = ActivityDocument(
             id=self._id_factory(), workspace_id=workspace_id, name=self._text(name, 'name'),
             description=description.strip(), status='active', type=normalized_type,
@@ -89,6 +94,8 @@ class ActivityService:
             if 'config' in changes
             else current.config
         )
+        if 'config' in changes:
+            await self._require_agent_model_sources(config=config)
         updated = replace(
             current, name=self._text(changes['name'], 'name') if 'name' in changes else current.name,
             description=str(changes['description']).strip() if 'description' in changes else current.description,
@@ -138,6 +145,36 @@ class ActivityService:
         if document is None:
             raise ActivityNotFoundError(activity_id)
         return document
+
+    async def _require_agent_model_sources(
+        self,
+        *,
+        config: dict[str, object],
+    ) -> None:
+        """Require a Persona selection when an Activity agent lacks a model."""
+
+        agents = config.get('agents')
+        if not isinstance(agents, list):
+            return
+        for position, agent in enumerate(agents):
+            if not isinstance(agent, dict) or agent.get('model_id') is not None:
+                continue
+            persona_id = agent.get('persona_id')
+            if not isinstance(persona_id, str):
+                continue
+            selection = (
+                await self._persona_linked_service_selection_repository.get_for_persona(
+                    persona_id=persona_id,
+                )
+            )
+            if selection is None:
+                raise ActivityValidationError(
+                    field_name='config',
+                    message=(
+                        f'agents.{position}.model_id is required when the '
+                        'Persona has no linked-service selection'
+                    ),
+                )
 
     def _entry(self, document: ActivityDocument, actor_id: str, change_type: Literal['created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'], changed_at: datetime, *, diff: dict[str, object] | None = None, content: dict[str, object] | None = None) -> ActivityChangelogEntry:
         """Build one immutable activity history entry."""

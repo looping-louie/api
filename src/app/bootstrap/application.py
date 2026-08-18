@@ -291,6 +291,9 @@ async def configure_application(
         repository=loop_repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+        ),
         dependency_checker=dependency_checker,
         loop_run_repository=loop_run_repository,
         id_factory=create_identifier,
@@ -299,6 +302,9 @@ async def configure_application(
     activity_service = ActivityService(
         repository=activity_repository,
         tenant_service=tenant_service,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+        ),
         id_factory=create_identifier,
         clock=utc_now,
     )

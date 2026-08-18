@@ -36,6 +36,9 @@ from src.app.services.loops.validation import (
     require_text,
     validate_loop,
 )
+from src.app.services.personas.types import (
+    PersonaLinkedServiceSelectionRepository,
+)
 from src.app.services.shared.reference_resolver import (
     ReferenceResolver,
     ResourceReference,
@@ -54,6 +57,7 @@ class LoopService:
         repository: LoopRepository,
         tenant_service: TenantService,
         reference_resolver: ReferenceResolver,
+        persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository,
         dependency_checker: DependencyChecker,
         loop_run_repository: LoopRunRepository,
         id_factory: Callable[[], str],
@@ -64,6 +68,9 @@ class LoopService:
         self._repository = repository
         self._tenant_service = tenant_service
         self._reference_resolver = reference_resolver
+        self._persona_linked_service_selection_repository = (
+            persona_linked_service_selection_repository
+        )
         self._dependency_checker = dependency_checker
         self._loop_run_repository = loop_run_repository
         self._id_factory = id_factory
@@ -280,20 +287,40 @@ class LoopService:
         return list(entries), total
 
     async def _validate_references(self, document: LoopDocument) -> None:
-        """Require every selected persona and model to exist."""
+        """Require every selected Persona and applicable legacy model to exist."""
 
         references = [
             reference
             for agent in document.agents
             for reference in (
-                ResourceReference("model", agent.model_id),
                 ResourceReference("persona", agent.persona_id),
+                *(
+                    (ResourceReference("model", agent.model_id),)
+                    if agent.model_id is not None
+                    else ()
+                ),
             )
         ]
         await self._reference_resolver.require_many(
             workspace_id=document.workspace_id,
             references=references,
         )
+        for position, agent in enumerate(document.agents):
+            if agent.model_id is not None:
+                continue
+            selection = (
+                await self._persona_linked_service_selection_repository.get_for_persona(
+                    persona_id=agent.persona_id,
+                )
+            )
+            if selection is None:
+                raise LoopValidationError(
+                    field_name=f"agents.{position}.model_id",
+                    message=(
+                        'is required when the Persona has no linked-service '
+                        'selection'
+                    ),
+                )
 
     async def _require_loop(
         self,

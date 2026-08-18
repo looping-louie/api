@@ -152,3 +152,24 @@ async def test_create_rejects_incomplete_output_contracts(
             user_id="user-1",
             payload=payload(output_contract=contract),
         )
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_model_omission_without_persona_selection(
+    service: LoopService,
+) -> None:
+    """An agent requires a legacy model unless its Persona selects one."""
+
+    with pytest.raises(LoopValidationError, match='linked-service selection'):
+        await service.create(
+            user_id='user-1',
+            payload=payload(
+                agents=(
+                    LoopAgentInput(
+                        model_id=None,
+                        persona_id='persona-1',
+                        role='generator',
+                    ),
+                ),
+            ),
+        )

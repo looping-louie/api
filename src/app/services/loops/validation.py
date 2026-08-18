@@ -109,8 +109,10 @@ def normalize_agents(
                     if item.id is not None
                     else id_factory()
                 ),
-                model_id=require_text(
-                    item.model_id, f"agents.{position}.model_id"
+                model_id=(
+                    require_text(item.model_id, f"agents.{position}.model_id")
+                    if item.model_id is not None
+                    else None
                 ),
                 persona_id=require_text(
                     item.persona_id, f"agents.{position}.persona_id"

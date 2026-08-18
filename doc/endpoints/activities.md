@@ -50,6 +50,10 @@ type.
 | `refinement_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator, at least one reviewer, and no aggregator. |
 | `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
 
+Every loop agent requires a `persona_id` and `role`. Its `model_id` is required
+for legacy Personas. It may be omitted only when the referenced Persona has a
+linked-service model selection; execution then uses that Persona selection.
+
 ## Activity runs
 
 Direct, refinement, and roundtable loop activities expose persisted executions at

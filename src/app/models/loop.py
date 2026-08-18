@@ -32,10 +32,10 @@ class LoopStopConditions:
 
 @dataclass(frozen=True, slots=True)
 class LoopAgent:
-    """One model and persona assigned to a role in a loop."""
+    """One Persona and optional legacy model assigned to a loop role."""
 
     id: str
-    model_id: str
+    model_id: str | None
     persona_id: str
     role: LoopAgentRole
 
