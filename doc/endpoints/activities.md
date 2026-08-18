@@ -52,7 +52,8 @@ type.
 
 Every loop agent requires a `persona_id` and `role`. Its `model_id` is required
 for legacy Personas. It may be omitted only when the referenced Persona has a
-linked-service model selection; execution then uses that Persona selection.
+linked-service model selection and is visible in the selected workspace;
+execution then uses that Persona selection.
 
 ## Activity runs
 

@@ -302,6 +302,7 @@ async def configure_application(
     activity_service = ActivityService(
         repository=activity_repository,
         tenant_service=tenant_service,
+        reference_resolver=reference_resolver,
         persona_linked_service_selection_repository=(
             persona_linked_service_selection_repository
         ),

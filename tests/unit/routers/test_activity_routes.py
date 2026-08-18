@@ -19,12 +19,14 @@ from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.activities.service import ActivityService
 from src.app.services.personas import PersonaLinkedServiceSelection
+from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.activity_repository import FakeActivityRepository
 from tests.fakes.persona_linked_service_selection_repository import (
     FakePersonaLinkedServiceSelectionRepository,
 )
+from tests.fakes.reference_repository import FakeReferenceRepository
 
 
 class FakeActivityRunRepository:
@@ -68,6 +70,7 @@ def build_client(
     *,
     tenant_service: TenantService,
     persona_selection_repository: FakePersonaLinkedServiceSelectionRepository | None = None,
+    reference_repository: FakeReferenceRepository | None = None,
 ) -> TestClient:
     """Build an authenticated activity application with in-memory storage."""
 
@@ -75,6 +78,9 @@ def build_client(
     service = ActivityService(
         repository=FakeActivityRepository(),
         tenant_service=tenant_service,
+        reference_resolver=ReferenceResolver(
+            repository=reference_repository or FakeReferenceRepository(),
+        ),
         persona_linked_service_selection_repository=(
             persona_selection_repository
             or FakePersonaLinkedServiceSelectionRepository()
@@ -228,6 +234,13 @@ async def test_activity_allows_agent_without_model_for_persona_selection(
     """An Activity agent may rely on its Persona linked-service selection."""
 
     selection_repository = FakePersonaLinkedServiceSelectionRepository()
+    reference_repository = FakeReferenceRepository()
+    reference_repository.seed(
+        workspace_id='workspace-1',
+        resource_type='persona',
+        resource_id='persona-1',
+        value={'id': 'persona-1'},
+    )
     await selection_repository.replace_for_persona(
         persona_id='persona-1',
         selection=PersonaLinkedServiceSelection(
@@ -238,6 +251,7 @@ async def test_activity_allows_agent_without_model_for_persona_selection(
     client = build_client(
         tenant_service=tenant_service,
         persona_selection_repository=selection_repository,
+        reference_repository=reference_repository,
     )
     payload = direct_loop_payload()
     payload['config']['agents'][0].pop('model_id')
@@ -246,6 +260,41 @@ async def test_activity_allows_agent_without_model_for_persona_selection(
 
     assert response.status_code == 201
     assert response.json()['config']['agents'][0]['model_id'] is None
+
+
+@pytest.mark.asyncio
+async def test_activity_rejects_selection_for_persona_outside_workspace(
+    tenant_service: TenantService,
+) -> None:
+    """Selection-only agents cannot reference Personas outside their workspace."""
+
+    selection_repository = FakePersonaLinkedServiceSelectionRepository()
+    await selection_repository.replace_for_persona(
+        persona_id='persona-1',
+        selection=PersonaLinkedServiceSelection(
+            linked_service_id='linked-service-1',
+            model_id='model-1',
+        ),
+    )
+    reference_repository = FakeReferenceRepository()
+    reference_repository.seed(
+        workspace_id='workspace-other',
+        resource_type='persona',
+        resource_id='persona-1',
+        value={'id': 'persona-1'},
+    )
+    client = build_client(
+        tenant_service=tenant_service,
+        persona_selection_repository=selection_repository,
+        reference_repository=reference_repository,
+    )
+    payload = direct_loop_payload()
+    payload['config']['agents'][0].pop('model_id')
+
+    response = client.post('/api/v1/activities', json=payload)
+
+    assert response.status_code == 404
+    assert response.json()['error']['code'] == 'referenced_resource_not_found'
 
 
 def test_direct_loop_requires_a_generator_agent(
