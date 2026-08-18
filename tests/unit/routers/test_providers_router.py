@@ -218,6 +218,19 @@ def test_only_new_provider_routes_are_published(
     assert client.post("/api/v1/providers").status_code == 405
 
 
+def test_provider_routes_are_deprecated_in_openapi(
+    provider_controller: ProviderController,
+) -> None:
+    """OpenAPI directs clients away from legacy provider configuration."""
+
+    client = TestClient(build_app(controller=provider_controller))
+    paths = client.get('/openapi.json').json()['paths']
+
+    assert paths['/api/v1/providers']['get']['deprecated'] is True
+    for method in ('get', 'patch', 'delete'):
+        assert paths['/api/v1/providers/{provider_id}'][method]['deprecated'] is True
+
+
 def test_provider_routes_require_authentication(
     provider_controller: ProviderController,
 ) -> None:

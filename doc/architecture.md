@@ -324,7 +324,8 @@ models/
 - [Instruction catalog](components/instruction-catalog.md) describes builtin
   instruction ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records provider and model-catalog
-  boundaries.
+  boundaries. Legacy workspace Provider configuration remains available only as
+  a deprecated fallback while existing Personas and loop agents migrate.
 - Linked Services persist independent workspace-owned provider connections and
   derive their available deployment models from the static catalog. Persona
   linked-service selections replace the deprecated legacy Persona model

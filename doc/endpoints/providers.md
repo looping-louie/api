@@ -1,10 +1,15 @@
-# Providers
+# Providers (Deprecated)
 
-Provider routes manage encrypted credentials and workspace-specific enablement.
-The supported `provider_id` values are `anthropic`, `nvidia`, `ollama`,
-`openai`, and `together`.
+Provider routes manage legacy encrypted credentials and workspace-specific
+enablement. New clients must use [Catalog](catalog.md) to discover static
+providers and [Linked Services](linked-services.md) to create workspace
+connections. The supported `provider_id` values are `anthropic`, `nvidia`,
+`ollama`, `openai`, and `together`.
 
 ## Provider calls
+
+All Provider operations are deprecated. They remain available for legacy
+Persona and loop configurations during the migration window.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
