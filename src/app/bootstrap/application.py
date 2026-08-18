@@ -45,6 +45,9 @@ from src.app.repositories.instructions.persona_skill_repository import (
 from src.app.repositories.instructions.persona_model_repository import (
     SqlitePersonaModelRepository,
 )
+from src.app.repositories.instructions.persona_linked_service_selection_repository import (
+    SqlitePersonaLinkedServiceSelectionRepository,
+)
 from src.app.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -179,6 +182,11 @@ async def configure_application(
     persona_model_repository = SqlitePersonaModelRepository(
         resolved_settings.database_path,
     )
+    persona_linked_service_selection_repository = (
+        SqlitePersonaLinkedServiceSelectionRepository(
+            resolved_settings.database_path,
+        )
+    )
     loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
@@ -250,11 +258,26 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    secret_service = FernetSecretService(encryption_key)
+    linked_service_service = LinkedServiceService(
+        repository=linked_service_repository,
+        tenant_service=tenant_service,
+        secret_service=secret_service,
+        connection_service=HttpProviderConnectionService(),
+        catalog=PROVIDER_CATALOG,
+        dependency_checker=dependency_checker,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
     persona_service = PersonaService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
         persona_model_repository=persona_model_repository,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+        ),
+        linked_service_service=linked_service_service,
         reference_resolver=reference_resolver,
     )
     skill_service = SkillService(
@@ -276,7 +299,6 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
-    secret_service = FernetSecretService(encryption_key)
     loop_run_service = LoopRunService(
         repository=loop_run_repository,
         loop_service=loop_service,
@@ -313,16 +335,6 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
-    linked_service_service = LinkedServiceService(
-        repository=linked_service_repository,
-        tenant_service=tenant_service,
-        secret_service=secret_service,
-        connection_service=HttpProviderConnectionService(),
-        catalog=PROVIDER_CATALOG,
-        id_factory=create_identifier,
-        clock=utc_now,
-    )
-
     app.state.persona_controller = PersonaController(
         persona_service=persona_service,
     )

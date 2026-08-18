@@ -256,7 +256,8 @@ repositories/
 |   |-- availability.py            Persists workspace availability settings
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
-|   |-- persona_model_repository.py Persists optional persona-model associations
+|   |-- persona_linked_service_selection_repository.py Persists persona service selections
+|   |-- persona_model_repository.py Persists optional legacy persona-model associations
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
@@ -325,7 +326,9 @@ models/
 - [Providers](components/providers.md) records provider and model-catalog
   boundaries.
 - Linked Services persist independent workspace-owned provider connections and
-  derive their available deployment models from the static catalog.
+  derive their available deployment models from the static catalog. Persona
+  linked-service selections retain the legacy Persona model association while
+  requiring an enabled, configured service with an active compatible deployment.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

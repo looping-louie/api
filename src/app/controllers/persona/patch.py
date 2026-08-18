@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from src.app.schemas.persona import PersonaPatchRequest, PersonaResponse
-from src.app.services.personas import PersonaService, PersonaUpdate
+from src.app.services.personas import (
+    PersonaLinkedServiceSelection,
+    PersonaService,
+    PersonaUpdate,
+)
+
+from .response import persona_response
 
 
 class PersonaPatchController:
@@ -39,6 +45,17 @@ class PersonaPatchController:
                     description=payload.description,
                     instructions=payload.instructions,
                     model=payload.model,
+                    linked_service_selection=(
+                        PersonaLinkedServiceSelection(
+                            linked_service_id=payload.linked_service.reference_id,
+                            model_id=payload.config.model,
+                        )
+                        if payload.linked_service is not None and payload.config is not None
+                        else None
+                    ),
+                    linked_service_selection_supplied=(
+                        'linked_service' in payload.model_fields_set
+                    ),
                     metadata=metadata,
                     skill_ids=(
                         tuple(payload.skill_ids)
@@ -59,4 +76,4 @@ class PersonaPatchController:
             persona_id=persona_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return PersonaResponse.model_validate(document)
+        return persona_response(document)

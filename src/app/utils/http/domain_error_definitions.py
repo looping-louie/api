@@ -48,6 +48,7 @@ from src.app.services.providers.errors import (
 from src.app.services.linked_services import (
     LinkedServiceNameConflictError,
     LinkedServiceNotFoundError,
+    LinkedServiceSelectionUnavailableError,
 )
 from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
@@ -316,5 +317,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     LinkedServiceNameConflictError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='linked_service_name_conflict',
+    ),
+    LinkedServiceSelectionUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code='linked_service_selection_unavailable',
+        details_builder=_validation_details,
     ),
 }

@@ -14,6 +14,11 @@ from src.app.routers.linked_services import router
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.connection import ProviderConnectionError
 from src.app.services.shared.tenant import TenantService
+from src.app.services.shared.dependency_checker import (
+    DependencyChecker,
+    DependencyUsage,
+)
+from src.app.services.shared.reference_resolver import ResourceReference
 from tests.conftest import IncrementingClock
 from tests.fakes.provider_connection_service import FakeProviderConnectionService
 from tests.fakes.secret_service import FakeSecretService
@@ -67,6 +72,27 @@ class InMemoryLinkedServiceRepository:
     async def delete(self, workspace_id: str, service_id: str) -> bool:
         """Delete a service and report whether it existed."""
         return self._services.pop((workspace_id, service_id), None) is not None
+
+
+class PersonaSelectionDependencyRepository:
+    """Report one persona selection as a linked-service dependency."""
+
+    async def find_usages(
+        self,
+        *,
+        workspace_id: str,
+        target: ResourceReference,
+    ) -> list[DependencyUsage]:
+        """Return a persona usage for the requested linked service."""
+
+        assert workspace_id == 'workspace-1'
+        assert target == ResourceReference('linked_service', 'linked-service-1')
+        return [
+            DependencyUsage(
+                source=ResourceReference('persona', 'persona-1'),
+                relation='linked_service',
+            )
+        ]
 
 
 def build_app(controller: LinkedServiceController, authenticated: bool = True) -> FastAPI:
@@ -165,3 +191,36 @@ def test_linked_service_routes_require_authentication(tenant_service: TenantServ
     response = client.get('/api/v1/linked-services')
 
     assert response.status_code == 401
+
+
+def test_linked_service_delete_is_blocked_by_persona_selection(
+    tenant_service: TenantService,
+) -> None:
+    """A Persona selecting a linked service prevents its deletion."""
+
+    repository = InMemoryLinkedServiceRepository()
+    service = LinkedServiceService(
+        repository=repository,
+        tenant_service=tenant_service,
+        secret_service=FakeSecretService(),
+        connection_service=FakeProviderConnectionService(),
+        catalog=PROVIDER_CATALOG,
+        dependency_checker=DependencyChecker(
+            repository=PersonaSelectionDependencyRepository(),
+        ),
+        clock=IncrementingClock(),
+        id_factory=lambda: 'linked-service-1',
+    )
+    controller = LinkedServiceController(linked_service_service=service)
+    client = TestClient(build_app(controller))
+    created = client.post('/api/v1/linked-services', json={
+        'name': 'primary_openai',
+        'provider_type': 'openai',
+        'config': {'api_key': 'sk-test-secret'},
+    })
+
+    response = client.delete('/api/v1/linked-services/linked-service-1')
+
+    assert created.status_code == 201
+    assert response.status_code == 409
+    assert response.json()['error']['code'] == 'resource_in_use'

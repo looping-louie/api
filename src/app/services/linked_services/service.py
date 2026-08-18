@@ -21,6 +21,8 @@ from src.app.services.providers.connection import ProviderConnectionService
 from src.app.services.providers.errors import UnknownProviderError
 from src.app.services.providers.secret import SecretService
 from src.app.services.shared.tenant import TenantService
+from src.app.services.shared.dependency_checker import DependencyChecker
+from src.app.services.shared.reference_resolver import ResourceReference
 
 
 Clock = Callable[[], datetime]
@@ -45,6 +47,17 @@ class LinkedServiceNameConflictError(Exception):
         self.name = name
 
 
+class LinkedServiceSelectionUnavailableError(Exception):
+    """Raised when a linked service cannot serve a selected logical model."""
+
+    def __init__(self, *, service_id: str, reason: str) -> None:
+        """Store the unavailable linked-service identity and reason."""
+
+        super().__init__(f"Linked service '{service_id}' {reason}.")
+        self.service_id = service_id
+        self.reason = reason
+
+
 class LinkedServiceService:
     """Coordinate linked-service configuration, testing, and persistence."""
 
@@ -56,6 +69,7 @@ class LinkedServiceService:
         secret_service: SecretService,
         connection_service: ProviderConnectionService,
         catalog: Sequence[ProviderCatalogEntry],
+        dependency_checker: DependencyChecker | None = None,
         clock: Clock | None = None,
         id_factory: IdFactory | None = None,
     ) -> None:
@@ -65,6 +79,7 @@ class LinkedServiceService:
         self._secret_service = secret_service
         self._connection_service = connection_service
         self._catalog_by_id = {entry.id: entry for entry in catalog}
+        self._dependency_checker = dependency_checker
         self._clock = clock or self._default_clock
         self._id_factory = id_factory or self._default_id_factory
 
@@ -136,8 +151,39 @@ class LinkedServiceService:
     async def delete(self, *, user_id: str, service_id: str, requested_workspace_id: str | None = None) -> None:
         """Delete one linked service owned by the selected workspace."""
         workspace_id = await self._workspace_id(user_id, requested_workspace_id)
+        if self._dependency_checker is not None:
+            await self._dependency_checker.require_deletable(
+                workspace_id=workspace_id,
+                target=ResourceReference('linked_service', service_id),
+            )
         if not await self._repository.delete(workspace_id, service_id):
             raise LinkedServiceNotFoundError(service_id)
+
+    async def require_available_selection(
+        self,
+        *,
+        workspace_id: str,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Require a configured enabled service with an active model deployment."""
+
+        linked_service = await self._get_required(workspace_id, service_id)
+        if not linked_service.enabled:
+            raise LinkedServiceSelectionUnavailableError(
+                service_id=service_id,
+                reason='is disabled',
+            )
+        if not self.is_configured(linked_service):
+            raise LinkedServiceSelectionUnavailableError(
+                service_id=service_id,
+                reason='is not configured',
+            )
+        if model_id not in self.available_models(linked_service.provider_type):
+            raise LinkedServiceSelectionUnavailableError(
+                service_id=service_id,
+                reason=f"does not have an active deployment for model '{model_id}'",
+            )
 
     def available_models(self, provider_type: str) -> list[str]:
         """Return active logical model IDs deployed by a provider type."""
