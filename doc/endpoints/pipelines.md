@@ -26,17 +26,7 @@ New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
 `steps`; supplying `steps` replaces the complete ordered array. Archived
 pipelines are immutable and omitted from unfiltered listings.
 
-## Pipeline Definition Schema
-
-`POST /api/v1/pipelines` accepts the following JSON properties. `PATCH` accepts
-the mutable properties marked as optional; it rejects an empty request.
-
-| Property | JSON type | Create | Update | Restrictions |
-| -------- | --------- | ------ | ------ | ------------ |
-| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
-| `description` | String | Required | Optional | May be empty. |
-| `steps` | Array of Activity definitions | Required | Optional | Contains at least one step. Replaces the complete ordered step collection when supplied. |
-| `enabled` | Boolean | Not allowed | Optional | Enables or disables the Pipeline. |
+## Pipeline Step Schema
 
 Every item in `steps` uses the Activity definition schema. Its `name` follows
 the same name restrictions as the Pipeline name. Each item can also contain a
@@ -54,17 +44,6 @@ Each step has a `dependsOn` array. Every item contains an `activity` name from
 another step and a `condition` of `success` or `failure`. The array can be
 empty. Dependency targets must be unambiguous and the graph cannot contain
 cycles.
-
-## Execute pipelines
-
-`POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
-every scheduled Activity. The response includes `current_activity_run` while
-the pipeline run is `in_progress`. The CLI executes that child run through its
-existing local repository, filesystem, and Git checkpoints, then calls the
-pipeline run's `continue` endpoint. The API evaluates `success` and `failure`
-dependencies against the child result, skips impossible branches, and selects
-the next eligible step in declared order. The pipeline completes after every
-step is completed, failed, or skipped.
 
 ## List pipelines
 
@@ -251,6 +230,14 @@ The API validates and persists each Activity in the same transaction, assigns
 each one an ID, and stores those IDs as Pipeline steps. The response resolves
 each stored step to its full persisted Activity.
 
+### Create Request Properties
+
+| Property | JSON type | Required | Restrictions |
+| -------- | --------- | -------- | ------------ |
+| `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `description` | String | Yes | May be empty. |
+| `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
+
 ```http
 POST /api/v1/pipelines
 X-Workspace-ID: workspace-acme
@@ -387,6 +374,17 @@ Example response (`201 Created`):
 ordered array and creates new independent Activity records from the supplied
 inline definitions. The response resolves every stored step to its full
 persisted Activity.
+
+### Update Request Properties
+
+At least one property is required.
+
+| Property | JSON type | Restrictions |
+| -------- | --------- | ------------ |
+| `name` | String | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `description` | String | May be empty. |
+| `enabled` | Boolean | Enables or disables the Pipeline. |
+| `steps` | Array of Activity definitions | Contains at least one step, uses the [Pipeline Step Schema](#pipeline-step-schema), and replaces the complete ordered step collection. |
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review
@@ -525,3 +523,83 @@ Example response (`200 OK`):
 
 Request schema failures use the standard API error envelope. Invalid step
 structures use `invalid_pipeline_steps`.
+
+## Execute pipelines
+
+`POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
+every scheduled Activity. The API freezes the Pipeline graph, selects the first
+eligible Activity, and returns it as `current_activity_run` while the Pipeline
+run is `in_progress`.
+
+```http
+POST /api/v1/pipelines/pipeline-production-release-review/runs
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "input": "Review the release candidate and determine whether it is ready for production."
+}
+```
+
+Example response (`201 Created`):
+
+```json
+{
+  "id": "pipeline-run-001",
+  "pipeline_id": "pipeline-production-release-review",
+  "input": "Review the release candidate and determine whether it is ready for production.",
+  "status": "in_progress",
+  "current_activity_run": {
+    "id": "activity-run-001",
+    "activity_id": "activity-release-review",
+    "input": "Review the release candidate and determine whether it is ready for production.",
+    "status": "in_progress",
+    "state": "awaiting_snapshot",
+    "next_action": "collect_snapshot",
+    "iteration": 1,
+    "token_revision": 0,
+    "continuation_token": "continuation-token-001",
+    "created_at": "2026-08-18T10:00:00Z",
+    "created_by": "user-123",
+    "updated_at": "2026-08-18T10:00:00Z",
+    "payload": {}
+  },
+  "steps": [
+    {
+      "activity_id": "activity-release-review",
+      "status": "in_progress",
+      "activity_run_id": "activity-run-001"
+    },
+    {
+      "activity_id": "activity-readiness-quiz",
+      "status": "pending",
+      "activity_run_id": null
+    },
+    {
+      "activity_id": "activity-production-approval",
+      "status": "pending",
+      "activity_run_id": null
+    }
+  ],
+  "created_at": "2026-08-18T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-18T10:00:00Z"
+}
+```
+
+The CLI executes `current_activity_run` through its local repository,
+filesystem, and Git checkpoints. After that child reaches a terminal state,
+call `POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` without a
+request body. The API evaluates `success` and `failure` dependencies, skips
+impossible branches, and selects the next eligible step in declared order.
+
+```http
+POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/continue
+X-Workspace-ID: workspace-acme
+```
+
+The response is another Pipeline Run representation. It contains the next
+`current_activity_run` when work remains, or `null` after every step has been
+completed, failed, or skipped.

@@ -52,6 +52,8 @@ services/
 |-- activity_runs/
 |   `-- service.py                 Creates, reads, and advances activity-owned
 |                                  execution checkpoints
+|-- catalog/
+|   `-- service.py                 Exposes static provider and model definitions
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
@@ -68,12 +70,14 @@ services/
 |   |-- service.py                 Coordinates resource operations
 |   |-- types.py                   Defines contracts and domain errors
 |   `-- validation.py              Normalizes and validates input
+|-- linked_services/
+|   `-- service.py                 Manages workspace-owned provider connections
 |-- loop_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for direct and
 |   |                              roundtable runs
-|   |-- service.py                 Creates, reads, and advances records through
-|   |                              legacy loop checkpoints
+|   |-- service.py                 Creates, reads, and advances Loop run
+|   |                              checkpoints
 |   |-- types.py                   Defines contracts and domain errors
 |   `-- validation.py              Normalizes and validates input
 |-- loops/
@@ -84,8 +88,8 @@ services/
 |   `-- validation.py              Normalizes and validates definitions
 |-- model_execution/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Resolves enabled workspace deployments and
-|                                  invokes provider-neutral endpoints
+|   `-- service.py                 Invokes provider-neutral endpoints through
+|                                  an explicit Linked Service or legacy fallback
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- availability.py            Calculates workspace availability
@@ -101,6 +105,9 @@ services/
 |   |-- service.py                 Coordinates definitions and history
 |   |-- types.py                   Defines input types and domain errors
 |   `-- validation.py              Normalizes and validates definitions
+|-- pipeline_runs/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Creates, reads, and advances Pipeline runs
 |-- providers/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- configuration.py           Interprets and validates settings
@@ -108,7 +115,7 @@ services/
 |   |-- errors.py                  Defines configuration errors
 |   |-- model_registry.py          Queries catalog models by provider
 |   |-- secret.py                  Encrypts, decrypts, and masks API keys
-|   `-- service.py                 Coordinates configuration and checks
+|   `-- service.py                 Supports deprecated legacy configuration
 |-- shared/
 |   |-- __init__.py                Declares shared service utilities
 |   |-- changelog.py               Builds changelog metadata and field diffs
@@ -138,6 +145,9 @@ dependency injection, and request extraction.
 ```text
 controllers/
 |
+|-- catalog/
+|   |-- __init__.py               Defines public controller imports
+|   `-- controller.py             Returns static catalog resources
 |-- activity/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
@@ -154,6 +164,8 @@ controllers/
 |   |-- describe.py               Describes one run
 |   |-- list.py                   Lists runs
 |   `-- utils.py                  Translates results to response schemas
+|-- linked_services/
+|   `-- __init__.py               Composes Linked Service controllers
 |-- model/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- describe.py               Describes one curated entry
@@ -261,6 +273,8 @@ repositories/
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
+|-- linked_services/
+|   `-- repository.py              Persists workspace provider connections
 |-- loop_runs/
 |   |-- __init__.py                Defines public persistence imports
 |   |-- errors.py                  Defines checkpoint transition conflicts
@@ -276,6 +290,8 @@ repositories/
 |   |-- mapping.py                 Maps SQLite rows and write values
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists records and changelog entries
+|-- pipeline_runs/
+|   `-- repository.py              Persists Pipeline execution state
 |-- providers/
 |   |-- __init__.py                Declares credential persistence and adapters
 |   |-- credential_mapper.py       Maps SQLite credential rows
@@ -323,17 +339,15 @@ models/
   roles, and supported Activity-run behavior.
 - [Instruction catalog](components/instruction-catalog.md) describes builtin
   instruction ownership, synchronization, and maintenance.
-- [Providers](components/providers.md) records provider and model-catalog
-  boundaries. Legacy workspace Provider configuration remains available only as
-  a deprecated fallback while existing Personas and loop agents migrate.
-- Linked Services persist independent workspace-owned provider connections and
-  derive their available deployment models from the static catalog. Persona
-  linked-service selections replace the deprecated legacy Persona model
+- [Providers](components/providers.md) records the static provider and model
+  catalog boundary. Linked Services persist independent workspace-owned provider
+  connections and derive their available deployment models from that catalog.
+  Persona linked-service selections replace the deprecated legacy Persona model
   association for new configuration while requiring an enabled, configured
-  service with an active compatible deployment.
-  During execution, a Persona selection routes its model request through that
-  specific service. Loop agent model IDs remain required only for legacy
-  Personas without a selection.
+  service with an active compatible deployment. During execution, a selection
+  routes its model request through that exact service. Loop agent model IDs
+  remain required only for legacy Personas without a selection; legacy Provider
+  routes remain available only for compatibility during the migration window.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP
