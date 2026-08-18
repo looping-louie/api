@@ -1,14 +1,14 @@
 # Execution
 
-A persisted loop run coordinates model decisions with CLI-owned repository
+A persisted activity run coordinates model decisions with CLI-owned repository
 execution. The API plans and reviews changes; the CLI collects repository
 context, applies operations, and performs the commit.
 
 ## Execution lifecycle
 
-### 1. Create and persist a loop run
+### 1. Create and persist an activity run
 
-The API persists the loop snapshot, run status, checkpoint action, iteration,
+The API persists the activity snapshot, run status, checkpoint action, iteration,
 and continuation revision in SQLite.
 
 The run also persists a versioned `instructions-snapshot.json`. It contains the
@@ -23,7 +23,7 @@ that context to build iteration prompts.
 
 ### 3. Build prompts
 
-The loop-run generation service creates initial generator, retry generator, and
+The execution generation service creates initial generator, retry generator, and
 reviewer prompts. Prompt construction is centralized so orchestration code
 never builds prompts directly.
 
@@ -93,7 +93,7 @@ Contains the original task, Git diff, changed file contents, and review skill.
 
 ## Workspace and workflow ownership
 
-Workspace lifecycle is CLI-owned. The API persists loop-run orchestration state
+Workspace lifecycle is CLI-owned. The API persists activity-run orchestration state
 in SQLite.
 
 The CLI creates a persisted run, iterates its `/continue` checkpoint, commits

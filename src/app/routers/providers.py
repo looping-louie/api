@@ -35,6 +35,7 @@ ProviderIdPath = Annotated[
     "",
     response_model=list[ProviderResponse],
     summary="List providers",
+    deprecated=True,
 )
 async def list_providers(
     context: ContextDependency,
@@ -52,6 +53,7 @@ async def list_providers(
     "/{provider_id}",
     response_model=ProviderResponse,
     summary="Get provider",
+    deprecated=True,
 )
 async def get_provider(
     provider_id: ProviderIdPath,
@@ -71,6 +73,7 @@ async def get_provider(
     "/{provider_id}",
     response_model=ProviderResponse,
     summary="Configure provider",
+    deprecated=True,
 )
 async def patch_provider(
     provider_id: ProviderIdPath,
@@ -92,6 +95,7 @@ async def patch_provider(
     "/{provider_id}",
     response_model=DeleteResponse,
     summary="Delete provider configuration",
+    deprecated=True,
 )
 async def delete_provider(
     provider_id: ProviderIdPath,

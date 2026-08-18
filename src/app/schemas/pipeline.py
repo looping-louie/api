@@ -8,10 +8,12 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
+from src.app.schemas.loop_run import ActivityRunResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
     RequestSchema,
+    ResourceName,
     ResponseSchema,
 )
 
@@ -53,7 +55,7 @@ class PipelineActivityStepRequest(ActivityCreateRequest):
 class PipelineCreateRequest(RequestSchema):
     """Request body for creating an enabled pipeline."""
 
-    name: NonEmptyString
+    name: ResourceName
     description: str
     steps: list[PipelineActivityStepRequest]
 
@@ -61,7 +63,7 @@ class PipelineCreateRequest(RequestSchema):
 class PipelinePatchRequest(RequestSchema):
     """Partial mutable pipeline fields accepted by PATCH."""
 
-    name: NonEmptyString | None = None
+    name: ResourceName | None = None
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
@@ -101,6 +103,40 @@ class PipelineResponse(ResponseSchema):
 
 class PipelineListResponse(ListResponse[PipelineResponse]):
     """Fixed-size offset page of pipeline definitions."""
+
+
+PipelineRunStatusValue = Literal['in_progress', 'failed', 'completed']
+PipelineRunStepStatusValue = Literal[
+    'pending', 'in_progress', 'completed', 'failed', 'skipped'
+]
+
+
+class PipelineRunCreateRequest(RequestSchema):
+    """Input used for each activity scheduled by a new pipeline run."""
+
+    input: NonEmptyString
+
+
+class PipelineRunStepResponse(ResponseSchema):
+    """Current outcome of one frozen pipeline step."""
+
+    activity_id: str
+    status: PipelineRunStepStatusValue
+    activity_run_id: str | None
+
+
+class PipelineRunResponse(ResponseSchema):
+    """Durable pipeline execution and its currently selected child run."""
+
+    id: str
+    pipeline_id: str
+    input: str
+    status: PipelineRunStatusValue
+    current_activity_run: ActivityRunResponse | None
+    steps: list[PipelineRunStepResponse]
+    created_at: datetime
+    created_by: str
+    updated_at: datetime
 
 
 class PipelineChangelogEntryResponse(ResponseSchema):

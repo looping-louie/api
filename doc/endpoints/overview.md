@@ -9,7 +9,10 @@ operations.
 
 ## Endpoint reference
 
+- [Catalog](catalog.md) exposes static provider and model definitions.
 - [Providers](providers.md) manages model-provider configuration.
+- [Linked Services](linked-services.md) manages workspace-owned provider
+  connections.
 - [Models](models.md) exposes the curated model catalog.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
@@ -20,8 +23,8 @@ operations.
 
 ## Versioned API conventions
 
-All provider, model, persona, skill, activity, and pipeline routes use the
-`/api/v1` prefix.
+All catalog, provider, linked-service, model, persona, skill, activity, and
+pipeline routes use the `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` as that user. A request may
@@ -40,6 +43,16 @@ pipelines unless `status=archived` is requested.
 Create operations return `201 Created`. Persona and skill content updates use
 optimistic concurrency and require the current positive integer
 `expected_version`; activity updates do not.
+
+## Shared Field Formats
+
+The following format applies to every `name` field on Activity, Pipeline, and
+Persona create and update requests, including inline Activity definitions in a
+Pipeline.
+
+| Field | JSON type | Required | Restrictions |
+| ----- | --------- | -------- | ------------ |
+| `name` | String | Yes on create; no on update | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 
 Successful deletes return:
 

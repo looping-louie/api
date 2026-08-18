@@ -8,6 +8,8 @@ from fastapi import FastAPI
 
 from src.app.bootstrap.pipeline import build_pipeline_controller
 from src.app.controllers.activity import ActivityController
+from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.catalog import CatalogController
 from src.app.catalogs.instructions.loader import (
     InstructionCatalog,
     load_instruction_catalog,
@@ -17,6 +19,7 @@ from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
+from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.loops.sqlite_repository import (
     SqliteLoopRepository,
@@ -26,6 +29,9 @@ from src.app.repositories.activities.sqlite_repository import (
 )
 from src.app.repositories.loop_runs.sqlite_repository import (
     SqliteLoopRunRepository,
+)
+from src.app.repositories.activity_runs.sqlite_repository import (
+    SqliteActivityRunRepository,
 )
 from src.app.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
@@ -39,6 +45,9 @@ from src.app.repositories.instructions.persona_skill_repository import (
 from src.app.repositories.instructions.persona_model_repository import (
     SqlitePersonaModelRepository,
 )
+from src.app.repositories.instructions.persona_linked_service_selection_repository import (
+    SqlitePersonaLinkedServiceSelectionRepository,
+)
 from src.app.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -48,6 +57,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 from src.app.repositories.providers.repository import (
     SqliteProviderRepository,
 )
+from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.providers.state_repository import (
     ProviderStateRepositoryAdapter,
 )
@@ -74,7 +84,9 @@ from src.app.services.instructions.catalog import (
 )
 from src.app.services.loops.service import LoopService
 from src.app.services.activities.service import ActivityService
+from src.app.services.catalog import CatalogService
 from src.app.services.loop_runs import LoopRunService
+from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
@@ -86,6 +98,7 @@ from src.app.services.providers.connection import (
     HttpProviderConnectionService,
 )
 from src.app.services.providers.service import ProviderService
+from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
@@ -169,6 +182,11 @@ async def configure_application(
     persona_model_repository = SqlitePersonaModelRepository(
         resolved_settings.database_path,
     )
+    persona_linked_service_selection_repository = (
+        SqlitePersonaLinkedServiceSelectionRepository(
+            resolved_settings.database_path,
+        )
+    )
     loop_repository = SqliteLoopRepository(
         resolved_settings.database_path,
     )
@@ -178,9 +196,13 @@ async def configure_application(
     loop_run_repository = SqliteLoopRunRepository(
         resolved_settings.database_path,
     )
+    activity_run_repository = SqliteActivityRunRepository(
+        resolved_settings.database_path,
+    )
     provider_repository = SqliteProviderRepository(
         database,
     )
+    linked_service_repository = SqliteLinkedServiceRepository(database)
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -201,6 +223,9 @@ async def configure_application(
             repository=instruction_repository,
             persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
+            persona_linked_service_selection_repository=(
+                persona_linked_service_selection_repository
+            ),
         )
     )
     validation_service = ValidationService(
@@ -216,6 +241,9 @@ async def configure_application(
     model_catalog_service = ModelCatalogService(
         tenant_service=tenant_service,
         availability_service=model_availability_service,
+    )
+    catalog_controller = CatalogController(
+        catalog_service=CatalogService(),
     )
 
     reference_repository = CompositeReferenceRepository(
@@ -233,11 +261,26 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    secret_service = FernetSecretService(encryption_key)
+    linked_service_service = LinkedServiceService(
+        repository=linked_service_repository,
+        tenant_service=tenant_service,
+        secret_service=secret_service,
+        connection_service=HttpProviderConnectionService(),
+        catalog=PROVIDER_CATALOG,
+        dependency_checker=dependency_checker,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
     persona_service = PersonaService(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
         persona_model_repository=persona_model_repository,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+        ),
+        linked_service_service=linked_service_service,
         reference_resolver=reference_resolver,
     )
     skill_service = SkillService(
@@ -248,6 +291,9 @@ async def configure_application(
         repository=loop_repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+        ),
         dependency_checker=dependency_checker,
         loop_run_repository=loop_run_repository,
         id_factory=create_identifier,
@@ -256,13 +302,29 @@ async def configure_application(
     activity_service = ActivityService(
         repository=activity_repository,
         tenant_service=tenant_service,
+        reference_resolver=reference_resolver,
+        persona_linked_service_selection_repository=(
+            persona_linked_service_selection_repository
+        ),
         id_factory=create_identifier,
         clock=utc_now,
     )
-    secret_service = FernetSecretService(encryption_key)
     loop_run_service = LoopRunService(
         repository=loop_run_repository,
         loop_service=loop_service,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
+        model_execution_service=ModelExecutionService(
+            model_catalog_service=model_catalog_service,
+            provider_repository=provider_repository,
+            secret_service=secret_service,
+            linked_service_repository=linked_service_repository,
+        ),
+        instruction_library_service=execution_instruction_library_service,
+    )
+    activity_run_service = ActivityRunService(
+        repository=activity_run_repository,
         activity_service=activity_service,
         tenant_service=tenant_service,
         id_factory=create_identifier,
@@ -271,6 +333,7 @@ async def configure_application(
             model_catalog_service=model_catalog_service,
             provider_repository=provider_repository,
             secret_service=secret_service,
+            linked_service_repository=linked_service_repository,
         ),
         instruction_library_service=execution_instruction_library_service,
     )
@@ -284,7 +347,6 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
-
     app.state.persona_controller = PersonaController(
         persona_service=persona_service,
     )
@@ -294,6 +356,9 @@ async def configure_application(
     app.state.activity_controller = ActivityController(
         activity_service=activity_service,
     )
+    app.state.activity_run_controller = ActivityRunController(
+        activity_run_service=activity_run_service,
+    )
     app.state.loop_run_controller = LoopRunController(
         loop_run_service=loop_run_service,
     )
@@ -302,12 +367,17 @@ async def configure_application(
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
+        activity_run_repository=activity_run_repository,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
     )
+    app.state.catalog_controller = catalog_controller
     app.state.provider_controller = ProviderController(
         provider_service=provider_service,
+    )
+    app.state.linked_service_controller = LinkedServiceController(
+        linked_service_service=linked_service_service,
     )
 
     app.state.database = database

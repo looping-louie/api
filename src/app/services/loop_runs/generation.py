@@ -1,4 +1,4 @@
-"""Model orchestration for direct and roundtable loop runs."""
+"""Model orchestration for direct, refinement, and roundtable loop runs."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ class LoopRunGenerationService:
         input_text: str,
         context: dict[str, object],
     ) -> dict[str, object]:
-        """Generate a final operation plan for a direct or roundtable loop."""
+        """Generate a final operation plan for a loop activity."""
 
         instruction_library = await self._load_instruction_library(
             user_id=user_id,
@@ -101,6 +101,7 @@ class LoopRunGenerationService:
                 instruction_library=instruction_library,
             ),
             context=context,
+            instruction_library=instruction_library,
         )
     async def _generate_roundtable_context(
         self,
@@ -111,10 +112,9 @@ class LoopRunGenerationService:
         context: dict[str, object],
         instruction_library: ExecutionInstructionLibrary | None,
     ) -> dict[str, object]:
-        """Aggregate generator proposals and reviewer critique into one plan."""
+        """Aggregate generator proposals into one final operation plan."""
 
         generators = self._agents_for_role(loop_snapshot, 'generator')
-        reviewers = self._agents_for_role(loop_snapshot, 'reviewer')
         aggregators = self._agents_for_role(loop_snapshot, 'aggregator')
         output_contract = self._output_contract(loop_snapshot)
         proposal_prompt = (
@@ -134,27 +134,9 @@ class LoopRunGenerationService:
                     prompt=proposal_prompt,
                     instruction_library=instruction_library,
                 ),
+                instruction_library,
             )
             for agent in generators
-        ]
-        review_prompt = (
-            'Return only a JSON object critiquing these candidate proposals '
-            f'for the task. Keep the critique under 400 words.\n\nTask:\n{input_text}\n\n'
-            f'Output contract:\n{json.dumps(output_contract)}\n\n'
-            f'Repository context:\n{context["repo_context"]}'
-            f'\n\nProposals:\n{json.dumps(proposals)}'
-        )
-        critiques = [
-            await self._execute_agent(
-                workspace_id,
-                agent,
-                self._agent_prompt(
-                    agent=agent,
-                    prompt=review_prompt,
-                    instruction_library=instruction_library,
-                ),
-            )
-            for agent in reviewers
         ]
         aggregation_prompt = (
             f'{self._operation_prompt(\
@@ -164,7 +146,6 @@ class LoopRunGenerationService:
                 reviewer_feedback=self._reviewer_feedback(context),\
             )}'
             f'\n\nGenerator proposals:\n{json.dumps(proposals)}'
-            f'\n\nReviewer critique:\n{json.dumps(critiques)}'
         )
         return await self._generate_operation_context(
             workspace_id=workspace_id,
@@ -175,6 +156,7 @@ class LoopRunGenerationService:
                 instruction_library=instruction_library,
             ),
             context=context,
+            instruction_library=instruction_library,
         )
 
     async def _generate_operation_context(
@@ -184,6 +166,7 @@ class LoopRunGenerationService:
         agent: Mapping[str, object],
         prompt: str,
         context: dict[str, object],
+        instruction_library: ExecutionInstructionLibrary | None = None,
     ) -> dict[str, object]:
         """Generate one non-empty CLI operation plan with one corrective retry."""
 
@@ -193,6 +176,7 @@ class LoopRunGenerationService:
                 workspace_id,
                 agent,
                 retry_prompt,
+                instruction_library,
             )
             try:
                 return self._with_runtime_artifacts(context, generated)
@@ -284,7 +268,19 @@ class LoopRunGenerationService:
                 field_name='agents',
                 message='direct execution requires generators only',
             )
+        if flow == 'direct' and len(
+            LoopRunGenerationService._agents_for_role(snapshot, 'generator')
+        ) != 1:
+            raise LoopValidationError(
+                field_name='agents',
+                message='direct execution requires one generator',
+            )
         if flow == 'roundtable':
+            if any(agent.get('role') == 'reviewer' for agent in agents):
+                raise LoopValidationError(
+                    field_name='agents',
+                    message='roundtable execution does not allow reviewers',
+                )
             if len(
                 LoopRunGenerationService._agents_for_role(
                     snapshot,
@@ -326,20 +322,41 @@ class LoopRunGenerationService:
         workspace_id: str,
         agent: Mapping[str, object],
         prompt: str,
+        instruction_library: ExecutionInstructionLibrary | None = None,
     ) -> dict[str, object]:
         """Execute one configured agent and require a JSON object response."""
 
         role = str(agent['role'])
         model_id = str(agent['model_id'])
+        linked_service_selection = (
+            instruction_library.persona_linked_service_selection(
+                str(agent['persona_id']),
+            )
+            if instruction_library is not None
+            else None
+        )
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
-                result = await self._model_execution_service.execute(
-                    workspace_id=workspace_id,
-                    model_id=model_id,
-                    prompt=retry_prompt,
-                    json_mode=True,
-                )
+                if linked_service_selection is None:
+                    result = await self._model_execution_service.execute(
+                        workspace_id=workspace_id,
+                        model_id=model_id,
+                        prompt=retry_prompt,
+                        json_mode=True,
+                    )
+                else:
+                    result = (
+                        await self._model_execution_service.execute_with_linked_service(
+                            workspace_id=workspace_id,
+                            linked_service_id=(
+                                linked_service_selection.linked_service_id
+                            ),
+                            model_id=linked_service_selection.model_id,
+                            prompt=retry_prompt,
+                            json_mode=True,
+                        )
+                    )
             except ModelExecutionError as error:
                 LOGGER.warning(
                     'Loop agent execution failed: role=%s model_id=%s error=%s',

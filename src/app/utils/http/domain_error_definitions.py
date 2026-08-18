@@ -6,6 +6,7 @@ from src.app.services.activities.service import (
     ActivityNotFoundError,
     ActivityValidationError,
 )
+from src.app.services.activity_runs.types import ActivityRunUnavailableError
 from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
 )
@@ -15,7 +16,6 @@ from src.app.services.loops.types import (
     LoopValidationError,
 )
 from src.app.services.loop_runs import (
-    ActivityRunUnavailableError,
     LoopRunNotFoundError,
     LoopRunUnavailableError,
 )
@@ -36,10 +36,19 @@ from src.app.services.pipelines.types import (
     PipelineArchivedError,
     PipelineNotFoundError,
 )
+from src.app.services.pipeline_runs import (
+    PipelineRunNotFoundError,
+    PipelineRunUnavailableError,
+)
 from src.app.services.providers.connection import ProviderConnectionError
 from src.app.services.providers.errors import (
     ProviderConfigurationError,
     UnknownProviderError,
+)
+from src.app.services.linked_services import (
+    LinkedServiceNameConflictError,
+    LinkedServiceNotFoundError,
+    LinkedServiceSelectionUnavailableError,
 )
 from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
@@ -93,6 +102,7 @@ from .pipeline_error_details import (
     unsupported_gate_details,
     unsupported_step_details,
 )
+from .domain_error_details import _linked_service_not_found_details
 
 
 ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
@@ -190,6 +200,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_409_CONFLICT,
         code="pipeline_archived",
         details_builder=pipeline_details,
+    ),
+    PipelineRunNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='pipeline_run_not_found',
+    ),
+    PipelineRunUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='pipeline_run_unavailable',
     ),
     InvalidPipelineStepsError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -290,5 +308,19 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         status_code=status.HTTP_502_BAD_GATEWAY,
         code="provider_connection_error",
         public_message="The provider connection could not be established.",
+    ),
+    LinkedServiceNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='linked_service_not_found',
+        details_builder=_linked_service_not_found_details,
+    ),
+    LinkedServiceNameConflictError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='linked_service_name_conflict',
+    ),
+    LinkedServiceSelectionUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code='linked_service_selection_unavailable',
+        details_builder=_validation_details,
     ),
 }

@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
 from src.app.controllers.activity import ActivityController
+from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
@@ -45,12 +46,18 @@ EXPECTED_TABLES = {
     "pipeline_step_dependencies",
     "pipeline_changelog_entries",
     "provider_credentials",
+    "linked_services",
     "persona_models",
     "persona_skills",
     "workspace_instruction_settings",
     "activities",
     "activity_catalog_installations",
     "activity_changelog_entries",
+    "activity_runs",
+    "activity_run_checkpoints",
+    "activity_run_idempotency",
+    "pipeline_runs",
+    "pipeline_run_steps",
 }
 
 
@@ -113,6 +120,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.activity_controller,
             ActivityController,
+        )
+        assert isinstance(
+            app.state.activity_run_controller,
+            ActivityRunController,
         )
         assert isinstance(
             app.state.loop_run_controller,
@@ -206,6 +217,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0026_persona_models",
         "0027_pipeline_step_dependencies",
         "0028_rename_pipeline_dependency_success_condition",
+        "0029_activity_runs",
+        "0030_pipeline_runs",
+        "0031_linked_services",
+            "0032_persona_linked_service_selections",
     ]
     assert activity_rows == []
 

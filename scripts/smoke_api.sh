@@ -14,6 +14,7 @@ WORKSPACE_ID="${WORKSPACE_ID:-}"
 SMOKE_PROVIDER_ID="${SMOKE_PROVIDER_ID:-together}"
 SMOKE_PROVIDER_BASE_URL="${SMOKE_PROVIDER_BASE_URL:-https://api.together.xyz/v1}"
 SMOKE_PROVIDER_API_KEY="${SMOKE_PROVIDER_API_KEY:-}"
+SMOKE_LINKED_SERVICE_NAME="${SMOKE_LINKED_SERVICE_NAME:-smoke_linked_service}"
 
 SMOKE_MODEL_ID="${SMOKE_MODEL_ID:-}"
 SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
@@ -24,9 +25,11 @@ ACTIVITY_ID=""
 ACTIVITY_RUN_ID=""
 ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
+PIPELINE_RUN_ID=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
 PROVIDER_STATE_CAPTURED=0
+LINKED_SERVICE_ID=""
 CLEANUP_STARTED=0
 
 CURL_HEADERS=(
@@ -275,6 +278,10 @@ cleanup() {
             >/dev/null
     fi
 
+    if [[ -n "${LINKED_SERVICE_ID}" ]]; then
+        request DELETE "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
+    fi
+
     if [[ "${exit_code}" != "0" ]]; then
         log "Smoke test failed with exit code ${exit_code}"
     fi
@@ -301,6 +308,8 @@ PROVIDER_WAS_ENABLED="${provider_enabled}"
 PROVIDER_STATE_CAPTURED=1
 
 request GET "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
+request GET "/catalog/providers" >/dev/null
+request GET "/catalog/models" >/dev/null
 
 if [[ "${provider_configured}" == "0" ]]; then
     if [[ "${provider_requires_key}" == "1" \
@@ -323,6 +332,29 @@ request \
     "/providers/${SMOKE_PROVIDER_ID}" \
     '{"enabled": false}' \
     >/dev/null
+
+log "Checking linked services"
+
+linked_service_response="$(
+    request \
+        POST \
+        "/linked-services" \
+        "$(python3 - "${SMOKE_LINKED_SERVICE_NAME}" "${SMOKE_PROVIDER_ID}" "${SMOKE_PROVIDER_API_KEY}" "${SMOKE_PROVIDER_BASE_URL}" <<'PY'
+import json
+import sys
+
+name, provider_type, api_key, base_url = sys.argv[1:]
+config = {"base_url": base_url}
+if api_key:
+    config["api_key"] = api_key
+print(json.dumps({"name": name, "provider_type": provider_type, "config": config}))
+PY
+)"
+)"
+LINKED_SERVICE_ID="$(printf '%s' "${linked_service_response}" | json_field id)"
+request GET "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
+request PATCH "/linked-services/${LINKED_SERVICE_ID}" '{"enabled":false}' >/dev/null
+request GET "/linked-services" >/dev/null
 request \
     PATCH \
     "/providers/${SMOKE_PROVIDER_ID}" \
@@ -548,6 +580,13 @@ PIPELINE_ID="$(
 
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
+pipeline_run_response="$(
+    request POST "/pipelines/${PIPELINE_ID}/runs" \
+        '{"input":"Produce a pipeline smoke-test answer."}'
+)"
+PIPELINE_RUN_ID="$(printf '%s' "${pipeline_run_response}" | json_field "id")"
+request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" >/dev/null
+request POST "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/continue" '{}' >/dev/null
 request \
     PATCH \
     "/pipelines/${PIPELINE_ID}" \

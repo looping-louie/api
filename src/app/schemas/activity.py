@@ -12,7 +12,7 @@ from .loop import (
     LoopOutputContractSchema,
     LoopStopConditionsSchema,
 )
-from .shared import ListResponse, NonEmptyString, RequestSchema, ResponseSchema
+from .shared import ListResponse, RequestSchema, ResourceName, ResponseSchema
 
 
 ActivityStatusValue = Literal['active', 'disabled', 'archived']
@@ -35,6 +35,15 @@ class DirectLoopActivityConfig(RequestSchema):
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
 
+    @model_validator(mode='after')
+    def validate_roles(self) -> 'DirectLoopActivityConfig':
+        """Require one generator and no review or aggregation roles."""
+
+        counts = _role_counts(self.agents)
+        if counts != {'generator': 1, 'reviewer': 0, 'aggregator': 0}:
+            raise ValueError('Direct loop requires exactly one generator only.')
+        return self
+
 
 class RefinementLoopActivityConfig(RequestSchema):
     """Configuration for a refinement loop activity."""
@@ -43,6 +52,15 @@ class RefinementLoopActivityConfig(RequestSchema):
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
 
+    @model_validator(mode='after')
+    def validate_roles(self) -> 'RefinementLoopActivityConfig':
+        """Require one generator, one or more reviewers, and no aggregator."""
+
+        counts = _role_counts(self.agents)
+        if counts['generator'] != 1 or counts['reviewer'] < 1 or counts['aggregator']:
+            raise ValueError('Refinement loop requires one generator and one or more reviewers only.')
+        return self
+
 
 class RoundtableLoopActivityConfig(RequestSchema):
     """Configuration for a roundtable loop activity."""
@@ -50,6 +68,24 @@ class RoundtableLoopActivityConfig(RequestSchema):
     stop_conditions: LoopStopConditionsSchema
     agents: list[LoopAgentSchema]
     output_contract: LoopOutputContractSchema
+
+    @model_validator(mode='after')
+    def validate_roles(self) -> 'RoundtableLoopActivityConfig':
+        """Require multiple generators, one aggregator, and no reviewers."""
+
+        counts = _role_counts(self.agents)
+        if counts['generator'] < 2 or counts['reviewer'] or counts['aggregator'] != 1:
+            raise ValueError('Roundtable loop requires two or more generators and one aggregator only.')
+        return self
+
+
+def _role_counts(agents: list[LoopAgentSchema]) -> dict[str, int]:
+    """Count each supported agent role for loop-cardinality validation."""
+
+    return {
+        role: sum(agent.role == role for agent in agents)
+        for role in ('generator', 'reviewer', 'aggregator')
+    }
 
 
 class ApprovalActivityConfig(RequestSchema):
@@ -92,7 +128,7 @@ def validate_activity_config(
 class ActivityCreateRequest(RequestSchema):
     """Request body for creating an activity."""
 
-    name: NonEmptyString
+    name: ResourceName
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
@@ -118,7 +154,7 @@ class ActivityCreateRequest(RequestSchema):
 class ActivityPatchRequest(RequestSchema):
     """Mutable activity fields accepted by PATCH."""
 
-    name: NonEmptyString | None = None
+    name: ResourceName | None = None
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None

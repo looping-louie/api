@@ -15,6 +15,15 @@ NonEmptyString = Annotated[
     Field(min_length=1),
 ]
 
+ResourceName = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=140,
+        pattern=r'^[\p{L}\p{N}_][^.+?/<>*%&:\s]*$',
+    ),
+]
+
 PositiveInteger = Annotated[
     int,
     Field(gt=0, strict=True),

@@ -13,6 +13,8 @@ from src.app.schemas.pipeline import (
     PipelineCreateRequest,
     PipelineListResponse,
     PipelinePatchRequest,
+    PipelineRunCreateRequest,
+    PipelineRunResponse,
     PipelineResponse,
     PipelineStatusValue,
 )
@@ -113,6 +115,64 @@ async def get_pipeline(
     return await controller.get(
         user_id=context.user_id,
         pipeline_id=pipeline_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    '/{pipeline_id}/runs',
+    response_model=PipelineRunResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary='Create pipeline run',
+)
+async def create_pipeline_run(
+    payload: PipelineRunCreateRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+) -> PipelineRunResponse:
+    """Create one dependency-aware pipeline execution."""
+
+    return await controller.create_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, payload=payload,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.get(
+    '/{pipeline_id}/runs/{run_id}',
+    response_model=PipelineRunResponse,
+    summary='Get pipeline run',
+)
+async def get_pipeline_run(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunResponse:
+    """Return a pipeline execution and its selected child run."""
+
+    return await controller.get_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    '/{pipeline_id}/runs/{run_id}/continue',
+    response_model=PipelineRunResponse,
+    summary='Continue pipeline run',
+)
+async def continue_pipeline_run(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunResponse:
+    """Schedule after the selected child run reaches a terminal state."""
+
+    return await controller.continue_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
         requested_workspace_id=context.requested_workspace_id,
     )
 

@@ -36,14 +36,3 @@ class LoopRunUnavailableError(Exception):
         super().__init__(f"Loop '{loop_id}' with status '{loop_status}' cannot run.")
         self.loop_id = loop_id
         self.loop_status = loop_status
-
-
-class ActivityRunUnavailableError(Exception):
-    """Raised when an activity cannot start or access an execution."""
-
-    def __init__(self, *, activity_id: str, reason: str) -> None:
-        """Store the activity state that prevents execution."""
-
-        super().__init__(f"Activity '{activity_id}' cannot run: {reason}.")
-        self.activity_id = activity_id
-        self.reason = reason

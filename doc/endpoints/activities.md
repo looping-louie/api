@@ -5,9 +5,10 @@ created directly or generated when an inline definition is supplied while
 creating or updating a Pipeline. The current supported types are `approval`,
 `quiz`, `direct_loop`, `refinement_loop`, and `roundtable_loop`. Approval
 activities represent human approval, and quiz activities collect human quiz
-responses. Direct and roundtable loop activities can create persisted runs;
-refinement, approval, and quiz execution are reserved for future pipeline
-orchestration.
+responses. Direct, refinement, and roundtable loop activities can create
+persisted runs. Refinement runs add reviewer approval and retry checkpoints
+after local application. Approval and quiz execution are reserved for future
+pipeline orchestration.
 
 ## Resource endpoints
 
@@ -24,6 +25,42 @@ Activity creation specifies the sole `type` discriminator. `config` does not
 include a `type` field; its required shape is selected by the top-level type.
 The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
+
+## Activity Definition Schema
+
+`POST /api/v1/activities` accepts the following JSON properties. `PATCH`
+accepts the mutable properties marked as optional; it rejects an empty request.
+
+| Property | JSON type | Create | Update | Restrictions |
+| -------- | --------- | ------ | ------ | ------------ |
+| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `description` | String | Required | Optional | May be empty. |
+| `type` | String | Required | Not allowed | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. Immutable after creation. |
+| `config` | Object | Required | Optional | Shape is selected by `type`. Does not contain a nested `type` property. |
+| `status` | String | Not allowed | Optional | One of `active`, `disabled`, or `archived`. |
+
+The following table describes the required `config` shape for every Activity
+type.
+
+| Activity type | Required `config` properties | Restrictions |
+| ------------- | ---------------------------- | ------------ |
+| `approval` | None | `config` must be an empty object. |
+| `quiz` | `quiz` | `quiz` is an object containing the quiz definition. |
+| `direct_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator; no reviewer or aggregator. |
+| `refinement_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator, at least one reviewer, and no aggregator. |
+| `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
+
+Every loop agent requires a `persona_id` and `role`. Its `model_id` is required
+for legacy Personas. It may be omitted only when the referenced Persona has a
+linked-service model selection and is visible in the selected workspace;
+execution then uses that Persona selection.
+
+## Activity runs
+
+Direct, refinement, and roundtable loop activities expose persisted executions at
+`/api/v1/activities/{activity_id}/runs`. Each run response identifies its
+owning definition with `activity_id`; it does not expose a legacy loop
+identifier.
 
 ## List activities
 
@@ -128,7 +165,8 @@ a supported `type`, and a configuration matching that type.
 
 Use a direct loop for an executable single-agent task. `max_iterations`,
 `max_tokens`, and `timeout_seconds` are optional individually, but at least one
-stop condition is required.
+stop condition and exactly one `generator` agent are required. Direct loops do
+not allow `reviewer` or `aggregator` agents.
 
 ```http
 POST /api/v1/activities
@@ -198,7 +236,8 @@ Example response (`201 Created`):
 ### Roundtable loop
 
 Use a roundtable loop for an executable discussion between specialised agents.
-Agents can use the `generator`, `reviewer`, and `aggregator` roles.
+It requires at least two `generator` agents and exactly one `aggregator` agent.
+Roundtable loops do not allow `reviewer` agents.
 
 ```json
 {
@@ -217,8 +256,8 @@ Agents can use the `generator`, `reviewer`, and `aggregator` roles.
       },
       {
         "model_id": "gpt-5",
-        "persona_id": "quality-reviewer",
-        "role": "reviewer"
+        "persona_id": "quality-engineer",
+        "role": "generator"
       },
       {
         "model_id": "gpt-5",
@@ -266,8 +305,8 @@ Example response (`201 Created`):
       },
       {
         "model_id": "gpt-5",
-        "persona_id": "quality-reviewer",
-        "role": "reviewer"
+        "persona_id": "quality-engineer",
+        "role": "generator"
       },
       {
         "model_id": "gpt-5",
@@ -301,9 +340,10 @@ Example response (`201 Created`):
 
 ### Refinement loop
 
-Use a refinement loop to store a multi-pass improvement definition. It has the
-same configuration shape as executable loop types, but cannot currently create
-runs.
+Use a refinement loop for an iterative improvement task. It requires exactly
+one `generator`, at least one `reviewer`, and no `aggregator`. After applying a
+generated plan, reviewers approve the changed files or request a new iteration
+within the configured `max_iterations` limit.
 
 ```json
 {
@@ -570,7 +610,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "run-implementation-001",
-  "loop_id": "activity-implementation",
+  "activity_id": "activity-implementation",
   "input": "Implement the requested change.",
   "status": "in_progress",
   "state": "awaiting_snapshot",
@@ -613,8 +653,8 @@ Example response (`201 Created`):
 }
 ```
 
-Checkpoint responses and continuation payloads are identical to the legacy
-loop-run protocol. Requests for inactive or non-loop activities return
+Checkpoint responses and continuation payloads use the activity-run protocol.
+Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`.
 
 ## List activity changelog entries

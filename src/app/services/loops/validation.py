@@ -109,8 +109,10 @@ def normalize_agents(
                     if item.id is not None
                     else id_factory()
                 ),
-                model_id=require_text(
-                    item.model_id, f"agents.{position}.model_id"
+                model_id=(
+                    require_text(item.model_id, f"agents.{position}.model_id")
+                    if item.model_id is not None
+                    else None
                 ),
                 persona_id=require_text(
                     item.persona_id, f"agents.{position}.persona_id"
@@ -184,16 +186,17 @@ def validate_loop(document: LoopDocument) -> None:
     }
     invalid = False
     if document.flow == "direct":
-        invalid = not document.agents or counts["aggregator"] > 1
+        invalid = counts != {'generator': 1, 'reviewer': 0, 'aggregator': 0}
     elif document.flow == "refinement":
         invalid = (
             counts["generator"] != 1
             or counts["reviewer"] < 1
-            or counts["aggregator"] > 1
+            or counts["aggregator"] != 0
         )
     elif document.flow == "roundtable":
         invalid = (
             counts["generator"] < 2
+            or counts["reviewer"] != 0
             or counts["aggregator"] != 1
         )
     if invalid:

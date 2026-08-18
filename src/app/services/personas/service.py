@@ -24,6 +24,7 @@ from ..shared.reference_resolver import (
     ReferenceResolver,
     ResourceReference,
 )
+from ..linked_services import LinkedServiceService
 from .types import (
     AvailablePersonaDocument,
     AvailablePersonaSummary,
@@ -32,11 +33,40 @@ from .types import (
     PersonaCreate,
     PersonaDocument,
     PersonaModelRepository,
+    PersonaLinkedServiceSelection,
+    PersonaLinkedServiceSelectionRepository,
     PersonaResultDocument,
-    PersonaSummaryDocument,
     PersonaSkillRepository,
     PersonaUpdate,
 )
+
+
+class _AbsentPersonaLinkedServiceSelectionRepository:
+    """Provide legacy callers with an empty linked-service selection store."""
+
+    async def get_for_persona(
+        self,
+        *,
+        persona_id: str,
+    ) -> PersonaLinkedServiceSelection | None:
+        """Return no selection for legacy service construction."""
+
+        del persona_id
+        return None
+
+    async def replace_for_persona(
+        self,
+        *,
+        persona_id: str,
+        selection: PersonaLinkedServiceSelection | None,
+    ) -> None:
+        """Ignore absent selections for legacy service construction."""
+
+        del persona_id
+        if selection is not None:
+            raise RuntimeError(
+                'Linked-service selection persistence is unavailable.'
+            )
 
 
 class PersonaService:
@@ -50,6 +80,8 @@ class PersonaService:
         persona_skill_repository: PersonaSkillRepository,
         persona_model_repository: PersonaModelRepository,
         reference_resolver: ReferenceResolver,
+        persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository | None = None,
+        linked_service_service: LinkedServiceService | None = None,
     ) -> None:
         """Initialize workspace resolution and shared instruction behavior."""
 
@@ -57,6 +89,11 @@ class PersonaService:
         self._instruction_service = instruction_service
         self._persona_skill_repository = persona_skill_repository
         self._persona_model_repository = persona_model_repository
+        self._persona_linked_service_selection_repository = (
+            persona_linked_service_selection_repository
+            or _AbsentPersonaLinkedServiceSelectionRepository()
+        )
+        self._linked_service_service = linked_service_service
         self._reference_resolver = reference_resolver
 
     async def list(
@@ -93,6 +130,11 @@ class PersonaService:
             model = await self._persona_model_repository.get_for_persona(
                 persona_id=summary.id,
             )
+            linked_service_selection = (
+                await self._persona_linked_service_selection_repository.get_for_persona(
+                    persona_id=summary.id,
+                )
+            )
             items.append(
                 AvailablePersonaSummary(
                     **{
@@ -100,6 +142,7 @@ class PersonaService:
                         for field in fields(summary)
                     },
                     model=model,
+                    linked_service_selection=linked_service_selection,
                 )
             )
         return AvailableInstructionPage(items=tuple(items), total=page.total)
@@ -174,6 +217,10 @@ class PersonaService:
             workspace_id=workspace_id,
             model_id=payload.model,
         )
+        await self._require_linked_service_selection(
+            workspace_id=workspace_id,
+            selection=payload.linked_service_selection,
+        )
 
         document = await self._instruction_service.create(
             workspace_id=workspace_id,
@@ -193,9 +240,14 @@ class PersonaService:
             persona_id=document.id,
             model_id=payload.model,
         )
+        await self._persona_linked_service_selection_repository.replace_for_persona(
+            persona_id=document.id,
+            selection=payload.linked_service_selection,
+        )
         return self._to_persona_document(
             document,
             model=payload.model,
+            linked_service_selection=payload.linked_service_selection,
             skill_ids=payload.skill_ids,
         )
 
@@ -222,6 +274,11 @@ class PersonaService:
             workspace_id=workspace_id,
             model_id=payload.model,
         )
+        if payload.linked_service_selection_supplied:
+            await self._require_linked_service_selection(
+                workspace_id=workspace_id,
+                selection=payload.linked_service_selection,
+            )
 
         document = await self._instruction_service.update(
             workspace_id=workspace_id,
@@ -244,6 +301,11 @@ class PersonaService:
             await self._persona_model_repository.replace_for_persona(
                 persona_id=persona_id,
                 model_id=payload.model,
+            )
+        if payload.linked_service_selection_supplied:
+            await self._persona_linked_service_selection_repository.replace_for_persona(
+                persona_id=persona_id,
+                selection=payload.linked_service_selection,
             )
         return await self._with_skill_ids(document)
 
@@ -294,9 +356,15 @@ class PersonaService:
         model = await self._persona_model_repository.get_for_persona(
             persona_id=document.id,
         )
+        linked_service_selection = (
+            await self._persona_linked_service_selection_repository.get_for_persona(
+                persona_id=document.id,
+            )
+        )
         return self._to_persona_document(
             document,
             model=model,
+            linked_service_selection=linked_service_selection,
             skill_ids=skill_ids,
         )
 
@@ -305,6 +373,7 @@ class PersonaService:
         document: PersonaBaseDocument,
         *,
         model: str | None,
+        linked_service_selection: PersonaLinkedServiceSelection | None,
         skill_ids: tuple[str, ...],
     ) -> PersonaResultDocument:
         """Convert a generic instruction into its persona representation."""
@@ -318,12 +387,14 @@ class PersonaService:
             return AvailablePersonaDocument(
                 **values,
                 model=model,
+                linked_service_selection=linked_service_selection,
                 skill_ids=skill_ids,
             )
 
         return PersonaDocument(
             **values,
             model=model,
+            linked_service_selection=linked_service_selection,
             skill_ids=skill_ids,
         )
 
@@ -340,6 +411,24 @@ class PersonaService:
         await self._reference_resolver.require_many(
             workspace_id=workspace_id,
             references=[ResourceReference("model", model_id)],
+        )
+
+    async def _require_linked_service_selection(
+        self,
+        *,
+        workspace_id: str,
+        selection: PersonaLinkedServiceSelection | None,
+    ) -> None:
+        """Ensure the selected linked service can deploy the requested model."""
+
+        if selection is None:
+            return
+        if self._linked_service_service is None:
+            raise RuntimeError('Linked-service selection validation is unavailable.')
+        await self._linked_service_service.require_available_selection(
+            workspace_id=workspace_id,
+            service_id=selection.linked_service_id,
+            model_id=selection.model_id,
         )
 
     async def _resolve_workspace_id(

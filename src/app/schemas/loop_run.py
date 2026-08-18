@@ -110,3 +110,25 @@ class LoopRunResponse(ResponseSchema):
 
 class LoopRunListResponse(ListResponse[LoopRunResponse]):
     """Fixed-size offset page of loop executions."""
+
+
+class ActivityRunResponse(ResponseSchema):
+    """Persisted execution owned by one activity."""
+
+    id: str
+    activity_id: str
+    input: str
+    status: LoopRunStatusValue
+    state: LoopRunStateValue
+    next_action: LoopRunActionValue
+    iteration: PositiveInteger
+    token_revision: int
+    continuation_token: str | None
+    created_at: datetime
+    created_by: str
+    updated_at: datetime
+    payload: dict[str, object] = Field(default_factory=dict)
+
+
+class ActivityRunListResponse(ListResponse[ActivityRunResponse]):
+    """Fixed-size offset page of activity executions."""
