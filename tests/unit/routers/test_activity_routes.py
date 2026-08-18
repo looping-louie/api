@@ -214,7 +214,17 @@ def test_activity_rejects_agent_without_model_or_persona_selection(
 ) -> None:
     """Activities require one execution source for every loop agent."""
 
-    client = build_client(tenant_service=tenant_service)
+    reference_repository = FakeReferenceRepository()
+    reference_repository.seed(
+        workspace_id='workspace-1',
+        resource_type='persona',
+        resource_id='persona-1',
+        value={'id': 'persona-1'},
+    )
+    client = build_client(
+        tenant_service=tenant_service,
+        reference_repository=reference_repository,
+    )
     payload = direct_loop_payload()
     payload['config']['agents'][0].pop('model_id')
 
@@ -225,6 +235,21 @@ def test_activity_rejects_agent_without_model_or_persona_selection(
     assert response.json()['error']['details']['reason'].endswith(
         'Persona has no linked-service selection'
     )
+
+
+def test_activity_rejects_unavailable_persona_before_selection_check(
+    tenant_service: TenantService,
+) -> None:
+    """Selection-only agents resolve Personas before validating selections."""
+
+    client = build_client(tenant_service=tenant_service)
+    payload = direct_loop_payload()
+    payload['config']['agents'][0].pop('model_id')
+
+    response = client.post('/api/v1/activities', json=payload)
+
+    assert response.status_code == 404
+    assert response.json()['error']['code'] == 'referenced_resource_not_found'
 
 
 @pytest.mark.asyncio

@@ -174,6 +174,10 @@ class ActivityService:
             persona_id = agent.get('persona_id')
             if not isinstance(persona_id, str):
                 continue
+            await self._reference_resolver.require_many(
+                workspace_id=workspace_id,
+                references=[ResourceReference('persona', persona_id)],
+            )
             selection = (
                 await self._persona_linked_service_selection_repository.get_for_persona(
                     persona_id=persona_id,
@@ -187,10 +191,6 @@ class ActivityService:
                         'Persona has no linked-service selection'
                     ),
                 )
-            await self._reference_resolver.require_many(
-                workspace_id=workspace_id,
-                references=[ResourceReference('persona', persona_id)],
-            )
 
     def _entry(self, document: ActivityDocument, actor_id: str, change_type: Literal['created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'], changed_at: datetime, *, diff: dict[str, object] | None = None, content: dict[str, object] | None = None) -> ActivityChangelogEntry:
         """Build one immutable activity history entry."""
