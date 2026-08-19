@@ -17,6 +17,7 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Queues a pipeline run for a runtime worker. |
 | `POST` | `/api/v1/pipelines/runs/claim` | Atomically claims the next queued workspace run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |

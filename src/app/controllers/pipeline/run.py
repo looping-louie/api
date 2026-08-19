@@ -9,6 +9,7 @@ from src.app.schemas.pipeline import (
     PipelineRunClaimRequest,
     PipelineRunClaimResponse,
     PipelineRunCreateRequest,
+    PipelineRunLeaseResponse,
     PipelineRunResponse,
     PipelineRunStepResponse,
 )
@@ -64,6 +65,21 @@ class PipelineRunController:
             requested_workspace_id=requested_workspace_id,
         )
         return self._response(document, child)
+
+    async def renew_lease(
+        self, *, user_id: str, pipeline_id: str, run_id: str,
+        lease_token: str, requested_workspace_id: str | None = None,
+    ) -> PipelineRunLeaseResponse:
+        """Extend the active worker lease for one Pipeline run by one minute."""
+
+        document = await self._require_service().renew_lease(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            lease_token=lease_token, lease_duration=timedelta(minutes=1),
+            requested_workspace_id=requested_workspace_id,
+        )
+        if document.lease_expires_at is None:
+            raise RuntimeError('Renewed Pipeline run is missing lease expiration.')
+        return PipelineRunLeaseResponse(lease_expires_at=document.lease_expires_at)
 
     async def continue_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,

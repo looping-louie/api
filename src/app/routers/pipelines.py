@@ -16,6 +16,8 @@ from src.app.schemas.pipeline import (
     PipelineListResponse,
     PipelinePatchRequest,
     PipelineRunCreateRequest,
+    PipelineRunLeaseRenewRequest,
+    PipelineRunLeaseResponse,
     PipelineRunResponse,
     PipelineResponse,
     PipelineStatusValue,
@@ -178,6 +180,27 @@ async def get_pipeline_run(
 
     return await controller.get_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    '/{pipeline_id}/runs/{run_id}/lease',
+    response_model=PipelineRunLeaseResponse,
+    summary='Renew pipeline run lease',
+)
+async def renew_pipeline_run_lease(
+    payload: PipelineRunLeaseRenewRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunLeaseResponse:
+    """Extend an active worker lease before continuing runtime execution."""
+
+    return await controller.renew_lease(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        lease_token=payload.lease_token,
         requested_workspace_id=context.requested_workspace_id,
     )
 

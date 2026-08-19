@@ -150,6 +150,39 @@ class SqlitePipelineRunRepository:
                 await connection.rollback()
                 raise
 
+    async def renew_lease(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_lease_token: str,
+        now: datetime,
+    ) -> bool:
+        """Extend an unexpired lease only while its worker token remains current."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                '''
+                UPDATE pipeline_runs
+                SET lease_expires_at = ?, updated_at = ?
+                WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                  AND lease_token = ? AND lease_expires_at > ?
+                  AND status IN ('claimed', 'in_progress')
+                ''',
+                (
+                    document.lease_expires_at.isoformat()
+                    if document.lease_expires_at is not None else None,
+                    document.updated_at.isoformat(), document.workspace_id,
+                    document.pipeline_id, document.id, expected_lease_token,
+                    now.isoformat(),
+                ),
+            )
+            try:
+                renewed = cursor.rowcount == 1
+            finally:
+                await cursor.close()
+            await connection.commit()
+            return renewed
+
     async def transition(
         self,
         *,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from src.app.models.activity_run import ActivityRunDocument
@@ -47,6 +48,16 @@ class PipelineRunRepository(Protocol):
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically assign a worker lease and optionally create a child run."""
+        raise NotImplementedError
+
+    async def renew_lease(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_lease_token: str,
+        now: datetime,
+    ) -> bool:
+        """Extend an active worker lease only when its token still matches."""
         raise NotImplementedError
 
     async def transition(

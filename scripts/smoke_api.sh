@@ -26,6 +26,7 @@ ACTIVITY_RUN_ID=""
 ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
 PIPELINE_RUN_ID=""
+PIPELINE_RUN_LEASE_TOKEN=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
 PROVIDER_STATE_CAPTURED=0
@@ -586,7 +587,17 @@ pipeline_run_response="$(
 )"
 PIPELINE_RUN_ID="$(printf '%s' "${pipeline_run_response}" | json_field "id")"
 request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" >/dev/null
-request POST "/pipelines/runs/claim" '{"worker_id":"smoke-runtime"}' >/dev/null
+pipeline_claim_response="$(
+    request POST "/pipelines/runs/claim" '{"worker_id":"smoke-runtime"}'
+)"
+PIPELINE_RUN_LEASE_TOKEN="$(
+    printf '%s' "${pipeline_claim_response}" | json_field "lease_token"
+)"
+request \
+    POST \
+    "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/lease" \
+    "{\"lease_token\":\"${PIPELINE_RUN_LEASE_TOKEN}\"}" \
+    >/dev/null
 request POST "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/continue" '{}' >/dev/null
 request \
     PATCH \

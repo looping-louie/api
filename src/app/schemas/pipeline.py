@@ -125,6 +125,12 @@ class PipelineRunClaimRequest(RequestSchema):
     worker_id: NonEmptyString
 
 
+class PipelineRunLeaseRenewRequest(RequestSchema):
+    """Active worker token required to extend a claimed Pipeline run lease."""
+
+    lease_token: NonEmptyString
+
+
 class PipelineRunStepResponse(ResponseSchema):
     """Current outcome of one frozen pipeline step."""
 
@@ -152,6 +158,12 @@ class PipelineRunClaimResponse(ResponseSchema):
 
     run: PipelineRunResponse
     lease_token: str
+
+
+class PipelineRunLeaseResponse(ResponseSchema):
+    """Current expiration returned after a successful worker lease renewal."""
+
+    lease_expires_at: datetime
 
 
 class PipelineChangelogEntryResponse(ResponseSchema):

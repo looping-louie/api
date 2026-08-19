@@ -148,6 +148,40 @@ class PipelineRunService:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         return document, await self._current_child(document)
 
+    async def renew_lease(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        lease_token: str,
+        lease_duration: timedelta,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineRunDocument:
+        """Extend an active Pipeline worker lease by the configured duration."""
+
+        document, _ = await self.get(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        now = self._clock()
+        token = self._require_text(lease_token)
+        renewed = replace(
+            document,
+            lease_expires_at=now + lease_duration,
+            updated_at=now,
+        )
+        if not await self._repository.renew_lease(
+            document=renewed,
+            expected_lease_token=token,
+            now=now,
+        ):
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason='lease is no longer active',
+            )
+        return renewed
+
     async def continue_run(
         self,
         *,
