@@ -88,6 +88,38 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     assert persisted is True
     assert fetched == claimed
 
+    successor = replace(
+        child,
+        id='activity-run-2',
+        continuation_token='token-2',
+    )
+    advanced = replace(
+        claimed,
+        current_activity_run_id=successor.id,
+        steps=(
+            replace(
+                claimed.steps[0],
+                activity_run_id=successor.id,
+                updated_at=timestamp + timedelta(seconds=1),
+            ),
+        ),
+        updated_at=timestamp + timedelta(seconds=1),
+    )
+
+    transitioned = await repository.transition(
+        document=advanced,
+        expected_current_activity_run_id=child.id,
+        expected_lease_token='lease-1',
+        now=timestamp,
+        activity_run=successor,
+    )
+    fetched_successor = await repository.get(
+        workspace_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
+    )
+
+    assert transitioned is True
+    assert fetched_successor == advanced
+
 
 def _pipeline_entry(pipeline: PipelineDocument, timestamp: datetime) -> object:
     """Build the changelog entry required by Pipeline persistence."""

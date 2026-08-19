@@ -12,6 +12,7 @@ from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,
     PipelineRunClaimRequest,
     PipelineRunClaimResponse,
+    PipelineRunContinueRequest,
     PipelineCreateRequest,
     PipelineListResponse,
     PipelinePatchRequest,
@@ -211,6 +212,7 @@ async def renew_pipeline_run_lease(
     summary='Continue pipeline run',
 )
 async def continue_pipeline_run(
+    payload: PipelineRunContinueRequest,
     context: ContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
@@ -220,6 +222,7 @@ async def continue_pipeline_run(
 
     return await controller.continue_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        payload=payload,
         requested_workspace_id=context.requested_workspace_id,
     )
 

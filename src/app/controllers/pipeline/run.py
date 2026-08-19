@@ -8,6 +8,7 @@ from src.app.models.pipeline_run import PipelineRunDocument
 from src.app.schemas.pipeline import (
     PipelineRunClaimRequest,
     PipelineRunClaimResponse,
+    PipelineRunContinueRequest,
     PipelineRunCreateRequest,
     PipelineRunLeaseResponse,
     PipelineRunResponse,
@@ -83,12 +84,14 @@ class PipelineRunController:
 
     async def continue_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,
+        payload: PipelineRunContinueRequest,
         requested_workspace_id: str | None = None,
     ) -> PipelineRunResponse:
         """Schedule after the current child activity run reaches a terminal state."""
 
         document, child = await self._require_service().continue_run(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            lease_token=payload.lease_token,
             requested_workspace_id=requested_workspace_id,
         )
         return self._response(document, child)

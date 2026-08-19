@@ -66,6 +66,8 @@ class PipelineRunRepository(Protocol):
         *,
         document: PipelineRunDocument,
         expected_current_activity_run_id: str | None,
+        expected_lease_token: str,
+        now: datetime,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically replace a run after confirming its current child."""

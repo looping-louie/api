@@ -189,6 +189,7 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
+        lease_token: str,
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Record the current child outcome and schedule the next eligible step."""
@@ -197,6 +198,17 @@ class PipelineRunService:
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
+        now = self._clock()
+        token = self._require_text(lease_token)
+        if (
+            document.lease_token != token
+            or document.lease_expires_at is None
+            or document.lease_expires_at <= now
+        ):
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason='lease is no longer active',
+            )
         if document.status not in ('claimed', 'in_progress') or child is None:
             return document, child
         if child.status == 'in_progress':
@@ -206,6 +218,8 @@ class PipelineRunService:
         if await self._repository.transition(
             document=selected,
             expected_current_activity_run_id=child.id,
+            expected_lease_token=token,
+            now=now,
             activity_run=next_child,
         ):
             return selected, next_child

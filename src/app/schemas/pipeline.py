@@ -131,6 +131,12 @@ class PipelineRunLeaseRenewRequest(RequestSchema):
     lease_token: NonEmptyString
 
 
+class PipelineRunContinueRequest(RequestSchema):
+    """Active worker token required to schedule after a terminal child run."""
+
+    lease_token: NonEmptyString
+
+
 class PipelineRunStepResponse(ResponseSchema):
     """Current outcome of one frozen pipeline step."""
 

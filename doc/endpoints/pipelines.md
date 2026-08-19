@@ -602,9 +602,10 @@ minute. When no run is available, the API returns `204 No Content`.
 
 The runtime executes `current_activity_run` through its local repository,
 filesystem, and Git checkpoints. After that child reaches a terminal state,
-call `POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` without a
-request body. The API evaluates `success` and `failure` dependencies, skips
-impossible branches, and selects the next eligible step in declared order.
+call `POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` with the
+active worker lease token. The API evaluates `success` and `failure`
+dependencies, skips impossible branches, and selects the next eligible step in
+declared order.
 
 Before each child checkpoint and before scheduling its next child, the runtime
 renews the lease. Child checkpoint requests include the Pipeline run ID and
@@ -613,8 +614,16 @@ lease token, which the API verifies atomically with the checkpoint transition.
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/continue
 X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "lease_token": "runtime-lease-token"
+}
 ```
 
 The response is another Pipeline Run representation. It contains the next
 `current_activity_run` when work remains, or `null` after every step has been
-completed, failed, or skipped.
+completed, failed, or skipped. A missing, stale, or expired lease token returns
+`409 pipeline_run_unavailable`.

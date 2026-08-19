@@ -189,6 +189,8 @@ class SqlitePipelineRunRepository:
         *,
         document: PipelineRunDocument,
         expected_current_activity_run_id: str | None,
+        expected_lease_token: str,
+        now: datetime,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Replace state only when no other scheduler changed its current child."""
@@ -196,12 +198,16 @@ class SqlitePipelineRunRepository:
         async with self._connect() as connection:
             try:
                 await connection.execute('BEGIN IMMEDIATE')
+                if activity_run is not None:
+                    await self._insert_activity_run(connection, activity_run)
                 cursor = await connection.execute(
                     '''
                     UPDATE pipeline_runs
                     SET status = ?, current_activity_run_id = ?, updated_at = ?
                     WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
                       AND current_activity_run_id IS ?
+                                            AND lease_token = ? AND lease_expires_at > ?
+                                            AND status IN ('claimed', 'in_progress')
                     ''',
                     (
                         document.status,
@@ -211,6 +217,8 @@ class SqlitePipelineRunRepository:
                         document.pipeline_id,
                         document.id,
                         expected_current_activity_run_id,
+                        expected_lease_token,
+                        now.isoformat(),
                     ),
                 )
                 try:
@@ -221,8 +229,6 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
-                if activity_run is not None:
-                    await self._insert_activity_run(connection, activity_run)
                 await connection.commit()
                 return True
             except Exception:

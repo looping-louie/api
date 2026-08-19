@@ -116,11 +116,19 @@ class InMemoryPipelineRunRepository:
     async def transition(
         self, *, document: PipelineRunDocument,
         expected_current_activity_run_id: str | None,
+        expected_lease_token: str,
+        now: datetime,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Persist a transition only for the currently scheduled child."""
 
-        if self.document is None or self.document.current_activity_run_id != expected_current_activity_run_id:
+        if (
+            self.document is None
+            or self.document.current_activity_run_id != expected_current_activity_run_id
+            or self.document.lease_token != expected_lease_token
+            or self.document.lease_expires_at is None
+            or self.document.lease_expires_at <= now
+        ):
             return False
         self.document = document
         if activity_run is not None:
@@ -334,7 +342,13 @@ async def test_completed_step_schedules_success_dependent_child(
     )
     advanced, second_child = await service.continue_run(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token='token',
     )
 
     assert second_child is not None and second_child.activity_id == second.id
     assert [step.status for step in advanced.steps] == ['completed', 'in_progress']
+    with pytest.raises(PipelineRunUnavailableError, match='lease is no longer active'):
+        await service.continue_run(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+            lease_token='stale-token',
+        )
