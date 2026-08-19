@@ -17,7 +17,9 @@ operations, and activity execution after it claims a queued pipeline run.
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the
 target repository directly, and the runtime does not make model or reviewer
-decisions.
+decisions. A claimed runtime worker must present its active lease token before
+it checkpoints an Activity child or advances Pipeline scheduling; the API
+rejects stale workers before either durable mutation.
 
 ## Repository structure
 

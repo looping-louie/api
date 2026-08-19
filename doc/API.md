@@ -19,6 +19,6 @@ The endpoint reference is organized by top-level router:
 - [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
   persists each supplied step as an independent Activity record.
 
-The API owns planning, generation, and reviewer decisions. The CLI owns local
-repository execution, including filesystem, Git, and workspace lifecycle
-operations.
+The API owns planning, generation, reviewer decisions, and durable execution
+state. The runtime owns local repository execution, including filesystem, Git,
+and workspace lifecycle operations. The CLI submits and manages API resources.
