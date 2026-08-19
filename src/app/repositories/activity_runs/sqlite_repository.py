@@ -245,6 +245,27 @@ class SqliteActivityRunRepository:
                 await connection.rollback()
                 raise
 
+    async def has_active_pipeline_lease(
+        self,
+        *,
+        workspace_id: str,
+        activity_run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        now: datetime,
+    ) -> bool:
+        """Return whether a Pipeline child has a valid current worker lease."""
+
+        async with self._connect() as connection:
+            return await self._has_active_pipeline_lease(
+                connection,
+                workspace_id=workspace_id,
+                activity_run_id=activity_run_id,
+                pipeline_run_id=pipeline_run_id,
+                lease_token=lease_token,
+                now=now,
+            )
+
     @staticmethod
     async def _has_active_pipeline_lease(
         connection: aiosqlite.Connection,

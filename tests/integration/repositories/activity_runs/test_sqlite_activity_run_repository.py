@@ -100,6 +100,14 @@ async def test_expired_pipeline_lease_cannot_advance_its_activity_child(
     )
     repository = SqliteActivityRunRepository(sqlite_database_path)
 
+    assert not await repository.has_active_pipeline_lease(
+        workspace_id='workspace-1',
+        activity_run_id='run-1',
+        pipeline_run_id='pipeline-run-1',
+        lease_token='lease-1',
+        now=timestamp,
+    )
+
     with pytest.raises(LoopRunInvalidTransitionError):
         await repository.transition(
             workspace_id='workspace-1', activity_id='activity-1', run_id='run-1',

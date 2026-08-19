@@ -40,6 +40,18 @@ class ActivityRunRepository(Protocol):
         """Return one activity-run page and its unpaginated total."""
         raise NotImplementedError
 
+    async def has_active_pipeline_lease(
+        self,
+        *,
+        workspace_id: str,
+        activity_run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        now: datetime,
+    ) -> bool:
+        """Return whether a Pipeline child has a valid current worker lease."""
+        raise NotImplementedError
+
     async def transition(
         self,
         *,

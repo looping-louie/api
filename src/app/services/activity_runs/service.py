@@ -9,6 +9,7 @@ from typing import Mapping
 
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
+from src.app.repositories.loop_runs.errors import LoopRunInvalidTransitionError
 from src.app.services.activities.service import ActivityService
 from src.app.services.activity_runs.types import ActivityRunUnavailableError
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
@@ -176,6 +177,14 @@ class ActivityRunService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
+        if not await self._repository.has_active_pipeline_lease(
+            workspace_id=workspace.workspace_id,
+            activity_run_id=document.id,
+            pipeline_run_id=pipeline_run_id,
+            lease_token=lease_token,
+            now=self._clock(),
+        ):
+            raise LoopRunInvalidTransitionError()
         context = dict(document.execution_context)
         if action == 'collect_snapshot':
             previous_review = context.get('review_result')
