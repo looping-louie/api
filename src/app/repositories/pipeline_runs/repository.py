@@ -45,6 +45,7 @@ class PipelineRunRepository(Protocol):
         *,
         document: PipelineRunDocument,
         expected_updated_at: datetime,
+        expected_current_activity_run_id: str | None,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically assign a worker lease and optionally create a child run."""

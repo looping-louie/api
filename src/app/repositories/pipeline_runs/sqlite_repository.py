@@ -106,6 +106,7 @@ class SqlitePipelineRunRepository:
         *,
         document: PipelineRunDocument,
         expected_updated_at: datetime,
+        expected_current_activity_run_id: str | None,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Assign a claim only while its observed queue state remains current."""
@@ -113,6 +114,8 @@ class SqlitePipelineRunRepository:
         async with self._connect() as connection:
             try:
                 await connection.execute('BEGIN IMMEDIATE')
+                if activity_run is not None:
+                    await self._insert_activity_run(connection, activity_run)
                 cursor = await connection.execute(
                     '''
                     UPDATE pipeline_runs
@@ -131,7 +134,7 @@ class SqlitePipelineRunRepository:
                         document.updated_at.isoformat(), document.workspace_id,
                         document.pipeline_id, document.id,
                         expected_updated_at.isoformat(),
-                        document.current_activity_run_id,
+                        expected_current_activity_run_id,
                     ),
                 )
                 try:
@@ -142,8 +145,6 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
-                if activity_run is not None:
-                    await self._insert_activity_run(connection, activity_run)
                 await connection.commit()
                 return True
             except Exception:

@@ -74,11 +74,16 @@ class InMemoryPipelineRunRepository:
 
     async def claim(
         self, *, document: PipelineRunDocument, expected_updated_at: datetime,
+        expected_current_activity_run_id: str | None,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Replace the observed run and persist an initial child when supplied."""
 
-        if self.document is None or self.document.updated_at != expected_updated_at:
+        if (
+            self.document is None
+            or self.document.updated_at != expected_updated_at
+            or self.document.current_activity_run_id != expected_current_activity_run_id
+        ):
             return False
         self.document = document
         if activity_run is not None:

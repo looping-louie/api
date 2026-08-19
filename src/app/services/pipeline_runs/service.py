@@ -119,6 +119,7 @@ class PipelineRunService:
         )
         if not await self._repository.claim(
             document=claimed, expected_updated_at=candidate.updated_at,
+            expected_current_activity_run_id=candidate.current_activity_run_id,
             activity_run=(
                 child
                 if candidate.current_activity_run_id is None
