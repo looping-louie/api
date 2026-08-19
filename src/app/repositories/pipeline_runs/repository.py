@@ -17,7 +17,7 @@ class PipelineRunRepository(Protocol):
         document: PipelineRunDocument,
         activity_run: ActivityRunDocument | None,
     ) -> PipelineRunDocument:
-        """Persist a pipeline run and its initial selected child, if any."""
+        """Persist a pipeline run and optionally create a child run."""
         raise NotImplementedError
 
     async def get(
@@ -44,9 +44,9 @@ class PipelineRunRepository(Protocol):
         *,
         document: PipelineRunDocument,
         expected_updated_at: datetime,
-        activity_run: ActivityRunDocument,
+        activity_run: ActivityRunDocument | None,
     ) -> bool:
-        """Atomically assign a worker lease and initial child activity run."""
+        """Atomically assign a worker lease and optionally create a child run."""
         raise NotImplementedError
 
     async def transition(

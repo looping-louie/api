@@ -92,7 +92,7 @@ class PipelineRunService:
         lease_duration: timedelta,
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument, str] | None:
-        """Atomically assign one queued run and its first activity to a worker."""
+        """Atomically assign one queued or expired run to a runtime worker."""
 
         normalized_worker_id = self._require_text(worker_id)
         workspace = await self._tenant_service.resolve(
@@ -104,7 +104,11 @@ class PipelineRunService:
         )
         if candidate is None:
             return None
-        selected, child = self._schedule(document=candidate, user_id=user_id)
+        if candidate.current_activity_run_id is None:
+            selected, child = self._schedule(document=candidate, user_id=user_id)
+        else:
+            selected = candidate
+            child = await self._current_child(candidate)
         if child is None:
             return None
         lease_token = self._token_factory()
@@ -115,7 +119,11 @@ class PipelineRunService:
         )
         if not await self._repository.claim(
             document=claimed, expected_updated_at=candidate.updated_at,
-            activity_run=child,
+            activity_run=(
+                child
+                if candidate.current_activity_run_id is None
+                else None
+            ),
         ):
             return None
         return claimed, child, lease_token

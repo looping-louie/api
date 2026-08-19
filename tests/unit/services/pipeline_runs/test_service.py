@@ -57,24 +57,31 @@ class InMemoryPipelineRunRepository:
     async def find_claimable(
         self, *, workspace_id: str, claimed_before: datetime,
     ) -> PipelineRunDocument | None:
-        """Return the stored queued run when it belongs to the workspace."""
+        """Return the stored queued or expired run in the workspace."""
 
         if self.document is None or self.document.workspace_id != workspace_id:
             return None
-        if self.document.status != 'queued':
+        if self.document.status == 'queued':
+            return self.document
+        if (
+            self.document.status != 'claimed'
+            or self.document.lease_expires_at is None
+            or self.document.lease_expires_at > claimed_before
+        ):
             return None
         return self.document
 
     async def claim(
         self, *, document: PipelineRunDocument, expected_updated_at: datetime,
-        activity_run: ActivityRunDocument,
+        activity_run: ActivityRunDocument | None,
     ) -> bool:
-        """Replace the observed queued run and persist its initial child."""
+        """Replace the observed run and persist an initial child when supplied."""
 
         if self.document is None or self.document.updated_at != expected_updated_at:
             return False
         self.document = document
-        self.children[activity_run.id] = activity_run
+        if activity_run is not None:
+            self.children[activity_run.id] = activity_run
         return True
 
     async def transition(
@@ -184,6 +191,22 @@ async def test_created_run_waits_for_runtime_claim(
     assert claimed.attempt == 1
     assert claimed_child.activity_id == first.id
     assert lease_token == 'token'
+
+    runs.document = replace(
+        claimed,
+        lease_expires_at=datetime(1970, 1, 1, tzinfo=UTC),
+    )
+    reclaimed = await service.claim_next(
+        user_id='user-1', worker_id='worker-2',
+        lease_duration=timedelta(minutes=1),
+    )
+
+    assert reclaimed is not None
+    reclaimed_run, reclaimed_child, _ = reclaimed
+    assert reclaimed_run.worker_id == 'worker-2'
+    assert reclaimed_run.attempt == 2
+    assert reclaimed_child.id == claimed_child.id
+    assert len(runs.children) == 1
 
 
 @pytest.mark.asyncio

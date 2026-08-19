@@ -38,7 +38,7 @@ class SqlitePipelineRunRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 await self._insert_run(connection, document)
                 await self._insert_steps(connection, document)
-                if activity_run is not None:
+                if activity_run is not None:  # Only insert if activity_run is provided
                     await self._insert_activity_run(connection, activity_run)
                 await connection.commit()
             except Exception:
@@ -106,7 +106,7 @@ class SqlitePipelineRunRepository:
         *,
         document: PipelineRunDocument,
         expected_updated_at: datetime,
-        activity_run: ActivityRunDocument,
+        activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Assign a claim only while its observed queue state remains current."""
 
@@ -120,7 +120,7 @@ class SqlitePipelineRunRepository:
                         lease_expires_at = ?, attempt = ?,
                         current_activity_run_id = ?, updated_at = ?
                     WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
-                      AND updated_at = ? AND current_activity_run_id IS NULL
+                      AND updated_at = ? AND current_activity_run_id IS ?
                       AND status IN ('queued', 'claimed')
                     ''',
                     (
@@ -131,6 +131,7 @@ class SqlitePipelineRunRepository:
                         document.updated_at.isoformat(), document.workspace_id,
                         document.pipeline_id, document.id,
                         expected_updated_at.isoformat(),
+                        document.current_activity_run_id,
                     ),
                 )
                 try:
@@ -141,7 +142,8 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
-                await self._insert_activity_run(connection, activity_run)
+                if activity_run is not None:
+                    await self._insert_activity_run(connection, activity_run)
                 await connection.commit()
                 return True
             except Exception:
