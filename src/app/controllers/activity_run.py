@@ -100,6 +100,8 @@ class ActivityRunController:
             user_id=user_id,
             activity_id=activity_id,
             run_id=run_id,
+            pipeline_run_id=payload.pipeline_run_id,
+            lease_token=payload.lease_token,
             continuation_token=payload.continuation_token,
             idempotency_key=payload.idempotency_key,
             action=str(action),

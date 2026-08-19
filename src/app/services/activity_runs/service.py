@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from secrets import token_urlsafe
 from typing import Mapping
 
@@ -29,7 +30,7 @@ class ActivityRunService:
         activity_service: ActivityService,
         tenant_service: TenantService,
         id_factory: Callable[[], str],
-        clock: Callable[[], object],
+        clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -150,6 +151,8 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
         continuation_token: str,
         idempotency_key: str,
         action: str,
@@ -183,6 +186,7 @@ class ActivityRunService:
             if self._generation_service is None:
                 return await self._transition(
                     document=document, workspace_id=workspace.workspace_id,
+                    pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                     continuation_token=continuation_token, idempotency_key=idempotency_key,
                     action=action, status='in_progress', state='awaiting_generation',
                     next_action='none', next_token=None, context=context,
@@ -197,6 +201,7 @@ class ActivityRunService:
             )
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='in_progress', state='awaiting_apply',
                 next_action='apply_operations', next_token=self._token_factory(),
@@ -207,6 +212,7 @@ class ActivityRunService:
             applied = result.get('applied') is True
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='in_progress' if applied else 'failed',
                 state='awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
@@ -231,6 +237,7 @@ class ActivityRunService:
             retry = not approved and document.iteration < self._max_iterations(document.activity_snapshot)
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='in_progress' if approved or retry else 'failed',
                 state='awaiting_commit' if approved else ('awaiting_snapshot' if retry else 'failed'),
@@ -242,6 +249,7 @@ class ActivityRunService:
             committed = result.get('committed') is True
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='completed' if committed else 'failed',
                 state='completed' if committed else 'failed', next_action='none',
@@ -254,6 +262,8 @@ class ActivityRunService:
         *,
         document: ActivityRunDocument,
         workspace_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
         continuation_token: str,
         idempotency_key: str,
         action: str,
@@ -268,7 +278,8 @@ class ActivityRunService:
 
         return await self._repository.transition(
             workspace_id=workspace_id, activity_id=document.activity_id,
-            run_id=document.id, continuation_token=continuation_token,
+            run_id=document.id, pipeline_run_id=pipeline_run_id,
+            lease_token=lease_token, continuation_token=continuation_token,
             idempotency_key=idempotency_key, expected_action=action, status=status,
             state=state, next_action=next_action, next_continuation_token=next_token,
             execution_context=context, updated_at=self._clock(), iteration=iteration,

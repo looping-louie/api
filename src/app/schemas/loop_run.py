@@ -85,6 +85,8 @@ class LoopRunCommitResult(RequestSchema):
 class LoopRunContinueRequest(RequestSchema):
     """One idempotent checkpoint continuation request."""
 
+    pipeline_run_id: str | None = None
+    lease_token: str | None = None
     continuation_token: NonEmptyString
     idempotency_key: NonEmptyString
     result: dict

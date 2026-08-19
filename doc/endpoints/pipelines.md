@@ -606,6 +606,10 @@ call `POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` without a
 request body. The API evaluates `success` and `failure` dependencies, skips
 impossible branches, and selects the next eligible step in declared order.
 
+Before each child checkpoint and before scheduling its next child, the runtime
+renews the lease. Child checkpoint requests include the Pipeline run ID and
+lease token, which the API verifies atomically with the checkpoint transition.
+
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/continue
 X-Workspace-ID: workspace-acme

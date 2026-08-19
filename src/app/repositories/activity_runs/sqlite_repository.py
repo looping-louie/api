@@ -145,6 +145,8 @@ class SqliteActivityRunRepository:
         execution_context: dict[str, object],
         updated_at: datetime,
         iteration: int | None = None,
+        pipeline_run_id: str | None = None,
+        lease_token: str | None = None,
     ) -> ActivityRunDocument:
         """Persist one token-guarded checkpoint transition or its replay."""
 
@@ -158,6 +160,15 @@ class SqliteActivityRunRepository:
                     run_id=run_id,
                 )
                 if row is None:
+                    raise LoopRunInvalidTransitionError()
+                if not await self._has_active_pipeline_lease(
+                    connection,
+                    workspace_id=workspace_id,
+                    activity_run_id=run_id,
+                    pipeline_run_id=pipeline_run_id,
+                    lease_token=lease_token,
+                    now=updated_at,
+                ):
                     raise LoopRunInvalidTransitionError()
                 revision = await self._get_checkpoint_revision(
                     connection,
@@ -233,6 +244,56 @@ class SqliteActivityRunRepository:
             except Exception:
                 await connection.rollback()
                 raise
+
+    @staticmethod
+    async def _has_active_pipeline_lease(
+        connection: aiosqlite.Connection,
+        *,
+        workspace_id: str,
+        activity_run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        now: datetime,
+    ) -> bool:
+        """Allow standalone runs or require an active lease for Pipeline children."""
+
+        cursor = await connection.execute(
+            '''
+            SELECT pipeline_run_id
+            FROM pipeline_run_steps
+            WHERE workspace_id = ? AND activity_run_id = ?
+            ''',
+            (workspace_id, activity_run_id),
+        )
+        try:
+            owner = await cursor.fetchone()
+        finally:
+            await cursor.close()
+        if owner is None:
+            return True
+        if (
+            pipeline_run_id is None
+            or lease_token is None
+            or str(owner['pipeline_run_id']) != pipeline_run_id
+        ):
+            return False
+        cursor = await connection.execute(
+            '''
+            SELECT 1
+            FROM pipeline_runs
+            WHERE workspace_id = ? AND id = ?
+              AND current_activity_run_id = ? AND lease_token = ?
+              AND lease_expires_at > ? AND status IN ('claimed', 'in_progress')
+            ''',
+            (
+                workspace_id, pipeline_run_id, activity_run_id, lease_token,
+                now.isoformat(),
+            ),
+        )
+        try:
+            return await cursor.fetchone() is not None
+        finally:
+            await cursor.close()
 
     @staticmethod
     def _to_document(

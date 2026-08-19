@@ -657,6 +657,12 @@ Checkpoint responses and continuation payloads use the activity-run protocol.
 Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`.
 
+Standalone Activity runs continue with their checkpoint token and idempotency
+key. A child run selected by a Pipeline additionally requires its
+`pipeline_run_id` and active Pipeline `lease_token`. The API rejects a missing,
+expired, or mismatched lease with `409 loop_run_invalid_transition` before it
+persists the checkpoint result.
+
 ## List activity changelog entries
 
 `GET /api/v1/activities/{activity_id}/changelog` returns ten newest entries

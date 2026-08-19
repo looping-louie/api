@@ -55,7 +55,7 @@ class FakeActivityRunRepository:
         values = [document for document in self.documents.values() if document.workspace_id == workspace_id and document.activity_id == activity_id]
         return values[offset:offset + limit], len(values)
 
-    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None) -> ActivityRunDocument:
+    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None, pipeline_run_id: str | None = None, lease_token: str | None = None) -> ActivityRunDocument:
         """Advance the snapshot checkpoint for the in-memory route fixture."""
 
         current = self.documents[run_id]

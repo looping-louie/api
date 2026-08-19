@@ -56,6 +56,8 @@ class ActivityRunRepository(Protocol):
         execution_context: dict[str, object],
         updated_at: datetime,
         iteration: int | None = None,
+        pipeline_run_id: str | None = None,
+        lease_token: str | None = None,
     ) -> ActivityRunDocument:
-        """Persist one validated checkpoint transition or return its replay."""
+        """Persist one fenced checkpoint transition or return its replay."""
         raise NotImplementedError
