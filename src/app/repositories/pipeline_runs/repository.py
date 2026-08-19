@@ -30,6 +30,25 @@ class PipelineRunRepository(Protocol):
         """Return one pipeline run under its owning pipeline."""
         raise NotImplementedError
 
+    async def find_claimable(
+        self,
+        *,
+        workspace_id: str,
+        claimed_before: datetime,
+    ) -> PipelineRunDocument | None:
+        """Return one queued or lease-expired pipeline run in a workspace."""
+        raise NotImplementedError
+
+    async def claim(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_updated_at: datetime,
+        activity_run: ActivityRunDocument,
+    ) -> bool:
+        """Atomically assign a worker lease and initial child activity run."""
+        raise NotImplementedError
+
     async def transition(
         self,
         *,

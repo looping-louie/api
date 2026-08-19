@@ -105,7 +105,9 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
     """Fixed-size offset page of pipeline definitions."""
 
 
-PipelineRunStatusValue = Literal['in_progress', 'failed', 'completed']
+PipelineRunStatusValue = Literal[
+    'queued', 'claimed', 'in_progress', 'failed', 'completed'
+]
 PipelineRunStepStatusValue = Literal[
     'pending', 'in_progress', 'completed', 'failed', 'skipped'
 ]
@@ -115,6 +117,12 @@ class PipelineRunCreateRequest(RequestSchema):
     """Input used for each activity scheduled by a new pipeline run."""
 
     input: NonEmptyString
+
+
+class PipelineRunClaimRequest(RequestSchema):
+    """Worker identity used to claim one queued pipeline run."""
+
+    worker_id: NonEmptyString
 
 
 class PipelineRunStepResponse(ResponseSchema):
@@ -137,6 +145,13 @@ class PipelineRunResponse(ResponseSchema):
     created_at: datetime
     created_by: str
     updated_at: datetime
+
+
+class PipelineRunClaimResponse(ResponseSchema):
+    """One worker-owned pipeline run and its secret lease token."""
+
+    run: PipelineRunResponse
+    lease_token: str
 
 
 class PipelineChangelogEntryResponse(ResponseSchema):

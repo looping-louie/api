@@ -71,6 +71,83 @@ class SqlitePipelineRunRepository:
                 return None
             return await self._to_document(connection, row)
 
+    async def find_claimable(
+        self,
+        *,
+        workspace_id: str,
+        claimed_before: datetime,
+    ) -> PipelineRunDocument | None:
+        """Return the oldest queued or expired claimed run in one workspace."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT * FROM pipeline_runs
+                WHERE workspace_id = ?
+                  AND (
+                    status = 'queued'
+                    OR (status = 'claimed' AND lease_expires_at <= ?)
+                  )
+                ORDER BY created_at ASC
+                LIMIT 1
+                ''',
+                (workspace_id, claimed_before.isoformat()),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+            if row is None:
+                return None
+            return await self._to_document(connection, row)
+
+    async def claim(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_updated_at: datetime,
+        activity_run: ActivityRunDocument,
+    ) -> bool:
+        """Assign a claim only while its observed queue state remains current."""
+
+        async with self._connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                cursor = await connection.execute(
+                    '''
+                    UPDATE pipeline_runs
+                    SET status = ?, worker_id = ?, lease_token = ?,
+                        lease_expires_at = ?, attempt = ?,
+                        current_activity_run_id = ?, updated_at = ?
+                    WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                      AND updated_at = ? AND current_activity_run_id IS NULL
+                      AND status IN ('queued', 'claimed')
+                    ''',
+                    (
+                        document.status, document.worker_id, document.lease_token,
+                        document.lease_expires_at.isoformat()
+                        if document.lease_expires_at is not None else None,
+                        document.attempt, document.current_activity_run_id,
+                        document.updated_at.isoformat(), document.workspace_id,
+                        document.pipeline_id, document.id,
+                        expected_updated_at.isoformat(),
+                    ),
+                )
+                try:
+                    claimed = cursor.rowcount == 1
+                finally:
+                    await cursor.close()
+                if not claimed:
+                    await connection.rollback()
+                    return False
+                await self._update_steps(connection, document)
+                await self._insert_activity_run(connection, activity_run)
+                await connection.commit()
+                return True
+            except Exception:
+                await connection.rollback()
+                raise
+
     async def transition(
         self,
         *,
@@ -138,13 +215,18 @@ class SqlitePipelineRunRepository:
             '''
             INSERT INTO pipeline_runs (
                 id, workspace_id, pipeline_id, input, status,
+                worker_id, lease_token, lease_expires_at, attempt,
                 current_activity_run_id, pipeline_snapshot_json,
                 created_at, created_by, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 document.id, document.workspace_id, document.pipeline_id,
-                document.input, document.status, document.current_activity_run_id,
+                document.input, document.status, document.worker_id,
+                document.lease_token,
+                document.lease_expires_at.isoformat()
+                if document.lease_expires_at is not None else None,
+                document.attempt, document.current_activity_run_id,
                 json.dumps(document.pipeline_snapshot, sort_keys=True),
                 document.created_at.isoformat(), document.created_by,
                 document.updated_at.isoformat(),
@@ -262,7 +344,14 @@ class SqlitePipelineRunRepository:
         return PipelineRunDocument(
             id=str(row['id']), workspace_id=str(row['workspace_id']),
             pipeline_id=str(row['pipeline_id']), input=str(row['input']),
-            status=row['status'], current_activity_run_id=row['current_activity_run_id'],
+            status=row['status'], worker_id=row['worker_id'],
+            lease_token=row['lease_token'],
+            lease_expires_at=(
+                datetime.fromisoformat(str(row['lease_expires_at']))
+                if row['lease_expires_at'] is not None else None
+            ),
+            attempt=int(row['attempt']),
+            current_activity_run_id=row['current_activity_run_id'],
             pipeline_snapshot=json.loads(str(row['pipeline_snapshot_json'])),
             steps=tuple(cls._to_step(step_row) for step_row in step_rows),
             created_at=datetime.fromisoformat(str(row['created_at'])),

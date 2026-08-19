@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from itertools import count
 
 import pytest
@@ -53,6 +53,29 @@ class InMemoryPipelineRunRepository:
         ):
             return None
         return self.document
+
+    async def find_claimable(
+        self, *, workspace_id: str, claimed_before: datetime,
+    ) -> PipelineRunDocument | None:
+        """Return the stored queued run when it belongs to the workspace."""
+
+        if self.document is None or self.document.workspace_id != workspace_id:
+            return None
+        if self.document.status != 'queued':
+            return None
+        return self.document
+
+    async def claim(
+        self, *, document: PipelineRunDocument, expected_updated_at: datetime,
+        activity_run: ActivityRunDocument,
+    ) -> bool:
+        """Replace the observed queued run and persist its initial child."""
+
+        if self.document is None or self.document.updated_at != expected_updated_at:
+            return False
+        self.document = document
+        self.children[activity_run.id] = activity_run
+        return True
 
     async def transition(
         self, *, document: PipelineRunDocument,
@@ -115,6 +138,55 @@ def activity(activity_id: str) -> ActivityDocument:
 
 
 @pytest.mark.asyncio
+async def test_created_run_waits_for_runtime_claim(
+    tenant_service: TenantService,
+) -> None:
+    """Creation leaves the first Activity unallocated until a worker claims it."""
+
+    first = activity('activity-1')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run one step.', status='active',
+            steps=(PipelineActivityStep(activity_id=first.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        id_factory=lambda: 'run-1', clock=IncrementingClock(),
+        token_factory=lambda: 'token',
+    )
+
+    created, child = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+
+    assert created.status == 'queued'
+    assert created.current_activity_run_id is None
+    assert [step.status for step in created.steps] == ['pending']
+    assert child is None
+    assert runs.children == {}
+
+    claim = await service.claim_next(
+        user_id='user-1', worker_id='worker-1',
+        lease_duration=timedelta(minutes=1),
+    )
+
+    assert claim is not None
+    claimed, claimed_child, lease_token = claim
+    assert claimed.status == 'claimed'
+    assert claimed.worker_id == 'worker-1'
+    assert claimed.attempt == 1
+    assert claimed_child.activity_id == first.id
+    assert lease_token == 'token'
+
+
+@pytest.mark.asyncio
 async def test_completed_step_schedules_success_dependent_child(
     tenant_service: TenantService,
 ) -> None:
@@ -146,9 +218,16 @@ async def test_completed_step_schedules_success_dependent_child(
         token_factory=lambda: 'token',
     )
 
-    created, first_child = await service.create(
+    created, child = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
+    assert child is None
+    claim = await service.claim_next(
+        user_id='user-1', worker_id='worker-1',
+        lease_duration=timedelta(minutes=1),
+    )
+    assert claim is not None
+    _, first_child, _ = claim
     assert first_child is not None and first_child.activity_id == first.id
 
     runs.children[first_child.id] = replace(

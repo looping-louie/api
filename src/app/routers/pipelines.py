@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 
 from src.app.controllers.pipeline import PipelineController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,
+    PipelineRunClaimRequest,
+    PipelineRunClaimResponse,
     PipelineCreateRequest,
     PipelineListResponse,
     PipelinePatchRequest,
@@ -137,6 +139,28 @@ async def create_pipeline_run(
         user_id=context.user_id, pipeline_id=pipeline_id, payload=payload,
         requested_workspace_id=context.requested_workspace_id,
     )
+
+
+@router.post(
+    '/runs/claim',
+    response_model=PipelineRunClaimResponse,
+    summary='Claim queued pipeline run',
+)
+async def claim_next_pipeline_run(
+    payload: PipelineRunClaimRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    response: Response,
+) -> PipelineRunClaimResponse | None:
+    """Assign the next queued workspace run to a runtime worker."""
+
+    claim = await controller.claim_next_run(
+        user_id=context.user_id, payload=payload,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+    if claim is None:
+        response.status_code = status.HTTP_204_NO_CONTENT
+    return claim
 
 
 @router.get(

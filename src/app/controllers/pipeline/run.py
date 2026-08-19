@@ -1,9 +1,13 @@
 """Controllers for dependency-aware pipeline execution."""
 
+from datetime import timedelta
+
 from src.app.controllers.loop_run.utils import activity_run_response
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline_run import PipelineRunDocument
 from src.app.schemas.pipeline import (
+    PipelineRunClaimRequest,
+    PipelineRunClaimResponse,
     PipelineRunCreateRequest,
     PipelineRunResponse,
     PipelineRunStepResponse,
@@ -30,6 +34,24 @@ class PipelineRunController:
             requested_workspace_id=requested_workspace_id,
         )
         return self._response(document, child)
+
+    async def claim_next_run(
+        self, *, user_id: str, payload: PipelineRunClaimRequest,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineRunClaimResponse | None:
+        """Assign the next workspace run to one runtime worker for one minute."""
+
+        claim = await self._require_service().claim_next(
+            user_id=user_id, worker_id=payload.worker_id,
+            lease_duration=timedelta(minutes=1),
+            requested_workspace_id=requested_workspace_id,
+        )
+        if claim is None:
+            return None
+        document, child, lease_token = claim
+        return PipelineRunClaimResponse(
+            run=self._response(document, child), lease_token=lease_token,
+        )
 
     async def get_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,

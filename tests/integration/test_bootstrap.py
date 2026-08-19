@@ -220,7 +220,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0029_activity_runs",
         "0030_pipeline_runs",
         "0031_linked_services",
-            "0032_persona_linked_service_selections",
+        "0032_persona_linked_service_selections",
+        "0033_pipeline_run_worker_claims",
     ]
     assert activity_rows == []
 

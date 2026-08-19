@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from secrets import token_urlsafe
 from typing import Callable, Mapping
 
@@ -53,7 +53,7 @@ class PipelineRunService:
         input_text: str,
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
-        """Create a frozen pipeline run and issue its first eligible child run."""
+        """Create a frozen pipeline run for a runtime worker to claim."""
 
         details = await self._pipeline_service.describe(
             user_id=user_id,
@@ -69,7 +69,8 @@ class PipelineRunService:
         document = PipelineRunDocument(
             id=self._id_factory(), workspace_id=details.document.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
-            status='in_progress', current_activity_run_id=None,
+            status='queued', worker_id=None, lease_token=None,
+            lease_expires_at=None, attempt=0, current_activity_run_id=None,
             pipeline_snapshot=self._pipeline_snapshot(details),
             steps=tuple(
                 PipelineRunStepDocument(
@@ -81,8 +82,43 @@ class PipelineRunService:
             ),
             created_at=now, created_by=self._require_text(user_id), updated_at=now,
         )
-        selected, child = self._schedule(document=document, user_id=user_id)
-        return await self._repository.create(document=selected, activity_run=child), child
+        return await self._repository.create(document=document, activity_run=None), None
+
+    async def claim_next(
+        self,
+        *,
+        user_id: str,
+        worker_id: str,
+        lease_duration: timedelta,
+        requested_workspace_id: str | None = None,
+    ) -> tuple[PipelineRunDocument, ActivityRunDocument, str] | None:
+        """Atomically assign one queued run and its first activity to a worker."""
+
+        normalized_worker_id = self._require_text(worker_id)
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
+        now = self._clock()
+        candidate = await self._repository.find_claimable(
+            workspace_id=workspace.workspace_id, claimed_before=now,
+        )
+        if candidate is None:
+            return None
+        selected, child = self._schedule(document=candidate, user_id=user_id)
+        if child is None:
+            return None
+        lease_token = self._token_factory()
+        claimed = replace(
+            selected, status='claimed', worker_id=normalized_worker_id,
+            lease_token=lease_token, lease_expires_at=now + lease_duration,
+            attempt=candidate.attempt + 1, updated_at=now,
+        )
+        if not await self._repository.claim(
+            document=claimed, expected_updated_at=candidate.updated_at,
+            activity_run=child,
+        ):
+            return None
+        return claimed, child, lease_token
 
     async def get(
         self,
@@ -118,7 +154,7 @@ class PipelineRunService:
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if document.status != 'in_progress' or child is None:
+        if document.status not in ('claimed', 'in_progress') or child is None:
             return document, child
         if child.status == 'in_progress':
             return document, child

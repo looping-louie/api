@@ -1,22 +1,23 @@
 # Looping Louie Architecture
 
 Looping Louie API is the decision engine for iterative LLM software
-development. It orchestrates generators, reviewers, and aggregators while the
-CLI executes repository changes locally.
+development. It persists pipeline and activity state while the runtime executes
+repository changes on a worker.
 
 The runtime is independent from any programming language, framework, or LLM
 provider.
 
 ## Ownership boundaries
 
-The API owns resource management, activity-run state, prompt generation, model
-decisions, and checkpoint transitions. The CLI owns workspace lifecycle,
-repository inspection, filesystem changes, Git operations, and multi-step
-workflow progression.
+The API owns resource management, durable pipeline and activity-run state,
+prompt generation, model decisions, and checkpoint transitions. The runtime
+owns workspace lifecycle, repository inspection, filesystem changes, Git
+operations, and activity execution after it claims a queued pipeline run.
 
-The API and CLI coordinate through the activity-run checkpoint protocol documented
-in [Execution](components/execution.md). The API never mutates the target
-repository directly, and the CLI does not make model or reviewer decisions.
+The API and runtime coordinate through the activity-run checkpoint protocol
+documented in [Execution](components/execution.md). The API never mutates the
+target repository directly, and the runtime does not make model or reviewer
+decisions.
 
 ## Repository structure
 

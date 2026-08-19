@@ -4,8 +4,8 @@ A pipeline stores a declared sequence of Activity definitions. The API creates
 an independent persisted Activity record for every supplied step, then stores
 the generated Activity IDs in that display order. A step can declare `dependsOn`
 conditions for other named steps, forming an acyclic execution graph that
-controls execution eligibility. Pipeline runs persist a frozen graph and select
-one eligible Activity run at a time.
+controls execution eligibility. Pipeline runs persist a frozen graph and wait
+for a runtime worker to claim and select one eligible Activity run at a time.
 
 ## Pipeline calls
 
@@ -14,7 +14,8 @@ one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines` | Lists ten filtered pipelines after an offset. |
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
-| `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a pipeline run and selects its first Activity run. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Queues a pipeline run for a runtime worker. |
+| `POST` | `/api/v1/pipelines/runs/claim` | Atomically claims the next queued workspace run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
@@ -527,9 +528,9 @@ structures use `invalid_pipeline_steps`.
 ## Execute pipelines
 
 `POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
-every scheduled Activity. The API freezes the Pipeline graph, selects the first
-eligible Activity, and returns it as `current_activity_run` while the Pipeline
-run is `in_progress`.
+every scheduled Activity. The API freezes the Pipeline graph and returns a
+`queued` run. Creation does not allocate an Activity run or start repository
+execution.
 
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs
@@ -550,27 +551,13 @@ Example response (`201 Created`):
   "id": "pipeline-run-001",
   "pipeline_id": "pipeline-production-release-review",
   "input": "Review the release candidate and determine whether it is ready for production.",
-  "status": "in_progress",
-  "current_activity_run": {
-    "id": "activity-run-001",
-    "activity_id": "activity-release-review",
-    "input": "Review the release candidate and determine whether it is ready for production.",
-    "status": "in_progress",
-    "state": "awaiting_snapshot",
-    "next_action": "collect_snapshot",
-    "iteration": 1,
-    "token_revision": 0,
-    "continuation_token": "continuation-token-001",
-    "created_at": "2026-08-18T10:00:00Z",
-    "created_by": "user-123",
-    "updated_at": "2026-08-18T10:00:00Z",
-    "payload": {}
-  },
+  "status": "queued",
+  "current_activity_run": null,
   "steps": [
     {
       "activity_id": "activity-release-review",
-      "status": "in_progress",
-      "activity_run_id": "activity-run-001"
+      "status": "pending",
+      "activity_run_id": null
     },
     {
       "activity_id": "activity-readiness-quiz",
@@ -589,7 +576,30 @@ Example response (`201 Created`):
 }
 ```
 
-The CLI executes `current_activity_run` through its local repository,
+## Claim queued pipeline run
+
+`POST /api/v1/pipelines/runs/claim` atomically assigns the oldest queued or
+lease-expired run in the selected workspace to a runtime worker. The request
+requires the worker's stable `worker_id`. The response contains a lease token,
+which is returned only to the worker that successfully claimed the run.
+
+```http
+POST /api/v1/pipelines/runs/claim
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "worker_id": "runtime-local-01"
+}
+```
+
+When work is available, the API returns `200 OK` with a `claimed` run, the
+initial `current_activity_run`, and a `lease_token`. A claim expires after one
+minute. When no run is available, the API returns `204 No Content`.
+
+The runtime executes `current_activity_run` through its local repository,
 filesystem, and Git checkpoints. After that child reaches a terminal state,
 call `POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` without a
 request body. The API evaluates `success` and `failure` dependencies, skips

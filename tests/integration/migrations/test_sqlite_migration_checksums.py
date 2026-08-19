@@ -40,6 +40,7 @@ EXPECTED_CHECKSUMS = {
     '0030_pipeline_runs.sql': 'ef9f73a426f846bfb3928b72b807388eb22022ab889f36c379c5fa4af894ed8d',
     '0031_linked_services.sql': '399cb66c3b888552553635427932f7593bc4212aa9b7793e7e93674d2739f54c',
     '0032_persona_linked_service_selections.sql': '4923a947721b2a190f2c8c4bf7ce7d4561907f42f9d3c0bdd238ca0552a74e47',
+    '0033_pipeline_run_worker_claims.sql': 'd326ceb9e751ab085f2f9ae87e923300357e960beaf637340004401930907252',
 }
 
 
