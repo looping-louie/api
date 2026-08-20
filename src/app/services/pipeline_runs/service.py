@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from secrets import token_urlsafe
 from typing import Callable, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline import PipelineDetails
-from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunStepDocument
+from src.app.models.pipeline_run import (
+    PipelineRunCommitMode,
+    PipelineRunDocument,
+    PipelineRunStepDocument,
+)
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.types import (
     PipelineRunNotFoundError,
+    PipelineRunPreconditionFailedError,
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
@@ -51,9 +57,10 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         input_text: str,
+        commit_mode: PipelineRunCommitMode = 'allow',
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
-        """Create a frozen pipeline run and issue its first eligible child run."""
+        """Create a frozen pipeline run for a runtime worker to claim."""
 
         details = await self._pipeline_service.describe(
             user_id=user_id,
@@ -69,7 +76,9 @@ class PipelineRunService:
         document = PipelineRunDocument(
             id=self._id_factory(), workspace_id=details.document.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
-            status='in_progress', current_activity_run_id=None,
+            commit_mode=commit_mode,
+            status='queued', worker_id=None, lease_token=None,
+            lease_expires_at=None, attempt=0, current_activity_run_id=None,
             pipeline_snapshot=self._pipeline_snapshot(details),
             steps=tuple(
                 PipelineRunStepDocument(
@@ -81,8 +90,99 @@ class PipelineRunService:
             ),
             created_at=now, created_by=self._require_text(user_id), updated_at=now,
         )
-        selected, child = self._schedule(document=document, user_id=user_id)
-        return await self._repository.create(document=selected, activity_run=child), child
+        return await self._repository.create(document=document, activity_run=None), None
+
+    async def list_claimable(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> list[PipelineRunDocument]:
+        """List claimable runs beneath one active Pipeline."""
+
+        details = await self._pipeline_service.describe(
+            user_id=user_id, pipeline_id=pipeline_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if details.document.status != 'active':
+            return []
+        now = self._clock()
+        return await self._repository.list_claimable(
+            workspace_id=details.document.workspace_id,
+            pipeline_id=details.document.id,
+            claimed_before=now,
+        )
+
+    async def claim(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        worker_id: str,
+        if_match: str,
+        lease_duration: timedelta,
+        requested_workspace_id: str | None = None,
+    ) -> tuple[PipelineRunDocument, ActivityRunDocument, str]:
+        """Atomically claim one current, claimable Pipeline run."""
+
+        normalized_worker_id = self._require_text(worker_id)
+        details = await self._pipeline_service.describe(
+            user_id=user_id, pipeline_id=pipeline_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if details.document.status != 'active':
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'status is {details.document.status}',
+            )
+        candidate = await self._get_required(
+            workspace_id=details.document.workspace_id,
+            pipeline_id=details.document.id,
+            run_id=run_id,
+        )
+        now = self._clock()
+        if if_match != pipeline_run_etag(candidate):
+            raise PipelineRunPreconditionFailedError(
+                pipeline_id=pipeline_id,
+                run_id=run_id,
+            )
+        if not self._is_claimable(candidate, now):
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'run {run_id} is no longer claimable',
+            )
+        if candidate.current_activity_run_id is None:
+            selected, child = self._schedule(document=candidate, user_id=user_id)
+        else:
+            selected = candidate
+            child = await self._current_child(candidate)
+        if child is None:
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'run {run_id} has no current activity run',
+            )
+        lease_token = self._token_factory()
+        claimed = replace(
+            selected, status='claimed', worker_id=normalized_worker_id,
+            lease_token=lease_token, lease_expires_at=now + lease_duration,
+            attempt=candidate.attempt + 1, updated_at=now,
+        )
+        if not await self._repository.claim(
+            document=claimed, expected_updated_at=candidate.updated_at,
+            expected_current_activity_run_id=candidate.current_activity_run_id,
+            activity_run=(
+                child
+                if candidate.current_activity_run_id is None
+                else None
+            ),
+        ):
+            raise PipelineRunPreconditionFailedError(
+                pipeline_id=pipeline_id,
+                run_id=run_id,
+            )
+        return claimed, child, lease_token
 
     async def get(
         self,
@@ -104,12 +204,75 @@ class PipelineRunService:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         return document, await self._current_child(document)
 
+    async def _get_required(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+        run_id: str,
+    ) -> PipelineRunDocument:
+        """Return one run under a resolved workspace and Pipeline."""
+
+        document = await self._repository.get(
+            workspace_id=workspace_id,
+            pipeline_id=pipeline_id,
+            run_id=run_id,
+        )
+        if document is None:
+            raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
+        return document
+
+    @staticmethod
+    def _is_claimable(document: PipelineRunDocument, now: datetime) -> bool:
+        """Return whether a queued or expired claim may be claimed now."""
+
+        return document.status == 'queued' or (
+            document.status == 'claimed'
+            and document.lease_expires_at is not None
+            and document.lease_expires_at <= now
+        )
+
+    async def renew_lease(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        lease_token: str,
+        lease_duration: timedelta,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineRunDocument:
+        """Extend an active Pipeline worker lease by the configured duration."""
+
+        document, _ = await self.get(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        now = self._clock()
+        token = self._require_text(lease_token)
+        renewed = replace(
+            document,
+            lease_expires_at=now + lease_duration,
+            updated_at=now,
+        )
+        if not await self._repository.renew_lease(
+            document=renewed,
+            expected_lease_token=token,
+            now=now,
+        ):
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason='lease is no longer active',
+            )
+        return renewed
+
     async def continue_run(
         self,
         *,
         user_id: str,
         pipeline_id: str,
         run_id: str,
+        lease_token: str,
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Record the current child outcome and schedule the next eligible step."""
@@ -118,7 +281,18 @@ class PipelineRunService:
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if document.status != 'in_progress' or child is None:
+        now = self._clock()
+        token = self._require_text(lease_token)
+        if (
+            document.lease_token != token
+            or document.lease_expires_at is None
+            or document.lease_expires_at <= now
+        ):
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason='lease is no longer active',
+            )
+        if document.status not in ('claimed', 'in_progress') or child is None:
             return document, child
         if child.status == 'in_progress':
             return document, child
@@ -127,6 +301,8 @@ class PipelineRunService:
         if await self._repository.transition(
             document=selected,
             expected_current_activity_run_id=child.id,
+            expected_lease_token=token,
+            now=now,
             activity_run=next_child,
         ):
             return selected, next_child
@@ -196,7 +372,11 @@ class PipelineRunService:
             activity_id=ready.activity_id, input=document.input,
             status='in_progress', state='awaiting_snapshot',
             next_action='collect_snapshot', iteration=1, token_revision=0,
-            continuation_token=self._token_factory(), activity_snapshot=ready.activity_snapshot,
+            continuation_token=self._token_factory(),
+            activity_snapshot={
+                **ready.activity_snapshot,
+                'commit_mode': document.commit_mode,
+            },
             execution_context={}, created_at=now, created_by=user_id, updated_at=now,
         )
         selected_steps = tuple(

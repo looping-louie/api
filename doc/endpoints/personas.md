@@ -227,3 +227,27 @@ instructions, legacy `model`, optional `linked_service` and `config`,
 Deleting a custom skill automatically removes its ID from every associated
 persona. A linked service selected by a Persona cannot be deleted. List items
 omit instructions, skill IDs, and metadata but include their top-level category.
+
+## Delete a persona
+
+`DELETE /api/v1/personas/{persona_id}` removes a custom Persona from the
+selected workspace when no resource depends on it. Built-in Persona content is
+immutable and cannot be deleted.
+
+```http
+DELETE /api/v1/personas/persona-api-reviewer
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "deleted": true
+}
+```
+
+The endpoint returns `409 resource_in_use` when another resource depends on
+the Persona, `409 builtin_instruction_immutable` for built-in Personas, and
+`404 instruction_not_found` when the Persona is not visible in the selected
+workspace.

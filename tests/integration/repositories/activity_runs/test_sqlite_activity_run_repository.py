@@ -9,6 +9,9 @@ import aiosqlite
 import pytest
 
 from src.app.models.activity_run import ActivityRunDocument
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+)
 from src.app.repositories.activity_runs.sqlite_repository import (
     SqliteActivityRunRepository,
 )
@@ -19,7 +22,7 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
     sqlite_database_path: Path,
     create_workspace: object,
 ) -> None:
-    """Activity runs persist separately from legacy loop runs with replay safety."""
+    """Activity runs persist with replay safety."""
 
     await create_workspace(workspace_id='workspace-1')
     timestamp = datetime(2026, 8, 14, tzinfo=UTC)
@@ -72,12 +75,136 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
         activity_count = await (await connection.execute(
             'SELECT COUNT(*) FROM activity_runs WHERE id = ?', ('run-1',)
         )).fetchone()
-        loop_count = await (await connection.execute(
-            'SELECT COUNT(*) FROM loop_runs WHERE id = ?', ('run-1',)
-        )).fetchone()
 
     assert created == document
     assert updated.state == 'awaiting_apply'
     assert replayed == updated
     assert activity_count == (1,)
-    assert loop_count == (0,)
+
+
+@pytest.mark.asyncio
+async def test_expired_pipeline_lease_cannot_advance_its_activity_child(
+    sqlite_database_path: Path,
+    create_workspace: object,
+) -> None:
+    """An expired worker cannot mutate the currently selected Pipeline child."""
+
+    timestamp = datetime(2026, 8, 14, tzinfo=UTC)
+    await create_workspace(workspace_id='workspace-1')
+    await _insert_pipeline_child(
+        database_path=sqlite_database_path,
+        timestamp=timestamp,
+        lease_expires_at=datetime(1970, 1, 1, tzinfo=UTC),
+    )
+    repository = SqliteActivityRunRepository(sqlite_database_path)
+
+    assert not await repository.has_active_pipeline_lease(
+        workspace_id='workspace-1',
+        activity_run_id='run-1',
+        pipeline_run_id='pipeline-run-1',
+        lease_token='lease-1',
+        now=timestamp,
+    )
+
+    with pytest.raises(ActivityRunInvalidTransitionError):
+        await repository.transition(
+            workspace_id='workspace-1', activity_id='activity-1', run_id='run-1',
+            pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+            continuation_token='token-0', idempotency_key='request-1',
+            expected_action='collect_snapshot', status='in_progress',
+            state='awaiting_apply', next_action='apply_operations',
+            next_continuation_token='token-1', execution_context={'operations': []},
+            updated_at=timestamp,
+        )
+
+
+async def _insert_pipeline_child(
+    *,
+    database_path: Path,
+    timestamp: datetime,
+    lease_expires_at: datetime,
+) -> None:
+    """Seed one claimed Pipeline run and its selected Activity child."""
+
+    async with aiosqlite.connect(database_path) as connection:
+        await connection.execute('PRAGMA foreign_keys = ON')
+        await connection.execute(
+            '''
+            INSERT INTO activities (
+                id, workspace_id, name, description, status, activity_type,
+                config_json, created_at, created_by, updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'activity-1', 'workspace-1', 'Activity', '', 'active',
+                'direct_loop', '{}', timestamp.isoformat(), 'user-1',
+                timestamp.isoformat(), 'user-1',
+            ),
+        )
+        await connection.execute(
+            '''
+            INSERT INTO activity_runs (
+                id, workspace_id, activity_id, input, status, state, next_action,
+                iteration, token_revision, continuation_token, activity_snapshot_json,
+                execution_context_json, created_at, created_by, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'run-1', 'workspace-1', 'activity-1', 'Create a file.',
+                'in_progress', 'awaiting_snapshot', 'collect_snapshot', 1, 0,
+                'token-0', '{"flow":"direct"}', '{}', timestamp.isoformat(),
+                'user-1', timestamp.isoformat(),
+            ),
+        )
+        await connection.execute(
+            '''
+            INSERT INTO activity_run_checkpoints (
+                workspace_id, run_id, token_revision, continuation_token,
+                state, next_action, context_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'workspace-1', 'run-1', 0, 'token-0', 'awaiting_snapshot',
+                'collect_snapshot', '{}', timestamp.isoformat(),
+            ),
+        )
+        await connection.execute(
+            '''
+            INSERT INTO pipelines (
+                id, workspace_id, name, description, status, created_at,
+                created_by, updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'pipeline-1', 'workspace-1', 'Pipeline', '', 'active',
+                timestamp.isoformat(), 'user-1', timestamp.isoformat(), 'user-1',
+            ),
+        )
+        await connection.execute(
+            '''
+            INSERT INTO pipeline_runs (
+                id, workspace_id, pipeline_id, input, status, worker_id, lease_token,
+                lease_expires_at, attempt, current_activity_run_id,
+                pipeline_snapshot_json, created_at, created_by, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'pipeline-run-1', 'workspace-1', 'pipeline-1', 'Create a file.',
+                'claimed', 'worker-1', 'lease-1', lease_expires_at.isoformat(), 1,
+                'run-1', '{"steps":[]}', timestamp.isoformat(), 'user-1',
+                timestamp.isoformat(),
+            ),
+        )
+        await connection.execute(
+            '''
+            INSERT INTO pipeline_run_steps (
+                workspace_id, pipeline_run_id, position, activity_id, status,
+                activity_run_id, activity_snapshot_json, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                'workspace-1', 'pipeline-run-1', 0, 'activity-1', 'in_progress',
+                'run-1', '{"flow":"direct"}', timestamp.isoformat(),
+            ),
+        )
+        await connection.commit()

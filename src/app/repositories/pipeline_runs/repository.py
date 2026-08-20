@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from src.app.models.activity_run import ActivityRunDocument
@@ -17,7 +18,7 @@ class PipelineRunRepository(Protocol):
         document: PipelineRunDocument,
         activity_run: ActivityRunDocument | None,
     ) -> PipelineRunDocument:
-        """Persist a pipeline run and its initial selected child, if any."""
+        """Persist a pipeline run and optionally create a child run."""
         raise NotImplementedError
 
     async def get(
@@ -30,11 +31,44 @@ class PipelineRunRepository(Protocol):
         """Return one pipeline run under its owning pipeline."""
         raise NotImplementedError
 
+    async def list_claimable(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+        claimed_before: datetime,
+    ) -> list[PipelineRunDocument]:
+        """Return queued or lease-expired runs under one Pipeline."""
+        raise NotImplementedError
+
+    async def claim(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_updated_at: datetime,
+        expected_current_activity_run_id: str | None,
+        activity_run: ActivityRunDocument | None,
+    ) -> bool:
+        """Atomically assign a worker lease and optionally create a child run."""
+        raise NotImplementedError
+
+    async def renew_lease(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_lease_token: str,
+        now: datetime,
+    ) -> bool:
+        """Extend an active worker lease only when its token still matches."""
+        raise NotImplementedError
+
     async def transition(
         self,
         *,
         document: PipelineRunDocument,
         expected_current_activity_run_id: str | None,
+        expected_lease_token: str,
+        now: datetime,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically replace a run after confirming its current child."""

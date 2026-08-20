@@ -16,6 +16,10 @@ workspace configuration, credentials, enablement, or effective availability.
 the `type` of a future Linked Service. It does not return workspace credentials
 or configuration state.
 
+```http
+GET /api/v1/catalog/providers
+```
+
 | Property | JSON type | Description |
 | -------- | --------- | ----------- |
 | `id` | String | Immutable provider identifier, such as `openai`. |
@@ -26,11 +30,31 @@ or configuration state.
 | `default_base_url` | String or `null` | Default endpoint for this provider type. |
 | `model_catalog_note` | String or `null` | Static note about catalog support. |
 
+Example response (`200 OK`):
+
+```json
+[
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "description": "OpenAI hosted models.",
+    "logo_url": "/providers/openai.svg",
+    "requires_api_key": true,
+    "default_base_url": "https://api.openai.com/v1",
+    "model_catalog_note": null
+  }
+]
+```
+
 ## List model catalog
 
 `GET /api/v1/catalog/models` returns active logical models. `provider_ids`
 describes catalog deployments only; it does not identify configured providers
 or available workspace connections.
+
+```http
+GET /api/v1/catalog/models
+```
 
 | Property | JSON type | Description |
 | -------- | --------- | ----------- |
@@ -46,3 +70,24 @@ or available workspace connections.
 | `deployment_count` | Integer | Number of catalog deployments for this logical model. |
 | `starting_price` | Object or `null` | Lowest active deployment price, when catalog pricing exists. |
 | `tags` | Array of strings | Search and grouping tags. |
+
+Example response (`200 OK`):
+
+```json
+[
+  {
+    "id": "gpt-5",
+    "name": "GPT-5",
+    "vendor": "OpenAI",
+    "family": "GPT",
+    "description": "A general-purpose model.",
+    "released_at": "2026-08-07",
+    "capabilities": ["coding", "text"],
+    "status": "active",
+    "provider_ids": ["openai"],
+    "deployment_count": 1,
+    "starting_price": null,
+    "tags": ["general-purpose"]
+  }
+]
+```

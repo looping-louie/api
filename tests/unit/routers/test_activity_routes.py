@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 from itertools import count
 from typing import cast
@@ -18,6 +19,9 @@ from src.app.models.activity_run import ActivityRunDocument
 from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.activities.service import ActivityService
+from src.app.services.models.availability import ModelNotFoundError
+from src.app.services.model_execution import ModelExecutionResult
+from src.app.catalogs.providers import ProviderId
 from src.app.services.personas import PersonaLinkedServiceSelection
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
@@ -55,9 +59,15 @@ class FakeActivityRunRepository:
         values = [document for document in self.documents.values() if document.workspace_id == workspace_id and document.activity_id == activity_id]
         return values[offset:offset + limit], len(values)
 
-    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None) -> ActivityRunDocument:
+    async def has_active_pipeline_lease(self, **_: object) -> bool:
+        """Allow standalone route-fixture activity runs to continue."""
+
+        return True
+
+    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None, pipeline_run_id: str | None = None, lease_token: str | None = None) -> ActivityRunDocument:
         """Advance the snapshot checkpoint for the in-memory route fixture."""
 
+        del idempotency_key, pipeline_run_id, lease_token
         current = self.documents[run_id]
         assert current.workspace_id == workspace_id and current.activity_id == activity_id
         assert current.continuation_token == continuation_token and current.next_action == expected_action
@@ -66,11 +76,49 @@ class FakeActivityRunRepository:
         return updated
 
 
+class MissingModelExecutionService:
+    """Raise the API-owned model resolution error observed by runtime workers."""
+
+    async def execute(self, **_: object) -> object:
+        """Reject execution because the configured model is absent from the catalog."""
+
+        raise ModelNotFoundError(model_id='missing-model')
+
+
+class NoCommitModelExecutionService:
+    """Return a valid operation plan without a commit message."""
+
+    async def execute(self, **_: object) -> ModelExecutionResult:
+        """Return the file operation required by the activity checkpoint."""
+
+        return ModelExecutionResult(
+            text=(
+                '{"operations":[{"operation":"replace_text","path":"index.html",'
+                '"old_content":"Old title","new_content":"New title"}]}'
+            ),
+            provider_id=ProviderId.TOGETHER,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
+class EmptyInstructionLibraryService:
+    """Provide no instruction library for generation route tests."""
+
+    async def load(self, **_: object) -> None:
+        """Return no optional instruction snapshot."""
+
+        return None
+
+
 def build_client(
     *,
     tenant_service: TenantService,
     persona_selection_repository: FakePersonaLinkedServiceSelectionRepository | None = None,
     reference_repository: FakeReferenceRepository | None = None,
+    model_execution_service: object | None = None,
 ) -> TestClient:
     """Build an authenticated activity application with in-memory storage."""
 
@@ -90,12 +138,20 @@ def build_client(
     )
     app = FastAPI()
     app.state.activity_controller = ActivityController(activity_service=service)
+    activity_run_repository = FakeActivityRunRepository()
     app.state.activity_run_controller = ActivityRunController(activity_run_service=ActivityRunService(
-        repository=cast(object, FakeActivityRunRepository()),
+        repository=cast(object, activity_run_repository),
         activity_service=service,
         tenant_service=tenant_service, id_factory=lambda: f'run-{next(identifiers)}',
         token_factory=lambda: 'continuation-token', clock=lambda: datetime(2026, 8, 12, tzinfo=UTC),
+        model_execution_service=cast(object, model_execution_service),
+        instruction_library_service=(
+            EmptyInstructionLibraryService()
+            if model_execution_service is not None
+            else None
+        ),
     ))
+    app.state.activity_run_repository = activity_run_repository
 
     @app.middleware('http')
     async def add_authenticated_user(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -579,3 +635,130 @@ def test_activity_loop_run_routes_scope_runs_and_reject_human_gate_activities(te
     assert refinement_run.json()['activity_id'] == refinement.json()['id']
     assert disabled.status_code == 409
     assert disabled.json()['error']['code'] == 'activity_run_unavailable'
+
+
+def test_activity_checkpoint_marks_missing_model_generation_failed(
+    tenant_service: TenantService,
+) -> None:
+    """A missing API model creates a terminal Activity result instead of a retryable claim."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        model_execution_service=MissingModelExecutionService(),
+    )
+    activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/activities/{activity_id}/runs',
+        json={'input': 'Change a title.'},
+    )
+
+    continued = client.post(
+        f'/api/v1/activities/{activity_id}/runs/{created.json()["id"]}/continue',
+        json={
+            'continuation_token': created.json()['continuation_token'],
+            'idempotency_key': 'snapshot-missing-model',
+            'result': {
+                'action': 'collect_snapshot',
+                'repo_context': 'Repository context.',
+                'workspace_metadata': {
+                    'workspace_path': '/project',
+                    'source_commit_sha': 'abc',
+                },
+                'constitution': '',
+                'project_profile': {
+                    'source_file_count': 1,
+                    'approximate_source_chars': 1,
+                    'extension_counts': {},
+                    'top_level_entries': [],
+                    'markers': {
+                        'nuxt': False,
+                        'package_json': False,
+                        'fastapi': True,
+                        'docker': False,
+                        'tests': True,
+                    },
+                },
+            },
+        },
+    )
+
+    assert continued.status_code == 200
+    assert continued.json()['status'] == 'failed'
+    assert continued.json()['state'] == 'failed'
+    assert continued.json()['next_action'] == 'none'
+    assert continued.json()['continuation_token'] is None
+    persisted = client.app.state.activity_run_repository.documents[created.json()['id']]
+    assert persisted.execution_context['failure'] == {
+        'source': 'api',
+        'type': 'ModelNotFoundError',
+        'message': "Model 'missing-model' was not found.",
+    }
+
+
+def test_forbidden_commit_activity_completes_after_operations(
+    tenant_service: TenantService,
+) -> None:
+    """A forbid snapshot completes after apply without exposing a commit action."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        model_execution_service=NoCommitModelExecutionService(),
+    )
+    activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/activities/{activity_id}/runs',
+        json={'input': 'Change a title without committing.'},
+    ).json()
+    repository = client.app.state.activity_run_repository
+    repository.documents[created['id']] = replace(
+        repository.documents[created['id']],
+        activity_snapshot={
+            **repository.documents[created['id']].activity_snapshot,
+            'commit_mode': 'forbid',
+        },
+    )
+
+    generated = client.post(
+        f'/api/v1/activities/{activity_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': created['continuation_token'],
+            'idempotency_key': 'no-commit-snapshot',
+            'result': {
+                'action': 'collect_snapshot',
+                'repo_context': 'Repository context.',
+                'workspace_metadata': {
+                    'workspace_path': '/project',
+                    'source_commit_sha': 'abc',
+                },
+                'constitution': '',
+                'project_profile': {
+                    'source_file_count': 1,
+                    'approximate_source_chars': 1,
+                    'extension_counts': {},
+                    'top_level_entries': [],
+                    'markers': {
+                        'nuxt': False,
+                        'package_json': False,
+                        'fastapi': True,
+                        'docker': False,
+                        'tests': True,
+                    },
+                },
+            },
+        },
+    ).json()
+    completed = client.post(
+        f'/api/v1/activities/{activity_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': generated['continuation_token'],
+            'idempotency_key': 'no-commit-apply',
+            'result': {'action': 'apply_operations', 'applied': True},
+        },
+    )
+
+    assert generated['next_action'] == 'apply_operations'
+    assert completed.status_code == 200
+    assert completed.json()['status'] == 'completed'
+    assert completed.json()['state'] == 'completed'
+    assert completed.json()['next_action'] == 'none'
+    assert completed.json()['continuation_token'] is None

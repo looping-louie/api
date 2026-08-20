@@ -10,7 +10,7 @@ from src.app.services.execution_instructions import (
     ExecutionInstructionLibrary,
     ExecutionInstructionLibraryService,
 )
-from src.app.services.loops.types import LoopValidationError
+from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.model_execution import (
     ModelExecutionError,
     ModelExecutionService,
@@ -87,6 +87,7 @@ class LoopRunGenerationService:
                 instruction_library=instruction_library,
             )
         generators = self._agents_for_role(loop_snapshot, 'generator')
+        require_commit_message = loop_snapshot.get('commit_mode') != 'forbid'
         return await self._generate_operation_context(
             workspace_id=workspace_id,
             agent=generators[0],
@@ -97,11 +98,13 @@ class LoopRunGenerationService:
                     repo_context=str(context['repo_context']),
                     output_contract=self._output_contract(loop_snapshot),
                     reviewer_feedback=self._reviewer_feedback(context),
+                    require_commit_message=require_commit_message,
                 ),
                 instruction_library=instruction_library,
             ),
             context=context,
             instruction_library=instruction_library,
+            require_commit_message=require_commit_message,
         )
     async def _generate_roundtable_context(
         self,
@@ -117,6 +120,7 @@ class LoopRunGenerationService:
         generators = self._agents_for_role(loop_snapshot, 'generator')
         aggregators = self._agents_for_role(loop_snapshot, 'aggregator')
         output_contract = self._output_contract(loop_snapshot)
+        require_commit_message = loop_snapshot.get('commit_mode') != 'forbid'
         proposal_prompt = (
             'Return only a JSON object proposing a solution for this task.\n\n'
             'Keep the proposal under 600 words; do not draft the output file.\n\n'
@@ -144,6 +148,7 @@ class LoopRunGenerationService:
                 repo_context=str(context["repo_context"]),\
                 output_contract=output_contract,\
                 reviewer_feedback=self._reviewer_feedback(context),\
+                require_commit_message=require_commit_message,
             )}'
             f'\n\nGenerator proposals:\n{json.dumps(proposals)}'
         )
@@ -157,6 +162,7 @@ class LoopRunGenerationService:
             ),
             context=context,
             instruction_library=instruction_library,
+            require_commit_message=require_commit_message,
         )
 
     async def _generate_operation_context(
@@ -167,6 +173,7 @@ class LoopRunGenerationService:
         prompt: str,
         context: dict[str, object],
         instruction_library: ExecutionInstructionLibrary | None = None,
+        require_commit_message: bool = True,
     ) -> dict[str, object]:
         """Generate one non-empty CLI operation plan with one corrective retry."""
 
@@ -179,18 +186,23 @@ class LoopRunGenerationService:
                 instruction_library,
             )
             try:
-                return self._with_runtime_artifacts(context, generated)
+                return self._with_runtime_artifacts(
+                    context,
+                    generated,
+                    require_commit_message=require_commit_message,
+                )
             except ModelExecutionError:
                 if attempt + 1 == MAX_JSON_RESPONSE_ATTEMPTS:
                     raise
                 retry_prompt = (
                     f'{prompt}\n\nYour previous response was not a valid file '
                     'operation plan. Return exactly one JSON object whose only '
-                    'top-level keys are operations and commit_message. Do not '
+                    'top-level keys are operations'
+                    f'{" and commit_message" if require_commit_message else ""}. Do not '
                     'return an API response example, schema, error object, or '
                     'check result. operations must be a non-empty array of file '
-                    'changes required to complete the task, and commit_message '
-                    'must be a non-empty string.'
+                    'changes required to complete the task'
+                    f'{", and commit_message must be a non-empty string" if require_commit_message else ""}.'
                 )
 
         raise AssertionError('Operation plan retry attempts were exhausted.')
@@ -256,7 +268,7 @@ class LoopRunGenerationService:
 
         flow = snapshot.get('flow')
         if flow not in {'direct', 'roundtable'}:
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='flow',
                 message='is not yet supported for execution',
             )
@@ -264,20 +276,20 @@ class LoopRunGenerationService:
         if flow == 'direct' and any(
             agent.get('role') in {'reviewer', 'aggregator'} for agent in agents
         ):
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='agents',
                 message='direct execution requires generators only',
             )
         if flow == 'direct' and len(
             LoopRunGenerationService._agents_for_role(snapshot, 'generator')
         ) != 1:
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='agents',
                 message='direct execution requires one generator',
             )
         if flow == 'roundtable':
             if any(agent.get('role') == 'reviewer' for agent in agents):
-                raise LoopValidationError(
+                raise ActivityRunValidationError(
                     field_name='agents',
                     message='roundtable execution does not allow reviewers',
                 )
@@ -287,7 +299,7 @@ class LoopRunGenerationService:
                     'generator',
                 )
             ) < 2:
-                raise LoopValidationError(
+                raise ActivityRunValidationError(
                     field_name='agents',
                     message='roundtable execution requires two generators',
                 )
@@ -297,7 +309,7 @@ class LoopRunGenerationService:
                     'aggregator',
                 )
             ) != 1:
-                raise LoopValidationError(
+                raise ActivityRunValidationError(
                     field_name='agents',
                     message='roundtable execution requires one aggregator',
                 )
@@ -419,7 +431,7 @@ class LoopRunGenerationService:
             agent for agent in cls._agents(snapshot) if agent.get('role') == role
         ]
         if not agents:
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='agents',
                 message=f'requires at least one {role}',
             )
@@ -432,15 +444,19 @@ class LoopRunGenerationService:
         repo_context: str,
         output_contract: Mapping[str, object],
         reviewer_feedback: str = '',
+        require_commit_message: bool = True,
     ) -> str:
         """Build the prompt that requires a CLI-compatible operation plan."""
 
         return (
-            'Return only a JSON object with a non-empty operations array and '
-            'commit_message. Operations must use create, replace, replace_text, '
+            'Return only a JSON object with a non-empty operations array'
+            f'{" and commit_message" if require_commit_message else ""}. '
+            'Operations must use create, replace, replace_text, '
             'or delete. Use this shape: '
             '{"operations":[{"operation":"create","path":"ideas.md",'
-            '"content":"..."}],"commit_message":"docs: add ideas"}. '
+            '"content":"..."}]'
+            f'{",\"commit_message\":\"docs: add ideas\"" if require_commit_message else ""}'
+            '}. '
             f'\n\nTask:\n{input_text}\n\nOutput contract:\n'
             f'{json.dumps(output_contract)}\n\nRepository context:\n{repo_context}'
             f'{reviewer_feedback}'
@@ -496,6 +512,8 @@ class LoopRunGenerationService:
     def _with_runtime_artifacts(
         context: dict[str, object],
         generated: dict[str, object],
+        *,
+        require_commit_message: bool,
     ) -> dict[str, object]:
         """Validate and expose the final operation plan to the CLI."""
 
@@ -514,7 +532,9 @@ class LoopRunGenerationService:
                 'Loop agent returned an invalid operation plan.'
             ) from error
         commit_message = generated.get('commit_message')
-        if not isinstance(commit_message, str) or not commit_message.strip():
+        if require_commit_message and (
+            not isinstance(commit_message, str) or not commit_message.strip()
+        ):
             LOGGER.warning(
                 'Loop agent returned an operation plan without a commit message: '
                 'keys=%s commit_message_type=%s',
@@ -524,10 +544,12 @@ class LoopRunGenerationService:
             raise ModelOutputValidationError(
                 'Loop agent returned an operation plan without a commit message.'
             )
+        runtime_artifacts: dict[str, object] = {
+            'operations': operations,
+        }
+        if isinstance(commit_message, str) and commit_message.strip():
+            runtime_artifacts['commit_message'] = commit_message
         return {
             **context,
-            'runtime_artifacts': {
-                'operations': operations,
-                'commit_message': commit_message,
-            },
+            'runtime_artifacts': runtime_artifacts,
         }

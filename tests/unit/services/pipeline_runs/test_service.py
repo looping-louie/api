@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from itertools import count
 
 import pytest
@@ -17,7 +17,12 @@ from src.app.models.pipeline import (
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
+from src.app.services.pipeline_runs.types import (
+    PipelineRunPreconditionFailedError,
+    PipelineRunUnavailableError,
+)
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 
@@ -54,14 +59,83 @@ class InMemoryPipelineRunRepository:
             return None
         return self.document
 
+    async def list_claimable(
+        self, *, workspace_id: str, pipeline_id: str, claimed_before: datetime,
+    ) -> list[PipelineRunDocument]:
+        """Return the stored queued or expired run beneath one Pipeline."""
+
+        if self.document is None or (self.document.workspace_id, self.document.pipeline_id) != (
+            workspace_id,
+            pipeline_id,
+        ):
+            return []
+        if self.document.status == 'queued':
+            return [self.document]
+        if (
+            self.document.status != 'claimed'
+            or self.document.lease_expires_at is None
+            or self.document.lease_expires_at > claimed_before
+        ):
+            return []
+        return [self.document]
+
+    async def claim(
+        self, *, document: PipelineRunDocument, expected_updated_at: datetime,
+        expected_current_activity_run_id: str | None,
+        activity_run: ActivityRunDocument | None,
+    ) -> bool:
+        """Replace the observed run and persist an initial child when supplied."""
+
+        if (
+            self.document is None
+            or self.document.updated_at != expected_updated_at
+            or self.document.current_activity_run_id != expected_current_activity_run_id
+        ):
+            return False
+        self.document = document
+        if activity_run is not None:
+            self.children[activity_run.id] = activity_run
+        return True
+
+    async def renew_lease(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_lease_token: str,
+        now: datetime,
+    ) -> bool:
+        """Extend the active lease only when the existing token still matches."""
+
+        if (
+            self.document is None
+            or self.document.lease_token != expected_lease_token
+            or self.document.lease_expires_at is None
+            or self.document.lease_expires_at <= now
+        ):
+            return False
+        self.document = replace(
+            self.document,
+            lease_expires_at=document.lease_expires_at,
+            updated_at=document.updated_at,
+        )
+        return True
+
     async def transition(
         self, *, document: PipelineRunDocument,
         expected_current_activity_run_id: str | None,
+        expected_lease_token: str,
+        now: datetime,
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Persist a transition only for the currently scheduled child."""
 
-        if self.document is None or self.document.current_activity_run_id != expected_current_activity_run_id:
+        if (
+            self.document is None
+            or self.document.current_activity_run_id != expected_current_activity_run_id
+            or self.document.lease_token != expected_lease_token
+            or self.document.lease_expires_at is None
+            or self.document.lease_expires_at <= now
+        ):
             return False
         self.document = document
         if activity_run is not None:
@@ -115,6 +189,137 @@ def activity(activity_id: str) -> ActivityDocument:
 
 
 @pytest.mark.asyncio
+async def test_created_run_waits_for_runtime_claim(
+    tenant_service: TenantService,
+) -> None:
+    """Creation leaves the first Activity unallocated until a worker claims it."""
+
+    first = activity('activity-1')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run one step.', status='active',
+            steps=(PipelineActivityStep(activity_id=first.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        id_factory=lambda: 'run-1', clock=IncrementingClock(),
+        token_factory=lambda: 'token',
+    )
+
+    created, child = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+        commit_mode='forbid',
+    )
+
+    assert created.status == 'queued'
+    assert created.commit_mode == 'forbid'
+    assert created.current_activity_run_id is None
+    assert [step.status for step in created.steps] == ['pending']
+    assert child is None
+    assert runs.children == {}
+
+    candidates = await service.list_claimable(
+        user_id='user-1', pipeline_id='pipeline-1',
+    )
+
+    assert candidates == [created]
+
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        lease_duration=timedelta(minutes=1),
+    )
+
+    assert claim is not None
+    claimed, claimed_child, lease_token = claim
+    assert claimed.status == 'claimed'
+    assert claimed.worker_id == 'worker-1'
+    assert claimed.attempt == 1
+    assert claimed_child.activity_id == first.id
+    assert claimed_child.activity_snapshot['commit_mode'] == 'forbid'
+    assert lease_token == 'token'
+
+    runs.document = replace(
+        claimed,
+        lease_expires_at=datetime(1970, 1, 1, tzinfo=UTC),
+    )
+    reclaimed = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=claimed.id,
+        worker_id='worker-2', if_match=pipeline_run_etag(runs.document),
+        lease_duration=timedelta(minutes=1),
+    )
+
+    assert reclaimed is not None
+    reclaimed_run, reclaimed_child, _ = reclaimed
+    assert reclaimed_run.worker_id == 'worker-2'
+    assert reclaimed_run.attempt == 2
+    assert reclaimed_child.id == claimed_child.id
+    assert len(runs.children) == 1
+
+    with pytest.raises(PipelineRunPreconditionFailedError):
+        await service.claim(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+            worker_id='worker-3', if_match=pipeline_run_etag(created),
+            lease_duration=timedelta(minutes=1),
+        )
+
+
+@pytest.mark.asyncio
+async def test_active_claim_can_renew_its_lease_but_stale_claim_cannot(
+    tenant_service: TenantService,
+) -> None:
+    """Only the active, unexpired worker token can extend a Pipeline lease."""
+
+    first = activity('activity-1')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run one step.', status='active',
+            steps=(PipelineActivityStep(activity_id=first.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    clock = IncrementingClock()
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        id_factory=lambda: 'run-1', clock=clock, token_factory=lambda: 'token',
+    )
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        lease_duration=timedelta(minutes=1),
+    )
+
+    assert claim is not None
+    renewed = await service.renew_lease(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token='token', lease_duration=timedelta(minutes=1),
+    )
+
+    assert renewed.lease_expires_at is not None
+    assert renewed.lease_expires_at > claim[0].lease_expires_at
+    with pytest.raises(PipelineRunUnavailableError, match='lease is no longer active'):
+        await service.renew_lease(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+            lease_token='stale-token', lease_duration=timedelta(minutes=1),
+        )
+
+
+@pytest.mark.asyncio
 async def test_completed_step_schedules_success_dependent_child(
     tenant_service: TenantService,
 ) -> None:
@@ -146,9 +351,17 @@ async def test_completed_step_schedules_success_dependent_child(
         token_factory=lambda: 'token',
     )
 
-    created, first_child = await service.create(
+    created, child = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
+    assert child is None
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        lease_duration=timedelta(minutes=1),
+    )
+    assert claim is not None
+    _, first_child, _ = claim
     assert first_child is not None and first_child.activity_id == first.id
 
     runs.children[first_child.id] = replace(
@@ -157,7 +370,13 @@ async def test_completed_step_schedules_success_dependent_child(
     )
     advanced, second_child = await service.continue_run(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token='token',
     )
 
     assert second_child is not None and second_child.activity_id == second.id
     assert [step.status for step in advanced.steps] == ['completed', 'in_progress']
+    with pytest.raises(PipelineRunUnavailableError, match='lease is no longer active'):
+        await service.continue_run(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+            lease_token='stale-token',
+        )

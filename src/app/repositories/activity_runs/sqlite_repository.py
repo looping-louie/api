@@ -11,14 +11,14 @@ from pathlib import Path
 import aiosqlite
 
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.repositories.loop_runs.errors import (
-    LoopRunInvalidTransitionError,
-    LoopRunTokenConflictError,
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+    ActivityRunTokenConflictError,
 )
 
 
 class SqliteActivityRunRepository:
-    """Persist activity runs independently from legacy loop execution records."""
+    """Persist activity execution records and checkpoint transitions."""
 
     def __init__(self, database_path: str | Path) -> None:
         """Store the SQLite database path used for connections."""
@@ -145,6 +145,8 @@ class SqliteActivityRunRepository:
         execution_context: dict[str, object],
         updated_at: datetime,
         iteration: int | None = None,
+        pipeline_run_id: str | None = None,
+        lease_token: str | None = None,
     ) -> ActivityRunDocument:
         """Persist one token-guarded checkpoint transition or its replay."""
 
@@ -158,7 +160,16 @@ class SqliteActivityRunRepository:
                     run_id=run_id,
                 )
                 if row is None:
-                    raise LoopRunInvalidTransitionError()
+                    raise ActivityRunInvalidTransitionError()
+                if not await self._has_active_pipeline_lease(
+                    connection,
+                    workspace_id=workspace_id,
+                    activity_run_id=run_id,
+                    pipeline_run_id=pipeline_run_id,
+                    lease_token=lease_token,
+                    now=updated_at,
+                ):
+                    raise ActivityRunInvalidTransitionError()
                 revision = await self._get_checkpoint_revision(
                     connection,
                     workspace_id=workspace_id,
@@ -166,7 +177,7 @@ class SqliteActivityRunRepository:
                     continuation_token=continuation_token,
                 )
                 if revision is None:
-                    raise LoopRunTokenConflictError()
+                    raise ActivityRunTokenConflictError()
                 replay = await self._get_idempotent_response(
                     connection,
                     workspace_id=workspace_id,
@@ -178,9 +189,9 @@ class SqliteActivityRunRepository:
                     await connection.commit()
                     return replay
                 if int(row['token_revision']) != revision:
-                    raise LoopRunTokenConflictError()
+                    raise ActivityRunTokenConflictError()
                 if str(row['next_action']) != expected_action:
-                    raise LoopRunInvalidTransitionError()
+                    raise ActivityRunInvalidTransitionError()
                 updated = self._to_document(
                     row,
                     status=status,
@@ -233,6 +244,77 @@ class SqliteActivityRunRepository:
             except Exception:
                 await connection.rollback()
                 raise
+
+    async def has_active_pipeline_lease(
+        self,
+        *,
+        workspace_id: str,
+        activity_run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        now: datetime,
+    ) -> bool:
+        """Return whether a Pipeline child has a valid current worker lease."""
+
+        async with self._connect() as connection:
+            return await self._has_active_pipeline_lease(
+                connection,
+                workspace_id=workspace_id,
+                activity_run_id=activity_run_id,
+                pipeline_run_id=pipeline_run_id,
+                lease_token=lease_token,
+                now=now,
+            )
+
+    @staticmethod
+    async def _has_active_pipeline_lease(
+        connection: aiosqlite.Connection,
+        *,
+        workspace_id: str,
+        activity_run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        now: datetime,
+    ) -> bool:
+        """Allow standalone runs or require an active lease for Pipeline children."""
+
+        cursor = await connection.execute(
+            '''
+            SELECT pipeline_run_id
+            FROM pipeline_run_steps
+            WHERE workspace_id = ? AND activity_run_id = ?
+            ''',
+            (workspace_id, activity_run_id),
+        )
+        try:
+            owner = await cursor.fetchone()
+        finally:
+            await cursor.close()
+        if owner is None:
+            return True
+        if (
+            pipeline_run_id is None
+            or lease_token is None
+            or str(owner['pipeline_run_id']) != pipeline_run_id
+        ):
+            return False
+        cursor = await connection.execute(
+            '''
+            SELECT 1
+            FROM pipeline_runs
+            WHERE workspace_id = ? AND id = ?
+              AND current_activity_run_id = ? AND lease_token = ?
+              AND lease_expires_at > ? AND status IN ('claimed', 'in_progress')
+            ''',
+            (
+                workspace_id, pipeline_run_id, activity_run_id, lease_token,
+                now.isoformat(),
+            ),
+        )
+        try:
+            return await cursor.fetchone() is not None
+        finally:
+            await cursor.close()
 
     @staticmethod
     def _to_document(

@@ -234,3 +234,27 @@ Example response (`200 OK`):
 Write and describe operations return the complete skill, including `id`,
 instructions, metadata, origin and capabilities, version, and timestamps. List
 items omit instructions and metadata.
+
+## Delete a skill
+
+`DELETE /api/v1/skills/{skill_id}` removes a custom Skill from the selected
+workspace when no resource depends on it. Built-in Skill content is immutable
+and cannot be deleted.
+
+```http
+DELETE /api/v1/skills/skill-api-compatibility
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "deleted": true
+}
+```
+
+The endpoint returns `409 resource_in_use` when another resource depends on
+the Skill, `409 builtin_instruction_immutable` for built-in Skills, and
+`404 instruction_not_found` when the Skill is not visible in the selected
+workspace.

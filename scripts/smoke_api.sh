@@ -26,6 +26,7 @@ ACTIVITY_RUN_ID=""
 ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
 PIPELINE_RUN_ID=""
+PIPELINE_RUN_LEASE_TOKEN=""
 PROVIDER_CREATED=0
 PROVIDER_WAS_ENABLED=0
 PROVIDER_STATE_CAPTURED=0
@@ -51,8 +52,14 @@ request() {
     local method="$1"
     local path="$2"
     local body="${3:-}"
+    local extra_header="${4:-}"
+    local -a extra_curl_headers=()
     local response_file
     local status
+
+    if [[ -n "${extra_header}" ]]; then
+        extra_curl_headers=(-H "${extra_header}")
+    fi
 
     response_file="$(mktemp)"
 
@@ -67,6 +74,7 @@ request() {
                 --write-out "%{http_code}" \
                 --request "${method}" \
                 "${CURL_HEADERS[@]}" \
+                "${extra_curl_headers[@]}" \
                 --data "${body}" \
                 "${API_ROOT}${path}"
         )"
@@ -79,6 +87,7 @@ request() {
                 --write-out "%{http_code}" \
                 --request "${method}" \
                 "${CURL_HEADERS[@]}" \
+                "${extra_curl_headers[@]}" \
                 "${API_ROOT}${path}"
         )"
     fi
@@ -162,6 +171,21 @@ for part in sys.argv[1].split("."):
 
 print(value)
 ' "${field}"
+}
+
+json_first_claim_etag() {
+    python3 -c '
+import json
+import sys
+
+document = json.load(sys.stdin)
+items = document.get("items", [])
+
+if not items or not isinstance(items[0].get("etag"), str):
+    raise SystemExit("Claimable run response does not contain an ETag.")
+
+print(items[0]["etag"])
+'
 }
 
 select_model_id() {
@@ -586,6 +610,27 @@ pipeline_run_response="$(
 )"
 PIPELINE_RUN_ID="$(printf '%s' "${pipeline_run_response}" | json_field "id")"
 request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" >/dev/null
+pipeline_claimable_response="$(
+    request GET "/pipelines/${PIPELINE_ID}/runs?claimable=true"
+)"
+PIPELINE_RUN_ETAG="$(
+    printf '%s' "${pipeline_claimable_response}" | json_first_claim_etag
+)"
+pipeline_claim_response="$(
+    request \
+        PATCH \
+        "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" \
+        '{"worker_id":"smoke-runtime","status":"claimed"}' \
+        "If-Match: ${PIPELINE_RUN_ETAG}"
+)"
+PIPELINE_RUN_LEASE_TOKEN="$(
+    printf '%s' "${pipeline_claim_response}" | json_field "lease_token"
+)"
+request \
+    POST \
+    "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/lease" \
+    "{\"lease_token\":\"${PIPELINE_RUN_LEASE_TOKEN}\"}" \
+    >/dev/null
 request POST "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/continue" '{}' >/dev/null
 request \
     PATCH \

@@ -36,11 +36,6 @@ class SqliteDependencyRepository:
                 workspace_id=workspace_id,
             activity_id=target.resource_id,
             )
-        if target.resource_type == "persona":
-            return await self._find_loop_usages(
-                workspace_id=workspace_id,
-                persona_id=target.resource_id,
-            )
         if target.resource_type == 'linked_service':
             return await self._find_persona_usages(
                 workspace_id=workspace_id,
@@ -81,45 +76,6 @@ class SqliteDependencyRepository:
                     resource_id=str(row['persona_id']),
                 ),
                 relation='linked_service',
-            )
-            for row in rows
-        ]
-
-    async def _find_loop_usages(
-        self,
-        *,
-        workspace_id: str,
-        persona_id: str,
-    ) -> list[DependencyUsage]:
-        """Return loops assigning one persona."""
-
-        async with self._connect() as connection:
-            cursor = await connection.execute(
-                """
-                SELECT DISTINCT loop_agents.loop_id, loops.status
-                FROM loop_agents
-                JOIN loops
-                    ON loops.workspace_id = loop_agents.workspace_id
-                    AND loops.id = loop_agents.loop_id
-                WHERE loop_agents.workspace_id = ?
-                    AND loop_agents.persona_id = ?
-                ORDER BY loop_agents.loop_id ASC
-                """,
-                (workspace_id, persona_id),
-            )
-            try:
-                rows = await cursor.fetchall()
-            finally:
-                await cursor.close()
-
-        return [
-            DependencyUsage(
-                source=ResourceReference(
-                    resource_type="loop",
-                    resource_id=str(row["loop_id"]),
-                ),
-                relation="persona",
-                blocking=str(row["status"]) != "archived",
             )
             for row in rows
         ]

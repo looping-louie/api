@@ -8,7 +8,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
-from src.app.schemas.loop_run import ActivityRunResponse
+from src.app.schemas.activity_run import ActivityRunResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
@@ -105,7 +105,10 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
     """Fixed-size offset page of pipeline definitions."""
 
 
-PipelineRunStatusValue = Literal['in_progress', 'failed', 'completed']
+PipelineRunStatusValue = Literal[
+    'queued', 'claimed', 'in_progress', 'failed', 'completed'
+]
+PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[
     'pending', 'in_progress', 'completed', 'failed', 'skipped'
 ]
@@ -115,6 +118,26 @@ class PipelineRunCreateRequest(RequestSchema):
     """Input used for each activity scheduled by a new pipeline run."""
 
     input: NonEmptyString
+    commit_mode: PipelineRunCommitModeValue = 'allow'
+
+
+class PipelineRunClaimRequest(RequestSchema):
+    """Worker identity and target status for a conditional run claim."""
+
+    worker_id: NonEmptyString
+    status: Literal['claimed']
+
+
+class PipelineRunLeaseRenewRequest(RequestSchema):
+    """Active worker token required to extend a claimed Pipeline run lease."""
+
+    lease_token: NonEmptyString
+
+
+class PipelineRunContinueRequest(RequestSchema):
+    """Active worker token required to schedule after a terminal child run."""
+
+    lease_token: NonEmptyString
 
 
 class PipelineRunStepResponse(ResponseSchema):
@@ -131,12 +154,39 @@ class PipelineRunResponse(ResponseSchema):
     id: str
     pipeline_id: str
     input: str
+    commit_mode: PipelineRunCommitModeValue
     status: PipelineRunStatusValue
     current_activity_run: ActivityRunResponse | None
     steps: list[PipelineRunStepResponse]
     created_at: datetime
     created_by: str
     updated_at: datetime
+
+
+class PipelineRunClaimResponse(ResponseSchema):
+    """One worker-owned pipeline run and its secret lease token."""
+
+    run: PipelineRunResponse
+    lease_token: str
+
+
+class PipelineRunClaimableResponse(ResponseSchema):
+    """One claimable run with the entity tag required to claim it."""
+
+    run: PipelineRunResponse
+    etag: str
+
+
+class PipelineRunClaimableListResponse(
+    ListResponse[PipelineRunClaimableResponse]
+):
+    """Claimable pipeline runs owned by one active Pipeline."""
+
+
+class PipelineRunLeaseResponse(ResponseSchema):
+    """Current expiration returned after a successful worker lease renewal."""
+
+    lease_expires_at: datetime
 
 
 class PipelineChangelogEntryResponse(ResponseSchema):

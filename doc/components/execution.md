@@ -1,7 +1,7 @@
 # Execution
 
-A persisted activity run coordinates model decisions with CLI-owned repository
-execution. The API plans and reviews changes; the CLI collects repository
+A persisted activity run coordinates model decisions with runtime-owned repository
+execution. The API plans and reviews changes; the runtime collects repository
 context, applies operations, and performs the commit.
 
 ## Execution lifecycle
@@ -16,9 +16,9 @@ instruction definitions available when the run starts. The same in-memory
 snapshot is used for the entire run; execution services do not resolve those
 definitions again.
 
-### 2. Receive repository context from the CLI
+### 2. Receive repository context from the runtime
 
-The CLI sends repository snapshot context in `collect_snapshot`. The API uses
+The runtime sends repository snapshot context in `collect_snapshot`. The API uses
 that context to build iteration prompts.
 
 ### 3. Build prompts
@@ -48,12 +48,12 @@ describing filesystem operations:
 ### 5. Validate and apply the operation contract
 
 The API validates generator operations and returns them in checkpoint payload.
-The CLI applies operations locally and reports success or failure in
+The runtime applies operations locally and reports success or failure in
 `apply_operations`.
 
 ### 6. Receive review input
 
-The CLI sends `final_diff` and changed file contents in
+The runtime sends `final_diff` and changed file contents in
 `submit_review_input`. The API uses this reviewer input as the decision source
 of truth.
 
@@ -77,7 +77,7 @@ or maximum iterations are reached.
 
 ### 10. Finalise
 
-If the run succeeds, the API marks commit handoff as allowed. The CLI performs
+If the run succeeds, the API marks commit handoff as allowed. The runtime performs
 the commit and reports the result.
 
 ## Prompt lifecycle
@@ -93,11 +93,12 @@ Contains the original task, Git diff, changed file contents, and review skill.
 
 ## Workspace and workflow ownership
 
-Workspace lifecycle is CLI-owned. The API persists activity-run orchestration state
+Workspace lifecycle is runtime-owned. The API persists activity-run orchestration state
 in SQLite.
 
-The CLI creates a persisted run, iterates its `/continue` checkpoint, commits
-an approved result, records workflow progress, and selects the next task.
+The API queues a persisted pipeline run. The runtime claims it, iterates its
+`/continue` checkpoint, commits an approved result, and reports activity
+outcomes so the API can select the next step.
 
 ## Run artefacts
 

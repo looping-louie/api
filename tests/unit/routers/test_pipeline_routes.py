@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -11,17 +13,23 @@ from fastapi.testclient import TestClient
 from src.app.controllers.pipeline import PipelineController
 from src.app.routers.pipelines import router as pipelines_router
 from src.app.services.shared.tenant import TenantService
+from src.app.services.pipeline_runs import PipelineRunService
 from src.app.utils.http import register_exception_handlers
 from tests.unit.services.pipelines.test_service import build_service
 
 
-def build_client(*, tenant_service: TenantService) -> TestClient:
+def build_client(
+    *,
+    tenant_service: TenantService,
+    pipeline_run_service: PipelineRunService | None = None,
+) -> TestClient:
     """Build an authenticated pipeline application with in-memory storage."""
 
     service, _ = build_service(tenant_service=tenant_service)
     app = FastAPI()
     app.state.pipeline_controller = PipelineController(
         pipeline_service=service,
+        pipeline_run_service=pipeline_run_service,
     )
 
     @app.middleware('http')
@@ -234,6 +242,77 @@ def test_pipeline_returns_named_step_dependencies(
     assert response.json()['steps'][1]['dependsOn'] == [
         {'activity': 'Prepare', 'condition': 'success'},
     ]
+
+
+def test_pipeline_lease_renewal_requires_a_token(
+    tenant_service: TenantService,
+) -> None:
+    """The runtime lease route validates the token and returns its new expiry."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, _LeaseService()),
+    )
+
+    response = client.post(
+        '/api/v1/pipelines/pipeline-1/runs/run-1/lease',
+        json={'lease_token': 'lease-1'},
+    )
+    invalid = client.post(
+        '/api/v1/pipelines/pipeline-1/runs/run-1/lease',
+        json={},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {'lease_expires_at': '2026-08-19T10:01:00Z'}
+    assert invalid.status_code == 422
+    assert invalid.json()['error']['code'] == 'request_validation_error'
+
+
+def test_pipeline_claim_requires_an_if_match_header(
+    tenant_service: TenantService,
+) -> None:
+    """Conditional claims reject requests that omit the listed candidate ETag."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, _LeaseService()),
+    )
+
+    response = client.patch(
+        '/api/v1/pipelines/pipeline-1/runs/run-1',
+        json={'worker_id': 'worker-1', 'status': 'claimed'},
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
+class _LeaseService:
+    """Provide a deterministic renewal response for the router contract test."""
+
+    async def renew_lease(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        lease_token: str,
+        lease_duration: timedelta,
+        requested_workspace_id: str | None,
+    ) -> object:
+        """Return a run-shaped object containing the renewed lease expiry."""
+
+        assert (user_id, pipeline_id, run_id, lease_token) == (
+            'user-1', 'pipeline-1', 'run-1', 'lease-1',
+        )
+        assert lease_duration == timedelta(minutes=1)
+        assert requested_workspace_id is None
+        return type(
+            'RenewedRun',
+            (),
+            {'lease_expires_at': datetime(2026, 8, 19, 10, 1, tzinfo=UTC)},
+        )()
 
 
 def test_pipeline_rejects_retired_dependency_condition(

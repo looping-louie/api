@@ -21,3 +21,14 @@ class PipelineRunUnavailableError(Exception):
         super().__init__(f"Pipeline '{pipeline_id}' cannot run: {reason}.")
         self.pipeline_id = pipeline_id
         self.reason = reason
+
+
+class PipelineRunPreconditionFailedError(Exception):
+    """Raised when a conditional pipeline-run claim observes stale state."""
+
+    def __init__(self, *, pipeline_id: str, run_id: str) -> None:
+        """Store the run whose previously observed version is no longer current."""
+
+        super().__init__(f"Pipeline run '{run_id}' no longer matches the supplied ETag.")
+        self.pipeline_id = pipeline_id
+        self.run_id = run_id

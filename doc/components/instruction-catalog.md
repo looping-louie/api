@@ -42,8 +42,9 @@ executions remain reproducible because each run owns an
 ## Retire a builtin
 
 Remove its manifest entry, but never reuse its ID. Synchronization marks the
-SQL row as deprecated; it does not delete it. New loops cannot select a
-deprecated instruction, while historical references can still resolve it.
+SQL row as deprecated; it does not delete it. New Activity configurations cannot
+select a deprecated instruction, while historical references can still resolve
+it.
 
 ## Catalog synchronization
 
