@@ -233,16 +233,31 @@ class ActivityRunService:
         if action == 'apply_operations':
             context['apply_result'] = dict(result)
             applied = result.get('applied') is True
+            commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
-                action=action, status='in_progress' if applied else 'failed',
-                state='awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
-                else ('awaiting_commit' if applied else 'failed'),
-                next_action='submit_review_input' if applied and self._has_reviewers(document.activity_snapshot)
-                else ('commit_if_allowed' if applied else 'none'),
-                next_token=self._token_factory() if applied else None, context=context,
+                action=action,
+                status=(
+                    'completed' if applied and commit_forbidden
+                    and not self._has_reviewers(document.activity_snapshot)
+                    else ('in_progress' if applied else 'failed')
+                ),
+                state=(
+                    'awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    else ('completed' if applied and commit_forbidden else ('awaiting_commit' if applied else 'failed'))
+                ),
+                next_action=(
+                    'submit_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    else ('none' if applied and commit_forbidden else ('commit_if_allowed' if applied else 'none'))
+                ),
+                next_token=(
+                    self._token_factory() if applied and (
+                        self._has_reviewers(document.activity_snapshot) or not commit_forbidden
+                    ) else None
+                ),
+                context=context,
             )
         if action == 'submit_review_input':
             if self._generation_service is None:
@@ -258,14 +273,25 @@ class ActivityRunService:
             updated_context = {**context, 'review_input': dict(result), 'review_result': review}
             approved = review['approved'] is True
             retry = not approved and document.iteration < self._max_iterations(document.activity_snapshot)
+            commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
-                action=action, status='in_progress' if approved or retry else 'failed',
-                state='awaiting_commit' if approved else ('awaiting_snapshot' if retry else 'failed'),
-                next_action='commit_if_allowed' if approved else ('collect_snapshot' if retry else 'none'),
-                next_token=self._token_factory() if approved or retry else None,
+                action=action,
+                status=(
+                    'completed' if approved and commit_forbidden
+                    else ('in_progress' if approved or retry else 'failed')
+                ),
+                state=(
+                    'completed' if approved and commit_forbidden
+                    else ('awaiting_commit' if approved else ('awaiting_snapshot' if retry else 'failed'))
+                ),
+                next_action=(
+                    'none' if approved and commit_forbidden
+                    else ('commit_if_allowed' if approved else ('collect_snapshot' if retry else 'none'))
+                ),
+                next_token=self._token_factory() if (approved and not commit_forbidden) or retry else None,
                 context=updated_context, iteration=document.iteration + 1 if retry else None,
             )
         if action == 'commit_if_allowed':

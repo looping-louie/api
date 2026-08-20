@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 from itertools import count
 from typing import cast
@@ -19,6 +20,8 @@ from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.activities.service import ActivityService
 from src.app.services.models.availability import ModelNotFoundError
+from src.app.services.model_execution import ModelExecutionResult
+from src.app.catalogs.providers import ProviderId
 from src.app.services.personas import PersonaLinkedServiceSelection
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
@@ -80,6 +83,25 @@ class MissingModelExecutionService:
         """Reject execution because the configured model is absent from the catalog."""
 
         raise ModelNotFoundError(model_id='missing-model')
+
+
+class NoCommitModelExecutionService:
+    """Return a valid operation plan without a commit message."""
+
+    async def execute(self, **_: object) -> ModelExecutionResult:
+        """Return the file operation required by the activity checkpoint."""
+
+        return ModelExecutionResult(
+            text=(
+                '{"operations":[{"operation":"replace_text","path":"index.html",'
+                '"old_content":"Old title","new_content":"New title"}]}'
+            ),
+            provider_id=ProviderId.TOGETHER,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
 
 
 class EmptyInstructionLibraryService:
@@ -671,3 +693,72 @@ def test_activity_checkpoint_marks_missing_model_generation_failed(
         'type': 'ModelNotFoundError',
         'message': "Model 'missing-model' was not found.",
     }
+
+
+def test_forbidden_commit_activity_completes_after_operations(
+    tenant_service: TenantService,
+) -> None:
+    """A forbid snapshot completes after apply without exposing a commit action."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        model_execution_service=NoCommitModelExecutionService(),
+    )
+    activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
+    created = client.post(
+        f'/api/v1/activities/{activity_id}/runs',
+        json={'input': 'Change a title without committing.'},
+    ).json()
+    repository = client.app.state.activity_run_repository
+    repository.documents[created['id']] = replace(
+        repository.documents[created['id']],
+        activity_snapshot={
+            **repository.documents[created['id']].activity_snapshot,
+            'commit_mode': 'forbid',
+        },
+    )
+
+    generated = client.post(
+        f'/api/v1/activities/{activity_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': created['continuation_token'],
+            'idempotency_key': 'no-commit-snapshot',
+            'result': {
+                'action': 'collect_snapshot',
+                'repo_context': 'Repository context.',
+                'workspace_metadata': {
+                    'workspace_path': '/project',
+                    'source_commit_sha': 'abc',
+                },
+                'constitution': '',
+                'project_profile': {
+                    'source_file_count': 1,
+                    'approximate_source_chars': 1,
+                    'extension_counts': {},
+                    'top_level_entries': [],
+                    'markers': {
+                        'nuxt': False,
+                        'package_json': False,
+                        'fastapi': True,
+                        'docker': False,
+                        'tests': True,
+                    },
+                },
+            },
+        },
+    ).json()
+    completed = client.post(
+        f'/api/v1/activities/{activity_id}/runs/{created["id"]}/continue',
+        json={
+            'continuation_token': generated['continuation_token'],
+            'idempotency_key': 'no-commit-apply',
+            'result': {'action': 'apply_operations', 'applied': True},
+        },
+    )
+
+    assert generated['next_action'] == 'apply_operations'
+    assert completed.status_code == 200
+    assert completed.json()['status'] == 'completed'
+    assert completed.json()['state'] == 'completed'
+    assert completed.json()['next_action'] == 'none'
+    assert completed.json()['continuation_token'] is None

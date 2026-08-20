@@ -108,6 +108,7 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
 PipelineRunStatusValue = Literal[
     'queued', 'claimed', 'in_progress', 'failed', 'completed'
 ]
+PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[
     'pending', 'in_progress', 'completed', 'failed', 'skipped'
 ]
@@ -117,6 +118,7 @@ class PipelineRunCreateRequest(RequestSchema):
     """Input used for each activity scheduled by a new pipeline run."""
 
     input: NonEmptyString
+    commit_mode: PipelineRunCommitModeValue = 'allow'
 
 
 class PipelineRunClaimRequest(RequestSchema):
@@ -151,6 +153,7 @@ class PipelineRunResponse(ResponseSchema):
     id: str
     pipeline_id: str
     input: str
+    commit_mode: PipelineRunCommitModeValue
     status: PipelineRunStatusValue
     current_activity_run: ActivityRunResponse | None
     steps: list[PipelineRunStepResponse]

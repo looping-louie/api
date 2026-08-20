@@ -8,6 +8,7 @@ from typing import Literal, Mapping
 
 
 PipelineRunStatus = Literal['queued', 'claimed', 'in_progress', 'failed', 'completed']
+PipelineRunCommitMode = Literal['allow', 'forbid']
 PipelineRunStepStatus = Literal[
     'pending',
     'in_progress',
@@ -48,3 +49,4 @@ class PipelineRunDocument:
     created_at: datetime
     created_by: str
     updated_at: datetime
+    commit_mode: PipelineRunCommitMode = 'allow'

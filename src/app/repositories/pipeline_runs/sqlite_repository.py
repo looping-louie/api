@@ -256,15 +256,15 @@ class SqlitePipelineRunRepository:
         await connection.execute(
             '''
             INSERT INTO pipeline_runs (
-                id, workspace_id, pipeline_id, input, status,
+                id, workspace_id, pipeline_id, input, commit_mode, status,
                 worker_id, lease_token, lease_expires_at, attempt,
                 current_activity_run_id, pipeline_snapshot_json,
                 created_at, created_by, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 document.id, document.workspace_id, document.pipeline_id,
-                document.input, document.status, document.worker_id,
+                document.input, document.commit_mode, document.status, document.worker_id,
                 document.lease_token,
                 document.lease_expires_at.isoformat()
                 if document.lease_expires_at is not None else None,
@@ -386,6 +386,7 @@ class SqlitePipelineRunRepository:
         return PipelineRunDocument(
             id=str(row['id']), workspace_id=str(row['workspace_id']),
             pipeline_id=str(row['pipeline_id']), input=str(row['input']),
+            commit_mode=row['commit_mode'],
             status=row['status'], worker_id=row['worker_id'],
             lease_token=row['lease_token'],
             lease_expires_at=(

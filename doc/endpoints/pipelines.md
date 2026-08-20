@@ -529,9 +529,16 @@ structures use `invalid_pipeline_steps`.
 ## Execute pipelines
 
 `POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
-every scheduled Activity. The API freezes the Pipeline graph and returns a
-`queued` run. Creation does not allocate an Activity run or start repository
-execution.
+every scheduled Activity and a run-level `commit_mode`. The API freezes the
+Pipeline graph and commit policy, then returns a `queued` run. Creation does
+not allocate an Activity run or start repository execution. `allow` is the
+default mode. `forbid` leaves successfully applied and approved changes
+uncommitted, and the API never schedules a commit checkpoint for that run.
+
+| Property | JSON type | Required | Restrictions |
+| -------- | --------- | -------- | ------------ |
+| `input` | String | Yes | Used by every scheduled Activity. |
+| `commit_mode` | String | No | `allow` (default) or `forbid`. |
 
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs
@@ -541,7 +548,8 @@ Content-Type: application/json
 
 ```json
 {
-  "input": "Review the release candidate and determine whether it is ready for production."
+  "input": "Review the release candidate and determine whether it is ready for production.",
+  "commit_mode": "allow"
 }
 ```
 
@@ -552,6 +560,7 @@ Example response (`201 Created`):
   "id": "pipeline-run-001",
   "pipeline_id": "pipeline-production-release-review",
   "input": "Review the release candidate and determine whether it is ready for production.",
+  "commit_mode": "allow",
   "status": "queued",
   "current_activity_run": null,
   "steps": [

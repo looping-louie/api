@@ -208,9 +208,11 @@ async def test_created_run_waits_for_runtime_claim(
 
     created, child = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+        commit_mode='forbid',
     )
 
     assert created.status == 'queued'
+    assert created.commit_mode == 'forbid'
     assert created.current_activity_run_id is None
     assert [step.status for step in created.steps] == ['pending']
     assert child is None
@@ -227,6 +229,7 @@ async def test_created_run_waits_for_runtime_claim(
     assert claimed.worker_id == 'worker-1'
     assert claimed.attempt == 1
     assert claimed_child.activity_id == first.id
+    assert claimed_child.activity_snapshot['commit_mode'] == 'forbid'
     assert lease_token == 'token'
 
     runs.document = replace(

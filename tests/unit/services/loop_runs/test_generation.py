@@ -52,6 +52,36 @@ class InvalidThenValidModelExecutionService:
         )
 
 
+class NoCommitModelExecutionService:
+    """Return a valid file-operation plan without a commit message."""
+
+    def __init__(self) -> None:
+        """Track whether a no-commit plan is retried unnecessarily."""
+
+        self.prompts: list[str] = []
+
+    async def execute(
+        self,
+        *,
+        prompt: str,
+        **_: object,
+    ) -> ModelExecutionResult:
+        """Return one valid operation plan without commit metadata."""
+
+        self.prompts.append(prompt)
+        return ModelExecutionResult(
+            text=(
+                '{"operations":[{"operation":"create","path":"output.txt",'
+                '"content":"created"}]}'
+            ),
+            provider_id=ProviderId.TOGETHER,
+            model_id='model-1',
+            input_tokens=1,
+            output_tokens=1,
+            duration_ms=1,
+        )
+
+
 class RoundtableModelExecutionService:
     """Return proposals and an operation plan for known roundtable roles."""
 
@@ -441,6 +471,46 @@ def test_json_object_payload_accepts_prose_wrapped_json() -> None:
     )
 
     assert payload == {'operations': [], 'commit_message': 'docs: update'}
+
+
+@pytest.mark.asyncio
+async def test_forbidden_commit_generation_accepts_a_plan_without_commit_message() -> None:
+    """A forbid run neither requests nor retries for commit metadata."""
+
+    model_execution_service = NoCommitModelExecutionService()
+    service = LoopRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+
+    context = await service.generate_context(
+        loop_snapshot={
+            'flow': 'direct',
+            'commit_mode': 'forbid',
+            'agents': [
+                {
+                    'id': 'agent-1',
+                    'model_id': 'model-1',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+            'output_contract': {},
+        },
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert context['runtime_artifacts'] == {
+        'operations': [
+            {'operation': 'create', 'path': 'output.txt', 'content': 'created'},
+        ],
+    }
+    assert len(model_execution_service.prompts) == 1
+    assert 'commit_message' not in model_execution_service.prompts[0]
 
 
 class EmptyThenValidPlanExecutionService:

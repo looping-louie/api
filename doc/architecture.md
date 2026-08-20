@@ -26,6 +26,11 @@ processing a valid checkpoint, the API records a terminal failed Activity with
 a structured failure reason. It does not leave the claimed Pipeline child
 reclaimable after returning the error to the runtime.
 
+Each Pipeline run freezes its `commit_mode` authorization policy. A `forbid`
+run completes after approved operations without emitting a commit checkpoint;
+the runtime's local Git policy may further deny an allowed commit but cannot
+grant one forbidden by the persisted run policy.
+
 ## Repository structure
 
 Application code lives under `src/app` and is organized by responsibility:

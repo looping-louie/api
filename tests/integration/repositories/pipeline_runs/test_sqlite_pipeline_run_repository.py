@@ -58,6 +58,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
             ),
         ),
         created_at=timestamp, created_by='user-1', updated_at=timestamp,
+        commit_mode='forbid',
     )
     await repository.create(document=queued, activity_run=None)
     child = ActivityRunDocument(

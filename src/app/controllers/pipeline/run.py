@@ -33,6 +33,7 @@ class PipelineRunController:
 
         document, child = await self._require_service().create(
             user_id=user_id, pipeline_id=pipeline_id, input_text=payload.input,
+            commit_mode=payload.commit_mode,
             requested_workspace_id=requested_workspace_id,
         )
         return self._response(document, child)
@@ -112,6 +113,7 @@ class PipelineRunController:
 
         return PipelineRunResponse(
             id=document.id, pipeline_id=document.pipeline_id, input=document.input,
+            commit_mode=document.commit_mode,
             status=document.status,
             current_activity_run=activity_run_response(child) if child is not None else None,
             steps=[

@@ -10,7 +10,11 @@ from typing import Callable, Mapping
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline import PipelineDetails
-from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunStepDocument
+from src.app.models.pipeline_run import (
+    PipelineRunCommitMode,
+    PipelineRunDocument,
+    PipelineRunStepDocument,
+)
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
@@ -51,6 +55,7 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         input_text: str,
+        commit_mode: PipelineRunCommitMode = 'allow',
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Create a frozen pipeline run for a runtime worker to claim."""
@@ -69,6 +74,7 @@ class PipelineRunService:
         document = PipelineRunDocument(
             id=self._id_factory(), workspace_id=details.document.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
+            commit_mode=commit_mode,
             status='queued', worker_id=None, lease_token=None,
             lease_expires_at=None, attempt=0, current_activity_run_id=None,
             pipeline_snapshot=self._pipeline_snapshot(details),
@@ -289,7 +295,11 @@ class PipelineRunService:
             activity_id=ready.activity_id, input=document.input,
             status='in_progress', state='awaiting_snapshot',
             next_action='collect_snapshot', iteration=1, token_revision=0,
-            continuation_token=self._token_factory(), activity_snapshot=ready.activity_snapshot,
+            continuation_token=self._token_factory(),
+            activity_snapshot={
+                **ready.activity_snapshot,
+                'commit_mode': document.commit_mode,
+            },
             execution_context={}, created_at=now, created_by=user_id, updated_at=now,
         )
         selected_steps = tuple(
