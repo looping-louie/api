@@ -15,20 +15,13 @@ from src.app.catalogs.instructions.loader import (
     load_instruction_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.skill import SkillController
-from src.app.repositories.loops.sqlite_repository import (
-    SqliteLoopRepository,
-)
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
-)
-from src.app.repositories.loop_runs.sqlite_repository import (
-    SqliteLoopRunRepository,
 )
 from src.app.repositories.activity_runs.sqlite_repository import (
     SqliteActivityRunRepository,
@@ -82,10 +75,8 @@ from src.app.services.instructions.catalog import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
-from src.app.services.loops.service import LoopService
 from src.app.services.activities.service import ActivityService
 from src.app.services.catalog import CatalogService
-from src.app.services.loop_runs import LoopRunService
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
@@ -187,13 +178,7 @@ async def configure_application(
             resolved_settings.database_path,
         )
     )
-    loop_repository = SqliteLoopRepository(
-        resolved_settings.database_path,
-    )
     activity_repository = SqliteActivityRepository(
-        resolved_settings.database_path,
-    )
-    loop_run_repository = SqliteLoopRunRepository(
         resolved_settings.database_path,
     )
     activity_run_repository = SqliteActivityRunRepository(
@@ -287,18 +272,6 @@ async def configure_application(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
     )
-    loop_service = LoopService(
-        repository=loop_repository,
-        tenant_service=tenant_service,
-        reference_resolver=reference_resolver,
-        persona_linked_service_selection_repository=(
-            persona_linked_service_selection_repository
-        ),
-        dependency_checker=dependency_checker,
-        loop_run_repository=loop_run_repository,
-        id_factory=create_identifier,
-        clock=utc_now,
-    )
     activity_service = ActivityService(
         repository=activity_repository,
         tenant_service=tenant_service,
@@ -308,20 +281,6 @@ async def configure_application(
         ),
         id_factory=create_identifier,
         clock=utc_now,
-    )
-    loop_run_service = LoopRunService(
-        repository=loop_run_repository,
-        loop_service=loop_service,
-        tenant_service=tenant_service,
-        id_factory=create_identifier,
-        clock=utc_now,
-        model_execution_service=ModelExecutionService(
-            model_catalog_service=model_catalog_service,
-            provider_repository=provider_repository,
-            secret_service=secret_service,
-            linked_service_repository=linked_service_repository,
-        ),
-        instruction_library_service=execution_instruction_library_service,
     )
     activity_run_service = ActivityRunService(
         repository=activity_run_repository,
@@ -358,9 +317,6 @@ async def configure_application(
     )
     app.state.activity_run_controller = ActivityRunController(
         activity_run_service=activity_run_service,
-    )
-    app.state.loop_run_controller = LoopRunController(
-        loop_run_service=loop_run_service,
     )
     app.state.pipeline_controller = build_pipeline_controller(
         database_path=resolved_settings.database_path,

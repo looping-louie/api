@@ -10,7 +10,7 @@ from src.app.services.execution_instructions import (
     ExecutionInstructionLibrary,
     ExecutionInstructionLibraryService,
 )
-from src.app.services.loops.types import LoopValidationError
+from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.model_execution import (
     ModelExecutionError,
     ModelExecutionService,
@@ -268,7 +268,7 @@ class LoopRunGenerationService:
 
         flow = snapshot.get('flow')
         if flow not in {'direct', 'roundtable'}:
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='flow',
                 message='is not yet supported for execution',
             )
@@ -276,20 +276,20 @@ class LoopRunGenerationService:
         if flow == 'direct' and any(
             agent.get('role') in {'reviewer', 'aggregator'} for agent in agents
         ):
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='agents',
                 message='direct execution requires generators only',
             )
         if flow == 'direct' and len(
             LoopRunGenerationService._agents_for_role(snapshot, 'generator')
         ) != 1:
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='agents',
                 message='direct execution requires one generator',
             )
         if flow == 'roundtable':
             if any(agent.get('role') == 'reviewer' for agent in agents):
-                raise LoopValidationError(
+                raise ActivityRunValidationError(
                     field_name='agents',
                     message='roundtable execution does not allow reviewers',
                 )
@@ -299,7 +299,7 @@ class LoopRunGenerationService:
                     'generator',
                 )
             ) < 2:
-                raise LoopValidationError(
+                raise ActivityRunValidationError(
                     field_name='agents',
                     message='roundtable execution requires two generators',
                 )
@@ -309,7 +309,7 @@ class LoopRunGenerationService:
                     'aggregator',
                 )
             ) != 1:
-                raise LoopValidationError(
+                raise ActivityRunValidationError(
                     field_name='agents',
                     message='roundtable execution requires one aggregator',
                 )
@@ -431,7 +431,7 @@ class LoopRunGenerationService:
             agent for agent in cls._agents(snapshot) if agent.get('role') == role
         ]
         if not agents:
-            raise LoopValidationError(
+            raise ActivityRunValidationError(
                 field_name='agents',
                 message=f'requires at least one {role}',
             )

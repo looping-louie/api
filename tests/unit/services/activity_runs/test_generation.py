@@ -1,4 +1,4 @@
-"""Tests for model-backed loop-run generation."""
+"""Tests for model-backed Activity-run generation."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from src.app.services.execution_instructions import (
     ExecutionInstruction,
     ExecutionInstructionLibrary,
 )
-from src.app.services.loop_runs.generation import (
-    LoopRunGenerationService,
+from src.app.services.activity_runs.generation import (
+    ActivityRunGenerationService,
     _json_object_payload,
 )
-from src.app.services.loops.types import LoopValidationError
+from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.model_execution import ModelExecutionResult
 from src.app.services.personas import PersonaLinkedServiceSelection
 
@@ -207,7 +207,7 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     """Refinement generators receive the rejected review from the prior iteration."""
 
     model_execution_service = RefinementModelExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -262,7 +262,7 @@ async def test_roundtable_generation_does_not_execute_reviewers() -> None:
     """Roundtable aggregation invokes generators and its aggregator only."""
 
     model_execution_service = RoundtableModelExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -292,7 +292,7 @@ async def test_roundtable_generation_does_not_execute_reviewers() -> None:
         'generator-2',
         'aggregator-model',
     ]
-    with pytest.raises(LoopValidationError):
+    with pytest.raises(ActivityRunValidationError):
         service.require_executable_flow(snapshot)
 
 
@@ -301,7 +301,7 @@ async def test_generation_retries_one_invalid_json_response() -> None:
     """A malformed first model response is retried with a stricter instruction."""
 
     model_execution_service = InvalidThenValidModelExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -366,7 +366,7 @@ async def test_generation_prefers_persona_linked_service_selection() -> None:
         skill_aliases={},
         persona_aliases={'persona-1': 'persona-1'},
     )
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=StaticInstructionLibraryService(library),
     )
@@ -432,7 +432,7 @@ async def test_generation_accepts_a_markdown_fenced_json_response() -> None:
     """A valid operation plan in one JSON fence does not require a retry."""
 
     model_execution_service = FencedJsonModelExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -478,7 +478,7 @@ async def test_forbidden_commit_generation_accepts_a_plan_without_commit_message
     """A forbid run neither requests nor retries for commit metadata."""
 
     model_execution_service = NoCommitModelExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -584,7 +584,7 @@ async def test_generation_retries_an_api_example_response() -> None:
     """An API-shaped response is corrected into a file-operation plan."""
 
     model_execution_service = ApiExampleThenValidPlanExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -621,7 +621,7 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
     """An empty operation plan is retried with an explicit change requirement."""
 
     model_execution_service = EmptyThenValidPlanExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )
@@ -690,7 +690,7 @@ async def test_generation_retries_one_plan_without_commit_message() -> None:
     """A final plan without a commit message gets one correction request."""
 
     model_execution_service = MissingCommitThenValidPlanExecutionService()
-    service = LoopRunGenerationService(
+    service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
         instruction_library_service=None,
     )

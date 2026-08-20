@@ -63,8 +63,10 @@ services/
 |-- activities/
 |   `-- service.py                 Manages definitions and changelog history
 |-- activity_runs/
-|   `-- service.py                 Creates, reads, and advances activity-owned
-|                                  execution checkpoints
+|   |-- generation.py              Orchestrates model calls for loop Activities
+|   |-- service.py                 Creates, reads, and advances activity-owned
+|   |                              execution checkpoints
+|   `-- types.py                   Defines execution contracts and domain errors
 |-- catalog/
 |   `-- service.py                 Exposes static provider and model definitions
 |-- execution_instructions/
@@ -85,20 +87,6 @@ services/
 |   `-- validation.py              Normalizes and validates input
 |-- linked_services/
 |   `-- service.py                 Manages workspace-owned provider connections
-|-- loop_runs/
-|   |-- __init__.py                Defines the package's public imports
-|   |-- generation.py              Orchestrates model calls for direct and
-|   |                              roundtable runs
-|   |-- service.py                 Creates, reads, and advances Loop run
-|   |                              checkpoints
-|   |-- types.py                   Defines contracts and domain errors
-|   `-- validation.py              Normalizes and validates input
-|-- loops/
-|   |-- __init__.py                Defines the package's public imports
-|   |-- mutation.py                Builds updates and changelog data
-|   |-- service.py                 Coordinates definitions and changelogs
-|   |-- types.py                   Defines input types and domain errors
-|   `-- validation.py              Normalizes and validates definitions
 |-- model_execution/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Invokes provider-neutral endpoints through
@@ -170,13 +158,9 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- loop_run/
-|   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- advance.py                Advances CLI checkpoints
-|   |-- create.py                 Creates runs from definitions
-|   |-- describe.py               Describes one run
-|   |-- list.py                   Lists runs
-|   `-- utils.py                  Translates results to response schemas
+|-- activity_run.py               Coordinates Activity-run HTTP operations
+|-- activity_runs/
+|   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
 |   `-- __init__.py               Composes Linked Service controllers
 |-- model/
@@ -232,9 +216,6 @@ catalogs/
 |   |-- resource_loader.py         Loads JSON manifests and Markdown resources
 |   |-- resource_validation.py     Validates manifest values
 |   `-- types.py                   Defines catalog metadata and value types
-|-- loops/
-|   |-- __init__.py                Defines public catalog contracts
-|   `-- catalog.py                 Defines curated entries
 |-- models/
 |   |-- __init__.py                Combines and validates curated entries
 |   |-- helpers.py                 Builds shared pricing and capability values
@@ -288,16 +269,10 @@ repositories/
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- linked_services/
 |   `-- repository.py              Persists workspace provider connections
-|-- loop_runs/
-|   |-- __init__.py                Defines public persistence imports
+|-- activity_runs/
 |   |-- errors.py                  Defines checkpoint transition conflicts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists checkpoint records
-|-- loops/
-|   |-- __init__.py                Declares persistence contracts and helpers
-|   |-- mapping.py                 Maps SQLite rows and write values
-|   |-- repository.py              Defines the persistence contract and changelog
-|   `-- sqlite_repository.py       Persists records and changelog entries
 |-- pipelines/
 |   |-- __init__.py                Declares persistence contracts and adapters
 |   |-- mapping.py                 Maps SQLite rows and write values
@@ -331,10 +306,9 @@ Activity definitions currently support `approval`, `quiz`, `direct_loop`,
 models/
 |
 |-- activity.py                    Defines definitions and changelog entries
+|-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
 |-- instruction.py                 Defines persisted and available resource data
-|-- loop.py                        Defines definitions, agents, output, and history
-|-- loop_run.py                    Defines execution state and checkpoints
 |-- linked_service.py              Defines workspace-owned provider connections
 |-- model.py                       Defines catalog and availability projections
 |-- persona.py                     Defines resource documents with skill links

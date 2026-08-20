@@ -7,10 +7,10 @@ from typing import Any, Literal
 
 from pydantic import model_validator
 
-from .loop import (
-    LoopAgentSchema,
-    LoopOutputContractSchema,
-    LoopStopConditionsSchema,
+from .activity_loop import (
+    ActivityLoopAgentSchema,
+    ActivityLoopOutputContractSchema,
+    ActivityLoopStopConditionsSchema,
 )
 from .shared import ListResponse, RequestSchema, ResourceName, ResponseSchema
 
@@ -31,9 +31,9 @@ ActivityTypeValue = Literal[
 class DirectLoopActivityConfig(RequestSchema):
     """Configuration for a direct loop activity."""
 
-    stop_conditions: LoopStopConditionsSchema
-    agents: list[LoopAgentSchema]
-    output_contract: LoopOutputContractSchema
+    stop_conditions: ActivityLoopStopConditionsSchema
+    agents: list[ActivityLoopAgentSchema]
+    output_contract: ActivityLoopOutputContractSchema
 
     @model_validator(mode='after')
     def validate_roles(self) -> 'DirectLoopActivityConfig':
@@ -48,9 +48,9 @@ class DirectLoopActivityConfig(RequestSchema):
 class RefinementLoopActivityConfig(RequestSchema):
     """Configuration for a refinement loop activity."""
 
-    stop_conditions: LoopStopConditionsSchema
-    agents: list[LoopAgentSchema]
-    output_contract: LoopOutputContractSchema
+    stop_conditions: ActivityLoopStopConditionsSchema
+    agents: list[ActivityLoopAgentSchema]
+    output_contract: ActivityLoopOutputContractSchema
 
     @model_validator(mode='after')
     def validate_roles(self) -> 'RefinementLoopActivityConfig':
@@ -65,9 +65,9 @@ class RefinementLoopActivityConfig(RequestSchema):
 class RoundtableLoopActivityConfig(RequestSchema):
     """Configuration for a roundtable loop activity."""
 
-    stop_conditions: LoopStopConditionsSchema
-    agents: list[LoopAgentSchema]
-    output_contract: LoopOutputContractSchema
+    stop_conditions: ActivityLoopStopConditionsSchema
+    agents: list[ActivityLoopAgentSchema]
+    output_contract: ActivityLoopOutputContractSchema
 
     @model_validator(mode='after')
     def validate_roles(self) -> 'RoundtableLoopActivityConfig':
@@ -79,7 +79,7 @@ class RoundtableLoopActivityConfig(RequestSchema):
         return self
 
 
-def _role_counts(agents: list[LoopAgentSchema]) -> dict[str, int]:
+def _role_counts(agents: list[ActivityLoopAgentSchema]) -> dict[str, int]:
     """Count each supported agent role for loop-cardinality validation."""
 
     return {

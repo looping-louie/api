@@ -86,6 +86,5 @@ their models.
 - `src/app/models/activity.py` defines the Activity domain model;
 - `src/app/schemas/activity.py` validates Activity HTTP contracts;
 - `src/app/services/activity_runs/service.py` creates supported Activity runs;
-- `src/app/services/loop_runs/service.py` and
-  `src/app/services/loop_runs/generation.py` execute loop runs;
+- `src/app/services/activity_runs/generation.py` executes loop Activity runs;
 - `doc/endpoints/activities.md` documents the Activity REST API.

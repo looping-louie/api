@@ -9,13 +9,19 @@ from typing import Mapping
 
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
-from src.app.repositories.loop_runs.errors import LoopRunInvalidTransitionError
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+)
 from src.app.services.activities.service import ActivityService
-from src.app.services.activity_runs.types import ActivityRunUnavailableError
+from src.app.services.activity_runs.types import (
+    ActivityRunNotFoundError,
+    ActivityRunUnavailableError,
+    ActivityRunValidationError,
+)
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
-from src.app.services.loop_runs.generation import LoopRunGenerationService
-from src.app.services.loop_runs.types import LoopRunNotFoundError
-from src.app.services.loops.types import LoopValidationError
+from src.app.services.activity_runs.generation import (
+    ActivityRunGenerationService,
+)
 from src.app.services.model_execution import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
@@ -46,7 +52,7 @@ class ActivityRunService:
         self._clock = clock
         self._token_factory = token_factory
         self._generation_service = (
-            LoopRunGenerationService(
+            ActivityRunGenerationService(
                 model_execution_service=model_execution_service,
                 instruction_library_service=instruction_library_service,
             )
@@ -115,7 +121,10 @@ class ActivityRunService:
             run_id=run_id,
         )
         if document is None:
-            raise LoopRunNotFoundError(loop_id=activity_id, run_id=run_id)
+            raise ActivityRunNotFoundError(
+                activity_id=activity_id,
+                run_id=run_id,
+            )
         return document
 
     async def list(
@@ -134,7 +143,10 @@ class ActivityRunService:
             requested_workspace_id=requested_workspace_id,
         )
         if offset < 0:
-            raise LoopValidationError(field_name='offset', message='must be positive')
+            raise ActivityRunValidationError(
+                field_name='offset',
+                message='must be positive',
+            )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
@@ -185,7 +197,7 @@ class ActivityRunService:
             lease_token=lease_token,
             now=self._clock(),
         ):
-            raise LoopRunInvalidTransitionError()
+            raise ActivityRunInvalidTransitionError()
         context = dict(document.execution_context)
         if action == 'collect_snapshot':
             previous_review = context.get('review_result')
@@ -304,7 +316,10 @@ class ActivityRunService:
                 state='completed' if committed else 'failed', next_action='none',
                 next_token=None, context={**context, 'commit_result': dict(result)},
             )
-        raise LoopValidationError(field_name='result.action', message='is not supported')
+        raise ActivityRunValidationError(
+            field_name='result.action',
+            message='is not supported',
+        )
 
     async def _transition(
         self,
@@ -440,5 +455,8 @@ class ActivityRunService:
 
         normalized = value.strip()
         if not normalized:
-            raise LoopValidationError(field_name=field_name, message='must not be empty')
+            raise ActivityRunValidationError(
+                field_name=field_name,
+                message='must not be empty',
+            )
         return normalized

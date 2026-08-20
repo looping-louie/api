@@ -6,22 +6,17 @@ from src.app.services.activities.service import (
     ActivityNotFoundError,
     ActivityValidationError,
 )
-from src.app.services.activity_runs.types import ActivityRunUnavailableError
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+    ActivityRunTokenConflictError,
+)
+from src.app.services.activity_runs.types import (
+    ActivityRunNotFoundError,
+    ActivityRunUnavailableError,
+    ActivityRunValidationError,
+)
 from src.app.services.execution_instructions import (
     ExecutionInstructionNotFoundError,
-)
-from src.app.services.loops.types import (
-    ArchivedLoopImmutableError,
-    LoopNotFoundError,
-    LoopValidationError,
-)
-from src.app.services.loop_runs import (
-    LoopRunNotFoundError,
-    LoopRunUnavailableError,
-)
-from src.app.repositories.loop_runs.errors import (
-    LoopRunInvalidTransitionError,
-    LoopRunTokenConflictError,
 )
 from src.app.services.models.availability import (
     ModelNotFoundError,
@@ -87,7 +82,6 @@ from .domain_error_details import (
     _instruction_access_details,
     _instruction_not_found_details,
     _invalid_instruction_type_details,
-    _loop_details,
     _model_not_found_details,
     _provider_configuration_details,
     _referenced_resources_details,
@@ -163,34 +157,25 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="instruction_validation_error",
         details_builder=_validation_details,
     ),
-    LoopNotFoundError: ErrorDefinition(
-        status_code=status.HTTP_404_NOT_FOUND,
-        code="loop_not_found",
-        details_builder=_loop_details,
-    ),
     ActivityNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code='activity_not_found',
-    ),
-    LoopRunNotFoundError: ErrorDefinition(
-        status_code=status.HTTP_404_NOT_FOUND,
-        code="loop_run_not_found",
-    ),
-    LoopRunUnavailableError: ErrorDefinition(
-        status_code=status.HTTP_409_CONFLICT,
-        code="loop_run_unavailable",
     ),
     ActivityRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='activity_run_unavailable',
     ),
-    LoopRunTokenConflictError: ErrorDefinition(
-        status_code=status.HTTP_409_CONFLICT,
-        code="loop_run_token_conflict",
+    ActivityRunNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='activity_run_not_found',
     ),
-    LoopRunInvalidTransitionError: ErrorDefinition(
+    ActivityRunTokenConflictError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
-        code="loop_run_invalid_transition",
+        code='activity_run_token_conflict',
+    ),
+    ActivityRunInvalidTransitionError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='activity_run_invalid_transition',
     ),
     PipelineNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -264,20 +249,15 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code="skill_validation_error",
         details_builder=_validation_details,
     ),
-    LoopValidationError: ErrorDefinition(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="loop_validation_error",
-        details_builder=_validation_details,
-    ),
     ActivityValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code='activity_validation_error',
         details_builder=_validation_details,
     ),
-    ArchivedLoopImmutableError: ErrorDefinition(
-        status_code=status.HTTP_409_CONFLICT,
-        code="archived_loop_immutable",
-        details_builder=_loop_details,
+    ActivityRunValidationError: ErrorDefinition(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        code='activity_run_validation_error',
+        details_builder=_validation_details,
     ),
     ModelNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

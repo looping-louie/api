@@ -9,7 +9,9 @@ import aiosqlite
 import pytest
 
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.repositories.loop_runs.errors import LoopRunInvalidTransitionError
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+)
 from src.app.repositories.activity_runs.sqlite_repository import (
     SqliteActivityRunRepository,
 )
@@ -20,7 +22,7 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
     sqlite_database_path: Path,
     create_workspace: object,
 ) -> None:
-    """Activity runs persist separately from legacy loop runs with replay safety."""
+    """Activity runs persist with replay safety."""
 
     await create_workspace(workspace_id='workspace-1')
     timestamp = datetime(2026, 8, 14, tzinfo=UTC)
@@ -73,15 +75,11 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
         activity_count = await (await connection.execute(
             'SELECT COUNT(*) FROM activity_runs WHERE id = ?', ('run-1',)
         )).fetchone()
-        loop_count = await (await connection.execute(
-            'SELECT COUNT(*) FROM loop_runs WHERE id = ?', ('run-1',)
-        )).fetchone()
 
     assert created == document
     assert updated.state == 'awaiting_apply'
     assert replayed == updated
     assert activity_count == (1,)
-    assert loop_count == (0,)
 
 
 @pytest.mark.asyncio
@@ -108,7 +106,7 @@ async def test_expired_pipeline_lease_cannot_advance_its_activity_child(
         now=timestamp,
     )
 
-    with pytest.raises(LoopRunInvalidTransitionError):
+    with pytest.raises(ActivityRunInvalidTransitionError):
         await repository.transition(
             workspace_id='workspace-1', activity_id='activity-1', run_id='run-1',
             pipeline_run_id='pipeline-run-1', lease_token='lease-1',

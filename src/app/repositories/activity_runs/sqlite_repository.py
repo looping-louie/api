@@ -11,14 +11,14 @@ from pathlib import Path
 import aiosqlite
 
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.repositories.loop_runs.errors import (
-    LoopRunInvalidTransitionError,
-    LoopRunTokenConflictError,
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+    ActivityRunTokenConflictError,
 )
 
 
 class SqliteActivityRunRepository:
-    """Persist activity runs independently from legacy loop execution records."""
+    """Persist activity execution records and checkpoint transitions."""
 
     def __init__(self, database_path: str | Path) -> None:
         """Store the SQLite database path used for connections."""
@@ -160,7 +160,7 @@ class SqliteActivityRunRepository:
                     run_id=run_id,
                 )
                 if row is None:
-                    raise LoopRunInvalidTransitionError()
+                    raise ActivityRunInvalidTransitionError()
                 if not await self._has_active_pipeline_lease(
                     connection,
                     workspace_id=workspace_id,
@@ -169,7 +169,7 @@ class SqliteActivityRunRepository:
                     lease_token=lease_token,
                     now=updated_at,
                 ):
-                    raise LoopRunInvalidTransitionError()
+                    raise ActivityRunInvalidTransitionError()
                 revision = await self._get_checkpoint_revision(
                     connection,
                     workspace_id=workspace_id,
@@ -177,7 +177,7 @@ class SqliteActivityRunRepository:
                     continuation_token=continuation_token,
                 )
                 if revision is None:
-                    raise LoopRunTokenConflictError()
+                    raise ActivityRunTokenConflictError()
                 replay = await self._get_idempotent_response(
                     connection,
                     workspace_id=workspace_id,
@@ -189,9 +189,9 @@ class SqliteActivityRunRepository:
                     await connection.commit()
                     return replay
                 if int(row['token_revision']) != revision:
-                    raise LoopRunTokenConflictError()
+                    raise ActivityRunTokenConflictError()
                 if str(row['next_action']) != expected_action:
-                    raise LoopRunInvalidTransitionError()
+                    raise ActivityRunInvalidTransitionError()
                 updated = self._to_document(
                     row,
                     status=status,

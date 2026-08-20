@@ -8,7 +8,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
-from src.app.schemas.loop_run import ActivityRunResponse
+from src.app.schemas.activity_run import ActivityRunResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
