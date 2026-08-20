@@ -14,7 +14,6 @@ from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline_run import (
     PipelineRunDocument,
     PipelineRunEventDocument,
-    PipelineRunGateDocument,
     PipelineRunStepDocument,
 )
 
@@ -40,7 +39,6 @@ class SqlitePipelineRunRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 await self._insert_run(connection, document)
                 await self._insert_steps(connection, document)
-                await self._insert_gates(connection, document)
                 await self._insert_events(connection, document.events)
                 if activity_run is not None:  # Only insert if activity_run is provided
                     await self._insert_activity_run(connection, activity_run)
@@ -177,7 +175,6 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
-                await self._update_gates(connection, document)
                 await self._insert_events(connection, document.events)
                 await connection.commit()
                 return True
@@ -189,7 +186,7 @@ class SqlitePipelineRunRepository:
         self,
         *,
         document: PipelineRunDocument,
-        expected_lease_token: str,
+        expected_lease_token: str | None,
         now: datetime,
     ) -> bool:
         """Extend an unexpired lease only while its worker token remains current."""
@@ -242,8 +239,11 @@ class SqlitePipelineRunRepository:
                         updated_at = ?
                     WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
                       AND current_activity_run_id IS ?
-                                            AND lease_token = ? AND lease_expires_at > ?
-                                            AND status IN ('claimed', 'in_progress')
+                      AND (
+                            (lease_token = ? AND lease_expires_at > ?
+                                AND status IN ('claimed', 'in_progress'))
+                            OR (status = 'waiting' AND lease_token IS NULL AND ? IS NULL)
+                      )
                     ''',
                     (
                         document.status,
@@ -259,6 +259,7 @@ class SqlitePipelineRunRepository:
                         expected_current_activity_run_id,
                         expected_lease_token,
                         now.isoformat(),
+                        expected_lease_token,
                     ),
                 )
                 try:
@@ -269,86 +270,6 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
-                await self._update_gates(connection, document)
-                await self._insert_events(connection, document.events)
-                await connection.commit()
-                return True
-            except Exception:
-                await connection.rollback()
-                raise
-
-    async def decide_gate(
-        self,
-        *,
-        document: PipelineRunDocument,
-        activity_id: str,
-        expected_status: str,
-        expected_updated_at: datetime,
-    ) -> bool:
-        """Persist one user gate decision with its event and scheduler update."""
-
-        async with self._connect() as connection:
-            try:
-                await connection.execute('BEGIN IMMEDIATE')
-                cursor = await connection.execute(
-                    '''
-                    UPDATE pipeline_run_gates
-                    SET status = ?, comment = ?, decided_by = ?, decided_at = ?
-                    WHERE workspace_id = ? AND pipeline_run_id = ?
-                        AND activity_id = ? AND status = ?
-                    ''',
-                    (
-                        self._gate(document, activity_id).status,
-                        self._gate(document, activity_id).comment,
-                        self._gate(document, activity_id).decided_by,
-                        self._gate(document, activity_id).decided_at.isoformat()
-                        if self._gate(document, activity_id).decided_at is not None
-                        else None,
-                        document.workspace_id,
-                        document.id,
-                        activity_id,
-                        expected_status,
-                    ),
-                )
-                try:
-                    updated_gate = cursor.rowcount == 1
-                finally:
-                    await cursor.close()
-                if not updated_gate:
-                    await connection.rollback()
-                    return False
-                cursor = await connection.execute(
-                    '''
-                    UPDATE pipeline_runs
-                    SET status = ?, worker_id = ?, lease_token = ?,
-                        lease_expires_at = ?, current_activity_run_id = ?,
-                        updated_at = ?
-                    WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
-                        AND updated_at = ?
-                    ''',
-                    (
-                        document.status,
-                        document.worker_id,
-                        document.lease_token,
-                        document.lease_expires_at.isoformat()
-                        if document.lease_expires_at is not None else None,
-                        document.current_activity_run_id,
-                        document.updated_at.isoformat(),
-                        document.workspace_id,
-                        document.pipeline_id,
-                        document.id,
-                        expected_updated_at.isoformat(),
-                    ),
-                )
-                try:
-                    updated_run = cursor.rowcount == 1
-                finally:
-                    await cursor.close()
-                if not updated_run:
-                    await connection.rollback()
-                    return False
-                await self._update_steps(connection, document)
-                await self._update_gates(connection, document)
                 await self._insert_events(connection, document.events)
                 await connection.commit()
                 return True
@@ -440,64 +361,6 @@ class SqlitePipelineRunRepository:
                     document.workspace_id, document.id, step.position,
                 )
                 for step in document.steps
-            ],
-        )
-
-    @staticmethod
-    async def _insert_gates(
-        connection: aiosqlite.Connection,
-        document: PipelineRunDocument,
-    ) -> None:
-        """Insert every human-gate projection belonging to one new run."""
-
-        await connection.executemany(
-            '''
-            INSERT INTO pipeline_run_gates (
-                workspace_id, pipeline_run_id, position, activity_id, status,
-                comment, decided_by, decided_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''',
-            [
-                (
-                    document.workspace_id,
-                    document.id,
-                    gate.position,
-                    gate.activity_id,
-                    gate.status,
-                    gate.comment,
-                    gate.decided_by,
-                    gate.decided_at.isoformat()
-                    if gate.decided_at is not None else None,
-                )
-                for gate in document.gates
-            ],
-        )
-
-    @staticmethod
-    async def _update_gates(
-        connection: aiosqlite.Connection,
-        document: PipelineRunDocument,
-    ) -> None:
-        """Update durable gate projections after one scheduler transition."""
-
-        await connection.executemany(
-            '''
-            UPDATE pipeline_run_gates
-            SET status = ?, comment = ?, decided_by = ?, decided_at = ?
-            WHERE workspace_id = ? AND pipeline_run_id = ? AND position = ?
-            ''',
-            [
-                (
-                    gate.status,
-                    gate.comment,
-                    gate.decided_by,
-                    gate.decided_at.isoformat()
-                    if gate.decided_at is not None else None,
-                    document.workspace_id,
-                    document.id,
-                    gate.position,
-                )
-                for gate in document.gates
             ],
         )
 
@@ -608,44 +471,6 @@ class SqlitePipelineRunRepository:
             created_at=datetime.fromisoformat(str(row['created_at'])),
             created_by=str(row['created_by']),
             updated_at=datetime.fromisoformat(str(row['updated_at'])),
-            gates=await cls._gates(connection, row),
-        )
-
-    @staticmethod
-    async def _gates(
-        connection: aiosqlite.Connection,
-        row: aiosqlite.Row,
-    ) -> tuple[PipelineRunGateDocument, ...]:
-        """Return gate projections in frozen Pipeline display order."""
-
-        cursor = await connection.execute(
-            '''
-            SELECT * FROM pipeline_run_gates
-            WHERE workspace_id = ? AND pipeline_run_id = ?
-            ORDER BY position ASC
-            ''',
-            (row['workspace_id'], row['id']),
-        )
-        try:
-            gate_rows = await cursor.fetchall()
-        finally:
-            await cursor.close()
-        return tuple(SqlitePipelineRunRepository._to_gate(item) for item in gate_rows)
-
-    @staticmethod
-    def _to_gate(row: aiosqlite.Row) -> PipelineRunGateDocument:
-        """Map one persisted human-gate projection."""
-
-        return PipelineRunGateDocument(
-            position=int(row['position']),
-            activity_id=str(row['activity_id']),
-            status=row['status'],
-            comment=row['comment'],
-            decided_by=row['decided_by'],
-            decided_at=(
-                datetime.fromisoformat(str(row['decided_at']))
-                if row['decided_at'] is not None else None
-            ),
         )
 
     @staticmethod
@@ -663,14 +488,6 @@ class SqlitePipelineRunRepository:
             created_at=datetime.fromisoformat(str(row['created_at'])),
         )
 
-    @staticmethod
-    def _gate(
-        document: PipelineRunDocument,
-        activity_id: str,
-    ) -> PipelineRunGateDocument:
-        """Return one gate from a document that has already been validated."""
-
-        return next(gate for gate in document.gates if gate.activity_id == activity_id)
 
     @staticmethod
     def _to_step(row: aiosqlite.Row) -> PipelineRunStepDocument:

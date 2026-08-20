@@ -14,7 +14,6 @@ from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
     PipelineRunDocument,
     PipelineRunEventDocument,
-    PipelineRunGateDocument,
     PipelineRunStepDocument,
 )
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
@@ -22,8 +21,6 @@ from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.types import (
-    PipelineRunGateNotFoundError,
-    PipelineRunGateUnavailableError,
     PipelineRunNotFoundError,
     PipelineRunPreconditionFailedError,
     PipelineRunUnavailableError,
@@ -93,18 +90,6 @@ class PipelineRunService:
                 )
                 for position, activity in enumerate(details.activities)
             ),
-            gates=tuple(
-                PipelineRunGateDocument(
-                    position=position,
-                    activity_id=activity.id,
-                    status='pending',
-                    comment=None,
-                    decided_by=None,
-                    decided_at=None,
-                )
-                for position, activity in enumerate(details.activities)
-                if activity.type in ('approval', 'quiz')
-            ),
             events=(
                 self._event(
                     workspace_id=details.document.workspace_id,
@@ -152,7 +137,7 @@ class PipelineRunService:
         if_match: str,
         lease_duration: timedelta,
         requested_workspace_id: str | None = None,
-    ) -> tuple[PipelineRunDocument, ActivityRunDocument | None, str | None]:
+    ) -> tuple[PipelineRunDocument, ActivityRunDocument, str | None]:
         """Atomically claim one current, claimable Pipeline run."""
 
         normalized_worker_id = self._require_text(worker_id)
@@ -187,7 +172,20 @@ class PipelineRunService:
             selected = candidate
             child = await self._current_child(candidate)
         if child is None:
-            waiting = replace(selected, attempt=candidate.attempt, updated_at=now)
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'run {run_id} has no current activity run',
+            )
+        if self._is_human_child(child):
+            waiting = replace(
+                selected,
+                status='waiting',
+                worker_id=None,
+                lease_token=None,
+                lease_expires_at=None,
+                attempt=candidate.attempt,
+                updated_at=now,
+            )
             if not await self._repository.claim(
                 document=waiting,
                 expected_updated_at=candidate.updated_at,
@@ -198,7 +196,7 @@ class PipelineRunService:
                     pipeline_id=pipeline_id,
                     run_id=run_id,
                 )
-            return waiting, None, None
+            return waiting, child, None
         lease_token = self._token_factory()
         claimed = replace(
             selected, status='claimed', worker_id=normalized_worker_id,
@@ -245,91 +243,6 @@ class PipelineRunService:
         )
         return replace(document, events=tuple(events)), await self._current_child(document)
 
-    async def decide_gate(
-        self,
-        *,
-        user_id: str,
-        pipeline_id: str,
-        run_id: str,
-        activity_id: str,
-        status: str,
-        comment: str | None,
-        requested_workspace_id: str | None = None,
-    ) -> PipelineRunDocument:
-        """Record a user decision and queue any required next work."""
-
-        document, _ = await self.get(
-            user_id=user_id,
-            pipeline_id=pipeline_id,
-            run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        gate = self._gate(document, activity_id)
-        if gate is None:
-            raise PipelineRunGateNotFoundError(
-                pipeline_id=pipeline_id,
-                run_id=run_id,
-                activity_id=activity_id,
-            )
-        if gate.status != 'waiting' or document.status != 'waiting':
-            raise PipelineRunGateUnavailableError(
-                pipeline_id=pipeline_id,
-                run_id=run_id,
-                activity_id=activity_id,
-                reason='the gate is not waiting for a decision',
-            )
-        if status not in ('approved', 'rejected', 'cancelled'):
-            raise PipelineRunGateUnavailableError(
-                pipeline_id=pipeline_id,
-                run_id=run_id,
-                activity_id=activity_id,
-                reason='the requested decision is unsupported',
-            )
-        now = self._clock()
-        actor_id = self._require_text(user_id)
-        decision = replace(
-            gate,
-            status=status,
-            comment=comment.strip() if comment is not None else None,
-            decided_by=actor_id,
-            decided_at=now,
-        )
-        if status == 'rejected':
-            updated = self._queue_correction(
-                document=document,
-                gate=decision,
-                now=now,
-            )
-        else:
-            updated = self._queue_gate_outcome(
-                document=document,
-                gate=decision,
-                now=now,
-            )
-        event = self._event(
-            workspace_id=document.workspace_id,
-            run_id=document.id,
-            event_type='human_gate_decided',
-            activity_id=activity_id,
-            actor_id=actor_id,
-            payload={'status': status, 'comment': decision.comment},
-            created_at=now,
-        )
-        updated = replace(updated, events=(event,))
-        if not await self._repository.decide_gate(
-            document=updated,
-            activity_id=activity_id,
-            expected_status='waiting',
-            expected_updated_at=document.updated_at,
-        ):
-            raise PipelineRunGateUnavailableError(
-                pipeline_id=pipeline_id,
-                run_id=run_id,
-                activity_id=activity_id,
-                reason='the gate changed before the decision was recorded',
-            )
-        return replace(updated, events=(*document.events, event))
-
     async def _get_required(
         self,
         *,
@@ -364,7 +277,7 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        lease_token: str,
+        lease_token: str | None,
         lease_duration: timedelta,
         requested_workspace_id: str | None = None,
     ) -> PipelineRunDocument:
@@ -398,7 +311,7 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        lease_token: str,
+        lease_token: str | None,
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Record the current child outcome and schedule the next eligible step."""
@@ -409,9 +322,11 @@ class PipelineRunService:
         )
         document = replace(document, events=())
         now = self._clock()
-        token = self._require_text(lease_token)
-        if (
-            document.lease_token != token
+        human_child = child is not None and self._is_human_child(child)
+        token = lease_token.strip() if lease_token is not None else None
+        if not human_child and (
+            token is None
+            or document.lease_token != token
             or document.lease_expires_at is None
             or document.lease_expires_at <= now
         ):
@@ -419,12 +334,20 @@ class PipelineRunService:
                 pipeline_id=pipeline_id,
                 reason='lease is no longer active',
             )
-        if document.status not in ('claimed', 'in_progress') or child is None:
+        if document.status not in ('claimed', 'in_progress', 'waiting') or child is None:
             return document, child
         if child.status == 'in_progress':
             return document, child
         updated = self._record_child_outcome(document=document, child=child)
-        selected, next_child = self._schedule(document=updated, user_id=user_id)
+        if self._requires_correction(child):
+            selected = self._queue_correction(
+                document=updated,
+                activity_id=child.activity_id,
+                now=now,
+            )
+            next_child = None
+        else:
+            selected, next_child = self._schedule(document=updated, user_id=user_id)
         if await self._repository.transition(
             document=selected,
             expected_current_activity_run_id=child.id,
@@ -494,51 +417,14 @@ class PipelineRunService:
                 step.status in ('completed', 'failed', 'skipped') for step in steps
             ) else 'in_progress'
             return replace(document, status=status, steps=tuple(steps), updated_at=now), None
-        gate = self._gate(document, ready.activity_id)
-        if gate is not None:
-            if gate.status == 'rejected':
-                reopened = replace(
-                    gate,
-                    status='waiting',
-                    comment=None,
-                    decided_by=None,
-                    decided_at=None,
-                )
-                event_type = 'human_gate_reopened'
-            elif gate.status == 'pending':
-                reopened = replace(gate, status='waiting')
-                event_type = 'human_gate_waiting'
-            else:
-                return document, None
-            updated_gates = tuple(
-                reopened if value.position == gate.position else value
-                for value in document.gates
-            )
-            event = self._event(
-                workspace_id=document.workspace_id,
-                run_id=document.id,
-                event_type=event_type,
-                activity_id=ready.activity_id,
-                actor_id=user_id,
-                payload={},
-                created_at=now,
-            )
-            return replace(
-                document,
-                status='waiting',
-                worker_id=None,
-                lease_token=None,
-                lease_expires_at=None,
-                current_activity_run_id=None,
-                gates=updated_gates,
-                events=(event,),
-                updated_at=now,
-            ), None
+        human_activity = ready.activity_snapshot.get('executor') == 'human'
         child = ActivityRunDocument(
             id=self._id_factory(), workspace_id=document.workspace_id,
             activity_id=ready.activity_id, input=document.input,
-            status='in_progress', state='awaiting_snapshot',
-            next_action='collect_snapshot', iteration=1, token_revision=0,
+            status='in_progress',
+            state='awaiting_human_decision' if human_activity else 'awaiting_snapshot',
+            next_action='submit_human_decision' if human_activity else 'collect_snapshot',
+            iteration=1, token_revision=0,
             continuation_token=self._token_factory(),
             activity_snapshot={
                 **ready.activity_snapshot,
@@ -552,7 +438,13 @@ class PipelineRunService:
             for step in steps
         )
         return replace(
-            document, current_activity_run_id=child.id, steps=selected_steps,
+            document,
+            status='waiting' if human_activity else document.status,
+            worker_id=None if human_activity else document.worker_id,
+            lease_token=None if human_activity else document.lease_token,
+            lease_expires_at=None if human_activity else document.lease_expires_at,
+            current_activity_run_id=child.id,
+            steps=selected_steps,
             updated_at=now,
         ), child
 
@@ -580,47 +472,18 @@ class PipelineRunService:
             ),
         )
 
-    def _queue_gate_outcome(
-        self,
-        *,
-        document: PipelineRunDocument,
-        gate: PipelineRunGateDocument,
-        now: datetime,
-    ) -> PipelineRunDocument:
-        """Record an approved or cancelled gate and release its worker lease."""
-
-        step_status = 'completed' if gate.status == 'approved' else 'failed'
-        return replace(
-            document,
-            status='queued',
-            worker_id=None,
-            lease_token=None,
-            lease_expires_at=None,
-            current_activity_run_id=None,
-            gates=tuple(
-                gate if value.position == gate.position else value
-                for value in document.gates
-            ),
-            steps=tuple(
-                replace(step, status=step_status, updated_at=now)
-                if step.activity_id == gate.activity_id else step
-                for step in document.steps
-            ),
-            updated_at=now,
-        )
-
     def _queue_correction(
         self,
         *,
         document: PipelineRunDocument,
-        gate: PipelineRunGateDocument,
+        activity_id: str,
         now: datetime,
     ) -> PipelineRunDocument:
         """Reset the rejected gate's dependency path for corrective execution."""
 
         dependencies = self._dependencies(document.pipeline_snapshot)
         correction_ids = self._ancestors(
-            activity_id=gate.activity_id,
+            activity_id=activity_id,
             dependencies=dependencies,
         )
         return replace(
@@ -630,10 +493,6 @@ class PipelineRunService:
             lease_token=None,
             lease_expires_at=None,
             current_activity_run_id=None,
-            gates=tuple(
-                gate if value.position == gate.position else value
-                for value in document.gates
-            ),
             steps=tuple(
                 replace(
                     step,
@@ -641,7 +500,7 @@ class PipelineRunService:
                     activity_run_id=None,
                     updated_at=now,
                 )
-                if step.activity_id in correction_ids | {gate.activity_id}
+                if step.activity_id in correction_ids | {activity_id}
                 else step
                 for step in document.steps
             ),
@@ -667,19 +526,20 @@ class PipelineRunService:
         return ancestors
 
     @staticmethod
-    def _gate(
-        document: PipelineRunDocument,
-        activity_id: str,
-    ) -> PipelineRunGateDocument | None:
-        """Return the current projection for one human-gate Activity."""
+    def _is_human_child(child: ActivityRunDocument) -> bool:
+        """Return whether an ActivityRun is completed by a human executor."""
 
-        return next(
-            (
-                gate
-                for gate in document.gates
-                if gate.activity_id == activity_id
-            ),
-            None,
+        return child.activity_snapshot.get('executor') == 'human'
+
+    @staticmethod
+    def _requires_correction(child: ActivityRunDocument) -> bool:
+        """Return whether a rejected human decision must rerun predecessors."""
+
+        decision = child.execution_context.get('human_decision')
+        return (
+            child.activity_snapshot.get('executor') == 'human'
+            and isinstance(decision, Mapping)
+            and decision.get('decision') == 'rejected'
         )
 
     def _event(
@@ -734,6 +594,7 @@ class PipelineRunService:
                 'title': activity.name,
                 'description': activity.description,
                 'type': activity.type,
+                'executor': 'human',
                 **activity.config,
             }
         flows = {

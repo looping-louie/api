@@ -584,8 +584,8 @@ def test_activity_patch_rejects_legacy_nested_config_type(
     assert response.json()['error']['details']['field'] == 'config'
 
 
-def test_activity_loop_run_routes_scope_runs_and_reject_human_gate_activities(tenant_service: TenantService) -> None:
-    """Active loop activities create runs while human gates remain unavailable."""
+def test_activity_run_routes_support_runtime_and_human_executors(tenant_service: TenantService) -> None:
+    """Active Activities create runs for their assigned runtime or human executor."""
 
     client = build_client(tenant_service=tenant_service)
     activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
@@ -606,7 +606,19 @@ def test_activity_loop_run_routes_scope_runs_and_reject_human_gate_activities(te
         'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'workspace_metadata': {'workspace_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
     })
     approval = client.post('/api/v1/activities', json={'name': 'Approval', 'description': '', 'type': 'approval', 'config': {}})
-    mismatch = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'No run.'})
+    human_run = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'Approve it.'})
+    human_decision = client.post(
+        f"/api/v1/activities/{approval.json()['id']}/runs/{human_run.json()['id']}/continue",
+        json={
+            'continuation_token': human_run.json()['continuation_token'],
+            'idempotency_key': 'approval-1',
+            'result': {
+                'action': 'submit_human_decision',
+                'decision': 'approved',
+                'comment': 'Approved by the reviewer.',
+            },
+        },
+    )
     refinement = client.post('/api/v1/activities', json={
         'name': 'Refinement', 'description': '', 'type': 'refinement_loop',
         'config': {
@@ -629,8 +641,9 @@ def test_activity_loop_run_routes_scope_runs_and_reject_human_gate_activities(te
     assert listed.json()['items'][0]['id'] == run_id
     assert fetched.json()['id'] == run_id
     assert continued.json()['state'] == 'awaiting_generation'
-    assert mismatch.status_code == 409
-    assert mismatch.json()['error']['code'] == 'activity_run_unavailable'
+    assert human_run.status_code == 201
+    assert human_run.json()['state'] == 'awaiting_human_decision'
+    assert human_decision.json()['status'] == 'completed'
     assert refinement_run.status_code == 201
     assert refinement_run.json()['activity_id'] == refinement.json()['id']
     assert disabled.status_code == 409

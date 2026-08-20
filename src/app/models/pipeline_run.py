@@ -23,15 +23,6 @@ PipelineRunStepStatus = Literal[
     'failed',
     'skipped',
 ]
-PipelineRunGateStatus = Literal[
-    'pending',
-    'waiting',
-    'approved',
-    'rejected',
-    'cancelled',
-]
-
-
 @dataclass(frozen=True, slots=True)
 class PipelineRunEventDocument:
     """One immutable event emitted during a Pipeline run."""
@@ -44,18 +35,6 @@ class PipelineRunEventDocument:
     actor_id: str
     payload: Mapping[str, object]
     created_at: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class PipelineRunGateDocument:
-    """Current decision projection for one human-gate Pipeline step."""
-
-    position: int
-    activity_id: str
-    status: PipelineRunGateStatus
-    comment: str | None
-    decided_by: str | None
-    decided_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,5 +69,4 @@ class PipelineRunDocument:
     created_by: str
     updated_at: datetime
     commit_mode: PipelineRunCommitMode = 'allow'
-    gates: tuple[PipelineRunGateDocument, ...] = ()
     events: tuple[PipelineRunEventDocument, ...] = ()

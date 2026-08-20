@@ -19,7 +19,6 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
-| `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/gates/{activity_id}/decision` | Records a user decision for a waiting approval or quiz gate. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
@@ -664,9 +663,9 @@ requires the worker's stable `worker_id` and the only accepted target status,
 `claimed`. On success, the API creates or resumes the selected Activity child,
 issues a one-minute lease, and returns its secret `lease_token`. When the next
 eligible step is an `approval` or `quiz` Activity, the same conditional claim
-instead records a waiting human gate. Its response has `status: "waiting"`,
-`current_activity_run: null`, and `lease_token: null`; a runtime must not
-execute work for that response.
+creates a waiting human-owned Activity run. Its response has `status:
+"waiting"`, a `current_activity_run` in `awaiting_human_decision`, and
+`lease_token: null`; a runtime must not execute work for that response.
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
@@ -736,10 +735,9 @@ Pipeline execution and its currently selected Activity child. A terminal run
 has `current_activity_run: null`; its `steps` retain the final outcome of every
 frozen Pipeline step.
 
-Every Pipeline-run response also has a `gates` array. Each entry contains the
-human Activity ID, its `pending`, `waiting`, `approved`, `rejected`, or
-`cancelled` status, and any decision comment, actor, and timestamp. The array
-contains only frozen `approval` and `quiz` Activities.
+An approval or quiz step remains the current Activity run while the Pipeline
+status is `waiting`. Its snapshot identifies the human executor and its
+continuation action is `submit_human_decision`.
 
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
@@ -777,24 +775,31 @@ belong to the Pipeline in the selected workspace.
 `GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` returns the
 append-only event ledger in creation order. Each entry has an ID, event type,
 optional Activity ID, actor ID, JSON payload, and creation time. The API emits
-`pipeline_run_created`, `human_gate_waiting`, `human_gate_decided`, and
-`human_gate_reopened` events for the human-gate lifecycle.
+`pipeline_run_created` and scheduler events. Human decisions are regular
+Activity-run checkpoints, not Pipeline-run gate events.
 
-## Decide a pipeline run gate
+## Complete a human Activity run
 
-`POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/gates/{activity_id}/decision`
-accepts a terminal `approved`, `rejected`, or `cancelled` decision and an
-optional comment. Only a currently waiting gate can be decided. The decision,
-gate projection, and Pipeline scheduling state are committed atomically.
+Submit an approval or quiz decision through the Activity-run continuation
+endpoint. The request carries the current continuation token and an idempotency
+key, but no worker lease token.
 
-An approved gate completes its frozen step and queues the Pipeline for the
-next runtime claim. A rejected gate queues corrective execution by resetting
-the gate's transitive predecessor steps to `pending` and clearing their prior
-Activity runs. Once those predecessors complete again, the API automatically
-reopens the same gate and records `human_gate_reopened`; it never rewrites the
-original decision event. A missing gate returns `404 pipeline_run_gate_not_found`.
-A non-waiting or concurrently changed gate returns
-`409 pipeline_run_gate_unavailable`.
+```json
+{
+  "continuation_token": "activity-continuation-token",
+  "idempotency_key": "review-decision-001",
+  "result": {
+    "action": "submit_human_decision",
+    "decision": "approved",
+    "comment": "Ready to release."
+  }
+}
+```
+
+After a terminal human result, call Pipeline continuation with no lease token
+to schedule the next step. A rejected decision resets the rejected step and
+its transitive predecessors to `pending` for corrective execution. Once those
+predecessors finish, the scheduler creates a new human Activity run.
 
 ## Renew a pipeline run lease
 

@@ -113,30 +113,11 @@ class InMemoryPipelineRunRepository:
             self.children[activity_run.id] = activity_run
         return True
 
-    async def decide_gate(
-        self, *, document: PipelineRunDocument, activity_id: str,
-        expected_status: str, expected_updated_at: datetime,
-    ) -> bool:
-        """Persist a gate transition when its observed state remains current."""
-
-        if (
-            self.document is None
-            or self.document.updated_at != expected_updated_at
-            or not any(
-                gate.activity_id == activity_id and gate.status == expected_status
-                for gate in self.document.gates
-            )
-        ):
-            return False
-        self.document = document
-        self.events.extend(document.events)
-        return True
-
     async def renew_lease(
         self,
         *,
         document: PipelineRunDocument,
-        expected_lease_token: str,
+        expected_lease_token: str | None,
         now: datetime,
     ) -> bool:
         """Extend the active lease only when the existing token still matches."""
@@ -164,12 +145,22 @@ class InMemoryPipelineRunRepository:
     ) -> bool:
         """Persist a transition only for the currently scheduled child."""
 
+        active_worker = (
+            self.document is not None
+            and self.document.lease_token == expected_lease_token
+            and self.document.lease_expires_at is not None
+            and self.document.lease_expires_at > now
+        )
+        waiting_human = (
+            self.document is not None
+            and self.document.status == 'waiting'
+            and self.document.lease_token is None
+            and expected_lease_token is None
+        )
         if (
             self.document is None
             or self.document.current_activity_run_id != expected_current_activity_run_id
-            or self.document.lease_token != expected_lease_token
-            or self.document.lease_expires_at is None
-            or self.document.lease_expires_at <= now
+            or not (active_worker or waiting_human)
         ):
             return False
         self.document = document
@@ -422,10 +413,10 @@ async def test_completed_step_schedules_success_dependent_child(
 
 
 @pytest.mark.asyncio
-async def test_claiming_a_human_gate_waits_for_a_user_decision(
+async def test_claiming_a_human_activity_creates_a_waiting_child_run(
     tenant_service: TenantService,
 ) -> None:
-    """A claim transitions a ready approval Activity into a durable wait state."""
+    """A claim creates an approval child run for a human executor."""
 
     gate = activity('approval-1', 'approval')
     now = datetime(2026, 8, 14, tzinfo=UTC)
@@ -457,33 +448,35 @@ async def test_claiming_a_human_gate_waits_for_a_user_decision(
     )
 
     assert waiting.status == 'waiting'
-    assert child is None
+    assert child is not None
+    assert child.activity_id == gate.id
+    assert child.state == 'awaiting_human_decision'
+    assert child.next_action == 'submit_human_decision'
     assert lease_token is None
     assert waiting.worker_id is None
-    assert waiting.gates[0].status == 'waiting'
-    assert [event.event_type for event in runs.events] == [
-        'pipeline_run_created', 'human_gate_waiting',
-    ]
-
-    approved = await service.decide_gate(
+    runs.children[child.id] = replace(
+        child,
+        status='completed',
+        state='completed',
+        next_action='none',
+        continuation_token=None,
+        execution_context={'human_decision': {'decision': 'approved'}},
+    )
+    completed, next_child = await service.continue_run(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        activity_id=gate.id, status='approved', comment='Looks good.',
+        lease_token=None,
     )
 
-    assert approved.status == 'queued'
-    assert approved.steps[0].status == 'completed'
-    assert approved.gates[0].status == 'approved'
-    assert approved.gates[0].decided_by == 'user-1'
-    assert [event.event_type for event in runs.events] == [
-        'pipeline_run_created', 'human_gate_waiting', 'human_gate_decided',
-    ]
+    assert completed.status == 'completed'
+    assert completed.steps[0].status == 'completed'
+    assert next_child is None
 
 
 @pytest.mark.asyncio
-async def test_rejected_gate_reruns_ancestors_before_reopening(
+async def test_rejected_human_activity_reruns_ancestors_before_retry(
     tenant_service: TenantService,
 ) -> None:
-    """A rejection clears predecessor output and reopens only after correction."""
+    """A rejected human run clears predecessor output before its retry."""
 
     first, gate = activity('activity-1'), activity('approval-1', 'approval')
     now = datetime(2026, 8, 14, tzinfo=UTC)
@@ -530,17 +523,24 @@ async def test_rejected_gate_reruns_ancestors_before_reopening(
         lease_token='token',
     )
     assert waiting.status == 'waiting'
-    assert child is None
-
-    rejected = await service.decide_gate(
+    assert child is not None
+    runs.children[child.id] = replace(
+        child,
+        status='failed',
+        state='failed',
+        next_action='none',
+        continuation_token=None,
+        execution_context={'human_decision': {'decision': 'rejected'}},
+    )
+    rejected, next_child = await service.continue_run(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        activity_id=gate.id, status='rejected', comment='Revise the result.',
+        lease_token=None,
     )
 
     assert rejected.status == 'queued'
     assert [step.status for step in rejected.steps] == ['pending', 'pending']
     assert rejected.steps[0].activity_run_id is None
-    assert rejected.gates[0].status == 'rejected'
+    assert next_child is None
 
     _, corrected_child, token = await service.claim(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
@@ -558,11 +558,5 @@ async def test_rejected_gate_reruns_ancestors_before_reopening(
     )
 
     assert reopened.status == 'waiting'
-    assert child is None
-    assert reopened.gates[0].status == 'waiting'
-    assert [event.event_type for event in runs.events] == [
-        'pipeline_run_created',
-        'human_gate_waiting',
-        'human_gate_decided',
-        'human_gate_reopened',
-    ]
+    assert child is not None
+    assert child.state == 'awaiting_human_decision'

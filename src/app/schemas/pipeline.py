@@ -112,9 +112,6 @@ PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[
     'pending', 'in_progress', 'completed', 'failed', 'skipped'
 ]
-PipelineRunGateStatusValue = Literal[
-    'pending', 'waiting', 'approved', 'rejected', 'cancelled'
-]
 
 
 class PipelineRunCreateRequest(RequestSchema):
@@ -138,16 +135,9 @@ class PipelineRunLeaseRenewRequest(RequestSchema):
 
 
 class PipelineRunContinueRequest(RequestSchema):
-    """Active worker token required to schedule after a terminal child run."""
+    """Worker token required only when continuing a runtime-owned child run."""
 
-    lease_token: NonEmptyString
-
-
-class PipelineRunGateDecisionRequest(RequestSchema):
-    """A user's terminal decision for a waiting human gate."""
-
-    status: Literal['approved', 'rejected', 'cancelled']
-    comment: str | None = Field(default=None, max_length=4_000)
+    lease_token: NonEmptyString | None = None
 
 
 class PipelineRunStepResponse(ResponseSchema):
@@ -156,16 +146,6 @@ class PipelineRunStepResponse(ResponseSchema):
     activity_id: str
     status: PipelineRunStepStatusValue
     activity_run_id: str | None
-
-
-class PipelineRunGateResponse(ResponseSchema):
-    """Current human-gate decision projection for a frozen Activity."""
-
-    activity_id: str
-    status: PipelineRunGateStatusValue
-    comment: str | None
-    decided_by: str | None
-    decided_at: datetime | None
 
 
 class PipelineRunEventResponse(ResponseSchema):
@@ -193,7 +173,6 @@ class PipelineRunResponse(ResponseSchema):
     status: PipelineRunStatusValue
     current_activity_run: ActivityRunResponse | None
     steps: list[PipelineRunStepResponse]
-    gates: list[PipelineRunGateResponse]
     created_at: datetime
     created_by: str
     updated_at: datetime

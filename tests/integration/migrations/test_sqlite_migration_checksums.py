@@ -44,6 +44,7 @@ EXPECTED_CHECKSUMS = {
     '0034_pipeline_run_commit_mode.sql': '52c030f8a4c0cff290abb586dcce45e4cc8e66b623ca1d97faf08c8eaad90b72',
     '0035_remove_legacy_loops.sql': 'bf4cf4ec334c6b52e00bc243b3c91611e6373b42baf2905c1331d19162853daa',
     '0036_pipeline_run_events_and_gates.sql': 'df75d045a0b973f63fbe411bd318540d1749a1016091774e57fc589992426127',
+    '0037_unify_human_activity_runs.sql': '60851b67b03d65025a6df6ce96beac2b19468a32e6483e5db75d08f575200fd7',
 }
 
 

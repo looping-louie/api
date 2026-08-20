@@ -31,12 +31,12 @@ run completes after approved operations without emitting a commit checkpoint;
 the runtime's local Git policy may further deny an allowed commit but cannot
 grant one forbidden by the persisted run policy.
 
-Pipeline runs also preserve an append-only event ledger and a mutable
-human-gate projection for frozen `approval` and `quiz` Activities. A ready
-human gate transitions the run to `waiting` without assigning a worker lease.
-Users decide waiting gates through the API; a rejected decision resets frozen
-predecessor steps for corrective execution and preserves the original decision
-event. The gate reopens only after those steps complete again.
+Pipeline runs preserve an append-only event ledger. A ready `approval` or
+`quiz` Activity creates a normal child Activity run with a human executor and
+transitions the Pipeline to `waiting` without assigning a worker lease. Users
+submit its decision through the Activity-run continuation API. A rejected
+human Activity run resets frozen predecessor steps for corrective execution;
+the scheduler creates a new human child after those steps complete again.
 
 ## Repository structure
 

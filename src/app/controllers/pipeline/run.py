@@ -14,8 +14,6 @@ from src.app.schemas.pipeline import (
     PipelineRunCreateRequest,
     PipelineRunEventListResponse,
     PipelineRunEventResponse,
-    PipelineRunGateDecisionRequest,
-    PipelineRunGateResponse,
     PipelineRunLeaseResponse,
     PipelineRunResponse,
     PipelineRunStepResponse,
@@ -146,20 +144,6 @@ class PipelineRunController:
             total=len(document.events),
         )
 
-    async def decide_gate(
-        self, *, user_id: str, pipeline_id: str, run_id: str, activity_id: str,
-        payload: PipelineRunGateDecisionRequest,
-        requested_workspace_id: str | None = None,
-    ) -> PipelineRunResponse:
-        """Record a user decision for one currently waiting human gate."""
-
-        document = await self._require_service().decide_gate(
-            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            activity_id=activity_id, status=payload.status, comment=payload.comment,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return self._response(document, None)
-
     def _require_service(self) -> PipelineRunService:
         """Return the runtime service when the application configured it."""
 
@@ -185,14 +169,6 @@ class PipelineRunController:
                     activity_run_id=step.activity_run_id,
                 )
                 for step in document.steps
-            ],
-            gates=[
-                PipelineRunGateResponse(
-                    activity_id=gate.activity_id, status=gate.status,
-                    comment=gate.comment, decided_by=gate.decided_by,
-                    decided_at=gate.decided_at,
-                )
-                for gate in document.gates
             ],
             created_at=document.created_at, created_by=document.created_by,
             updated_at=document.updated_at,

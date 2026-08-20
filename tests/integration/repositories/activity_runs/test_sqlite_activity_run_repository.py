@@ -118,6 +118,53 @@ async def test_expired_pipeline_lease_cannot_advance_its_activity_child(
         )
 
 
+@pytest.mark.asyncio
+async def test_waiting_human_pipeline_child_can_submit_a_decision_without_lease(
+    sqlite_database_path: Path,
+    create_workspace: object,
+) -> None:
+    """A human-owned child is authorized while its Pipeline waits lease-free."""
+
+    timestamp = datetime(2026, 8, 14, tzinfo=UTC)
+    await create_workspace(workspace_id='workspace-1')
+    await _insert_pipeline_child(
+        database_path=sqlite_database_path,
+        timestamp=timestamp,
+        lease_expires_at=timestamp,
+    )
+    async with aiosqlite.connect(sqlite_database_path) as connection:
+        await connection.execute(
+            '''
+            UPDATE activity_runs
+            SET state = 'awaiting_human_decision', next_action = 'submit_human_decision',
+                activity_snapshot_json = '{"executor":"human"}'
+            WHERE workspace_id = 'workspace-1' AND id = 'run-1'
+            '''
+        )
+        await connection.execute(
+            '''
+            UPDATE pipeline_runs
+            SET status = 'waiting', worker_id = NULL, lease_token = NULL,
+                lease_expires_at = NULL
+            WHERE workspace_id = 'workspace-1' AND id = 'pipeline-run-1'
+            '''
+        )
+        await connection.commit()
+
+    repository = SqliteActivityRunRepository(sqlite_database_path)
+    updated = await repository.transition(
+        workspace_id='workspace-1', activity_id='activity-1', run_id='run-1',
+        pipeline_run_id='pipeline-run-1', continuation_token='token-0',
+        idempotency_key='human-decision-1', expected_action='submit_human_decision',
+        status='completed', state='completed', next_action='none',
+        next_continuation_token=None,
+        execution_context={'human_decision': {'decision': 'approved'}},
+        updated_at=timestamp,
+    )
+
+    assert updated.status == 'completed'
+
+
 async def _insert_pipeline_child(
     *,
     database_path: Path,

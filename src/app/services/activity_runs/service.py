@@ -69,7 +69,7 @@ class ActivityRunService:
         input_text: str,
         requested_workspace_id: str | None = None,
     ) -> ActivityRunDocument:
-        """Persist a new run from an active executable activity."""
+        """Persist a new run from an active Activity definition."""
 
         activity = await self._active_activity(
             user_id=user_id,
@@ -88,8 +88,8 @@ class ActivityRunService:
                 activity_id=activity.id,
                 input=self._require_text(input_text, 'input'),
                 status='in_progress',
-                state='awaiting_snapshot',
-                next_action='collect_snapshot',
+                state=self._initial_state(activity),
+                next_action=self._initial_action(activity),
                 iteration=1,
                 token_revision=0,
                 continuation_token=self._token_factory(),
@@ -173,7 +173,7 @@ class ActivityRunService:
         result: Mapping[str, object],
         requested_workspace_id: str | None = None,
     ) -> ActivityRunDocument:
-        """Advance one validated CLI checkpoint for an activity run."""
+        """Advance one validated runtime or human execution checkpoint."""
 
         await self._active_activity(
             user_id=user_id,
@@ -190,7 +190,8 @@ class ActivityRunService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if not await self._repository.has_active_pipeline_lease(
+        human_execution = document.activity_snapshot.get('executor') == 'human'
+        if not human_execution and not await self._repository.has_active_pipeline_lease(
             workspace_id=workspace.workspace_id,
             activity_run_id=document.id,
             pipeline_run_id=pipeline_run_id,
@@ -198,6 +199,25 @@ class ActivityRunService:
             now=self._clock(),
         ):
             raise ActivityRunInvalidTransitionError()
+        if action == 'submit_human_decision':
+            decision = str(result.get('decision'))
+            return await self._transition(
+                document=document,
+                workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id,
+                lease_token=lease_token,
+                continuation_token=continuation_token,
+                idempotency_key=idempotency_key,
+                action=action,
+                status='completed' if decision == 'approved' else 'failed',
+                state='completed' if decision == 'approved' else 'failed',
+                next_action='none',
+                next_token=None,
+                context={
+                    **dict(document.execution_context),
+                    'human_decision': dict(result),
+                },
+            )
         context = dict(document.execution_context)
         if action == 'collect_snapshot':
             previous_review = context.get('review_result')
@@ -389,17 +409,13 @@ class ActivityRunService:
     async def _active_activity(
         self, *, user_id: str, activity_id: str, requested_workspace_id: str | None,
     ) -> object:
-        """Return an active activity that has an executable configuration."""
+        """Return an active Activity supported by the execution protocol."""
 
         activity = await self._activity_service.get(
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if activity.type not in (
-            'direct_loop',
-            'refinement_loop',
-            'roundtable_loop',
-        ):
+        if activity.type not in ('approval', 'quiz', 'direct_loop', 'refinement_loop', 'roundtable_loop'):
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not executable')
         if activity.status != 'active':
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
@@ -407,20 +423,43 @@ class ActivityRunService:
 
     @staticmethod
     def _snapshot(activity: object) -> dict[str, object]:
-        """Shape an activity configuration for the shared generation engine."""
+        """Shape a frozen configuration for its assigned ActivityRun executor."""
 
         flow = {
             'direct_loop': 'direct',
             'refinement_loop': 'refinement',
             'roundtable_loop': 'roundtable',
         }
-        return {
+        snapshot = {
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
             **dict(getattr(activity, 'config')),
-            'flow': flow[getattr(activity, 'type')],
         }
+        activity_type = getattr(activity, 'type')
+        if activity_type in ('approval', 'quiz'):
+            return {**snapshot, 'type': activity_type, 'executor': 'human'}
+        return {**snapshot, 'flow': flow[activity_type], 'executor': 'runtime'}
+
+    @staticmethod
+    def _initial_state(activity: object) -> str:
+        """Return the first checkpoint state for the Activity's executor."""
+
+        return (
+            'awaiting_human_decision'
+            if getattr(activity, 'type') in ('approval', 'quiz')
+            else 'awaiting_snapshot'
+        )
+
+    @staticmethod
+    def _initial_action(activity: object) -> str:
+        """Return the first action expected from the Activity's executor."""
+
+        return (
+            'submit_human_decision'
+            if getattr(activity, 'type') in ('approval', 'quiz')
+            else 'collect_snapshot'
+        )
 
     @staticmethod
     def _has_reviewers(snapshot: Mapping[str, object]) -> bool:

@@ -18,7 +18,7 @@ The endpoint reference is organized by top-level router:
   definitions, including Activity runs.
 - [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
   persists each supplied step as an independent Activity record, Pipeline-run
-  event ledgers, and human-gate decisions.
+  event ledgers, and human Activity-run decisions.
 
 The API owns planning, generation, reviewer decisions, and durable execution
 state. The runtime owns local repository execution, including filesystem, Git,

@@ -59,7 +59,7 @@ class PipelineRunRepository(Protocol):
         self,
         *,
         document: PipelineRunDocument,
-        expected_lease_token: str,
+        expected_lease_token: str | None,
         now: datetime,
     ) -> bool:
         """Extend an active worker lease only when its token still matches."""
@@ -75,17 +75,6 @@ class PipelineRunRepository(Protocol):
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically replace a run after confirming its current child."""
-        raise NotImplementedError
-
-    async def decide_gate(
-        self,
-        *,
-        document: PipelineRunDocument,
-        activity_id: str,
-        expected_status: str,
-        expected_updated_at: datetime,
-    ) -> bool:
-        """Atomically persist a user gate decision and its event."""
         raise NotImplementedError
 
     async def list_events(
