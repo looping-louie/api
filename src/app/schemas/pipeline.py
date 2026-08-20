@@ -106,11 +106,14 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
 
 
 PipelineRunStatusValue = Literal[
-    'queued', 'claimed', 'in_progress', 'failed', 'completed'
+    'queued', 'claimed', 'in_progress', 'waiting', 'failed', 'completed'
 ]
 PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[
     'pending', 'in_progress', 'completed', 'failed', 'skipped'
+]
+PipelineRunGateStatusValue = Literal[
+    'pending', 'waiting', 'approved', 'rejected', 'cancelled'
 ]
 
 
@@ -140,12 +143,44 @@ class PipelineRunContinueRequest(RequestSchema):
     lease_token: NonEmptyString
 
 
+class PipelineRunGateDecisionRequest(RequestSchema):
+    """A user's terminal decision for a waiting human gate."""
+
+    status: Literal['approved', 'rejected', 'cancelled']
+    comment: str | None = Field(default=None, max_length=4_000)
+
+
 class PipelineRunStepResponse(ResponseSchema):
     """Current outcome of one frozen pipeline step."""
 
     activity_id: str
     status: PipelineRunStepStatusValue
     activity_run_id: str | None
+
+
+class PipelineRunGateResponse(ResponseSchema):
+    """Current human-gate decision projection for a frozen Activity."""
+
+    activity_id: str
+    status: PipelineRunGateStatusValue
+    comment: str | None
+    decided_by: str | None
+    decided_at: datetime | None
+
+
+class PipelineRunEventResponse(ResponseSchema):
+    """One immutable event in a Pipeline-run execution ledger."""
+
+    id: str
+    event_type: str
+    activity_id: str | None
+    actor_id: str
+    payload: dict[str, object]
+    created_at: datetime
+
+
+class PipelineRunEventListResponse(ListResponse[PipelineRunEventResponse]):
+    """All events recorded for one Pipeline execution."""
 
 
 class PipelineRunResponse(ResponseSchema):
@@ -158,6 +193,7 @@ class PipelineRunResponse(ResponseSchema):
     status: PipelineRunStatusValue
     current_activity_run: ActivityRunResponse | None
     steps: list[PipelineRunStepResponse]
+    gates: list[PipelineRunGateResponse]
     created_at: datetime
     created_by: str
     updated_at: datetime
@@ -167,7 +203,7 @@ class PipelineRunClaimResponse(ResponseSchema):
     """One worker-owned pipeline run and its secret lease token."""
 
     run: PipelineRunResponse
-    lease_token: str
+    lease_token: str | None
 
 
 class PipelineRunClaimableResponse(ResponseSchema):

@@ -14,6 +14,8 @@ from src.app.schemas.pipeline import (
     PipelineRunClaimResponse,
     PipelineRunClaimableListResponse,
     PipelineRunContinueRequest,
+    PipelineRunEventListResponse,
+    PipelineRunGateDecisionRequest,
     PipelineCreateRequest,
     PipelineListResponse,
     PipelinePatchRequest,
@@ -202,6 +204,47 @@ async def get_pipeline_run(
 
     return await controller.get_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.get(
+    '/{pipeline_id}/runs/{run_id}/events',
+    response_model=PipelineRunEventListResponse,
+    summary='List pipeline run events',
+)
+async def list_pipeline_run_events(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunEventListResponse:
+    """Return the append-only execution ledger for one Pipeline run."""
+
+    return await controller.run.list_events(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    '/{pipeline_id}/runs/{run_id}/gates/{activity_id}/decision',
+    response_model=PipelineRunResponse,
+    summary='Decide pipeline run gate',
+)
+async def decide_pipeline_run_gate(
+    payload: PipelineRunGateDecisionRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+    activity_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunResponse:
+    """Record a terminal user decision for a currently waiting gate."""
+
+    return await controller.run.decide_gate(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        activity_id=activity_id, payload=payload,
         requested_workspace_id=context.requested_workspace_id,
     )
 

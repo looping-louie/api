@@ -18,6 +18,8 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/gates/{activity_id}/decision` | Records a user decision for a waiting approval or quiz gate. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
@@ -660,7 +662,11 @@ with no claimable work returns `{ "items": [], "total": 0 }`.
 named listed run when its `If-Match` entity tag is still current. The request
 requires the worker's stable `worker_id` and the only accepted target status,
 `claimed`. On success, the API creates or resumes the selected Activity child,
-issues a one-minute lease, and returns its secret `lease_token`.
+issues a one-minute lease, and returns its secret `lease_token`. When the next
+eligible step is an `approval` or `quiz` Activity, the same conditional claim
+instead records a waiting human gate. Its response has `status: "waiting"`,
+`current_activity_run: null`, and `lease_token: null`; a runtime must not
+execute work for that response.
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
@@ -730,6 +736,11 @@ Pipeline execution and its currently selected Activity child. A terminal run
 has `current_activity_run: null`; its `steps` retain the final outcome of every
 frozen Pipeline step.
 
+Every Pipeline-run response also has a `gates` array. Each entry contains the
+human Activity ID, its `pending`, `waiting`, `approved`, `rejected`, or
+`cancelled` status, and any decision comment, actor, and timestamp. The array
+contains only frozen `approval` and `quiz` Activities.
+
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
 X-Workspace-ID: workspace-acme
@@ -760,6 +771,30 @@ Example response (`200 OK`):
 
 The API returns `404 pipeline_run_not_found` when the supplied run does not
 belong to the Pipeline in the selected workspace.
+
+## List pipeline run events
+
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` returns the
+append-only event ledger in creation order. Each entry has an ID, event type,
+optional Activity ID, actor ID, JSON payload, and creation time. The API emits
+`pipeline_run_created`, `human_gate_waiting`, `human_gate_decided`, and
+`human_gate_reopened` events for the human-gate lifecycle.
+
+## Decide a pipeline run gate
+
+`POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/gates/{activity_id}/decision`
+accepts a terminal `approved`, `rejected`, or `cancelled` decision and an
+optional comment. Only a currently waiting gate can be decided. The decision,
+gate projection, and Pipeline scheduling state are committed atomically.
+
+An approved gate completes its frozen step and queues the Pipeline for the
+next runtime claim. A rejected gate queues corrective execution by resetting
+the gate's transitive predecessor steps to `pending` and clearing their prior
+Activity runs. Once those predecessors complete again, the API automatically
+reopens the same gate and records `human_gate_reopened`; it never rewrites the
+original decision event. A missing gate returns `404 pipeline_run_gate_not_found`.
+A non-waiting or concurrently changed gate returns
+`409 pipeline_run_gate_unavailable`.
 
 ## Renew a pipeline run lease
 

@@ -6,7 +6,10 @@ from datetime import datetime
 from typing import Protocol
 
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.models.pipeline_run import (
+    PipelineRunDocument,
+    PipelineRunEventDocument,
+)
 
 
 class PipelineRunRepository(Protocol):
@@ -72,4 +75,25 @@ class PipelineRunRepository(Protocol):
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically replace a run after confirming its current child."""
+        raise NotImplementedError
+
+    async def decide_gate(
+        self,
+        *,
+        document: PipelineRunDocument,
+        activity_id: str,
+        expected_status: str,
+        expected_updated_at: datetime,
+    ) -> bool:
+        """Atomically persist a user gate decision and its event."""
+        raise NotImplementedError
+
+    async def list_events(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+        run_id: str,
+    ) -> list[PipelineRunEventDocument]:
+        """Return immutable events for one scoped Pipeline run."""
         raise NotImplementedError

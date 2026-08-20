@@ -32,6 +32,8 @@ from src.app.services.pipelines.types import (
     PipelineNotFoundError,
 )
 from src.app.services.pipeline_runs import (
+    PipelineRunGateNotFoundError,
+    PipelineRunGateUnavailableError,
     PipelineRunNotFoundError,
     PipelineRunPreconditionFailedError,
     PipelineRunUnavailableError,
@@ -198,6 +200,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     PipelineRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='pipeline_run_unavailable',
+    ),
+    PipelineRunGateNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='pipeline_run_gate_not_found',
+    ),
+    PipelineRunGateUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='pipeline_run_gate_unavailable',
     ),
     InvalidPipelineStepsError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

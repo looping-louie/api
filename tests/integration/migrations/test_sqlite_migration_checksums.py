@@ -42,7 +42,8 @@ EXPECTED_CHECKSUMS = {
     '0032_persona_linked_service_selections.sql': '4923a947721b2a190f2c8c4bf7ce7d4561907f42f9d3c0bdd238ca0552a74e47',
     '0033_pipeline_run_worker_claims.sql': 'd326ceb9e751ab085f2f9ae87e923300357e960beaf637340004401930907252',
     '0034_pipeline_run_commit_mode.sql': '52c030f8a4c0cff290abb586dcce45e4cc8e66b623ca1d97faf08c8eaad90b72',
-    '0035_remove_legacy_loops.sql': '43b107c3f7bacc73cd70b0925adbd0cbc86582ac7d13078e98115768632cb80d',
+    '0035_remove_legacy_loops.sql': 'bf4cf4ec334c6b52e00bc243b3c91611e6373b42baf2905c1331d19162853daa',
+    '0036_pipeline_run_events_and_gates.sql': 'df75d045a0b973f63fbe411bd318540d1749a1016091774e57fc589992426127',
 }
 
 

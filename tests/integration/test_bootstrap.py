@@ -50,6 +50,8 @@ EXPECTED_TABLES = {
     "activity_run_idempotency",
     "pipeline_runs",
     "pipeline_run_steps",
+    "pipeline_run_events",
+    "pipeline_run_gates",
 }
 
 
@@ -215,6 +217,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0033_pipeline_run_worker_claims",
         "0034_pipeline_run_commit_mode",
         "0035_remove_legacy_loops",
+        "0036_pipeline_run_events_and_gates",
     ]
     assert activity_rows == []
 
