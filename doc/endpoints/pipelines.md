@@ -489,6 +489,26 @@ Every create, patch, enablement change, and archival appends a changelog entry
 in the same transaction. Step diffs report additions, removals, positional
 changes, and order changes.
 
+## Archive a pipeline
+
+`DELETE /api/v1/pipelines/{pipeline_id}` archives a Pipeline and returns
+`{"deleted": true}`. Archival is terminal: archived Pipelines reject PATCH
+requests and are omitted from unfiltered listings. Existing Pipeline runs retain
+their frozen graph and execution history.
+
+```http
+DELETE /api/v1/pipelines/pipeline-production-release-review
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "deleted": true
+}
+```
+
 ## List pipeline changelog entries
 
 `GET /api/v1/pipelines/{pipeline_id}/changelog` returns ten newest entries
@@ -609,16 +629,123 @@ When work is available, the API returns `200 OK` with a `claimed` run, the
 initial `current_activity_run`, and a `lease_token`. A claim expires after one
 minute. When no run is available, the API returns `204 No Content`.
 
-The runtime executes `current_activity_run` through its local repository,
-filesystem, and Git checkpoints. After that child reaches a terminal state,
-call `POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` with the
-active worker lease token. The API evaluates `success` and `failure`
-dependencies, skips impossible branches, and selects the next eligible step in
-declared order.
+Example response (`200 OK`):
 
-Before each child checkpoint and before scheduling its next child, the runtime
-renews the lease. Child checkpoint requests include the Pipeline run ID and
-lease token, which the API verifies atomically with the checkpoint transition.
+```json
+{
+  "run": {
+    "id": "pipeline-run-001",
+    "pipeline_id": "pipeline-production-release-review",
+    "input": "Review the release candidate and determine whether it is ready for production.",
+    "commit_mode": "allow",
+    "status": "claimed",
+    "current_activity_run": {
+      "id": "activity-run-001",
+      "activity_id": "activity-release-review",
+      "input": "Review the release candidate and determine whether it is ready for production.",
+      "status": "in_progress",
+      "state": "awaiting_snapshot",
+      "next_action": "collect_snapshot",
+      "iteration": 1,
+      "token_revision": 0,
+      "continuation_token": "activity-continuation-token",
+      "created_at": "2026-08-18T10:01:00Z",
+      "created_by": "user-123",
+      "updated_at": "2026-08-18T10:01:00Z",
+      "payload": {}
+    },
+    "steps": [
+      {
+        "activity_id": "activity-release-review",
+        "status": "in_progress",
+        "activity_run_id": "activity-run-001"
+      }
+    ],
+    "created_at": "2026-08-18T10:00:00Z",
+    "created_by": "user-123",
+    "updated_at": "2026-08-18T10:01:00Z"
+  },
+  "lease_token": "runtime-lease-token"
+}
+```
+
+The worker must treat `lease_token` as secret and supply it to every lease,
+Activity checkpoint, and Pipeline continuation request for the claim. A worker
+cannot claim a disabled or archived Pipeline, and a workspace with no claimable
+run receives `204 No Content`.
+
+## Describe a pipeline run
+
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}` returns one durable
+Pipeline execution and its currently selected Activity child. A terminal run
+has `current_activity_run: null`; its `steps` retain the final outcome of every
+frozen Pipeline step.
+
+```http
+GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "pipeline-run-001",
+  "pipeline_id": "pipeline-production-release-review",
+  "input": "Review the release candidate and determine whether it is ready for production.",
+  "commit_mode": "forbid",
+  "status": "completed",
+  "current_activity_run": null,
+  "steps": [
+    {
+      "activity_id": "activity-release-review",
+      "status": "completed",
+      "activity_run_id": "activity-run-001"
+    }
+  ],
+  "created_at": "2026-08-18T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-18T10:05:00Z"
+}
+```
+
+The API returns `404 pipeline_run_not_found` when the supplied run does not
+belong to the Pipeline in the selected workspace.
+
+## Renew a pipeline run lease
+
+`POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` extends an active
+claim by one minute. Only the worker holding the current unexpired lease token
+can renew it.
+
+```http
+POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/lease
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "lease_token": "runtime-lease-token"
+}
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "lease_expires_at": "2026-08-18T10:02:00Z"
+}
+```
+
+A missing, stale, or expired token returns `409 pipeline_run_unavailable`.
+
+## Continue a pipeline run
+
+`POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` records the
+selected terminal Activity child outcome and schedules the next dependency-ready
+step. The worker calls this only after an Activity checkpoint response is
+terminal.
 
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/continue
@@ -632,7 +759,48 @@ Content-Type: application/json
 }
 ```
 
-The response is another Pipeline Run representation. It contains the next
-`current_activity_run` when work remains, or `null` after every step has been
-completed, failed, or skipped. A missing, stale, or expired lease token returns
-`409 pipeline_run_unavailable`.
+Example response (`200 OK`):
+
+```json
+{
+  "id": "pipeline-run-001",
+  "pipeline_id": "pipeline-production-release-review",
+  "input": "Review the release candidate and determine whether it is ready for production.",
+  "commit_mode": "allow",
+  "status": "in_progress",
+  "current_activity_run": {
+    "id": "activity-run-002",
+    "activity_id": "activity-readiness-quiz",
+    "input": "Review the release candidate and determine whether it is ready for production.",
+    "status": "in_progress",
+    "state": "awaiting_snapshot",
+    "next_action": "collect_snapshot",
+    "iteration": 1,
+    "token_revision": 0,
+    "continuation_token": "activity-continuation-token",
+    "created_at": "2026-08-18T10:03:00Z",
+    "created_by": "user-123",
+    "updated_at": "2026-08-18T10:03:00Z",
+    "payload": {}
+  },
+  "steps": [
+    {
+      "activity_id": "activity-release-review",
+      "status": "completed",
+      "activity_run_id": "activity-run-001"
+    },
+    {
+      "activity_id": "activity-readiness-quiz",
+      "status": "in_progress",
+      "activity_run_id": "activity-run-002"
+    }
+  ],
+  "created_at": "2026-08-18T10:00:00Z",
+  "created_by": "user-123",
+  "updated_at": "2026-08-18T10:03:00Z"
+}
+```
+
+When no eligible step remains, the response has `current_activity_run: null`
+and a terminal `completed` or `failed` status. A missing, stale, or expired
+lease token returns `409 pipeline_run_unavailable`.

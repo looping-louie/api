@@ -32,10 +32,11 @@ select one of the user's workspaces with the optional `X-Workspace-ID` header.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 
-List operations return an object with `items` and `total`, except
-`GET /api/v1/providers`, which returns a JSON array. The optional `search`
-query parameter accepted by resource lists is case-insensitive and must contain
-between 1 and 200 characters. Activity and activity-changelog lists accept a
+Persona, skill, activity, Pipeline, and model lists return an object with
+`items` and `total`. Catalog, provider, and linked-service lists return JSON
+arrays. The optional `search` query parameter accepted by resource lists is
+case-insensitive and must contain between 1 and 200 characters. Activity and
+activity-changelog lists accept a
 non-negative `offset` and always return at most ten items. Pipeline lists also
 use fixed ten-item pages, support `status` and `search`, and exclude archived
 pipelines unless `status=archived` is requested.
