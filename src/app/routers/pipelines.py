@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Path, Query, status
 
 from src.app.controllers.pipeline import PipelineController
 from src.app.schemas.shared import DeleteResponse
@@ -12,6 +12,7 @@ from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,
     PipelineRunClaimRequest,
     PipelineRunClaimResponse,
+    PipelineRunClaimableListResponse,
     PipelineRunContinueRequest,
     PipelineCreateRequest,
     PipelineListResponse,
@@ -144,26 +145,46 @@ async def create_pipeline_run(
     )
 
 
-@router.post(
-    '/runs/claim',
-    response_model=PipelineRunClaimResponse,
-    summary='Claim queued pipeline run',
+@router.get(
+    '/{pipeline_id}/runs',
+    response_model=PipelineRunClaimableListResponse,
+    summary='List claimable pipeline runs',
 )
-async def claim_next_pipeline_run(
+async def list_claimable_pipeline_runs(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    claimable: Annotated[Literal[True], Query()],
+) -> PipelineRunClaimableListResponse:
+    """Return candidates for the explicit runtime claimable filter."""
+
+    assert claimable
+    return await controller.list_claimable_runs(
+        user_id=context.user_id, pipeline_id=pipeline_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.patch(
+    '/{pipeline_id}/runs/{run_id}',
+    response_model=PipelineRunClaimResponse,
+    summary='Claim pipeline run',
+)
+async def claim_pipeline_run(
     payload: PipelineRunClaimRequest,
     context: ContextDependency,
     controller: ControllerDependency,
-    response: Response,
-) -> PipelineRunClaimResponse | None:
-    """Assign the next queued workspace run to a runtime worker."""
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+    if_match: Annotated[str, Header(alias='If-Match', min_length=1)],
+) -> PipelineRunClaimResponse:
+    """Claim one current pipeline run using the entity tag from its listing."""
 
-    claim = await controller.claim_next_run(
-        user_id=context.user_id, payload=payload,
+    return await controller.claim_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        payload=payload, if_match=if_match,
         requested_workspace_id=context.requested_workspace_id,
     )
-    if claim is None:
-        response.status_code = status.HTTP_204_NO_CONTENT
-    return claim
 
 
 @router.get(

@@ -31,13 +31,14 @@ class PipelineRunRepository(Protocol):
         """Return one pipeline run under its owning pipeline."""
         raise NotImplementedError
 
-    async def find_claimable(
+    async def list_claimable(
         self,
         *,
         workspace_id: str,
+        pipeline_id: str,
         claimed_before: datetime,
-    ) -> PipelineRunDocument | None:
-        """Return one queued or lease-expired pipeline run in a workspace."""
+    ) -> list[PipelineRunDocument]:
+        """Return queued or lease-expired runs under one Pipeline."""
         raise NotImplementedError
 
     async def claim(

@@ -15,7 +15,8 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Queues a pipeline run for a runtime worker. |
-| `POST` | `/api/v1/pipelines/runs/claim` | Atomically claims the next queued workspace run for a worker. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
+| `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
@@ -606,28 +607,74 @@ Example response (`201 Created`):
 }
 ```
 
-## Claim queued pipeline run
+## List claimable pipeline runs
 
-`POST /api/v1/pipelines/runs/claim` atomically assigns the oldest queued or
-lease-expired run in the selected workspace to a runtime worker. The request
-requires the worker's stable `worker_id`. The response contains a lease token,
-which is returned only to the worker that successfully claimed the run.
+The runtime first lists active Pipelines, then requests claimable runs beneath
+each Pipeline. `GET /api/v1/pipelines/{pipeline_id}/runs?claimable=true`
+returns queued runs and claimed runs whose lease has expired. The API owns that
+decision; callers must not infer claimability from a raw persisted status.
 
 ```http
-POST /api/v1/pipelines/runs/claim
+GET /api/v1/pipelines/pipeline-production-release-review/runs?claimable=true
 X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "etag": "\"c1e5185f48a77b2f\"",
+      "run": {
+        "id": "pipeline-run-001",
+        "pipeline_id": "pipeline-production-release-review",
+        "input": "Review the release candidate and determine whether it is ready for production.",
+        "commit_mode": "allow",
+        "status": "queued",
+        "current_activity_run": null,
+        "steps": [
+          {
+            "activity_id": "activity-release-review",
+            "status": "pending",
+            "activity_run_id": null
+          }
+        ],
+        "created_at": "2026-08-18T10:00:00Z",
+        "created_by": "user-123",
+        "updated_at": "2026-08-18T10:00:00Z"
+      }
+    }
+  ],
+  "total": 1
+}
+```
+
+`etag` is opaque. The runtime sends it unchanged as the standard HTTP
+`If-Match` request header when it attempts to claim that exact run. A Pipeline
+with no claimable work returns `{ "items": [], "total": 0 }`.
+
+## Claim a pipeline run
+
+`PATCH /api/v1/pipelines/{pipeline_id}/runs/{run_id}` atomically claims the
+named listed run when its `If-Match` entity tag is still current. The request
+requires the worker's stable `worker_id` and the only accepted target status,
+`claimed`. On success, the API creates or resumes the selected Activity child,
+issues a one-minute lease, and returns its secret `lease_token`.
+
+```http
+PATCH /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
+X-Workspace-ID: workspace-acme
+If-Match: "c1e5185f48a77b2f"
 Content-Type: application/json
 ```
 
 ```json
 {
-  "worker_id": "runtime-local-01"
+  "worker_id": "runtime-local-01",
+  "status": "claimed"
 }
 ```
-
-When work is available, the API returns `200 OK` with a `claimed` run, the
-initial `current_activity_run`, and a `lease_token`. A claim expires after one
-minute. When no run is available, the API returns `204 No Content`.
 
 Example response (`200 OK`):
 
@@ -671,8 +718,10 @@ Example response (`200 OK`):
 
 The worker must treat `lease_token` as secret and supply it to every lease,
 Activity checkpoint, and Pipeline continuation request for the claim. A worker
-cannot claim a disabled or archived Pipeline, and a workspace with no claimable
-run receives `204 No Content`.
+cannot claim a disabled or archived Pipeline. If another worker changes the run
+after it was listed, the API returns `412 pipeline_run_precondition_failed`; the
+runtime discards that stale candidate and continues with another candidate or a
+later poll.
 
 ## Describe a pipeline run
 

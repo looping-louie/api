@@ -38,6 +38,7 @@ from src.app.services.pipelines.types import (
 )
 from src.app.services.pipeline_runs import (
     PipelineRunNotFoundError,
+    PipelineRunPreconditionFailedError,
     PipelineRunUnavailableError,
 )
 from src.app.services.providers.connection import ProviderConnectionError
@@ -204,6 +205,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     PipelineRunNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code='pipeline_run_not_found',
+    ),
+    PipelineRunPreconditionFailedError: ErrorDefinition(
+        status_code=status.HTTP_412_PRECONDITION_FAILED,
+        code='pipeline_run_precondition_failed',
     ),
     PipelineRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,

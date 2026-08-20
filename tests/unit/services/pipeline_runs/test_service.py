@@ -17,8 +17,12 @@ from src.app.models.pipeline import (
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
-from src.app.services.pipeline_runs.types import PipelineRunUnavailableError
+from src.app.services.pipeline_runs.types import (
+    PipelineRunPreconditionFailedError,
+    PipelineRunUnavailableError,
+)
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 
@@ -55,22 +59,25 @@ class InMemoryPipelineRunRepository:
             return None
         return self.document
 
-    async def find_claimable(
-        self, *, workspace_id: str, claimed_before: datetime,
-    ) -> PipelineRunDocument | None:
-        """Return the stored queued or expired run in the workspace."""
+    async def list_claimable(
+        self, *, workspace_id: str, pipeline_id: str, claimed_before: datetime,
+    ) -> list[PipelineRunDocument]:
+        """Return the stored queued or expired run beneath one Pipeline."""
 
-        if self.document is None or self.document.workspace_id != workspace_id:
-            return None
+        if self.document is None or (self.document.workspace_id, self.document.pipeline_id) != (
+            workspace_id,
+            pipeline_id,
+        ):
+            return []
         if self.document.status == 'queued':
-            return self.document
+            return [self.document]
         if (
             self.document.status != 'claimed'
             or self.document.lease_expires_at is None
             or self.document.lease_expires_at > claimed_before
         ):
-            return None
-        return self.document
+            return []
+        return [self.document]
 
     async def claim(
         self, *, document: PipelineRunDocument, expected_updated_at: datetime,
@@ -218,8 +225,15 @@ async def test_created_run_waits_for_runtime_claim(
     assert child is None
     assert runs.children == {}
 
-    claim = await service.claim_next(
-        user_id='user-1', worker_id='worker-1',
+    candidates = await service.list_claimable(
+        user_id='user-1', pipeline_id='pipeline-1',
+    )
+
+    assert candidates == [created]
+
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
         lease_duration=timedelta(minutes=1),
     )
 
@@ -236,8 +250,9 @@ async def test_created_run_waits_for_runtime_claim(
         claimed,
         lease_expires_at=datetime(1970, 1, 1, tzinfo=UTC),
     )
-    reclaimed = await service.claim_next(
-        user_id='user-1', worker_id='worker-2',
+    reclaimed = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=claimed.id,
+        worker_id='worker-2', if_match=pipeline_run_etag(runs.document),
         lease_duration=timedelta(minutes=1),
     )
 
@@ -247,6 +262,13 @@ async def test_created_run_waits_for_runtime_claim(
     assert reclaimed_run.attempt == 2
     assert reclaimed_child.id == claimed_child.id
     assert len(runs.children) == 1
+
+    with pytest.raises(PipelineRunPreconditionFailedError):
+        await service.claim(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+            worker_id='worker-3', if_match=pipeline_run_etag(created),
+            lease_duration=timedelta(minutes=1),
+        )
 
 
 @pytest.mark.asyncio
@@ -276,8 +298,10 @@ async def test_active_claim_can_renew_its_lease_but_stale_claim_cannot(
     created, _ = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
-    claim = await service.claim_next(
-        user_id='user-1', worker_id='worker-1', lease_duration=timedelta(minutes=1),
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        lease_duration=timedelta(minutes=1),
     )
 
     assert claim is not None
@@ -331,8 +355,9 @@ async def test_completed_step_schedules_success_dependent_child(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
     assert child is None
-    claim = await service.claim_next(
-        user_id='user-1', worker_id='worker-1',
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
         lease_duration=timedelta(minutes=1),
     )
     assert claim is not None

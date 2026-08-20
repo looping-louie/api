@@ -71,35 +71,33 @@ class SqlitePipelineRunRepository:
                 return None
             return await self._to_document(connection, row)
 
-    async def find_claimable(
+    async def list_claimable(
         self,
         *,
         workspace_id: str,
+        pipeline_id: str,
         claimed_before: datetime,
-    ) -> PipelineRunDocument | None:
-        """Return the oldest queued or expired claimed run in one workspace."""
+    ) -> list[PipelineRunDocument]:
+        """Return queued or expired claimed runs in one Pipeline."""
 
         async with self._connect() as connection:
             cursor = await connection.execute(
                 '''
                 SELECT * FROM pipeline_runs
-                WHERE workspace_id = ?
+                WHERE workspace_id = ? AND pipeline_id = ?
                   AND (
                     status = 'queued'
                     OR (status = 'claimed' AND lease_expires_at <= ?)
                   )
                 ORDER BY created_at ASC
-                LIMIT 1
                 ''',
-                (workspace_id, claimed_before.isoformat()),
+                (workspace_id, pipeline_id, claimed_before.isoformat()),
             )
             try:
-                row = await cursor.fetchone()
+                rows = await cursor.fetchall()
             finally:
                 await cursor.close()
-            if row is None:
-                return None
-            return await self._to_document(connection, row)
+            return [await self._to_document(connection, row) for row in rows]
 
     async def claim(
         self,

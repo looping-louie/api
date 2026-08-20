@@ -18,8 +18,10 @@ from src.app.models.pipeline_run import (
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.types import (
     PipelineRunNotFoundError,
+    PipelineRunPreconditionFailedError,
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
@@ -90,33 +92,77 @@ class PipelineRunService:
         )
         return await self._repository.create(document=document, activity_run=None), None
 
-    async def claim_next(
+    async def list_claimable(
         self,
         *,
         user_id: str,
+        pipeline_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> list[PipelineRunDocument]:
+        """List claimable runs beneath one active Pipeline."""
+
+        details = await self._pipeline_service.describe(
+            user_id=user_id, pipeline_id=pipeline_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if details.document.status != 'active':
+            return []
+        now = self._clock()
+        return await self._repository.list_claimable(
+            workspace_id=details.document.workspace_id,
+            pipeline_id=details.document.id,
+            claimed_before=now,
+        )
+
+    async def claim(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
         worker_id: str,
+        if_match: str,
         lease_duration: timedelta,
         requested_workspace_id: str | None = None,
-    ) -> tuple[PipelineRunDocument, ActivityRunDocument, str] | None:
-        """Atomically assign one queued or expired run to a runtime worker."""
+    ) -> tuple[PipelineRunDocument, ActivityRunDocument, str]:
+        """Atomically claim one current, claimable Pipeline run."""
 
         normalized_worker_id = self._require_text(worker_id)
-        workspace = await self._tenant_service.resolve(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        details = await self._pipeline_service.describe(
+            user_id=user_id, pipeline_id=pipeline_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if details.document.status != 'active':
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'status is {details.document.status}',
+            )
+        candidate = await self._get_required(
+            workspace_id=details.document.workspace_id,
+            pipeline_id=details.document.id,
+            run_id=run_id,
         )
         now = self._clock()
-        candidate = await self._repository.find_claimable(
-            workspace_id=workspace.workspace_id, claimed_before=now,
-        )
-        if candidate is None:
-            return None
+        if if_match != pipeline_run_etag(candidate):
+            raise PipelineRunPreconditionFailedError(
+                pipeline_id=pipeline_id,
+                run_id=run_id,
+            )
+        if not self._is_claimable(candidate, now):
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'run {run_id} is no longer claimable',
+            )
         if candidate.current_activity_run_id is None:
             selected, child = self._schedule(document=candidate, user_id=user_id)
         else:
             selected = candidate
             child = await self._current_child(candidate)
         if child is None:
-            return None
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'run {run_id} has no current activity run',
+            )
         lease_token = self._token_factory()
         claimed = replace(
             selected, status='claimed', worker_id=normalized_worker_id,
@@ -132,7 +178,10 @@ class PipelineRunService:
                 else None
             ),
         ):
-            return None
+            raise PipelineRunPreconditionFailedError(
+                pipeline_id=pipeline_id,
+                run_id=run_id,
+            )
         return claimed, child, lease_token
 
     async def get(
@@ -154,6 +203,34 @@ class PipelineRunService:
         if document is None:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         return document, await self._current_child(document)
+
+    async def _get_required(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+        run_id: str,
+    ) -> PipelineRunDocument:
+        """Return one run under a resolved workspace and Pipeline."""
+
+        document = await self._repository.get(
+            workspace_id=workspace_id,
+            pipeline_id=pipeline_id,
+            run_id=run_id,
+        )
+        if document is None:
+            raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
+        return document
+
+    @staticmethod
+    def _is_claimable(document: PipelineRunDocument, now: datetime) -> bool:
+        """Return whether a queued or expired claim may be claimed now."""
+
+        return document.status == 'queued' or (
+            document.status == 'claimed'
+            and document.lease_expires_at is not None
+            and document.lease_expires_at <= now
+        )
 
     async def renew_lease(
         self,

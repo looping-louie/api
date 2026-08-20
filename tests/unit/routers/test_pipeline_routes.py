@@ -269,6 +269,25 @@ def test_pipeline_lease_renewal_requires_a_token(
     assert invalid.json()['error']['code'] == 'request_validation_error'
 
 
+def test_pipeline_claim_requires_an_if_match_header(
+    tenant_service: TenantService,
+) -> None:
+    """Conditional claims reject requests that omit the listed candidate ETag."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, _LeaseService()),
+    )
+
+    response = client.patch(
+        '/api/v1/pipelines/pipeline-1/runs/run-1',
+        json={'worker_id': 'worker-1', 'status': 'claimed'},
+    )
+
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'request_validation_error'
+
+
 class _LeaseService:
     """Provide a deterministic renewal response for the router contract test."""
 

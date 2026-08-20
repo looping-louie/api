@@ -8,6 +8,8 @@ from src.app.models.pipeline_run import PipelineRunDocument
 from src.app.schemas.pipeline import (
     PipelineRunClaimRequest,
     PipelineRunClaimResponse,
+    PipelineRunClaimableListResponse,
+    PipelineRunClaimableResponse,
     PipelineRunContinueRequest,
     PipelineRunCreateRequest,
     PipelineRunLeaseResponse,
@@ -15,6 +17,7 @@ from src.app.schemas.pipeline import (
     PipelineRunStepResponse,
 )
 from src.app.services.pipeline_runs import PipelineRunService
+from src.app.services.pipeline_runs.etag import pipeline_run_etag
 
 
 class PipelineRunController:
@@ -38,20 +41,40 @@ class PipelineRunController:
         )
         return self._response(document, child)
 
-    async def claim_next_run(
-        self, *, user_id: str, payload: PipelineRunClaimRequest,
+    async def list_claimable_runs(
+        self, *, user_id: str, pipeline_id: str,
         requested_workspace_id: str | None = None,
-    ) -> PipelineRunClaimResponse | None:
-        """Assign the next workspace run to one runtime worker for one minute."""
+    ) -> PipelineRunClaimableListResponse:
+        """Return current claimable runs beneath one active Pipeline."""
 
-        claim = await self._require_service().claim_next(
-            user_id=user_id, worker_id=payload.worker_id,
+        documents = await self._require_service().list_claimable(
+            user_id=user_id, pipeline_id=pipeline_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return PipelineRunClaimableListResponse(
+            items=[
+                PipelineRunClaimableResponse(
+                    run=self._response(document, None),
+                    etag=pipeline_run_etag(document),
+                )
+                for document in documents
+            ],
+            total=len(documents),
+        )
+
+    async def claim_run(
+        self, *, user_id: str, pipeline_id: str, run_id: str,
+        payload: PipelineRunClaimRequest, if_match: str,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineRunClaimResponse:
+        """Claim one Pipeline run when the supplied entity tag is current."""
+
+        document, child, lease_token = await self._require_service().claim(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            worker_id=payload.worker_id, if_match=if_match,
             lease_duration=timedelta(minutes=1),
             requested_workspace_id=requested_workspace_id,
         )
-        if claim is None:
-            return None
-        document, child, lease_token = claim
         return PipelineRunClaimResponse(
             run=self._response(document, child), lease_token=lease_token,
         )

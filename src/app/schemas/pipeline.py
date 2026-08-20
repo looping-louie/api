@@ -122,9 +122,10 @@ class PipelineRunCreateRequest(RequestSchema):
 
 
 class PipelineRunClaimRequest(RequestSchema):
-    """Worker identity used to claim one queued pipeline run."""
+    """Worker identity and target status for a conditional run claim."""
 
     worker_id: NonEmptyString
+    status: Literal['claimed']
 
 
 class PipelineRunLeaseRenewRequest(RequestSchema):
@@ -167,6 +168,19 @@ class PipelineRunClaimResponse(ResponseSchema):
 
     run: PipelineRunResponse
     lease_token: str
+
+
+class PipelineRunClaimableResponse(ResponseSchema):
+    """One claimable run with the entity tag required to claim it."""
+
+    run: PipelineRunResponse
+    etag: str
+
+
+class PipelineRunClaimableListResponse(
+    ListResponse[PipelineRunClaimableResponse]
+):
+    """Claimable pipeline runs owned by one active Pipeline."""
 
 
 class PipelineRunLeaseResponse(ResponseSchema):
