@@ -17,6 +17,7 @@ from src.app.services.loop_runs.generation import LoopRunGenerationService
 from src.app.services.loop_runs.types import LoopRunNotFoundError
 from src.app.services.loops.types import LoopValidationError
 from src.app.services.model_execution import ModelExecutionService
+from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 
@@ -200,14 +201,27 @@ class ActivityRunService:
                     action=action, status='in_progress', state='awaiting_generation',
                     next_action='none', next_token=None, context=context,
                 )
-            generated = await self._generation_service.generate_context(
-                loop_snapshot=document.activity_snapshot,
-                workspace_id=workspace.workspace_id,
-                user_id=user_id,
-                requested_workspace_id=requested_workspace_id,
-                input_text=document.input,
-                context=context,
-            )
+            try:
+                generated = await self._generation_service.generate_context(
+                    loop_snapshot=document.activity_snapshot,
+                    workspace_id=workspace.workspace_id,
+                    user_id=user_id,
+                    requested_workspace_id=requested_workspace_id,
+                    input_text=document.input,
+                    context=context,
+                )
+            except ModelServiceError as error:
+                return await self._generation_failure_transition(
+                    document=document,
+                    workspace_id=workspace.workspace_id,
+                    pipeline_run_id=pipeline_run_id,
+                    lease_token=lease_token,
+                    continuation_token=continuation_token,
+                    idempotency_key=idempotency_key,
+                    action=action,
+                    context=context,
+                    error=error,
+                )
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
@@ -292,6 +306,43 @@ class ActivityRunService:
             idempotency_key=idempotency_key, expected_action=action, status=status,
             state=state, next_action=next_action, next_continuation_token=next_token,
             execution_context=context, updated_at=self._clock(), iteration=iteration,
+        )
+
+    async def _generation_failure_transition(
+        self,
+        *,
+        document: ActivityRunDocument,
+        workspace_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        continuation_token: str,
+        idempotency_key: str,
+        action: str,
+        context: dict[str, object],
+        error: ModelServiceError,
+    ) -> ActivityRunDocument:
+        """Persist an API-owned model configuration failure for the active claim."""
+
+        return await self._transition(
+            document=document,
+            workspace_id=workspace_id,
+            pipeline_run_id=pipeline_run_id,
+            lease_token=lease_token,
+            continuation_token=continuation_token,
+            idempotency_key=idempotency_key,
+            action=action,
+            status='failed',
+            state='failed',
+            next_action='none',
+            next_token=None,
+            context={
+                **context,
+                'failure': {
+                    'source': 'api',
+                    'type': type(error).__name__,
+                    'message': str(error),
+                },
+            },
         )
 
     async def _active_activity(

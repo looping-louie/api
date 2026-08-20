@@ -21,6 +21,11 @@ decisions. A claimed runtime worker must present its active lease token before
 it checkpoints an Activity child or advances Pipeline scheduling; the API
 rejects stale workers before either durable mutation.
 
+When API-owned generation detects a classified model catalog failure while
+processing a valid checkpoint, the API records a terminal failed Activity with
+a structured failure reason. It does not leave the claimed Pipeline child
+reclaimable after returning the error to the runtime.
+
 ## Repository structure
 
 Application code lives under `src/app` and is organized by responsibility:
