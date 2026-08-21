@@ -18,6 +18,7 @@ SMOKE_LINKED_SERVICE_NAME="${SMOKE_LINKED_SERVICE_NAME:-smoke_linked_service}"
 
 SMOKE_MODEL_ID="${SMOKE_MODEL_ID:-}"
 SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
+WORKER_ID="smoke-runtime"
 
 PERSONA_ID=""
 SKILL_ID=""
@@ -553,55 +554,12 @@ JSON
     )"
 )"
 
-log "Creating activity run"
-
-activity_run_response="$(
-    request POST "/activities/${ACTIVITY_ID}/runs" \
-        '{"input":"Produce an activity smoke-test answer."}'
-)"
-
-ACTIVITY_RUN_ID="$(printf '%s' "${activity_run_response}" | json_field "id")"
-ACTIVITY_RUN_TOKEN="$(
-    printf '%s' "${activity_run_response}" | json_field "continuation_token"
-)"
-
-request GET "/activities/${ACTIVITY_ID}/runs?offset=0" >/dev/null
-request GET "/activities/${ACTIVITY_ID}/runs/${ACTIVITY_RUN_ID}" >/dev/null
-request POST "/activities/${ACTIVITY_ID}/runs/${ACTIVITY_RUN_ID}/continue" "$(
-    cat <<JSON
-{
-    "continuation_token": "${ACTIVITY_RUN_TOKEN}",
-    "idempotency_key": "activity-smoke-snapshot-${SMOKE_RUN_ID}",
-    "result": {
-        "action": "collect_snapshot",
-        "repo_context": "Activity smoke-test repository context.",
-        "workspace_metadata": {
-            "workspace_path": "/workspace/smoke",
-            "source_commit_sha": "activity-smoke-${SMOKE_RUN_ID}"
-        },
-        "constitution": "Keep smoke-test changes small.",
-        "project_profile": {
-            "source_file_count": 1,
-            "approximate_source_chars": 1,
-            "extension_counts": {},
-            "top_level_entries": [],
-            "markers": {
-                "nuxt": false,
-                "package_json": false,
-                "fastapi": false,
-                "docker": false,
-                "tests": true
-            }
-        }
-    }
-}
-JSON
-)" >/dev/null
-
 PIPELINE_ID="$(
     printf '%s' "${pipeline_response}" | json_field "id"
 )"
 
+request PUT "/workers/${WORKER_ID}" '{}' >/dev/null
+request POST "/workers/${WORKER_ID}/heartbeat" '{}' >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
 pipeline_run_response="$(

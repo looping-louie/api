@@ -26,6 +26,7 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
+from src.app.services.workers import WorkerService
 
 
 class PipelineRunService:
@@ -38,6 +39,7 @@ class PipelineRunService:
         activity_run_repository: ActivityRunRepository,
         pipeline_service: PipelineService,
         tenant_service: TenantService,
+        worker_service: WorkerService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -48,6 +50,7 @@ class PipelineRunService:
         self._activity_run_repository = activity_run_repository
         self._pipeline_service = pipeline_service
         self._tenant_service = tenant_service
+        self._worker_service = worker_service
         self._id_factory = id_factory
         self._clock = clock
         self._token_factory = token_factory
@@ -204,6 +207,11 @@ class PipelineRunService:
             run_id=run_id,
         )
         now = self._clock()
+        if self._worker_service is not None:
+            await self._worker_service.require_active(
+                workspace_id=details.document.workspace_id,
+                worker_id=normalized_worker_id,
+            )
         if if_match != pipeline_run_etag(candidate):
             raise PipelineRunPreconditionFailedError(
                 pipeline_id=pipeline_id,

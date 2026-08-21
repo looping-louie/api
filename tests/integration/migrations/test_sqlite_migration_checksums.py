@@ -46,6 +46,7 @@ EXPECTED_CHECKSUMS = {
     '0036_pipeline_run_events_and_gates.sql': 'df75d045a0b973f63fbe411bd318540d1749a1016091774e57fc589992426127',
     '0037_unify_human_activity_runs.sql': '07bd99705142318f3e18e9e1ad399e0de7d1e174e82f0a813b8078300e99c0f9',
     '0038_prepared_pipeline_runs.sql': 'a829c560010eab5a7c88969acb380b2c819d6cd9a0d04fac031c39b0ce2dab0d',
+    '0039_workers.sql': '8c8fd031d67e718903a9e77af0bbefde9427b855882a21514eb297554710f1db',
 }
 
 

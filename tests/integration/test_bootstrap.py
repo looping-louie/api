@@ -51,6 +51,7 @@ EXPECTED_TABLES = {
     "pipeline_runs",
     "pipeline_run_steps",
     "pipeline_run_events",
+    "workers",
 }
 
 
@@ -219,6 +220,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0036_pipeline_run_events_and_gates",
         "0037_unify_human_activity_runs",
         "0038_prepared_pipeline_runs",
+        "0039_workers",
     ]
     assert activity_rows == []
 

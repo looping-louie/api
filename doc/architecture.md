@@ -7,6 +7,13 @@ repository changes on a worker.
 The runtime is independent from any programming language, framework, or LLM
 provider.
 
+## Worker registration
+
+Runtime workers register their configured identity in each workspace and refresh
+their heartbeat before polling. PipelineRun claims require an active worker
+registration, while the existing PipelineRun lease continues to authorize only
+one claimed run. Registration liveness never renews or revokes a lease.
+
 ## Ownership boundaries
 
 The API owns resource management, durable pipeline and activity-run state,

@@ -24,6 +24,7 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
+from src.app.services.workers import WorkerUnavailableError
 from tests.conftest import IncrementingClock
 
 
@@ -191,6 +192,23 @@ class InMemoryPipelineRunRepository:
         return True
 
 
+class InMemoryWorkerService:
+    """Control worker claim admission for PipelineRun scheduler tests."""
+
+    def __init__(self, *, active: bool) -> None:
+        """Store whether registration liveness should admit claims."""
+
+        self.active = active
+        self.calls: list[tuple[str, str]] = []
+
+    async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
+        """Record one admission check and reject inactive worker identities."""
+
+        self.calls.append((workspace_id, worker_id))
+        if not self.active:
+            raise WorkerUnavailableError(worker_id)
+
+
 class InMemoryActivityRunRepository:
     """Expose child activity runs created by the pipeline scheduler."""
 
@@ -257,9 +275,11 @@ async def test_prepared_run_starts_before_runtime_claim(
         activities=(first,),
     )
     runs = InMemoryPipelineRunRepository()
+    workers = InMemoryWorkerService(active=True)
     service = PipelineRunService(
         repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        worker_service=workers,
         id_factory=lambda: 'run-1', clock=IncrementingClock(),
         token_factory=lambda: 'token',
     )
@@ -307,6 +327,7 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert claimed_child.activity_id == first.id
     assert claimed_child.activity_snapshot['commit_mode'] == 'forbid'
     assert lease_token == 'token'
+    assert workers.calls == [('workspace-1', 'worker-1')]
 
     runs.document = replace(
         claimed,
@@ -325,6 +346,15 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert reclaimed_child.id == claimed_child.id
     assert len(runs.children) == 1
 
+    workers.active = False
+    with pytest.raises(WorkerUnavailableError):
+        await service.claim(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=claimed.id,
+            worker_id='worker-3', if_match=pipeline_run_etag(runs.document),
+            lease_duration=timedelta(minutes=1),
+        )
+
+    workers.active = True
     with pytest.raises(PipelineRunPreconditionFailedError):
         await service.claim(
             user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,

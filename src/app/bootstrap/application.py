@@ -20,6 +20,7 @@ from src.app.controllers.persona import PersonaController
 from src.app.controllers.provider import ProviderController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.skill import SkillController
+from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
 )
@@ -51,6 +52,7 @@ from src.app.repositories.providers.repository import (
     SqliteProviderRepository,
 )
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
+from src.app.repositories.workers import SqliteWorkerRepository
 from src.app.repositories.providers.state_repository import (
     ProviderStateRepositoryAdapter,
 )
@@ -98,6 +100,7 @@ from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
+from src.app.services.workers import WorkerService
 
 
 LOGGER = logging.getLogger(__name__)
@@ -188,6 +191,7 @@ async def configure_application(
         database,
     )
     linked_service_repository = SqliteLinkedServiceRepository(database)
+    worker_repository = SqliteWorkerRepository(database)
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -296,6 +300,11 @@ async def configure_application(
         ),
         instruction_library_service=execution_instruction_library_service,
     )
+    worker_service = WorkerService(
+        repository=worker_repository,
+        tenant_service=tenant_service,
+        clock=utc_now,
+    )
     provider_service = ProviderService(
         repository=provider_repository,
         tenant_service=tenant_service,
@@ -324,6 +333,7 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
         activity_run_repository=activity_run_repository,
+        worker_service=worker_service,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
@@ -335,6 +345,7 @@ async def configure_application(
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
     )
+    app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database
     app.state.instruction_catalog = resolved_catalog
