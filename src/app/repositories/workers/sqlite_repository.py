@@ -98,7 +98,7 @@ class SqliteWorkerRepository:
 def _to_document(row: object) -> WorkerDocument:
     """Map one SQLite worker row to the domain document."""
 
-    from src.app.repositories.providers.credential_mapper import parse_datetime
+    from src.app.repositories.shared.datetime import parse_datetime
 
     return WorkerDocument(
         id=row['id'],

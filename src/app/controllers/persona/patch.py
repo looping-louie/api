@@ -44,7 +44,6 @@ class PersonaPatchController:
                     name=payload.name,
                     description=payload.description,
                     instructions=payload.instructions,
-                    model=payload.model,
                     linked_service_selection=(
                         PersonaLinkedServiceSelection(
                             linked_service_id=payload.linked_service.reference_id,

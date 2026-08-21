@@ -18,7 +18,6 @@ from src.app.catalogs.models import (
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
-from src.app.models.provider import ProviderCredential
 from src.app.services.model_execution import (
     ModelDeploymentUnavailableError,
     ModelExecutionService,
@@ -38,27 +37,6 @@ class FakeModelCatalogService:
 
         assert model_id == self._model_entry.id
         return self._model_entry
-
-
-class FakeProviderRepository:
-    """Store workspace provider credentials in memory."""
-
-    def __init__(self, credentials: list[ProviderCredential]) -> None:
-        """Index test credentials by workspace and provider."""
-
-        self.credentials = {
-            (credential.workspace_id, credential.provider): credential
-            for credential in credentials
-        }
-
-    async def get(
-        self,
-        workspace_id: str,
-        provider: str,
-    ) -> ProviderCredential | None:
-        """Return one stored provider credential."""
-
-        return self.credentials.get((workspace_id, provider))
 
 
 class FakeLinkedServiceRepository:
@@ -108,26 +86,6 @@ def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
     )
 
 
-def credential(provider: ProviderId) -> ProviderCredential:
-    """Build one enabled configured provider credential."""
-
-    now = datetime(2026, 8, 3, tzinfo=UTC)
-    return ProviderCredential(
-        id=f'{provider}-credential',
-        workspace_id='workspace-1',
-        provider=provider.value,
-        enabled=True,
-        enabled_by='user-1',
-        enabled_on=now,
-        key_trimmed='test-****************',
-        key_ciphertext='ciphertext',
-        key_version=1,
-        base_url=f'https://{provider}.example/v1',
-        created_at=now,
-        updated_at=now,
-    )
-
-
 def linked_service(provider: ProviderId) -> LinkedService:
     """Build one enabled configured linked service."""
 
@@ -151,8 +109,7 @@ def linked_service(provider: ProviderId) -> LinkedService:
 def service(
     *,
     model_entry: ModelCatalogEntry,
-    credentials: list[ProviderCredential],
-    linked_services: list[LinkedService] = (),
+    linked_services: list[LinkedService],
     handler: Any,
 ) -> ModelExecutionService:
     """Build the executor with a transport that captures no real network calls."""
@@ -160,7 +117,6 @@ def service(
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     return ModelExecutionService(
         model_catalog_service=FakeModelCatalogService(model_entry),
-        provider_repository=FakeProviderRepository(credentials),
         secret_service=FakeSecretService(),
         linked_service_repository=FakeLinkedServiceRepository(linked_services),
         client=client,
@@ -180,7 +136,7 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert the outgoing OpenAI-compatible chat request."""
 
-        assert request.url == 'https://together.example/v1/chat/completions'
+        assert request.url == 'https://together.linked.example/v1/chat/completions'
         assert request.headers['authorization'] == 'Bearer test-key'
         assert json.loads(request.content) == {
             'model': 'vendor/model-1',
@@ -200,10 +156,11 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
 
     result = await service(
         model_entry=model(deployment),
-        credentials=[credential(ProviderId.TOGETHER)],
+        linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
         workspace_id='workspace-1',
+        linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
         system_prompt='System instructions.',
@@ -237,10 +194,11 @@ async def test_executes_chat_completion_with_deployment_output_limit() -> None:
 
     await service(
         model_entry=model(deployment),
-        credentials=[credential(ProviderId.TOGETHER)],
+        linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
         workspace_id='workspace-1',
+        linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
     )
@@ -269,10 +227,11 @@ async def test_executes_chat_completion_in_json_mode() -> None:
 
     result = await service(
         model_entry=model(deployment),
-        credentials=[credential(ProviderId.TOGETHER)],
+        linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
         workspace_id='workspace-1',
+        linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='Return JSON.',
         json_mode=True,
@@ -283,7 +242,7 @@ async def test_executes_chat_completion_in_json_mode() -> None:
 
 @pytest.mark.asyncio
 async def test_executes_model_through_selected_linked_service() -> None:
-    """Selected linked services override legacy provider credentials."""
+    """Selected linked services define the execution route."""
 
     deployment = ModelDeployment(
         provider_id=ProviderId.TOGETHER,
@@ -307,12 +266,11 @@ async def test_executes_model_through_selected_linked_service() -> None:
 
     executor = service(
         model_entry=model(deployment),
-        credentials=[],
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     )
 
-    result = await executor.execute_with_linked_service(
+    result = await executor.execute(
         workspace_id='workspace-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
@@ -336,7 +294,7 @@ async def test_executes_anthropic_messages_deployment() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert the outgoing Anthropic messages request."""
 
-        assert request.url == 'https://anthropic.example/v1/messages'
+        assert request.url == 'https://anthropic.linked.example/v1/messages'
         assert request.headers['x-api-key'] == 'test-key'
         assert json.loads(request.content)['system'] == 'System instructions.'
         return httpx.Response(
@@ -349,10 +307,11 @@ async def test_executes_anthropic_messages_deployment() -> None:
 
     result = await service(
         model_entry=model(deployment),
-        credentials=[credential(ProviderId.ANTHROPIC)],
+        linked_services=[linked_service(ProviderId.ANTHROPIC)],
         handler=handler,
     ).execute(
         workspace_id='workspace-1',
+        linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
         system_prompt='System instructions.',
@@ -364,7 +323,7 @@ async def test_executes_anthropic_messages_deployment() -> None:
 
 @pytest.mark.asyncio
 async def test_rejects_model_without_enabled_configured_deployment() -> None:
-    """A logical model cannot execute without an enabled deployment credential."""
+    """A logical model cannot execute without its selected linked service."""
 
     deployment = ModelDeployment(
         provider_id=ProviderId.OPENAI,
@@ -375,10 +334,11 @@ async def test_rejects_model_without_enabled_configured_deployment() -> None:
     with pytest.raises(ModelDeploymentUnavailableError):
         await service(
             model_entry=model(deployment),
-            credentials=[],
+            linked_services=[],
             handler=lambda request: httpx.Response(500),
         ).execute(
             workspace_id='workspace-1',
+            linked_service_id='linked-service-1',
             model_id='model-1',
             prompt='User prompt.',
         )

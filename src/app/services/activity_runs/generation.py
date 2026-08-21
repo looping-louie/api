@@ -212,6 +212,8 @@ class ActivityRunGenerationService:
         *,
         loop_snapshot: Mapping[str, object],
         workspace_id: str,
+        user_id: str,
+        requested_workspace_id: str | None,
         input_text: str,
         context: Mapping[str, object],
         final_diff: str,
@@ -226,6 +228,11 @@ class ActivityRunGenerationService:
         ]
         if not reviewers:
             return {'approved': True, 'reviewers': []}
+
+        instruction_library = await self._load_instruction_library(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
 
         review_prompt = (
             'Return only a JSON object with an approved boolean and feedback '
@@ -243,6 +250,7 @@ class ActivityRunGenerationService:
                 workspace_id,
                 reviewer,
                 review_prompt,
+                instruction_library,
             )
             approved = review.get('approved')
             feedback = review.get('feedback')
@@ -350,28 +358,21 @@ class ActivityRunGenerationService:
             if instruction_library is not None
             else None
         )
+        if linked_service_selection is None:
+            raise ActivityRunValidationError(
+                field_name='agents',
+                message='Persona requires a linked-service selection.',
+            )
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
-                if linked_service_selection is None:
-                    result = await self._model_execution_service.execute(
-                        workspace_id=workspace_id,
-                        model_id=model_id,
-                        prompt=retry_prompt,
-                        json_mode=True,
-                    )
-                else:
-                    result = (
-                        await self._model_execution_service.execute_with_linked_service(
-                            workspace_id=workspace_id,
-                            linked_service_id=(
-                                linked_service_selection.linked_service_id
-                            ),
-                            model_id=linked_service_selection.model_id,
-                            prompt=retry_prompt,
-                            json_mode=True,
-                        )
-                    )
+                result = await self._model_execution_service.execute(
+                    workspace_id=workspace_id,
+                    linked_service_id=linked_service_selection.linked_service_id,
+                    model_id=linked_service_selection.model_id,
+                    prompt=retry_prompt,
+                    json_mode=True,
+                )
             except ModelExecutionError as error:
                 LOGGER.warning(
                     'Loop agent execution failed: role=%s model_id=%s error=%s',

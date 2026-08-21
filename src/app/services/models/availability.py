@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
-from typing import Mapping, Protocol, Sequence
+from typing import Sequence
 
 from src.app.catalogs.models import (
     ModelCapability,
@@ -15,6 +15,7 @@ from src.app.catalogs.models import (
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
+from src.app.repositories.linked_services import LinkedServiceRepository
 
 
 class ModelUnavailableReason(StrEnum):
@@ -91,23 +92,6 @@ class ModelDocument:
     available: bool
 
 
-class ProviderStateRepository(Protocol):
-    """Persistence contract required by ModelAvailabilityService."""
-
-    async def get_states(
-        self,
-        *,
-        workspace_id: str,
-        provider_ids: Sequence[ProviderId],
-    ) -> Mapping[ProviderId, ProviderConnectionState]:
-        """
-        Return workspace-specific provider states indexed by provider ID.
-
-        Providers that have never been configured may be omitted.
-        """
-        ...
-
-
 class ModelServiceError(Exception):
     """Base error raised by model services."""
 
@@ -135,9 +119,9 @@ class ModelAvailabilityService:
     def __init__(
         self,
         *,
-        provider_state_repository: ProviderStateRepository,
+        linked_service_repository: LinkedServiceRepository,
     ) -> None:
-        self._provider_state_repository = provider_state_repository
+        self._linked_service_repository = linked_service_repository
 
     async def describe(
         self,
@@ -153,7 +137,7 @@ class ModelAvailabilityService:
         )
         provider_ids = self._get_provider_ids(model.deployments)
 
-        states = await self._provider_state_repository.get_states(
+        states = await self._get_provider_states(
             workspace_id=workspace_id,
             provider_ids=provider_ids,
         )
@@ -190,7 +174,7 @@ class ModelAvailabilityService:
             for deployment in model.deployments
         )
 
-        states = await self._provider_state_repository.get_states(
+        states = await self._get_provider_states(
             workspace_id=workspace_id,
             provider_ids=provider_ids,
         )
@@ -212,6 +196,36 @@ class ModelAvailabilityService:
             )
 
         return results
+
+    async def _get_provider_states(
+        self,
+        *,
+        workspace_id: str,
+        provider_ids: Sequence[ProviderId],
+    ) -> dict[ProviderId, ProviderConnectionState]:
+        """Aggregate configured workspace services by catalog provider type."""
+
+        requested_provider_ids = set(provider_ids)
+        states: dict[ProviderId, ProviderConnectionState] = {}
+        for linked_service in await self._linked_service_repository.list_for_workspace(
+            workspace_id
+        ):
+            try:
+                provider_id = ProviderId(linked_service.provider_type)
+            except ValueError:
+                continue
+            if provider_id not in requested_provider_ids:
+                continue
+            configured = linked_service.base_url is not None
+            existing = states.get(provider_id)
+            states[provider_id] = ProviderConnectionState(
+                provider_id=provider_id,
+                configured=(existing.configured if existing is not None else False)
+                or configured,
+                enabled=(existing.enabled if existing is not None else False)
+                or (configured and linked_service.enabled),
+            )
+        return states
 
     def _evaluate_deployment(
         self,

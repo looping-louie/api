@@ -289,7 +289,7 @@ def test_activity_rejects_agent_without_model_or_persona_selection(
     assert response.status_code == 422
     assert response.json()['error']['code'] == 'activity_validation_error'
     assert response.json()['error']['details']['reason'].endswith(
-        'Persona has no linked-service selection'
+        'requires a linked-service selection in this workspace'
     )
 
 
@@ -323,6 +323,7 @@ async def test_activity_allows_agent_without_model_for_persona_selection(
         value={'id': 'persona-1'},
     )
     await selection_repository.replace_for_persona(
+        workspace_id='workspace-1',
         persona_id='persona-1',
         selection=PersonaLinkedServiceSelection(
             linked_service_id='linked-service-1',
@@ -351,6 +352,7 @@ async def test_activity_rejects_selection_for_persona_outside_workspace(
 
     selection_repository = FakePersonaLinkedServiceSelectionRepository()
     await selection_repository.replace_for_persona(
+        workspace_id='workspace-1',
         persona_id='persona-1',
         selection=PersonaLinkedServiceSelection(
             linked_service_id='linked-service-1',

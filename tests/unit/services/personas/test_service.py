@@ -25,7 +25,6 @@ from tests.fakes.instruction_repository import (
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,
 )
-from tests.fakes.persona_model_repository import FakePersonaModelRepository
 from tests.fakes.persona_linked_service_selection_repository import (
     FakePersonaLinkedServiceSelectionRepository,
 )
@@ -56,7 +55,6 @@ class FakeLinkedServiceSelectionValidator:
 def build_persona_service(
     instruction_service: InstructionService,
     persona_skill_repository: FakePersonaSkillRepository | None = None,
-    persona_model_repository: FakePersonaModelRepository | None = None,
     persona_linked_service_selection_repository: (
         FakePersonaLinkedServiceSelectionRepository | None
     ) = None,
@@ -82,10 +80,6 @@ def build_persona_service(
             persona_skill_repository
             or FakePersonaSkillRepository()
         ),
-        persona_model_repository=(
-            persona_model_repository
-            or FakePersonaModelRepository()
-        ),
         persona_linked_service_selection_repository=(
             persona_linked_service_selection_repository
             or FakePersonaLinkedServiceSelectionRepository()
@@ -107,12 +101,17 @@ async def test_persona_crud_flow(
 
     service = build_persona_service(instruction_service)
 
+    selection = PersonaLinkedServiceSelection(
+        linked_service_id='linked-service-1',
+        model_id='service-model',
+    )
     created = await service.create(
         user_id="user-1",
         payload=PersonaCreate(
             name="Tech Lead",
             description="Technical reviewer",
             instructions="Review architecture and implementation.",
+            linked_service_selection=selection,
         ),
     )
 
@@ -187,6 +186,10 @@ async def test_persona_service_sets_enabled_and_creates_content(
             description=builtin.description,
             instructions=builtin.instructions,
             metadata=builtin.metadata,
+            linked_service_selection=PersonaLinkedServiceSelection(
+                linked_service_id='linked-service-1',
+                model_id='service-model',
+            ),
         ),
     )
 
@@ -227,6 +230,10 @@ async def test_persona_service_manages_skill_associations(
             description="Reviews with one skill.",
             instructions="Review the work.",
             skill_ids=(skill.id,),
+            linked_service_selection=PersonaLinkedServiceSelection(
+                linked_service_id='linked-service-1',
+                model_id='service-model',
+            ),
         ),
     )
     updated = await service.update(
@@ -242,54 +249,6 @@ async def test_persona_service_manages_skill_associations(
 
 
 @pytest.mark.asyncio
-async def test_persona_service_manages_optional_model_associations(
-    instruction_service: InstructionService,
-) -> None:
-    """Persona models are optional and supplied models must resolve."""
-
-    reference_repository = FakeReferenceRepository()
-    reference_repository.seed(
-        workspace_id='workspace-1',
-        resource_type='model',
-        resource_id='model-1',
-        value=object(),
-    )
-    service = build_persona_service(
-        instruction_service,
-        reference_repository=reference_repository,
-    )
-
-    legacy = await service.create(
-        user_id='user-1',
-        payload=PersonaCreate(
-            name='Legacy reviewer',
-            description='',
-            instructions='Review existing changes.',
-        ),
-    )
-    created = await service.create(
-        user_id='user-1',
-        payload=PersonaCreate(
-            name='Model reviewer',
-            description='',
-            instructions='Review model-specific changes.',
-            model='model-1',
-        ),
-    )
-    updated = await service.update(
-        user_id='user-1',
-        persona_id=legacy.id,
-        payload=PersonaUpdate(
-            expected_version=1,
-            model='model-1',
-        ),
-    )
-
-    assert legacy.model is None
-    assert created.model == 'model-1'
-    assert updated.model == 'model-1'
-
-
 @pytest.mark.asyncio
 async def test_persona_service_persists_validated_linked_service_selection(
     instruction_service: InstructionService,
@@ -316,7 +275,6 @@ async def test_persona_service_persists_validated_linked_service_selection(
     )
     described = await service.describe(user_id='user-1', persona_id=created.id)
 
-    assert created.model is None
     assert described.linked_service_selection == PersonaLinkedServiceSelection(
         linked_service_id='linked-service-1',
         model_id='service-model',
@@ -325,20 +283,19 @@ async def test_persona_service_persists_validated_linked_service_selection(
 
 
 @pytest.mark.asyncio
-async def test_persona_service_rejects_unknown_model(
+async def test_persona_service_requires_linked_service_selection(
     instruction_service: InstructionService,
 ) -> None:
-    """A Persona cannot select a model absent from the configured catalog."""
+    """A custom Persona cannot omit its execution connection."""
 
     service = build_persona_service(instruction_service)
 
-    with pytest.raises(Exception, match="model 'missing-model'"):
+    with pytest.raises(ValueError, match='linked-service selection is required'):
         await service.create(
             user_id='user-1',
             payload=PersonaCreate(
-                name='Missing model reviewer',
+                name='Missing service reviewer',
                 description='',
-                instructions='Review the model association.',
-                model='missing-model',
+                instructions='Review the service association.',
             ),
         )

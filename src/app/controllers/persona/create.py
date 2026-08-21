@@ -34,14 +34,9 @@ class PersonaCreateController:
                 name=payload.name,
                 description=payload.description,
                 instructions=payload.instructions,
-                model=payload.model,
-                linked_service_selection=(
-                    PersonaLinkedServiceSelection(
-                        linked_service_id=payload.linked_service.reference_id,
-                        model_id=payload.config.model,
-                    )
-                    if payload.linked_service is not None and payload.config is not None
-                    else None
+                linked_service_selection=PersonaLinkedServiceSelection(
+                    linked_service_id=payload.linked_service.reference_id,
+                    model_id=payload.config.model,
                 ),
                 metadata=payload.metadata.model_dump(exclude_none=True),
                 skill_ids=tuple(payload.skill_ids),

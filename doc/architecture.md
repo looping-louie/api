@@ -278,7 +278,6 @@ repositories/
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
 |   |-- persona_linked_service_selection_repository.py Persists persona service selections
-|   |-- persona_model_repository.py Persists optional legacy persona-model associations
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
@@ -295,11 +294,6 @@ repositories/
 |   `-- sqlite_repository.py       Persists records and changelog entries
 |-- pipeline_runs/
 |   `-- repository.py              Persists Pipeline execution state
-|-- providers/
-|   |-- __init__.py                Declares credential persistence and adapters
-|   |-- credential_mapper.py       Maps SQLite credential rows
-|   |-- repository.py              Persists encrypted credentials
-|   `-- state_repository.py        Exposes connection state to availability
 `-- shared/
   |-- __init__.py                Declares reusable persistence adapters
   |-- dependency_repository.py   Looks up resource dependencies
@@ -328,7 +322,6 @@ models/
 |-- model.py                       Defines catalog and availability projections
 |-- persona.py                     Defines resource documents with skill links
 |-- pipeline.py                    Defines definitions, steps, and history
-|-- provider.py                    Defines credential and safe configuration state
 |-- reference.py                   Defines dependency and reference values
 `-- tenant.py                      Defines workspace and membership state
 ```
@@ -344,12 +337,10 @@ models/
 - [Providers](components/providers.md) records the static provider and model
   catalog boundary. Linked Services persist independent workspace-owned provider
   connections and derive their available deployment models from that catalog.
-  Persona linked-service selections replace the deprecated legacy Persona model
-  association for new configuration while requiring an enabled, configured
-  service with an active compatible deployment. During execution, a selection
-  routes its model request through that exact service. Loop agent model IDs
-  remain required only for legacy Personas without a selection; legacy Provider
-  routes remain available only for compatibility during the migration window.
+  Persona linked-service selections are workspace-scoped and require an enabled,
+  configured service with an active compatible deployment. During execution, a
+  selection routes its model request through that exact service. Legacy provider
+  credentials and Persona model associations are retired.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

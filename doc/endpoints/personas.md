@@ -17,11 +17,8 @@ immutable; they can be enabled or disabled.
 
 `GET /api/v1/personas` returns summary metadata without instructions, skill
 IDs, or metadata. An optional `search` matches eligible persona content.
-`model` is a deprecated legacy configured model ID; Personas created before
-linked-service selections return its legacy value or `null`.
-`linked_service` and `config` are returned together when the Persona uses a
-linked-service selection. New Personas should use that pair; the legacy `model`
-field remains available only for backward compatibility.
+`linked_service` and `config` identify the workspace-scoped connection and model
+used for execution when a selection exists.
 
 The endpoint returns 12 personas per page and accepts `offset`, `search`,
 `status` (`enabled` or `disabled`), repeatable `category`, and `sort`
@@ -45,7 +42,8 @@ Example response (`200 OK`):
       "id": "persona-api-reviewer",
       "name": "ApiReviewer",
       "description": "Reviews public API compatibility.",
-      "model": "kimi-k2.6",
+      "linked_service": {"type": "LinkedServiceReference", "reference_id": "service-acme"},
+      "config": {"model": "kimi-k2.6"},
       "origin": "custom",
       "enabled": true,
       "editable": true,
@@ -65,7 +63,7 @@ Example response (`200 OK`):
 ## Describe a persona
 
 `GET /api/v1/personas/{persona_id}` returns the complete persona, including
-instructions, its deprecated legacy model ID when present, associated skill IDs,
+instructions, its Linked Service selection when configured, associated skill IDs,
 and metadata.
 
 ```http
@@ -81,7 +79,8 @@ Example response (`200 OK`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "model": "kimi-k2.6",
+  "linked_service": {"type": "LinkedServiceReference", "reference_id": "service-acme"},
+  "config": {"model": "kimi-k2.6"},
   "skill_ids": ["skill-api-compatibility"],
   "metadata": {"team": "platform"},
   "origin": "custom",
@@ -107,9 +106,8 @@ Example response (`200 OK`):
 | `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Optional | Optional | Defaults to an empty string on create. May be empty. |
 | `instructions` | String | Required | Optional | Must not be empty. |
-| `model` | String or `null` | Optional | Optional | Deprecated legacy selection. References an available configured model. `null` removes the assigned model on update. New Personas should use `linked_service` and `config.model`. |
-| `linked_service` | Object or `null` | Optional | Optional | Must be supplied together with `config`; has `type: "LinkedServiceReference"` and immutable `reference_id`. The selected service must belong to the workspace, be enabled, and be configured. |
-| `config` | Object or `null` | Optional | Optional | Must be supplied together with `linked_service`; contains `model`, which requires an active deployment for the linked service provider type. |
+| `linked_service` | Object or `null` | Required | Optional | Must be supplied together with `config`; has `type: "LinkedServiceReference"` and immutable `reference_id`. The selected service must belong to the workspace, be enabled, and be configured. A PATCH cannot remove an existing selection. |
+| `config` | Object or `null` | Required | Optional | Must be supplied together with `linked_service`; contains `model`, which requires an active deployment for the linked service provider type. |
 | `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to `[]` on create. |
 | `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to `{}` on create. |
 | `expected_version` | Integer | Not allowed | Required for content changes | Positive current Persona version. Not required for an enablement-only update. |

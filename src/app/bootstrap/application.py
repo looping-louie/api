@@ -35,9 +35,6 @@ from src.app.repositories.instructions.repository import (
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.repositories.instructions.persona_model_repository import (
-    SqlitePersonaModelRepository,
-)
 from src.app.repositories.instructions.persona_linked_service_selection_repository import (
     SqlitePersonaLinkedServiceSelectionRepository,
 )
@@ -47,14 +44,8 @@ from src.app.repositories.infrastructure.migration_runner import (
 from src.app.repositories.infrastructure.local_tenant_seed import (
     ensure_local_tenant,
 )
-from src.app.repositories.providers.repository import (
-    SqliteProviderRepository,
-)
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
-from src.app.repositories.providers.state_repository import (
-    ProviderStateRepositoryAdapter,
-)
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -168,9 +159,6 @@ async def configure_application(
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
-    persona_model_repository = SqlitePersonaModelRepository(
-        resolved_settings.database_path,
-    )
     persona_linked_service_selection_repository = (
         SqlitePersonaLinkedServiceSelectionRepository(
             resolved_settings.database_path,
@@ -182,9 +170,6 @@ async def configure_application(
     activity_run_repository = SqliteActivityRunRepository(
         resolved_settings.database_path,
     )
-    provider_repository = SqliteProviderRepository(
-        database,
-    )
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
 
@@ -193,10 +178,6 @@ async def configure_application(
     )
     dependency_repository = SqliteDependencyRepository(
         resolved_settings.database_path,
-    )
-    provider_state_repository = ProviderStateRepositoryAdapter(
-        provider_repository=provider_repository,
-        catalog=PROVIDER_CATALOG,
     )
 
     tenant_service = TenantService(
@@ -220,7 +201,7 @@ async def configure_application(
     )
 
     model_availability_service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=linked_service_repository,
     )
     model_catalog_service = ModelCatalogService(
         tenant_service=tenant_service,
@@ -260,7 +241,6 @@ async def configure_application(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
-        persona_model_repository=persona_model_repository,
         persona_linked_service_selection_repository=(
             persona_linked_service_selection_repository
         ),
@@ -289,7 +269,6 @@ async def configure_application(
         clock=utc_now,
         model_execution_service=ModelExecutionService(
             model_catalog_service=model_catalog_service,
-            provider_repository=provider_repository,
             secret_service=secret_service,
             linked_service_repository=linked_service_repository,
         ),

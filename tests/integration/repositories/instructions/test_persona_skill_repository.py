@@ -11,9 +11,6 @@ from src.app.repositories.instructions.repository import (
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.repositories.instructions.persona_model_repository import (
-    SqlitePersonaModelRepository,
-)
 from tests.integration.repositories.instructions.test_sqlite_instruction_repository import (
     build_instruction,
 )
@@ -81,39 +78,3 @@ async def test_repository_replaces_and_orders_persona_skills(
     assert await association_repository.list_for_persona(
         persona_id=persona.id,
     ) == ()
-
-
-@pytest.mark.asyncio
-async def test_repository_replaces_optional_persona_model(
-    sqlite_database_path: Path,
-    create_workspace: WorkspaceFactory,
-) -> None:
-    """A Persona stores at most one optional model identifier."""
-
-    await create_workspace(workspace_id='workspace-1')
-    instruction_repository = SqliteInstructionRepository(sqlite_database_path)
-    association_repository = SqlitePersonaModelRepository(sqlite_database_path)
-    persona = build_instruction(
-        instruction_id='persona-1',
-        instruction_type='persona',
-        name='Reviewer',
-    )
-    await instruction_repository.create(persona)
-
-    assert await association_repository.get_for_persona(
-        persona_id=persona.id,
-    ) is None
-    await association_repository.replace_for_persona(
-        persona_id=persona.id,
-        model_id='model-1',
-    )
-    assert await association_repository.get_for_persona(
-        persona_id=persona.id,
-    ) == 'model-1'
-    await association_repository.replace_for_persona(
-        persona_id=persona.id,
-        model_id=None,
-    )
-    assert await association_repository.get_for_persona(
-        persona_id=persona.id,
-    ) is None

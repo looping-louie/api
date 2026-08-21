@@ -29,7 +29,7 @@ async def test_model_is_available_when_provider_is_enabled(
         ),
     )
     service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=provider_state_repository,
     )
 
     availability = await service.describe(
@@ -47,7 +47,7 @@ async def test_model_is_unavailable_when_provider_is_not_configured(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=provider_state_repository,
     )
 
     availability = await service.describe(
@@ -78,7 +78,7 @@ async def test_model_is_unavailable_when_provider_is_disabled(
         ),
     )
     service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=provider_state_repository,
     )
 
     availability = await service.describe(
@@ -107,7 +107,7 @@ async def test_deprecated_model_is_never_available(
         ),
     )
     service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=provider_state_repository,
     )
 
     availability = await service.describe(
@@ -136,7 +136,7 @@ async def test_deprecated_deployment_is_not_available(
         ),
     )
     service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=provider_state_repository,
     )
     model = build_model(
         deployments=(
@@ -178,7 +178,7 @@ async def test_describe_many_loads_provider_states_once(
         ),
     )
     service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=provider_state_repository,
     )
     models = (
         build_model(
@@ -203,10 +203,4 @@ async def test_describe_many_loads_provider_states_once(
     assert availability["together-model"].available is True
     assert availability["openai-model"].available is False
     assert len(provider_state_repository.calls) == 1
-    assert provider_state_repository.calls[0] == (
-        "workspace-1",
-        (
-            ProviderId.TOGETHER,
-            ProviderId.OPENAI,
-        ),
-    )
+    assert provider_state_repository.calls == ['workspace-1']

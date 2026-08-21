@@ -123,12 +123,7 @@ class LinkedServiceModelExecutionService:
 
         self.requests: list[tuple[str, str]] = []
 
-    async def execute(self, **_: object) -> ModelExecutionResult:
-        """Fail when the selected Persona route is unexpectedly ignored."""
-
-        raise AssertionError('Legacy model execution must not be used.')
-
-    async def execute_with_linked_service(
+    async def execute(
         self,
         *,
         linked_service_id: str,
@@ -163,6 +158,41 @@ class StaticInstructionLibraryService:
         """Return the fixed execution library."""
 
         return self._library
+
+
+def selected_persona_library(
+    selections: dict[str, str],
+) -> StaticInstructionLibraryService:
+    """Build a library with explicit Linked Service selections by Persona."""
+
+    personas = {
+        persona_id: ExecutionInstruction(
+            id=persona_id,
+            source_id=persona_id,
+            instruction_type='persona',
+            origin=InstructionOrigin.CUSTOM,
+            version=1,
+            catalog_version=None,
+            name=persona_id,
+            description='Selected Persona.',
+            content='Persona instructions.',
+            metadata={},
+            linked_service_selection=PersonaLinkedServiceSelection(
+                linked_service_id='linked-service-1',
+                model_id=model_id,
+            ),
+        )
+        for persona_id, model_id in selections.items()
+    }
+    return StaticInstructionLibraryService(
+        ExecutionInstructionLibrary(
+            workspace_id='workspace-1',
+            skills={},
+            personas=personas,
+            skill_aliases={},
+            persona_aliases={persona_id: persona_id for persona_id in personas},
+        )
+    )
 
 
 class RefinementModelExecutionService:
@@ -209,7 +239,9 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     model_execution_service = RefinementModelExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library(
+            {'persona-1': 'generator-model', 'persona-2': 'reviewer-model'}
+        ),
     )
     snapshot = {
         'flow': 'refinement',
@@ -237,6 +269,8 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     review = await service.generate_review_context(
         loop_snapshot=snapshot,
         workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
         input_text='Create an output file.',
         context=context,
         final_diff='diff --git a/output.txt b/output.txt',
@@ -264,7 +298,14 @@ async def test_roundtable_generation_does_not_execute_reviewers() -> None:
     model_execution_service = RoundtableModelExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library(
+            {
+                'persona-1': 'generator-1',
+                'persona-2': 'generator-2',
+                'persona-3': 'reviewer-model',
+                'persona-4': 'aggregator-model',
+            }
+        ),
     )
     snapshot = {
         'flow': 'roundtable',
@@ -303,7 +344,7 @@ async def test_generation_retries_one_invalid_json_response() -> None:
     model_execution_service = InvalidThenValidModelExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library({'persona-1': 'model-1'}),
     )
 
     context = await service.generate_context(
@@ -434,7 +475,7 @@ async def test_generation_accepts_a_markdown_fenced_json_response() -> None:
     model_execution_service = FencedJsonModelExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library({'persona-1': 'model-1'}),
     )
 
     context = await service.generate_context(
@@ -480,7 +521,7 @@ async def test_forbidden_commit_generation_accepts_a_plan_without_commit_message
     model_execution_service = NoCommitModelExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library({'persona-1': 'model-1'}),
     )
 
     context = await service.generate_context(
@@ -586,7 +627,7 @@ async def test_generation_retries_an_api_example_response() -> None:
     model_execution_service = ApiExampleThenValidPlanExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library({'persona-1': 'model-1'}),
     )
 
     context = await service.generate_context(
@@ -623,7 +664,7 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
     model_execution_service = EmptyThenValidPlanExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library({'persona-1': 'model-1'}),
     )
 
     context = await service.generate_context(
@@ -692,7 +733,7 @@ async def test_generation_retries_one_plan_without_commit_message() -> None:
     model_execution_service = MissingCommitThenValidPlanExecutionService()
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=None,
+        instruction_library_service=selected_persona_library({'persona-1': 'model-1'}),
     )
 
     context = await service.generate_context(
