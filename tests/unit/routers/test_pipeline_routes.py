@@ -270,6 +270,29 @@ def test_pipeline_lease_renewal_requires_a_token(
     assert invalid.json()['error']['code'] == 'request_validation_error'
 
 
+def test_pipeline_claimable_filter_accepts_standard_boolean_query(
+    tenant_service: TenantService,
+) -> None:
+    """Claimable-run listing accepts the runtime's standard boolean encoding."""
+
+    service = _ClaimableService()
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, service),
+    )
+
+    response = client.get('/api/v1/pipelines/pipeline-1/runs?claimable=true')
+    missing_filter = client.get('/api/v1/pipelines/pipeline-1/runs')
+    false_filter = client.get('/api/v1/pipelines/pipeline-1/runs?claimable=false')
+
+    assert response.status_code == 200
+    assert response.json() == {'items': [], 'total': 0}
+    assert service.was_called
+    assert missing_filter.status_code == 422
+    assert missing_filter.json()['error']['code'] == 'request_validation_error'
+    assert false_filter.status_code == 422
+
+
 def test_pipeline_claim_requires_an_if_match_header(
     tenant_service: TenantService,
 ) -> None:
@@ -331,6 +354,30 @@ class _LeaseService:
             (),
             {'lease_expires_at': datetime(2026, 8, 19, 10, 1, tzinfo=UTC)},
         )()
+
+
+class _ClaimableService:
+    """Provide an empty candidate list for claimable-route testing."""
+
+    def __init__(self) -> None:
+        """Initialize the invocation marker."""
+
+        self.was_called = False
+
+    async def list_claimable(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        requested_workspace_id: str | None,
+    ) -> list[PipelineRunDocument]:
+        """Record the claimable-list request and return no candidates."""
+
+        assert (user_id, pipeline_id, requested_workspace_id) == (
+            'user-1', 'pipeline-1', None,
+        )
+        self.was_called = True
+        return []
 
 
 class _StartService:

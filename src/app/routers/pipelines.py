@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Path, Query, status
 
 from src.app.controllers.pipeline import PipelineController
 from src.app.schemas.shared import DeleteResponse
@@ -155,11 +155,15 @@ async def list_claimable_pipeline_runs(
     context: ContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
-    claimable: Annotated[Literal[True], Query()],
+    claimable: Annotated[bool, Query()],
 ) -> PipelineRunClaimableListResponse:
     """Return candidates for the explicit runtime claimable filter."""
 
-    assert claimable
+    if not claimable:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail='claimable must be true.',
+        )
     return await controller.list_claimable_runs(
         user_id=context.user_id, pipeline_id=pipeline_id,
         requested_workspace_id=context.requested_workspace_id,
