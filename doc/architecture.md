@@ -31,6 +31,13 @@ run completes after approved operations without emitting a commit checkpoint;
 the runtime's local Git policy may further deny an allowed commit but cannot
 grant one forbidden by the persisted run policy.
 
+Pipeline runs preserve an append-only event ledger. A ready `approval` or
+`quiz` Activity creates a normal child Activity run with a human executor and
+transitions the Pipeline to `waiting` without assigning a worker lease. Users
+submit its decision through the Activity-run continuation API. A rejected
+human Activity run resets frozen predecessor steps for corrective execution;
+the scheduler creates a new human child after those steps complete again.
+
 ## Repository structure
 
 Application code lives under `src/app` and is organized by responsibility:

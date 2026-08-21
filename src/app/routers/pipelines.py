@@ -14,6 +14,7 @@ from src.app.schemas.pipeline import (
     PipelineRunClaimResponse,
     PipelineRunClaimableListResponse,
     PipelineRunContinueRequest,
+    PipelineRunEventListResponse,
     PipelineCreateRequest,
     PipelineListResponse,
     PipelinePatchRequest,
@@ -201,6 +202,25 @@ async def get_pipeline_run(
     """Return a pipeline execution and its selected child run."""
 
     return await controller.get_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.get(
+    '/{pipeline_id}/runs/{run_id}/events',
+    response_model=PipelineRunEventListResponse,
+    summary='List pipeline run events',
+)
+async def list_pipeline_run_events(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunEventListResponse:
+    """Return the append-only execution ledger for one Pipeline run."""
+
+    return await controller.run.list_events(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
         requested_workspace_id=context.requested_workspace_id,
     )

@@ -25,6 +25,7 @@ ActivityRunStateValue = Literal[
     'awaiting_apply',
     'awaiting_review_input',
     'awaiting_commit',
+    'awaiting_human_decision',
     'completed',
     'failed',
 ]
@@ -33,6 +34,7 @@ ActivityRunActionValue = Literal[
     'apply_operations',
     'submit_review_input',
     'commit_if_allowed',
+    'submit_human_decision',
     'none',
 ]
 
@@ -86,6 +88,14 @@ class ActivityRunCommitResult(RequestSchema):
     commit_sha: str | None = None
     commit_message: str | None = None
     error: str | None = None
+
+
+class ActivityRunHumanDecisionResult(RequestSchema):
+    """A human executor's terminal decision for an Activity run."""
+
+    action: Literal['submit_human_decision']
+    decision: Literal['approved', 'rejected', 'cancelled']
+    comment: str | None = Field(default=None, max_length=4_000)
 
 
 class ActivityRunContinueRequest(RequestSchema):

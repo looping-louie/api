@@ -12,6 +12,8 @@ from src.app.schemas.pipeline import (
     PipelineRunClaimableResponse,
     PipelineRunContinueRequest,
     PipelineRunCreateRequest,
+    PipelineRunEventListResponse,
+    PipelineRunEventResponse,
     PipelineRunLeaseResponse,
     PipelineRunResponse,
     PipelineRunStepResponse,
@@ -119,6 +121,28 @@ class PipelineRunController:
             requested_workspace_id=requested_workspace_id,
         )
         return self._response(document, child)
+
+    async def list_events(
+        self, *, user_id: str, pipeline_id: str, run_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineRunEventListResponse:
+        """Return the immutable event ledger for one Pipeline run."""
+
+        document, _ = await self._require_service().get(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return PipelineRunEventListResponse(
+            items=[
+                PipelineRunEventResponse(
+                    id=event.id, event_type=event.event_type,
+                    activity_id=event.activity_id, actor_id=event.actor_id,
+                    payload=dict(event.payload), created_at=event.created_at,
+                )
+                for event in document.events
+            ],
+            total=len(document.events),
+        )
 
     def _require_service(self) -> PipelineRunService:
         """Return the runtime service when the application configured it."""

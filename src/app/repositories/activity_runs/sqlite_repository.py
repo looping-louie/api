@@ -276,7 +276,7 @@ class SqliteActivityRunRepository:
         lease_token: str | None,
         now: datetime,
     ) -> bool:
-        """Allow standalone runs or require an active lease for Pipeline children."""
+        """Allow standalone and human child runs, or fence runtime children."""
 
         cursor = await connection.execute(
             '''
@@ -294,17 +294,24 @@ class SqliteActivityRunRepository:
             return True
         if (
             pipeline_run_id is None
-            or lease_token is None
             or str(owner['pipeline_run_id']) != pipeline_run_id
         ):
             return False
         cursor = await connection.execute(
             '''
             SELECT 1
-            FROM pipeline_runs
-            WHERE workspace_id = ? AND id = ?
-              AND current_activity_run_id = ? AND lease_token = ?
-              AND lease_expires_at > ? AND status IN ('claimed', 'in_progress')
+            FROM pipeline_runs AS runs
+            JOIN activity_runs AS child
+                ON child.workspace_id = runs.workspace_id
+                AND child.id = runs.current_activity_run_id
+            WHERE runs.workspace_id = ? AND runs.id = ?
+                AND runs.current_activity_run_id = ?
+                            AND (
+                    (runs.lease_token = ? AND runs.lease_expires_at > ?
+                        AND runs.status IN ('claimed', 'in_progress'))
+                    OR (runs.status = 'waiting' AND runs.lease_token IS NULL
+                        AND child.state = 'awaiting_human_decision')
+                            )
             ''',
             (
                 workspace_id, pipeline_run_id, activity_run_id, lease_token,

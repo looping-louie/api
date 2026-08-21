@@ -6,7 +6,10 @@ from datetime import datetime
 from typing import Protocol
 
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.models.pipeline_run import (
+    PipelineRunDocument,
+    PipelineRunEventDocument,
+)
 
 
 class PipelineRunRepository(Protocol):
@@ -56,7 +59,7 @@ class PipelineRunRepository(Protocol):
         self,
         *,
         document: PipelineRunDocument,
-        expected_lease_token: str,
+        expected_lease_token: str | None,
         now: datetime,
     ) -> bool:
         """Extend an active worker lease only when its token still matches."""
@@ -72,4 +75,14 @@ class PipelineRunRepository(Protocol):
         activity_run: ActivityRunDocument | None,
     ) -> bool:
         """Atomically replace a run after confirming its current child."""
+        raise NotImplementedError
+
+    async def list_events(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+        run_id: str,
+    ) -> list[PipelineRunEventDocument]:
+        """Return immutable events for one scoped Pipeline run."""
         raise NotImplementedError

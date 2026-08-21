@@ -106,7 +106,7 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
 
 
 PipelineRunStatusValue = Literal[
-    'queued', 'claimed', 'in_progress', 'failed', 'completed'
+    'queued', 'claimed', 'in_progress', 'waiting', 'failed', 'completed'
 ]
 PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[
@@ -135,9 +135,9 @@ class PipelineRunLeaseRenewRequest(RequestSchema):
 
 
 class PipelineRunContinueRequest(RequestSchema):
-    """Active worker token required to schedule after a terminal child run."""
+    """Worker token required only when continuing a runtime-owned child run."""
 
-    lease_token: NonEmptyString
+    lease_token: NonEmptyString | None = None
 
 
 class PipelineRunStepResponse(ResponseSchema):
@@ -146,6 +146,21 @@ class PipelineRunStepResponse(ResponseSchema):
     activity_id: str
     status: PipelineRunStepStatusValue
     activity_run_id: str | None
+
+
+class PipelineRunEventResponse(ResponseSchema):
+    """One immutable event in a Pipeline-run execution ledger."""
+
+    id: str
+    event_type: str
+    activity_id: str | None
+    actor_id: str
+    payload: dict[str, object]
+    created_at: datetime
+
+
+class PipelineRunEventListResponse(ListResponse[PipelineRunEventResponse]):
+    """All events recorded for one Pipeline execution."""
 
 
 class PipelineRunResponse(ResponseSchema):
@@ -167,7 +182,7 @@ class PipelineRunClaimResponse(ResponseSchema):
     """One worker-owned pipeline run and its secret lease token."""
 
     run: PipelineRunResponse
-    lease_token: str
+    lease_token: str | None
 
 
 class PipelineRunClaimableResponse(ResponseSchema):

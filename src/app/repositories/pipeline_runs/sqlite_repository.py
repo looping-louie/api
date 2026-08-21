@@ -13,6 +13,7 @@ import aiosqlite
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline_run import (
     PipelineRunDocument,
+    PipelineRunEventDocument,
     PipelineRunStepDocument,
 )
 
@@ -38,6 +39,7 @@ class SqlitePipelineRunRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 await self._insert_run(connection, document)
                 await self._insert_steps(connection, document)
+                await self._insert_events(connection, document.events)
                 if activity_run is not None:  # Only insert if activity_run is provided
                     await self._insert_activity_run(connection, activity_run)
                 await connection.commit()
@@ -99,6 +101,36 @@ class SqlitePipelineRunRepository:
                 await cursor.close()
             return [await self._to_document(connection, row) for row in rows]
 
+    async def list_events(
+        self,
+        *,
+        workspace_id: str,
+        pipeline_id: str,
+        run_id: str,
+    ) -> list[PipelineRunEventDocument]:
+        """Return immutable events from one scoped Pipeline execution."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT events.*
+                FROM pipeline_run_events AS events
+                JOIN pipeline_runs AS runs
+                    ON runs.workspace_id = events.workspace_id
+                    AND runs.id = events.pipeline_run_id
+                WHERE events.workspace_id = ?
+                    AND events.pipeline_run_id = ?
+                    AND runs.pipeline_id = ?
+                ORDER BY events.created_at ASC, events.id ASC
+                ''',
+                (workspace_id, run_id, pipeline_id),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return [self._to_event(row) for row in rows]
+
     async def claim(
         self,
         *,
@@ -143,6 +175,7 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
+                await self._insert_events(connection, document.events)
                 await connection.commit()
                 return True
             except Exception:
@@ -153,7 +186,7 @@ class SqlitePipelineRunRepository:
         self,
         *,
         document: PipelineRunDocument,
-        expected_lease_token: str,
+        expected_lease_token: str | None,
         now: datetime,
     ) -> bool:
         """Extend an unexpired lease only while its worker token remains current."""
@@ -201,14 +234,23 @@ class SqlitePipelineRunRepository:
                 cursor = await connection.execute(
                     '''
                     UPDATE pipeline_runs
-                    SET status = ?, current_activity_run_id = ?, updated_at = ?
+                    SET status = ?, worker_id = ?, lease_token = ?,
+                        lease_expires_at = ?, current_activity_run_id = ?,
+                        updated_at = ?
                     WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
                       AND current_activity_run_id IS ?
-                                            AND lease_token = ? AND lease_expires_at > ?
-                                            AND status IN ('claimed', 'in_progress')
+                      AND (
+                            (lease_token = ? AND lease_expires_at > ?
+                                AND status IN ('claimed', 'in_progress'))
+                            OR (status = 'waiting' AND lease_token IS NULL AND ? IS NULL)
+                      )
                     ''',
                     (
                         document.status,
+                        document.worker_id,
+                        document.lease_token,
+                        document.lease_expires_at.isoformat()
+                        if document.lease_expires_at is not None else None,
                         document.current_activity_run_id,
                         document.updated_at.isoformat(),
                         document.workspace_id,
@@ -217,6 +259,7 @@ class SqlitePipelineRunRepository:
                         expected_current_activity_run_id,
                         expected_lease_token,
                         now.isoformat(),
+                        expected_lease_token,
                     ),
                 )
                 try:
@@ -227,6 +270,7 @@ class SqlitePipelineRunRepository:
                     await connection.rollback()
                     return False
                 await self._update_steps(connection, document)
+                await self._insert_events(connection, document.events)
                 await connection.commit()
                 return True
             except Exception:
@@ -321,6 +365,35 @@ class SqlitePipelineRunRepository:
         )
 
     @staticmethod
+    async def _insert_events(
+        connection: aiosqlite.Connection,
+        events: tuple[PipelineRunEventDocument, ...],
+    ) -> None:
+        """Append supplied immutable Pipeline-run events."""
+
+        await connection.executemany(
+            '''
+            INSERT INTO pipeline_run_events (
+                id, workspace_id, pipeline_run_id, event_type, activity_id,
+                actor_id, payload_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            [
+                (
+                    event.id,
+                    event.workspace_id,
+                    event.pipeline_run_id,
+                    event.event_type,
+                    event.activity_id,
+                    event.actor_id,
+                    json.dumps(event.payload, sort_keys=True),
+                    event.created_at.isoformat(),
+                )
+                for event in events
+            ],
+        )
+
+    @staticmethod
     async def _insert_activity_run(
         connection: aiosqlite.Connection,
         document: ActivityRunDocument,
@@ -399,6 +472,22 @@ class SqlitePipelineRunRepository:
             created_by=str(row['created_by']),
             updated_at=datetime.fromisoformat(str(row['updated_at'])),
         )
+
+    @staticmethod
+    def _to_event(row: aiosqlite.Row) -> PipelineRunEventDocument:
+        """Map one immutable persisted Pipeline-run event."""
+
+        return PipelineRunEventDocument(
+            id=str(row['id']),
+            workspace_id=str(row['workspace_id']),
+            pipeline_run_id=str(row['pipeline_run_id']),
+            event_type=str(row['event_type']),
+            activity_id=row['activity_id'],
+            actor_id=str(row['actor_id']),
+            payload=json.loads(str(row['payload_json'])),
+            created_at=datetime.fromisoformat(str(row['created_at'])),
+        )
+
 
     @staticmethod
     def _to_step(row: aiosqlite.Row) -> PipelineRunStepDocument:

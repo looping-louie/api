@@ -35,6 +35,7 @@ class InMemoryPipelineRunRepository:
 
         self.document: PipelineRunDocument | None = None
         self.children: dict[str, ActivityRunDocument] = {}
+        self.events = []
 
     async def create(
         self, *, document: PipelineRunDocument, activity_run: ActivityRunDocument | None,
@@ -42,6 +43,7 @@ class InMemoryPipelineRunRepository:
         """Persist the initial scheduler state and optional child."""
 
         self.document = document
+        self.events.extend(document.events)
         if activity_run is not None:
             self.children[activity_run.id] = activity_run
         return document
@@ -57,7 +59,20 @@ class InMemoryPipelineRunRepository:
             self.document.workspace_id, self.document.pipeline_id, self.document.id,
         ):
             return None
-        return self.document
+        return replace(self.document, events=())
+
+    async def list_events(
+        self, *, workspace_id: str, pipeline_id: str, run_id: str,
+    ) -> list[object]:
+        """Return immutable events under the run's verified ownership."""
+
+        if self.document is None or (workspace_id, pipeline_id, run_id) != (
+            self.document.workspace_id,
+            self.document.pipeline_id,
+            self.document.id,
+        ):
+            return []
+        return list(self.events)
 
     async def list_claimable(
         self, *, workspace_id: str, pipeline_id: str, claimed_before: datetime,
@@ -93,6 +108,7 @@ class InMemoryPipelineRunRepository:
         ):
             return False
         self.document = document
+        self.events.extend(document.events)
         if activity_run is not None:
             self.children[activity_run.id] = activity_run
         return True
@@ -101,7 +117,7 @@ class InMemoryPipelineRunRepository:
         self,
         *,
         document: PipelineRunDocument,
-        expected_lease_token: str,
+        expected_lease_token: str | None,
         now: datetime,
     ) -> bool:
         """Extend the active lease only when the existing token still matches."""
@@ -129,15 +145,26 @@ class InMemoryPipelineRunRepository:
     ) -> bool:
         """Persist a transition only for the currently scheduled child."""
 
+        active_worker = (
+            self.document is not None
+            and self.document.lease_token == expected_lease_token
+            and self.document.lease_expires_at is not None
+            and self.document.lease_expires_at > now
+        )
+        waiting_human = (
+            self.document is not None
+            and self.document.status == 'waiting'
+            and self.document.lease_token is None
+            and expected_lease_token is None
+        )
         if (
             self.document is None
             or self.document.current_activity_run_id != expected_current_activity_run_id
-            or self.document.lease_token != expected_lease_token
-            or self.document.lease_expires_at is None
-            or self.document.lease_expires_at <= now
+            or not (active_worker or waiting_human)
         ):
             return False
         self.document = document
+        self.events.extend(document.events)
         if activity_run is not None:
             self.children[activity_run.id] = activity_run
         return True
@@ -176,13 +203,16 @@ class PipelineDetailsService:
         return self._details
 
 
-def activity(activity_id: str) -> ActivityDocument:
-    """Build one executable direct-loop activity."""
+def activity(
+    activity_id: str,
+    activity_type: str = 'direct_loop',
+) -> ActivityDocument:
+    """Build one active Activity for a Pipeline scheduler test."""
 
     now = datetime(2026, 8, 14, tzinfo=UTC)
     return ActivityDocument(
         id=activity_id, workspace_id='workspace-1', name=activity_id,
-        description='Complete one pipeline step.', status='active', type='direct_loop',
+        description='Complete one pipeline step.', status='active', type=activity_type,
         config={'stop_conditions': {'max_iterations': 1}, 'agents': [], 'output_contract': {'type': 'text', 'description': 'Result.'}},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )
@@ -380,3 +410,153 @@ async def test_completed_step_schedules_success_dependent_child(
             user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
             lease_token='stale-token',
         )
+
+
+@pytest.mark.asyncio
+async def test_claiming_a_human_activity_creates_a_waiting_child_run(
+    tenant_service: TenantService,
+) -> None:
+    """A claim creates an approval child run for a human executor."""
+
+    gate = activity('approval-1', 'approval')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Wait for approval.', status='active',
+            steps=(PipelineActivityStep(activity_id=gate.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(gate,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    identifiers = count(1)
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        id_factory=lambda: f'id-{next(identifiers)}', clock=IncrementingClock(),
+        token_factory=lambda: 'token',
+    )
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+
+    waiting, child, lease_token = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        lease_duration=timedelta(minutes=1),
+    )
+
+    assert waiting.status == 'waiting'
+    assert child is not None
+    assert child.activity_id == gate.id
+    assert child.state == 'awaiting_human_decision'
+    assert child.next_action == 'submit_human_decision'
+    assert lease_token is None
+    assert waiting.worker_id is None
+    runs.children[child.id] = replace(
+        child,
+        status='completed',
+        state='completed',
+        next_action='none',
+        continuation_token=None,
+        execution_context={'human_decision': {'decision': 'approved'}},
+    )
+    completed, next_child = await service.continue_run(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token=None,
+    )
+
+    assert completed.status == 'completed'
+    assert completed.steps[0].status == 'completed'
+    assert next_child is None
+
+
+@pytest.mark.asyncio
+async def test_rejected_human_activity_reruns_ancestors_before_retry(
+    tenant_service: TenantService,
+) -> None:
+    """A rejected human run clears predecessor output before its retry."""
+
+    first, gate = activity('activity-1'), activity('approval-1', 'approval')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Correct then approve.', status='active',
+            steps=(
+                PipelineActivityStep(activity_id=first.id),
+                PipelineActivityStep(
+                    activity_id=gate.id,
+                    depends_on=(
+                        PipelineStepDependency(activity_id=first.id, condition='success'),
+                    ),
+                ),
+            ),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first, gate),
+    )
+    runs = InMemoryPipelineRunRepository()
+    identifiers = count(1)
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        id_factory=lambda: f'id-{next(identifiers)}', clock=IncrementingClock(),
+        token_factory=lambda: 'token',
+    )
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+    _, first_child, _ = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        lease_duration=timedelta(minutes=1),
+    )
+    assert first_child is not None
+    runs.children[first_child.id] = replace(
+        first_child, status='completed', state='completed', next_action='none',
+        continuation_token=None,
+    )
+    waiting, child = await service.continue_run(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token='token',
+    )
+    assert waiting.status == 'waiting'
+    assert child is not None
+    runs.children[child.id] = replace(
+        child,
+        status='failed',
+        state='failed',
+        next_action='none',
+        continuation_token=None,
+        execution_context={'human_decision': {'decision': 'rejected'}},
+    )
+    rejected, next_child = await service.continue_run(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token=None,
+    )
+
+    assert rejected.status == 'queued'
+    assert [step.status for step in rejected.steps] == ['pending', 'pending']
+    assert rejected.steps[0].activity_run_id is None
+    assert next_child is None
+
+    _, corrected_child, token = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        worker_id='worker-2', if_match=pipeline_run_etag(rejected),
+        lease_duration=timedelta(minutes=1),
+    )
+    assert corrected_child is not None
+    runs.children[corrected_child.id] = replace(
+        corrected_child, status='completed', state='completed', next_action='none',
+        continuation_token=None,
+    )
+    reopened, child = await service.continue_run(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        lease_token=token or '',
+    )
+
+    assert reopened.status == 'waiting'
+    assert child is not None
+    assert child.state == 'awaiting_human_decision'

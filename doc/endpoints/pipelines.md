@@ -18,6 +18,7 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
@@ -660,7 +661,11 @@ with no claimable work returns `{ "items": [], "total": 0 }`.
 named listed run when its `If-Match` entity tag is still current. The request
 requires the worker's stable `worker_id` and the only accepted target status,
 `claimed`. On success, the API creates or resumes the selected Activity child,
-issues a one-minute lease, and returns its secret `lease_token`.
+issues a one-minute lease, and returns its secret `lease_token`. When the next
+eligible step is an `approval` or `quiz` Activity, the same conditional claim
+creates a waiting human-owned Activity run. Its response has `status:
+"waiting"`, a `current_activity_run` in `awaiting_human_decision`, and
+`lease_token: null`; a runtime must not execute work for that response.
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
@@ -730,6 +735,10 @@ Pipeline execution and its currently selected Activity child. A terminal run
 has `current_activity_run: null`; its `steps` retain the final outcome of every
 frozen Pipeline step.
 
+An approval or quiz step remains the current Activity run while the Pipeline
+status is `waiting`. Its snapshot identifies the human executor and its
+continuation action is `submit_human_decision`.
+
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
 X-Workspace-ID: workspace-acme
@@ -760,6 +769,37 @@ Example response (`200 OK`):
 
 The API returns `404 pipeline_run_not_found` when the supplied run does not
 belong to the Pipeline in the selected workspace.
+
+## List pipeline run events
+
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` returns the
+append-only event ledger in creation order. Each entry has an ID, event type,
+optional Activity ID, actor ID, JSON payload, and creation time. The API emits
+`pipeline_run_created` and scheduler events. Human decisions are regular
+Activity-run checkpoints, not Pipeline-run gate events.
+
+## Complete a human Activity run
+
+Submit an approval or quiz decision through the Activity-run continuation
+endpoint. The request carries the current continuation token and an idempotency
+key, but no worker lease token.
+
+```json
+{
+  "continuation_token": "activity-continuation-token",
+  "idempotency_key": "review-decision-001",
+  "result": {
+    "action": "submit_human_decision",
+    "decision": "approved",
+    "comment": "Ready to release."
+  }
+}
+```
+
+After a terminal human result, call Pipeline continuation with no lease token
+to schedule the next step. A rejected decision resets the rejected step and
+its transitive predecessors to `pending` for corrective execution. Once those
+predecessors finish, the scheduler creates a new human Activity run.
 
 ## Renew a pipeline run lease
 
