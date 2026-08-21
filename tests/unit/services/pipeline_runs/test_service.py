@@ -413,10 +413,10 @@ async def test_completed_step_schedules_success_dependent_child(
 
 
 @pytest.mark.asyncio
-async def test_claiming_a_human_activity_creates_a_waiting_child_run(
+async def test_created_human_activity_creates_a_waiting_child_run(
     tenant_service: TenantService,
 ) -> None:
-    """A claim creates an approval child run for a human executor."""
+    """Creation schedules an approval child run without a runtime claim."""
 
     gate = activity('approval-1', 'approval')
     now = datetime(2026, 8, 14, tzinfo=UTC)
@@ -437,14 +437,12 @@ async def test_claiming_a_human_activity_creates_a_waiting_child_run(
         id_factory=lambda: f'id-{next(identifiers)}', clock=IncrementingClock(),
         token_factory=lambda: 'token',
     )
-    created, _ = await service.create(
+    waiting, child = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
 
-    waiting, child, lease_token = await service.claim(
-        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        worker_id='worker-1', if_match=pipeline_run_etag(created),
-        lease_duration=timedelta(minutes=1),
+    candidates = await service.list_claimable(
+        user_id='user-1', pipeline_id='pipeline-1',
     )
 
     assert waiting.status == 'waiting'
@@ -452,8 +450,8 @@ async def test_claiming_a_human_activity_creates_a_waiting_child_run(
     assert child.activity_id == gate.id
     assert child.state == 'awaiting_human_decision'
     assert child.next_action == 'submit_human_decision'
-    assert lease_token is None
     assert waiting.worker_id is None
+    assert candidates == []
     runs.children[child.id] = replace(
         child,
         status='completed',
@@ -463,7 +461,7 @@ async def test_claiming_a_human_activity_creates_a_waiting_child_run(
         execution_context={'human_decision': {'decision': 'approved'}},
     )
     completed, next_child = await service.continue_run(
-        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+        user_id='user-1', pipeline_id='pipeline-1', run_id=waiting.id,
         lease_token=None,
     )
 

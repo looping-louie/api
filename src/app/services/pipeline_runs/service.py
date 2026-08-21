@@ -61,7 +61,7 @@ class PipelineRunService:
         commit_mode: PipelineRunCommitMode = 'allow',
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
-        """Create a frozen pipeline run for a runtime worker to claim."""
+        """Create a frozen Pipeline run and immediately schedule human work."""
 
         details = await self._pipeline_service.describe(
             user_id=user_id,
@@ -103,7 +103,13 @@ class PipelineRunService:
             ),
             created_at=now, created_by=self._require_text(user_id), updated_at=now,
         )
-        return await self._repository.create(document=document, activity_run=None), None
+        scheduled, child = self._schedule(document=document, user_id=user_id)
+        if child is None or not self._is_human_child(child):
+            return await self._repository.create(document=document, activity_run=None), None
+        return await self._repository.create(
+            document=scheduled,
+            activity_run=child,
+        ), child
 
     async def list_claimable(
         self,

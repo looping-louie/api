@@ -552,10 +552,12 @@ structures use `invalid_pipeline_steps`.
 
 `POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
 every scheduled Activity and a run-level `commit_mode`. The API freezes the
-Pipeline graph and commit policy, then returns a `queued` run. Creation does
-not allocate an Activity run or start repository execution. `allow` is the
-default mode. `forbid` leaves successfully applied and approved changes
-uncommitted, and the API never schedules a commit checkpoint for that run.
+Pipeline graph and commit policy. It returns a `queued` run unless the first
+dependency-ready step has a human executor; in that case, it immediately
+creates the human Activity run and returns the Pipeline in `waiting`. Creation
+does not start repository execution. `allow` is the default mode. `forbid`
+leaves successfully applied and approved changes uncommitted, and the API never
+schedules a commit checkpoint for that run.
 
 | Property | JSON type | Required | Restrictions |
 | -------- | --------- | -------- | ------------ |
@@ -661,11 +663,10 @@ with no claimable work returns `{ "items": [], "total": 0 }`.
 named listed run when its `If-Match` entity tag is still current. The request
 requires the worker's stable `worker_id` and the only accepted target status,
 `claimed`. On success, the API creates or resumes the selected Activity child,
-issues a one-minute lease, and returns its secret `lease_token`. When the next
-eligible step is an `approval` or `quiz` Activity, the same conditional claim
-creates a waiting human-owned Activity run. Its response has `status:
-"waiting"`, a `current_activity_run` in `awaiting_human_decision`, and
-`lease_token: null`; a runtime must not execute work for that response.
+issues a one-minute lease, and returns its secret `lease_token`. Pipeline runs
+whose next ready step is an `approval` or `quiz` Activity are scheduled as
+waiting human-owned Activity runs by the API and do not appear in the runtime
+claimable-run list.
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
