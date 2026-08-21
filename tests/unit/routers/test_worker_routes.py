@@ -26,20 +26,11 @@ class InMemoryWorkerRepository:
 
         self.documents: dict[tuple[str, str], WorkerDocument] = {}
 
-    async def register(self, document: WorkerDocument) -> WorkerDocument:
-        """Insert a worker or refresh its liveness while retaining registration time."""
+    async def create(self, document: WorkerDocument) -> WorkerDocument:
+        """Persist a newly provisioned worker."""
 
-        current = self.documents.get((document.workspace_id, document.id))
-        stored = WorkerDocument(
-            id=document.id,
-            workspace_id=document.workspace_id,
-            registered_at=(
-                current.registered_at if current is not None else document.registered_at
-            ),
-            last_heartbeat_at=document.last_heartbeat_at,
-        )
-        self.documents[(stored.workspace_id, stored.id)] = stored
-        return stored
+        self.documents[(document.workspace_id, document.id)] = document
+        return document
 
     async def heartbeat(
         self,
@@ -83,6 +74,7 @@ def build_client(tenant_service: TenantService) -> TestClient:
         worker_service=WorkerService(
             repository=InMemoryWorkerRepository(),
             tenant_service=tenant_service,
+            id_factory=lambda: 'worker-1',
             clock=IncrementingClock(),
         ),
     )
@@ -102,15 +94,15 @@ def build_client(tenant_service: TenantService) -> TestClient:
     return TestClient(app)
 
 
-def test_register_then_heartbeat_refreshes_one_workspace_worker(
+def test_create_then_heartbeat_refreshes_one_workspace_worker(
     tenant_service: TenantService,
 ) -> None:
-    """Registration and heartbeat expose stable worker lifecycle timestamps."""
+    """API provisioning and heartbeat expose worker lifecycle timestamps."""
 
     client = build_client(tenant_service)
     headers = {'X-Workspace-ID': 'workspace-1'}
 
-    registered = client.put('/api/v1/workers/worker-1', headers=headers)
+    registered = client.post('/api/v1/workers', headers=headers)
     heartbeated = client.post(
         '/api/v1/workers/worker-1/heartbeat',
         headers=headers,

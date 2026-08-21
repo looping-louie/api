@@ -303,6 +303,7 @@ async def configure_application(
     worker_service = WorkerService(
         repository=worker_repository,
         tenant_service=tenant_service,
+        id_factory=create_identifier,
         clock=utc_now,
     )
     provider_service = ProviderService(

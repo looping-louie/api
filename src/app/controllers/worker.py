@@ -13,18 +13,16 @@ class WorkerController:
 
         self._worker_service = worker_service
 
-    async def register(
+    async def create(
         self,
         *,
         user_id: str,
-        worker_id: str,
         requested_workspace_id: str | None = None,
     ) -> WorkerResponse:
-        """Register or refresh one workspace worker identity."""
+        """Provision one API-owned workspace worker identity."""
 
-        return self._response(await self._worker_service.register(
+        return self._response(await self._worker_service.create(
             user_id=user_id,
-            worker_id=worker_id,
             requested_workspace_id=requested_workspace_id,
         ))
 

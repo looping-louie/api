@@ -41,30 +41,31 @@ class WorkerService:
         *,
         repository: WorkerRepository,
         tenant_service: TenantService,
+        id_factory: Callable[[], str],
         clock: Callable[[], datetime],
     ) -> None:
         """Store worker persistence and workspace access dependencies."""
 
         self._repository = repository
         self._tenant_service = tenant_service
+        self._id_factory = id_factory
         self._clock = clock
 
-    async def register(
+    async def create(
         self,
         *,
         user_id: str,
-        worker_id: str,
         requested_workspace_id: str | None = None,
     ) -> WorkerDocument:
-        """Create or refresh one worker registration in the selected workspace."""
+        """Provision one API-owned worker identity in the selected workspace."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
         now = self._clock()
-        return await self._repository.register(WorkerDocument(
-            id=_require_text(worker_id),
+        return await self._repository.create(WorkerDocument(
+            id=self._id_factory(),
             workspace_id=workspace.workspace_id,
             registered_at=now,
             last_heartbeat_at=now,

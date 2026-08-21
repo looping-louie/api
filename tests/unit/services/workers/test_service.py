@@ -19,20 +19,11 @@ class InMemoryWorkerRepository:
 
         self.documents: dict[tuple[str, str], WorkerDocument] = {}
 
-    async def register(self, document: WorkerDocument) -> WorkerDocument:
-        """Insert or refresh one worker registration."""
+    async def create(self, document: WorkerDocument) -> WorkerDocument:
+        """Insert one newly provisioned worker registration."""
 
-        current = self.documents.get((document.workspace_id, document.id))
-        stored = WorkerDocument(
-            id=document.id,
-            workspace_id=document.workspace_id,
-            registered_at=(
-                current.registered_at if current is not None else document.registered_at
-            ),
-            last_heartbeat_at=document.last_heartbeat_at,
-        )
-        self.documents[(stored.workspace_id, stored.id)] = stored
-        return stored
+        self.documents[(document.workspace_id, document.id)] = document
+        return document
 
     async def heartbeat(
         self, *, workspace_id: str, worker_id: str, occurred_at: datetime,
@@ -69,10 +60,11 @@ async def test_registered_worker_heartbeat_admits_claims(
     service = WorkerService(
         repository=repository,
         tenant_service=tenant_service,
+        id_factory=lambda: 'worker-1',
         clock=lambda: now,
     )
 
-    registered = await service.register(user_id='user-1', worker_id='worker-1')
+    registered = await service.create(user_id='user-1')
     heartbeated = await service.heartbeat(user_id='user-1', worker_id='worker-1')
     await service.require_active(workspace_id='workspace-1', worker_id='worker-1')
 
@@ -86,6 +78,7 @@ async def test_missing_worker_cannot_claim(tenant_service: TenantService) -> Non
     service = WorkerService(
         repository=InMemoryWorkerRepository(),
         tenant_service=tenant_service,
+        id_factory=lambda: 'worker-1',
         clock=lambda: datetime(2026, 8, 21, tzinfo=UTC) + timedelta(minutes=3),
     )
 

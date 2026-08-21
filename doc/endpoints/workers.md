@@ -1,29 +1,29 @@
 # Workers
 
-Workers are workspace-scoped runtime identities. A configured runtime registers
-its stable `worker_id` before polling and refreshes a heartbeat before each
-workspace poll. An active heartbeat is required to claim a PipelineRun.
+Workers are API-provisioned, workspace-scoped runtime identities. A runtime
+stores its assigned `worker_id` in the workspace configuration and refreshes a
+heartbeat before each workspace poll. An active heartbeat is required to claim
+a PipelineRun.
 
-Worker registration is separate from a PipelineRun lease. A heartbeat does not
+Worker provisioning is separate from a PipelineRun lease. A heartbeat does not
 extend a lease, and an expired heartbeat does not revoke an existing lease.
 
 ## Resource Endpoints
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
-| `PUT` | `/api/v1/workers/{worker_id}` | Create or refresh a worker registration. |
+| `POST` | `/api/v1/workers` | Provision a worker identity. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh an existing worker heartbeat. |
 
-Both endpoints use `X-Workspace-ID` to select the registered workspace.
+Both endpoints use `X-Workspace-ID` to select the worker's workspace.
 
-## Register A Worker
+## Provision A Worker
 
-`PUT /api/v1/workers/{worker_id}` creates a worker registration in the selected
-workspace. Repeating the request refreshes the heartbeat while preserving the
-original registration timestamp.
+`POST /api/v1/workers` provisions a worker identity in the selected workspace.
+Store the returned ID in that workspace's runtime configuration.
 
 ```http
-PUT /api/v1/workers/runtime-local-01
+POST /api/v1/workers
 X-Workspace-ID: workspace-acme
 ```
 
@@ -31,7 +31,7 @@ Example response (`201 Created`):
 
 ```json
 {
-  "id": "runtime-local-01",
+  "id": "c1fa5f23a0fb4c4cad6b08a2ea774b21",
   "registered_at": "2026-08-21T10:00:00Z",
   "last_heartbeat_at": "2026-08-21T10:00:00Z"
 }
@@ -40,7 +40,8 @@ Example response (`201 Created`):
 ## Send A Heartbeat
 
 `POST /api/v1/workers/{worker_id}/heartbeat` refreshes the liveness timestamp
-for an existing registration. An unknown worker returns `404 worker_not_found`.
+for an existing provisioned worker. An unknown worker returns
+`404 worker_not_found`.
 
 ```http
 POST /api/v1/workers/runtime-local-01/heartbeat

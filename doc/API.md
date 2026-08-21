@@ -19,8 +19,8 @@ The endpoint reference is organized by top-level router:
 - [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
   persists each supplied step as an independent Activity record, Pipeline-run
   event ledgers, and human Activity-run decisions.
-- [Workers](endpoints/workers.md) registers runtime identities and liveness
-  heartbeats required for PipelineRun claims.
+- [Workers](endpoints/workers.md) provisions runtime identities and records
+  liveness heartbeats required for PipelineRun claims.
 
 The API owns planning, generation, reviewer decisions, and durable execution
 state. The runtime owns local repository execution, including filesystem, Git,

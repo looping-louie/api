@@ -11,8 +11,8 @@ from src.app.models.worker import WorkerDocument
 class WorkerRepository(Protocol):
     """Persist worker identities and their liveness heartbeats."""
 
-    async def register(self, document: WorkerDocument) -> WorkerDocument:
-        """Create or refresh one workspace-scoped worker identity."""
+    async def create(self, document: WorkerDocument) -> WorkerDocument:
+        """Persist one new workspace-scoped worker identity."""
         raise NotImplementedError
 
     async def heartbeat(

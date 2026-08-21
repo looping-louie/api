@@ -18,7 +18,7 @@ SMOKE_LINKED_SERVICE_NAME="${SMOKE_LINKED_SERVICE_NAME:-smoke_linked_service}"
 
 SMOKE_MODEL_ID="${SMOKE_MODEL_ID:-}"
 SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
-WORKER_ID="smoke-runtime"
+WORKER_ID=""
 
 PERSONA_ID=""
 SKILL_ID=""
@@ -558,7 +558,8 @@ PIPELINE_ID="$(
     printf '%s' "${pipeline_response}" | json_field "id"
 )"
 
-request PUT "/workers/${WORKER_ID}" '{}' >/dev/null
+worker_response="$(request POST "/workers" '{}')"
+WORKER_ID="$(printf '%s' "${worker_response}" | json_field "id")"
 request POST "/workers/${WORKER_ID}/heartbeat" '{}' >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
@@ -580,7 +581,7 @@ pipeline_claim_response="$(
     request \
         PATCH \
         "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" \
-        '{"worker_id":"smoke-runtime","status":"claimed"}' \
+        "{\"worker_id\":\"${WORKER_ID}\",\"status\":\"claimed\"}" \
         "If-Match: ${PIPELINE_RUN_ETAG}"
 )"
 PIPELINE_RUN_LEASE_TOKEN="$(

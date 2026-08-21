@@ -9,15 +9,15 @@ from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
 
 class SqliteWorkerRepository:
-    """Persist workspace workers using idempotent registration upserts."""
+    """Persist API-owned workspace runtime worker identities."""
 
     def __init__(self, database: SqliteDatabase) -> None:
         """Store the shared SQLite connection manager."""
 
         self._database = database
 
-    async def register(self, document: WorkerDocument) -> WorkerDocument:
-        """Create a worker or refresh its most recent heartbeat."""
+    async def create(self, document: WorkerDocument) -> WorkerDocument:
+        """Persist one newly provisioned worker identity."""
 
         async with self._database.connect() as connection:
             try:
@@ -27,8 +27,6 @@ class SqliteWorkerRepository:
                     INSERT INTO workers (
                         id, workspace_id, registered_at, last_heartbeat_at
                     ) VALUES (?, ?, ?, ?)
-                    ON CONFLICT (workspace_id, id) DO UPDATE SET
-                        last_heartbeat_at = excluded.last_heartbeat_at
                     ''',
                     (
                         document.id,

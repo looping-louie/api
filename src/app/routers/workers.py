@@ -16,22 +16,20 @@ ControllerDependency = Annotated[WorkerController, Depends(get_worker_controller
 WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker identifier.')]
 
 
-@router.put(
-    '/{worker_id}',
+@router.post(
+    '',
     response_model=WorkerResponse,
     status_code=status.HTTP_201_CREATED,
-    summary='Register worker',
+    summary='Create worker',
 )
-async def register_worker(
-    worker_id: WorkerIdPath,
+async def create_worker(
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> WorkerResponse:
-    """Create or refresh one runtime worker registration."""
+    """Create one API-owned runtime worker identity."""
 
-    return await controller.register(
+    return await controller.create(
         user_id=context.user_id,
-        worker_id=worker_id,
         requested_workspace_id=context.requested_workspace_id,
     )
 
