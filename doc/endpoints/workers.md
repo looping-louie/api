@@ -17,6 +17,15 @@ extend a lease, and an expired heartbeat does not revoke an existing lease.
 
 Both endpoints use `X-Workspace-ID` to select the worker's workspace.
 
+## Observe Worker Liveness
+
+The API intentionally exposes no `GET` worker list or read endpoint. To verify
+that a configured worker identity remains available before queueing work, send
+its heartbeat request and inspect the returned `last_heartbeat_at` timestamp.
+The successful heartbeat confirms the worker identity belongs to the selected
+workspace and refreshes its liveness signal. Pipeline-run claim admission
+remains the authoritative check that an active worker can claim queued work.
+
 ## Provision A Worker
 
 `POST /api/v1/workers` provisions a worker identity in the selected workspace.
