@@ -39,12 +39,6 @@ ActivityRunActionValue = Literal[
 ]
 
 
-class ActivityRunCreateRequest(RequestSchema):
-    """User input that starts one execution of the selected Activity."""
-
-    input: NonEmptyString
-
-
 class ActivityRunWorkspaceMetadata(RequestSchema):
     """Local repository metadata captured by the CLI."""
 

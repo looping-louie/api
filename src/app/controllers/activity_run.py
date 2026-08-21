@@ -5,7 +5,6 @@ from src.app.schemas.activity_run import (
     ActivityRunResponse,
     ActivityRunCollectSnapshotResult,
     ActivityRunContinueRequest,
-    ActivityRunCreateRequest,
     ActivityRunHumanDecisionResult,
 )
 from src.app.services.activity_runs import ActivityRunService
@@ -20,24 +19,6 @@ class ActivityRunController:
         """Store the activity-run application service."""
 
         self._activity_run_service = activity_run_service
-
-    async def create(
-        self,
-        *,
-        user_id: str,
-        activity_id: str,
-        payload: ActivityRunCreateRequest,
-        requested_workspace_id: str | None = None,
-    ) -> ActivityRunResponse:
-        """Create one activity-owned execution."""
-
-        document = await self._activity_run_service.create(
-            user_id=user_id,
-            activity_id=activity_id,
-            input_text=payload.input,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return activity_run_response(document)
 
     async def get(
         self,

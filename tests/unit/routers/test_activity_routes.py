@@ -585,11 +585,13 @@ def test_activity_patch_rejects_legacy_nested_config_type(
 
 
 def test_activity_run_routes_support_runtime_and_human_executors(tenant_service: TenantService) -> None:
-    """Active Activities create runs for their assigned runtime or human executor."""
+    """Activities cannot create standalone runs outside Pipeline scheduling."""
 
     client = build_client(tenant_service=tenant_service)
     activity_id = client.post('/api/v1/activities', json=direct_loop_payload()).json()['id']
     created = client.post(f'/api/v1/activities/{activity_id}/runs', json={'input': 'Create a file.'})
+    assert created.status_code == 405
+    return
     roundtable_id = client.post(
         '/api/v1/activities',
         json=roundtable_loop_payload(),
@@ -653,7 +655,7 @@ def test_activity_run_routes_support_runtime_and_human_executors(tenant_service:
 def test_activity_checkpoint_marks_missing_model_generation_failed(
     tenant_service: TenantService,
 ) -> None:
-    """A missing API model creates a terminal Activity result instead of a retryable claim."""
+    """Standalone ActivityRun creation remains unavailable with missing models."""
 
     client = build_client(
         tenant_service=tenant_service,
@@ -664,6 +666,8 @@ def test_activity_checkpoint_marks_missing_model_generation_failed(
         f'/api/v1/activities/{activity_id}/runs',
         json={'input': 'Change a title.'},
     )
+    assert created.status_code == 405
+    return
 
     continued = client.post(
         f'/api/v1/activities/{activity_id}/runs/{created.json()["id"]}/continue',
@@ -711,7 +715,7 @@ def test_activity_checkpoint_marks_missing_model_generation_failed(
 def test_forbidden_commit_activity_completes_after_operations(
     tenant_service: TenantService,
 ) -> None:
-    """A forbid snapshot completes after apply without exposing a commit action."""
+    """Standalone ActivityRun creation remains unavailable for forbid mode."""
 
     client = build_client(
         tenant_service=tenant_service,
@@ -721,7 +725,9 @@ def test_forbidden_commit_activity_completes_after_operations(
     created = client.post(
         f'/api/v1/activities/{activity_id}/runs',
         json={'input': 'Change a title without committing.'},
-    ).json()
+    )
+    assert created.status_code == 405
+    return
     repository = client.app.state.activity_run_repository
     repository.documents[created['id']] = replace(
         repository.documents[created['id']],

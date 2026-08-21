@@ -57,10 +57,11 @@ execution then uses that Persona selection.
 
 ## Activity runs
 
-Direct, refinement, and roundtable loop activities expose persisted executions at
-`/api/v1/activities/{activity_id}/runs`. Each run response identifies its
-owning definition with `activity_id`; it does not expose a legacy loop
-identifier.
+Pipeline scheduling creates persisted ActivityRuns for dependency-ready steps.
+`/api/v1/activities/{activity_id}/runs` exposes those Pipeline-owned runs for
+display and execution continuation; it cannot create standalone executions.
+Each run response identifies its owning definition with `activity_id`; it does
+not expose a legacy loop identifier.
 
 ## List activities
 
@@ -579,9 +580,8 @@ created, so later definition changes do not alter an in-progress run.
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `GET` | `/api/v1/activities/{activity_id}/runs` | List runs for a loop activity. |
-| `POST` | `/api/v1/activities/{activity_id}/runs` | Create a run. |
 | `GET` | `/api/v1/activities/{activity_id}/runs/{run_id}` | Describe a run. |
-| `POST` | `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Submit one CLI checkpoint result. |
+| `POST` | `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Submit one runtime or human checkpoint result. |
 
 `GET /api/v1/activities/{activity_id}/runs` returns ten runs after the
 optional non-negative `offset`.

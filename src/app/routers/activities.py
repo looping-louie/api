@@ -10,7 +10,6 @@ from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
 from src.app.schemas.activity_run import (
     ActivityRunContinueRequest,
-    ActivityRunCreateRequest,
     ActivityRunListResponse,
     ActivityRunResponse,
 )
@@ -47,13 +46,6 @@ async def list_activity_runs(context: ContextDependency, controller: RunControll
     """Return runs created from the selected loop activity."""
 
     return await controller.list(user_id=context.user_id, activity_id=activity_id, offset=offset, requested_workspace_id=context.requested_workspace_id)
-
-
-@router.post('/{activity_id}/runs', response_model=ActivityRunResponse, status_code=status.HTTP_201_CREATED, summary='Create activity run')
-async def create_activity_run(payload: ActivityRunCreateRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath) -> ActivityRunResponse:
-    """Create a run from the selected active loop activity."""
-
-    return await controller.create(user_id=context.user_id, activity_id=activity_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
 
 
 @router.get('/{activity_id}/runs/{run_id}', response_model=ActivityRunResponse, summary='Get activity run')
