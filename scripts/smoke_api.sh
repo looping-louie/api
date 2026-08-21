@@ -28,9 +28,6 @@ ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
 PIPELINE_RUN_ID=""
 PIPELINE_RUN_LEASE_TOKEN=""
-PROVIDER_CREATED=0
-PROVIDER_WAS_ENABLED=0
-PROVIDER_STATE_CAPTURED=0
 LINKED_SERVICE_ID=""
 CLEANUP_STARTED=0
 
@@ -206,57 +203,6 @@ print(available[0]["id"])
 '
 }
 
-provider_state() {
-    local provider_id="$1"
-
-    python3 -c '
-import json
-import sys
-
-provider_id = sys.argv[1]
-document = json.load(sys.stdin)
-
-if isinstance(document, list):
-    items = document
-else:
-    items = document.get("items", document.get("providers", []))
-
-for item in items:
-    if item.get("provider") == provider_id:
-        values = (
-            "1" if item.get("configured") else "0",
-            "1" if item.get("enabled") else "0",
-            "1" if item.get("requires_api_key") else "0",
-        )
-        print("\t".join(values))
-        raise SystemExit(0)
-
-raise SystemExit(f"Provider not found: {provider_id}")
-' "${provider_id}"
-}
-
-provider_payload() {
-    python3 - \
-        "${SMOKE_PROVIDER_API_KEY}" \
-        "${SMOKE_PROVIDER_BASE_URL}" <<'PY'
-import json
-import sys
-
-api_key = sys.argv[1]
-base_url = sys.argv[2]
-
-payload = {}
-
-if api_key:
-    payload["api_key"] = api_key
-
-if base_url:
-    payload["base_url"] = base_url
-
-print(json.dumps(payload))
-PY
-}
-
 cleanup() {
     local exit_code=$?
 
@@ -290,19 +236,6 @@ cleanup() {
         request DELETE "/personas/${PERSONA_ID}" >/dev/null
     fi
 
-    if [[ "${PROVIDER_CREATED}" == "1" ]]; then
-        request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
-    elif [[
-        "${PROVIDER_STATE_CAPTURED}" == "1"
-        && "${PROVIDER_WAS_ENABLED}" == "0"
-    ]]; then
-        request \
-            PATCH \
-            "/providers/${SMOKE_PROVIDER_ID}" \
-            '{"enabled": false}' \
-            >/dev/null
-    fi
-
     if [[ -n "${LINKED_SERVICE_ID}" ]]; then
         request DELETE "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
     fi
@@ -316,47 +249,10 @@ cleanup() {
 
 trap cleanup EXIT
 
-log "Checking provider catalog"
+log "Checking static catalogs"
 
-providers_response="$(request GET "/providers")"
-
-IFS=$'\t' read -r \
-    provider_configured \
-    provider_enabled \
-    provider_requires_key \
-    <<< "$(
-        printf '%s' "${providers_response}" \
-            | provider_state "${SMOKE_PROVIDER_ID}"
-    )"
-
-PROVIDER_WAS_ENABLED="${provider_enabled}"
-PROVIDER_STATE_CAPTURED=1
-
-request GET "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
 request GET "/catalog/providers" >/dev/null
 request GET "/catalog/models" >/dev/null
-
-if [[ "${provider_configured}" == "0" ]]; then
-    if [[ "${provider_requires_key}" == "1" \
-        && -z "${SMOKE_PROVIDER_API_KEY}" ]]; then
-        log "Provider ${SMOKE_PROVIDER_ID} requires SMOKE_PROVIDER_API_KEY."
-        exit 1
-    fi
-
-    request \
-        PATCH \
-        "/providers/${SMOKE_PROVIDER_ID}" \
-        "$(provider_payload)" \
-        >/dev/null
-
-    PROVIDER_CREATED=1
-fi
-
-request \
-    PATCH \
-    "/providers/${SMOKE_PROVIDER_ID}" \
-    '{"enabled": false}' \
-    >/dev/null
 
 log "Checking linked services"
 
@@ -380,11 +276,6 @@ LINKED_SERVICE_ID="$(printf '%s' "${linked_service_response}" | json_field id)"
 request GET "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
 request PATCH "/linked-services/${LINKED_SERVICE_ID}" '{"enabled":false}' >/dev/null
 request GET "/linked-services" >/dev/null
-request \
-    PATCH \
-    "/providers/${SMOKE_PROVIDER_ID}" \
-    '{"enabled": true}' \
-    >/dev/null
 
 log "Checking model catalog"
 
@@ -633,19 +524,6 @@ request GET "/activities" >/dev/null
 request GET "/pipelines" >/dev/null
 request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null
-
-if [[ "${PROVIDER_CREATED}" == "1" ]]; then
-    request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
-    PROVIDER_CREATED=0
-elif [[ "${PROVIDER_WAS_ENABLED}" == "0" ]]; then
-    request \
-        PATCH \
-        "/providers/${SMOKE_PROVIDER_ID}" \
-        '{"enabled": false}' \
-        >/dev/null
-fi
-
-request GET "/providers" >/dev/null
 
 trap - EXIT
 log "✓ API smoke test passed"

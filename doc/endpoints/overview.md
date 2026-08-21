@@ -10,7 +10,6 @@ operations.
 ## Endpoint reference
 
 - [Catalog](catalog.md) exposes static provider and model definitions.
-- [Providers](providers.md) manages model-provider configuration.
 - [Linked Services](linked-services.md) manages workspace-owned provider
   connections.
 - [Models](models.md) exposes the curated model catalog.
@@ -23,7 +22,7 @@ operations.
 
 ## Versioned API conventions
 
-All catalog, provider, linked-service, model, persona, skill, activity, and
+All catalog, linked-service, model, persona, skill, activity, and
 pipeline routes use the `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,

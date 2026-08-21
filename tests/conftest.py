@@ -30,7 +30,6 @@ from tests.fakes.provider_state_repository import (
 from tests.fakes.reference_repository import FakeReferenceRepository
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.validation_repository import FakeValidationRepository
-from src.app.controllers.provider import ProviderController
 from src.app.services.providers.service import ProviderService
 from tests.fakes.provider_connection_service import (
     FakeProviderConnectionService,
@@ -147,8 +146,6 @@ def instruction_service(
         id_factory=create_identifier,
         clock=clock,
     )
-
-
 @pytest.fixture
 def model_availability_service(
     provider_state_repository: FakeProviderStateRepository,
@@ -224,13 +221,4 @@ def provider_service(
         catalog=PROVIDER_CATALOG,
         id_factory=create_identifier,
         clock=clock,
-    )
-
-
-@pytest.fixture
-def provider_controller(
-    provider_service: ProviderService,
-) -> ProviderController:
-    return ProviderController(
-        provider_service=provider_service,
     )

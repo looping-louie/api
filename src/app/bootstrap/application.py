@@ -17,7 +17,6 @@ from src.app.catalogs.instructions.loader import (
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
-from src.app.controllers.provider import ProviderController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
@@ -84,13 +83,9 @@ from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
 from src.app.services.personas import PersonaService
-from src.app.services.providers.model_registry import (
-    CatalogModelRegistryService,
-)
 from src.app.services.providers.connection import (
     HttpProviderConnectionService,
 )
-from src.app.services.providers.service import ProviderService
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
@@ -306,16 +301,6 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
-    provider_service = ProviderService(
-        repository=provider_repository,
-        tenant_service=tenant_service,
-        secret_service=secret_service,
-        connection_service=HttpProviderConnectionService(),
-        model_registry=CatalogModelRegistryService(),
-        catalog=PROVIDER_CATALOG,
-        id_factory=create_identifier,
-        clock=utc_now,
-    )
     app.state.persona_controller = PersonaController(
         persona_service=persona_service,
     )
@@ -340,9 +325,6 @@ async def configure_application(
         model_catalog_service=model_catalog_service,
     )
     app.state.catalog_controller = catalog_controller
-    app.state.provider_controller = ProviderController(
-        provider_service=provider_service,
-    )
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
     )

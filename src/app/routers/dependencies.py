@@ -15,7 +15,6 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
-from src.app.controllers.provider import ProviderController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
@@ -180,18 +179,6 @@ def get_catalog_controller(
         request,
         attribute_name='catalog_controller',
         expected_type=CatalogController,
-    )
-
-
-def get_provider_controller(
-    request: Request,
-) -> ProviderController:
-    """Return the configured provider controller."""
-
-    return _get_controller(
-        request,
-        attribute_name="provider_controller",
-        expected_type=ProviderController,
     )
 
 
