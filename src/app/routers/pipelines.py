@@ -166,6 +166,27 @@ async def list_claimable_pipeline_runs(
     )
 
 
+@router.post(
+    '/{pipeline_id}/runs/{run_id}/start',
+    response_model=PipelineRunResponse,
+    summary='Start pipeline run',
+)
+async def start_pipeline_run(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunResponse:
+    """Make one prepared Pipeline run eligible for its assigned executor."""
+
+    return await controller.start_run(
+        user_id=context.user_id,
+        pipeline_id=pipeline_id,
+        run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
 @router.patch(
     '/{pipeline_id}/runs/{run_id}',
     response_model=PipelineRunClaimResponse,

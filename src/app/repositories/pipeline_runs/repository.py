@@ -34,6 +34,16 @@ class PipelineRunRepository(Protocol):
         """Return one pipeline run under its owning pipeline."""
         raise NotImplementedError
 
+    async def start(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_updated_at: datetime,
+        activity_run: ActivityRunDocument | None,
+    ) -> bool:
+        """Start a prepared run and optionally persist its human child."""
+        raise NotImplementedError
+
     async def list_claimable(
         self,
         *,

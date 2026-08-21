@@ -64,6 +64,18 @@ class PipelineRunController:
             total=len(documents),
         )
 
+    async def start_run(
+        self, *, user_id: str, pipeline_id: str, run_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> PipelineRunResponse:
+        """Start one prepared Pipeline run for human or runtime execution."""
+
+        document, child = await self._require_service().start(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        return self._response(document, child)
+
     async def claim_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,
         payload: PipelineRunClaimRequest, if_match: str,

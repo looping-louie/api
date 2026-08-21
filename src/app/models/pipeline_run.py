@@ -8,6 +8,7 @@ from typing import Literal, Mapping
 
 
 PipelineRunStatus = Literal[
+    'prepared',
     'queued',
     'claimed',
     'in_progress',

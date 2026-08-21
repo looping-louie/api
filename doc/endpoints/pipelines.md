@@ -14,7 +14,8 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines` | Lists ten filtered pipelines after an offset. |
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
-| `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Queues a pipeline run for a runtime worker. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a prepared pipeline run. |
+| `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` | Starts a prepared pipeline run. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
@@ -548,16 +549,73 @@ Example response (`200 OK`):
 Request schema failures use the standard API error envelope. Invalid step
 structures use `invalid_pipeline_steps`.
 
+## Execution Model
+
+A Pipeline is a reusable graph definition. A PipelineRun is one requested
+execution of its frozen graph. Each scheduled step creates an ActivityRun owned
+by that PipelineRun; an ActivityRun is not an independently runnable workflow.
+
+| Resource | Responsibility |
+| --- | --- |
+| Pipeline | Reusable graph definition. An active Pipeline may create runs. |
+| PipelineRun | One execution request, including frozen input, dependency graph, and commit mode. |
+| ActivityRun | One child execution selected by its owning PipelineRun. |
+
+The runtime is a pull-based executor. It polls the API for eligible Pipeline
+runs and attempts ETag-protected claims; the API admits or rejects each claim.
+The CLI is a control-plane client. It creates, starts, inspects, and operates
+Pipeline runs, but it does not select a checkout or perform filesystem or Git
+operations.
+
+Human Activities are normal ActivityRuns with the `human` executor. Runtime
+workers do not claim them. A dependency-ready human ActivityRun places its
+PipelineRun in `waiting` until a user submits the human decision checkpoint.
+
+### Lifecycle
+
+```text
+prepared -> queued -> claimed -> in_progress -> completed
+                      |             |
+                      |             -> waiting (human ActivityRun)
+                      |
+                      -> queued again when a lease expires
+```
+
+Creating a PipelineRun produces a `prepared` execution with
+frozen input, steps, and commit policy. An explicit operator action transitions
+it to `queued`, making runtime-owned work eligible for polling and claims. If
+the first dependency-ready step has a human executor, the API instead creates
+its waiting human ActivityRun without exposing the PipelineRun to workers.
+
+The corresponding CLI commands are:
+
+```text
+ll pipelines runs create PIPELINE_ID --input "..."
+  -> create a prepared PipelineRun
+
+ll pipelines runs start PIPELINE_ID RUN_ID
+  -> transition the PipelineRun from prepared to queued
+```
+
+Workers remain independent pollers; an operator does not direct a specific
+worker to accept a claim.
+
+Activity definitions remain reusable but are not directly callable. Retrying
+execution is a PipelineRun-level operation because it needs the frozen graph,
+input, commit mode, configured runtime checkout, and correction history. A
+future `retry` command should create a new prepared PipelineRun rather than
+altering completed ActivityRuns. Any future restart-from-step operation must
+define its dependency reset and reuse semantics explicitly.
+
 ## Execute pipelines
 
 `POST /api/v1/pipelines/{pipeline_id}/runs` accepts an `input` string used by
 every scheduled Activity and a run-level `commit_mode`. The API freezes the
-Pipeline graph and commit policy. It returns a `queued` run unless the first
-dependency-ready step has a human executor; in that case, it immediately
-creates the human Activity run and returns the Pipeline in `waiting`. Creation
-does not start repository execution. `allow` is the default mode. `forbid`
-leaves successfully applied and approved changes uncommitted, and the API never
-schedules a commit checkpoint for that run.
+Pipeline graph and commit policy, then returns a `prepared` run. Creation does
+not start repository execution or allocate an ActivityRun. Use the start
+operation to make the run eligible for its assigned executor. `allow` is the
+default mode. `forbid` leaves successfully applied and approved changes
+uncommitted, and the API never schedules a commit checkpoint for that run.
 
 | Property | JSON type | Required | Restrictions |
 | -------- | --------- | -------- | ------------ |
@@ -585,7 +643,7 @@ Example response (`201 Created`):
   "pipeline_id": "pipeline-production-release-review",
   "input": "Review the release candidate and determine whether it is ready for production.",
   "commit_mode": "allow",
-  "status": "queued",
+  "status": "prepared",
   "current_activity_run": null,
   "steps": [
     {
@@ -609,6 +667,16 @@ Example response (`201 Created`):
   "updated_at": "2026-08-18T10:00:00Z"
 }
 ```
+
+## Start a pipeline run
+
+`POST /api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` transitions a
+`prepared` PipelineRun to `queued` when its next dependency-ready step has a
+runtime executor. The runtime can then discover and conditionally claim it.
+
+When the next ready step has a human executor, start creates that ActivityRun
+and returns the PipelineRun in `waiting`; it never becomes runtime claimable.
+Starting a run that is not `prepared` returns `409 pipeline_run_unavailable`.
 
 ## List claimable pipeline runs
 

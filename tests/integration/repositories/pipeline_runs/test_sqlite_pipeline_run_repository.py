@@ -21,7 +21,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     sqlite_database_path: Path,
     create_workspace: object,
 ) -> None:
-    """A queued run claim atomically creates and selects its first Activity child."""
+    """A started run claim atomically creates and selects its first Activity child."""
 
     timestamp = datetime(2026, 8, 19, tzinfo=UTC)
     await create_workspace(workspace_id='workspace-1')
@@ -45,9 +45,9 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         activity_changelog_entries=[_activity_entry(activity, timestamp)],
     )
     repository = SqlitePipelineRunRepository(sqlite_database_path)
-    queued = PipelineRunDocument(
+    prepared = PipelineRunDocument(
         id='run-1', workspace_id='workspace-1', pipeline_id=pipeline.id,
-        input='Implement.', status='queued', worker_id=None, lease_token=None,
+        input='Implement.', status='prepared', worker_id=None, lease_token=None,
         lease_expires_at=None, attempt=0, current_activity_run_id=None,
         pipeline_snapshot={'steps': []},
         steps=(
@@ -60,7 +60,18 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         created_at=timestamp, created_by='user-1', updated_at=timestamp,
         commit_mode='forbid',
     )
-    await repository.create(document=queued, activity_run=None)
+    await repository.create(document=prepared, activity_run=None)
+    queued = replace(
+        prepared,
+        status='queued',
+        updated_at=timestamp + timedelta(seconds=1),
+    )
+    started = await repository.start(
+        document=queued,
+        expected_updated_at=prepared.updated_at,
+        activity_run=None,
+    )
+    assert started is True
     child = ActivityRunDocument(
         id='activity-run-1', workspace_id='workspace-1', activity_id=activity.id,
         input='Implement.', status='in_progress', state='awaiting_snapshot',

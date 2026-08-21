@@ -106,7 +106,7 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
 
 
 PipelineRunStatusValue = Literal[
-    'queued', 'claimed', 'in_progress', 'waiting', 'failed', 'completed'
+    'prepared', 'queued', 'claimed', 'in_progress', 'waiting', 'failed', 'completed'
 ]
 PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[

@@ -73,6 +73,54 @@ class SqlitePipelineRunRepository:
                 return None
             return await self._to_document(connection, row)
 
+    async def start(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_updated_at: datetime,
+        activity_run: ActivityRunDocument | None,
+    ) -> bool:
+        """Queue a prepared run or persist its ready human child atomically."""
+
+        async with self._connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                if activity_run is not None:
+                    await self._insert_activity_run(connection, activity_run)
+                cursor = await connection.execute(
+                    '''
+                    UPDATE pipeline_runs
+                    SET status = ?, worker_id = ?, lease_token = ?,
+                        lease_expires_at = ?, current_activity_run_id = ?,
+                        updated_at = ?
+                    WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                        AND updated_at = ? AND status = 'prepared'
+                    ''',
+                    (
+                        document.status, document.worker_id, document.lease_token,
+                        document.lease_expires_at.isoformat()
+                        if document.lease_expires_at is not None else None,
+                        document.current_activity_run_id,
+                        document.updated_at.isoformat(), document.workspace_id,
+                        document.pipeline_id, document.id,
+                        expected_updated_at.isoformat(),
+                    ),
+                )
+                try:
+                    started = cursor.rowcount == 1
+                finally:
+                    await cursor.close()
+                if not started:
+                    await connection.rollback()
+                    return False
+                await self._update_steps(connection, document)
+                await self._insert_events(connection, document.events)
+                await connection.commit()
+                return True
+            except Exception:
+                await connection.rollback()
+                raise
+
     async def list_claimable(
         self,
         *,

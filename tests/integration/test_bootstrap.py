@@ -218,6 +218,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0035_remove_legacy_loops",
         "0036_pipeline_run_events_and_gates",
         "0037_unify_human_activity_runs",
+        "0038_prepared_pipeline_runs",
     ]
     assert activity_rows == []
 

@@ -61,7 +61,7 @@ class PipelineRunService:
         commit_mode: PipelineRunCommitMode = 'allow',
         requested_workspace_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
-        """Create a frozen Pipeline run and immediately schedule human work."""
+        """Create a frozen Pipeline run awaiting an explicit operator start."""
 
         details = await self._pipeline_service.describe(
             user_id=user_id,
@@ -79,7 +79,7 @@ class PipelineRunService:
             id=run_id, workspace_id=details.document.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
             commit_mode=commit_mode,
-            status='queued', worker_id=None, lease_token=None,
+            status='prepared', worker_id=None, lease_token=None,
             lease_expires_at=None, attempt=0, current_activity_run_id=None,
             pipeline_snapshot=self._pipeline_snapshot(details),
             steps=tuple(
@@ -103,13 +103,55 @@ class PipelineRunService:
             ),
             created_at=now, created_by=self._require_text(user_id), updated_at=now,
         )
-        scheduled, child = self._schedule(document=document, user_id=user_id)
-        if child is None or not self._is_human_child(child):
-            return await self._repository.create(document=document, activity_run=None), None
-        return await self._repository.create(
-            document=scheduled,
+        return await self._repository.create(document=document, activity_run=None), None
+
+    async def start(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        requested_workspace_id: str | None = None,
+    ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
+        """Make one prepared run eligible for runtime or human execution."""
+
+        details = await self._pipeline_service.describe(
+            user_id=user_id,
+            pipeline_id=pipeline_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        if details.document.status != 'active':
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'status is {details.document.status}',
+            )
+        document = await self._get_required(
+            workspace_id=details.document.workspace_id,
+            pipeline_id=details.document.id,
+            run_id=run_id,
+        )
+        if document.status != 'prepared':
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f'run {run_id} is not prepared',
+            )
+        selected, child = self._schedule(
+            document=document,
+            user_id=user_id,
+            materialize_runtime=False,
+        )
+        if await self._repository.start(
+            document=selected,
+            expected_updated_at=document.updated_at,
             activity_run=child,
-        ), child
+        ):
+            return selected, child
+        return await self.get(
+            user_id=user_id,
+            pipeline_id=pipeline_id,
+            run_id=run_id,
+            requested_workspace_id=requested_workspace_id,
+        )
 
     async def list_claimable(
         self,
@@ -390,6 +432,7 @@ class PipelineRunService:
         *,
         document: PipelineRunDocument,
         user_id: str,
+        materialize_runtime: bool = True,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Skip impossible branches and issue the first dependency-ready step."""
 
@@ -424,6 +467,13 @@ class PipelineRunService:
             ) else 'in_progress'
             return replace(document, status=status, steps=tuple(steps), updated_at=now), None
         human_activity = ready.activity_snapshot.get('executor') == 'human'
+        if not human_activity and not materialize_runtime:
+            return replace(
+                document,
+                status='queued',
+                steps=tuple(steps),
+                updated_at=now,
+            ), None
         child = ActivityRunDocument(
             id=self._id_factory(), workspace_id=document.workspace_id,
             activity_id=ready.activity_id, input=document.input,

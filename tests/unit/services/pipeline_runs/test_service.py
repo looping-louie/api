@@ -61,6 +61,27 @@ class InMemoryPipelineRunRepository:
             return None
         return replace(self.document, events=())
 
+    async def start(
+        self,
+        *,
+        document: PipelineRunDocument,
+        expected_updated_at: datetime,
+        activity_run: ActivityRunDocument | None,
+    ) -> bool:
+        """Persist a prepared run's first scheduler decision."""
+
+        if (
+            self.document is None
+            or self.document.status != 'prepared'
+            or self.document.updated_at != expected_updated_at
+        ):
+            return False
+        self.document = document
+        self.events.extend(document.events)
+        if activity_run is not None:
+            self.children[activity_run.id] = activity_run
+        return True
+
     async def list_events(
         self, *, workspace_id: str, pipeline_id: str, run_id: str,
     ) -> list[object]:
@@ -219,10 +240,10 @@ def activity(
 
 
 @pytest.mark.asyncio
-async def test_created_run_waits_for_runtime_claim(
+async def test_prepared_run_starts_before_runtime_claim(
     tenant_service: TenantService,
 ) -> None:
-    """Creation leaves the first Activity unallocated until a worker claims it."""
+    """An operator start makes a prepared runtime run available for claims."""
 
     first = activity('activity-1')
     now = datetime(2026, 8, 14, tzinfo=UTC)
@@ -248,7 +269,7 @@ async def test_created_run_waits_for_runtime_claim(
         commit_mode='forbid',
     )
 
-    assert created.status == 'queued'
+    assert created.status == 'prepared'
     assert created.commit_mode == 'forbid'
     assert created.current_activity_run_id is None
     assert [step.status for step in created.steps] == ['pending']
@@ -259,11 +280,22 @@ async def test_created_run_waits_for_runtime_claim(
         user_id='user-1', pipeline_id='pipeline-1',
     )
 
-    assert candidates == [created]
+    assert candidates == []
+
+    started, started_child = await service.start(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+    )
+
+    assert started.status == 'queued'
+    assert started_child is None
+    candidates = await service.list_claimable(
+        user_id='user-1', pipeline_id='pipeline-1',
+    )
+    assert candidates == [started]
 
     claim = await service.claim(
-        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        worker_id='worker-1', if_match=pipeline_run_etag(created),
+        user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(started),
         lease_duration=timedelta(minutes=1),
     )
 
@@ -328,9 +360,12 @@ async def test_active_claim_can_renew_its_lease_but_stale_claim_cannot(
     created, _ = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
-    claim = await service.claim(
+    started, _ = await service.start(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        worker_id='worker-1', if_match=pipeline_run_etag(created),
+    )
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(started),
         lease_duration=timedelta(minutes=1),
     )
 
@@ -385,9 +420,12 @@ async def test_completed_step_schedules_success_dependent_child(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
     assert child is None
-    claim = await service.claim(
+    started, _ = await service.start(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        worker_id='worker-1', if_match=pipeline_run_etag(created),
+    )
+    claim = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(started),
         lease_duration=timedelta(minutes=1),
     )
     assert claim is not None
@@ -413,10 +451,10 @@ async def test_completed_step_schedules_success_dependent_child(
 
 
 @pytest.mark.asyncio
-async def test_created_human_activity_creates_a_waiting_child_run(
+async def test_started_human_activity_creates_a_waiting_child_run(
     tenant_service: TenantService,
 ) -> None:
-    """Creation schedules an approval child run without a runtime claim."""
+    """Starting schedules an approval child run without a runtime claim."""
 
     gate = activity('approval-1', 'approval')
     now = datetime(2026, 8, 14, tzinfo=UTC)
@@ -437,12 +475,20 @@ async def test_created_human_activity_creates_a_waiting_child_run(
         id_factory=lambda: f'id-{next(identifiers)}', clock=IncrementingClock(),
         token_factory=lambda: 'token',
     )
-    waiting, child = await service.create(
+    created, child = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
 
     candidates = await service.list_claimable(
         user_id='user-1', pipeline_id='pipeline-1',
+    )
+
+    assert created.status == 'prepared'
+    assert child is None
+    assert candidates == []
+
+    waiting, child = await service.start(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
     )
 
     assert waiting.status == 'waiting'
@@ -451,7 +497,6 @@ async def test_created_human_activity_creates_a_waiting_child_run(
     assert child.state == 'awaiting_human_decision'
     assert child.next_action == 'submit_human_decision'
     assert waiting.worker_id is None
-    assert candidates == []
     runs.children[child.id] = replace(
         child,
         status='completed',
@@ -506,9 +551,12 @@ async def test_rejected_human_activity_reruns_ancestors_before_retry(
     created, _ = await service.create(
         user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
     )
-    _, first_child, _ = await service.claim(
+    started, _ = await service.start(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
-        worker_id='worker-1', if_match=pipeline_run_etag(created),
+    )
+    _, first_child, _ = await service.claim(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+        worker_id='worker-1', if_match=pipeline_run_etag(started),
         lease_duration=timedelta(minutes=1),
     )
     assert first_child is not None
