@@ -45,7 +45,7 @@ EXPECTED_CHECKSUMS = {
     '0035_remove_legacy_loops.sql': 'bf4cf4ec334c6b52e00bc243b3c91611e6373b42baf2905c1331d19162853daa',
     '0036_pipeline_run_events_and_gates.sql': 'df75d045a0b973f63fbe411bd318540d1749a1016091774e57fc589992426127',
     '0037_unify_human_activity_runs.sql': '07bd99705142318f3e18e9e1ad399e0de7d1e174e82f0a813b8078300e99c0f9',
-    '0038_prepared_pipeline_runs.sql': '23ae430cc04696f95d03930b7fe65cb1e05b0fe6d947a41b313a3030ab0ad4e5',
+    '0038_prepared_pipeline_runs.sql': 'a829c560010eab5a7c88969acb380b2c819d6cd9a0d04fac031c39b0ce2dab0d',
 }
 
 
