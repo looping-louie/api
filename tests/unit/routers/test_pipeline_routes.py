@@ -11,7 +11,7 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from src.app.controllers.pipeline import PipelineController
-from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
 from src.app.routers.pipelines import router as pipelines_router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.pipeline_runs import PipelineRunService
@@ -293,6 +293,32 @@ def test_pipeline_claimable_filter_accepts_standard_boolean_query(
     assert false_filter.status_code == 422
 
 
+def test_pipeline_event_ledger_returns_persisted_events(
+    tenant_service: TenantService,
+) -> None:
+    """Pipeline event listing serializes immutable persisted run events."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, _EventService()),
+    )
+
+    response = client.get('/api/v1/pipelines/pipeline-1/runs/run-1/events')
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'items': [{
+            'id': 'event-1',
+            'event_type': 'pipeline_run_created',
+            'activity_id': None,
+            'actor_id': 'user-1',
+            'payload': {'commit_mode': 'forbid'},
+            'created_at': '2026-08-21T00:00:00Z',
+        }],
+        'total': 1,
+    }
+
+
 def test_pipeline_claim_requires_an_if_match_header(
     tenant_service: TenantService,
 ) -> None:
@@ -378,6 +404,37 @@ class _ClaimableService:
         )
         self.was_called = True
         return []
+
+
+class _EventService:
+    """Provide one persisted event for event-ledger route testing."""
+
+    async def get(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        requested_workspace_id: str | None,
+    ) -> tuple[PipelineRunDocument, None]:
+        """Return one completed Pipeline run with its immutable event ledger."""
+
+        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+            'user-1', 'pipeline-1', 'run-1', None,
+        )
+        timestamp = datetime(2026, 8, 21, tzinfo=UTC)
+        return PipelineRunDocument(
+            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            input='Implement.', commit_mode='forbid', status='completed',
+            worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
+            current_activity_run_id=None, pipeline_snapshot={'steps': []}, steps=(),
+            created_at=timestamp, created_by='user-1', updated_at=timestamp,
+            events=(PipelineRunEventDocument(
+                id='event-1', workspace_id='workspace-1', pipeline_run_id='run-1',
+                event_type='pipeline_run_created', activity_id=None, actor_id='user-1',
+                payload={'commit_mode': 'forbid'}, created_at=timestamp,
+            ),),
+        ), None
 
 
 class _StartService:
