@@ -35,8 +35,8 @@ def test_linked_service_selection_cascades_with_persona_and_blocks_service_delet
     connection.execute(
         '''
         INSERT INTO persona_linked_service_selections (
-            persona_id, linked_service_id, model_id
-        ) VALUES ('persona-1', 'linked-service-1', 'model-1')
+            workspace_id, persona_id, linked_service_id, model_id
+        ) VALUES ('workspace-1', 'persona-1', 'linked-service-1', 'model-1')
         '''
     )
 

@@ -11,13 +11,7 @@ from src.app.catalogs.models import (
     ModelLab,
     validate_model_catalog,
 )
-from src.app.catalogs.providers import (
-    PROVIDER_CATALOG_BY_ID,
-    ProviderId,
-)
-from src.app.services.providers.model_registry import (
-    CatalogModelRegistryService,
-)
+from src.app.catalogs.providers import ProviderId
 from tests.factories.models import (
     build_deployment,
     build_model,
@@ -149,17 +143,3 @@ def test_one_logical_model_can_have_multiple_provider_deployments() -> None:
     )
 
     validate_model_catalog(catalog)
-    registry = CatalogModelRegistryService(catalog)
-
-    assert registry.count_by_provider(ProviderId.OPENAI) == 1
-    assert registry.count_by_provider(ProviderId.TOGETHER) == 1
-
-
-def test_empty_ollama_catalog_is_explicit() -> None:
-    """Ollama documents why it remains configurable without curated models."""
-
-    registry = CatalogModelRegistryService()
-    provider = PROVIDER_CATALOG_BY_ID[ProviderId.OLLAMA]
-
-    assert registry.count_by_provider(ProviderId.OLLAMA) == 0
-    assert provider.model_catalog_note

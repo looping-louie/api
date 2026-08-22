@@ -4,16 +4,23 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Path, Query, status
 
 from src.app.controllers.pipeline import PipelineController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,
+    PipelineRunClaimRequest,
+    PipelineRunClaimResponse,
+    PipelineRunClaimableListResponse,
+    PipelineRunContinueRequest,
+    PipelineRunEventListResponse,
     PipelineCreateRequest,
     PipelineListResponse,
     PipelinePatchRequest,
     PipelineRunCreateRequest,
+    PipelineRunLeaseRenewRequest,
+    PipelineRunLeaseResponse,
     PipelineRunResponse,
     PipelineResponse,
     PipelineStatusValue,
@@ -140,6 +147,73 @@ async def create_pipeline_run(
 
 
 @router.get(
+    '/{pipeline_id}/runs',
+    response_model=PipelineRunClaimableListResponse,
+    summary='List claimable pipeline runs',
+)
+async def list_claimable_pipeline_runs(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    claimable: Annotated[bool, Query()],
+) -> PipelineRunClaimableListResponse:
+    """Return candidates for the explicit runtime claimable filter."""
+
+    if not claimable:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail='claimable must be true.',
+        )
+    return await controller.list_claimable_runs(
+        user_id=context.user_id, pipeline_id=pipeline_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    '/{pipeline_id}/runs/{run_id}/start',
+    response_model=PipelineRunResponse,
+    summary='Start pipeline run',
+)
+async def start_pipeline_run(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunResponse:
+    """Make one prepared Pipeline run eligible for its assigned executor."""
+
+    return await controller.start_run(
+        user_id=context.user_id,
+        pipeline_id=pipeline_id,
+        run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.patch(
+    '/{pipeline_id}/runs/{run_id}',
+    response_model=PipelineRunClaimResponse,
+    summary='Claim pipeline run',
+)
+async def claim_pipeline_run(
+    payload: PipelineRunClaimRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+    if_match: Annotated[str, Header(alias='If-Match', min_length=1)],
+) -> PipelineRunClaimResponse:
+    """Claim one current pipeline run using the entity tag from its listing."""
+
+    return await controller.claim_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        payload=payload, if_match=if_match,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.get(
     '/{pipeline_id}/runs/{run_id}',
     response_model=PipelineRunResponse,
     summary='Get pipeline run',
@@ -158,12 +232,53 @@ async def get_pipeline_run(
     )
 
 
+@router.get(
+    '/{pipeline_id}/runs/{run_id}/events',
+    response_model=PipelineRunEventListResponse,
+    summary='List pipeline run events',
+)
+async def list_pipeline_run_events(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunEventListResponse:
+    """Return the append-only execution ledger for one Pipeline run."""
+
+    return await controller.list_events(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
+@router.post(
+    '/{pipeline_id}/runs/{run_id}/lease',
+    response_model=PipelineRunLeaseResponse,
+    summary='Renew pipeline run lease',
+)
+async def renew_pipeline_run_lease(
+    payload: PipelineRunLeaseRenewRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunLeaseResponse:
+    """Extend an active worker lease before continuing runtime execution."""
+
+    return await controller.renew_lease(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        lease_token=payload.lease_token,
+        requested_workspace_id=context.requested_workspace_id,
+    )
+
+
 @router.post(
     '/{pipeline_id}/runs/{run_id}/continue',
     response_model=PipelineRunResponse,
     summary='Continue pipeline run',
 )
 async def continue_pipeline_run(
+    payload: PipelineRunContinueRequest,
     context: ContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
@@ -173,6 +288,7 @@ async def continue_pipeline_run(
 
     return await controller.continue_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        payload=payload,
         requested_workspace_id=context.requested_workspace_id,
     )
 

@@ -180,6 +180,7 @@ class ActivityService:
             )
             selection = (
                 await self._persona_linked_service_selection_repository.get_for_persona(
+                    workspace_id=workspace_id,
                     persona_id=persona_id,
                 )
             )
@@ -187,8 +188,8 @@ class ActivityService:
                 raise ActivityValidationError(
                     field_name='config',
                     message=(
-                        f'agents.{position}.model_id is required when the '
-                        'Persona has no linked-service selection'
+                        f'agents.{position}.persona_id requires a '
+                        'linked-service selection in this workspace'
                     ),
                 )
 

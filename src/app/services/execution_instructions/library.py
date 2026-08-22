@@ -271,6 +271,7 @@ class ExecutionInstructionLibraryService:
             )
             linked_service_selection = (
                 await self._persona_linked_service_selection_repository.get_for_persona(
+                    workspace_id=workspace_id,
                     persona_id=document.id,
                 )
                 if (

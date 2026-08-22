@@ -13,7 +13,7 @@ pipeline orchestration.
 ## Resource endpoints
 
 | Method | Path | Purpose |
-| --- | --- | --- |
+| ------ | ---- | ------- |
 | `GET` | `/api/v1/activities` | List activities. |
 | `POST` | `/api/v1/activities` | Create an activity. |
 | `GET` | `/api/v1/activities/{activity_id}` | Describe an activity. |
@@ -50,17 +50,18 @@ type.
 | `refinement_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator, at least one reviewer, and no aggregator. |
 | `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
 
-Every loop agent requires a `persona_id` and `role`. Its `model_id` is required
-for legacy Personas. It may be omitted only when the referenced Persona has a
-linked-service model selection and is visible in the selected workspace;
-execution then uses that Persona selection.
+Every loop agent requires a `persona_id` and `role`. The referenced Persona must
+have a Linked Service selection in the selected workspace. Execution always uses
+that exact service and its selected model; an agent `model_id` does not select an
+execution route.
 
 ## Activity runs
 
-Direct, refinement, and roundtable loop activities expose persisted executions at
-`/api/v1/activities/{activity_id}/runs`. Each run response identifies its
-owning definition with `activity_id`; it does not expose a legacy loop
-identifier.
+Pipeline scheduling creates persisted ActivityRuns for dependency-ready steps.
+`/api/v1/activities/{activity_id}/runs` exposes those Pipeline-owned runs for
+display and execution continuation; it cannot create standalone executions.
+Each run response identifies its owning definition with `activity_id`; it does
+not expose a legacy loop identifier.
 
 ## List activities
 
@@ -549,18 +550,38 @@ Example response (`200 OK`):
 }
 ```
 
+## Delete an activity
+
+`DELETE /api/v1/activities/{activity_id}` removes an Activity definition while
+preserving its changelog entries.
+
+```http
+DELETE /api/v1/activities/activity-implementation
+X-Workspace-ID: workspace-acme
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "deleted": true
+}
+```
+
+The endpoint returns `404 activity_not_found` when the Activity does not exist
+in the selected workspace.
+
 ## Loop activity runs
 
-Only active activities with `type: "direct_loop"` or
-`type: "roundtable_loop"` can run. Their `config` is captured when a run is
+Only active activities with `type: "direct_loop"`, `type: "refinement_loop"`,
+or `type: "roundtable_loop"` can run. Their `config` is captured when a run is
 created, so later definition changes do not alter an in-progress run.
 
 | Method | Path | Purpose |
-| --- | --- | --- |
+| ------ | ---- | ------- |
 | `GET` | `/api/v1/activities/{activity_id}/runs` | List runs for a loop activity. |
-| `POST` | `/api/v1/activities/{activity_id}/runs` | Create a run. |
 | `GET` | `/api/v1/activities/{activity_id}/runs/{run_id}` | Describe a run. |
-| `POST` | `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Submit one CLI checkpoint result. |
+| `POST` | `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Submit one runtime or human checkpoint result. |
 
 `GET /api/v1/activities/{activity_id}/runs` returns ten runs after the
 optional non-negative `offset`.
@@ -577,7 +598,7 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "run-implementation-001",
-      "loop_id": "activity-implementation",
+      "activity_id": "activity-implementation",
       "input": "Implement the requested change.",
       "status": "in_progress",
       "state": "awaiting_snapshot",
@@ -638,7 +659,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "run-implementation-001",
-  "loop_id": "activity-implementation",
+  "activity_id": "activity-implementation",
   "input": "Implement the requested change.",
   "status": "in_progress",
   "state": "awaiting_snapshot",
@@ -653,9 +674,64 @@ Example response (`201 Created`):
 }
 ```
 
-Checkpoint responses and continuation payloads use the activity-run protocol.
+## Continue an activity run
+
+`POST /api/v1/activities/{activity_id}/runs/{run_id}/continue` submits one
+idempotent CLI checkpoint result. Every request requires the current
+`continuation_token`, a unique `idempotency_key`, and a result object whose
+`action` matches the run's `next_action`.
+
+```http
+POST /api/v1/activities/activity-implementation/runs/run-implementation-001/continue
+X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "continuation_token": "continuation-token",
+  "idempotency_key": "checkpoint-001",
+  "result": {
+    "action": "collect_snapshot",
+    "repo_context": "Repository context for generation.",
+    "workspace_metadata": {
+      "workspace_path": "/workspace/project",
+      "source_commit_sha": "a1b2c3d4"
+    },
+    "constitution": "Repository contribution rules.",
+    "project_profile": {
+      "source_file_count": 24,
+      "approximate_source_chars": 12000,
+      "extension_counts": {
+        ".py": 24
+      },
+      "top_level_entries": ["src", "tests"],
+      "markers": {
+        "nuxt": false,
+        "package_json": false,
+        "fastapi": true,
+        "docker": false,
+        "tests": true
+      }
+    }
+  }
+}
+```
+
+The endpoint returns the updated Activity run (`200 OK`). A run selected by a
+Pipeline additionally requires its `pipeline_run_id` and active Pipeline
+`lease_token`. The API rejects a missing, expired, or mismatched lease with
+`409 activity_run_invalid_transition` before persisting a checkpoint result.
+
 Requests for inactive or non-executable activities return
-`409 activity_run_unavailable`.
+`409 activity_run_unavailable`. An invalid or stale continuation token returns
+`409 activity_run_token_conflict`.
+
+Standalone Activity runs continue with their checkpoint token and idempotency
+key. A child run selected by a Pipeline additionally requires its
+`pipeline_run_id` and active Pipeline `lease_token`. The API rejects a missing,
+expired, or mismatched lease with `409 activity_run_invalid_transition` before it
+persists the checkpoint result.
 
 ## List activity changelog entries
 

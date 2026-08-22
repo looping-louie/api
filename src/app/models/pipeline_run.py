@@ -7,7 +7,16 @@ from datetime import datetime
 from typing import Literal, Mapping
 
 
-PipelineRunStatus = Literal['in_progress', 'failed', 'completed']
+PipelineRunStatus = Literal[
+    'prepared',
+    'queued',
+    'claimed',
+    'in_progress',
+    'waiting',
+    'failed',
+    'completed',
+]
+PipelineRunCommitMode = Literal['allow', 'forbid']
 PipelineRunStepStatus = Literal[
     'pending',
     'in_progress',
@@ -15,6 +24,18 @@ PipelineRunStepStatus = Literal[
     'failed',
     'skipped',
 ]
+@dataclass(frozen=True, slots=True)
+class PipelineRunEventDocument:
+    """One immutable event emitted during a Pipeline run."""
+
+    id: str
+    workspace_id: str
+    pipeline_run_id: str
+    event_type: str
+    activity_id: str | None
+    actor_id: str
+    payload: Mapping[str, object]
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,9 +59,15 @@ class PipelineRunDocument:
     pipeline_id: str
     input: str
     status: PipelineRunStatus
+    worker_id: str | None
+    lease_token: str | None
+    lease_expires_at: datetime | None
+    attempt: int
     current_activity_run_id: str | None
     pipeline_snapshot: Mapping[str, object]
     steps: tuple[PipelineRunStepDocument, ...]
     created_at: datetime
     created_by: str
     updated_at: datetime
+    commit_mode: PipelineRunCommitMode = 'allow'
+    events: tuple[PipelineRunEventDocument, ...] = ()

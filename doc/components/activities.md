@@ -16,15 +16,15 @@ are `active`, `disabled`, and `archived`.
 | Loop | `direct_loop` | Produce one model-generated operation plan. | Supported |
 | Loop | `refinement_loop` | Run an iterative generator and reviewer flow. | Supported |
 | Loop | `roundtable_loop` | Synthesize proposals from multiple generators. | Supported |
-| Human gate | `approval` | Represent a human approval decision. | Not supported |
-| Human gate | `quiz` | Collect a human quiz response. | Not supported |
+| Human | `approval` | Represent a human approval decision. | Supported |
+| Human | `quiz` | Collect a human quiz response. | Supported |
 
 ## Loop Activities
 
 Loop Activities configure one or more model agents, stop conditions, and an
-output contract. An agent combines a Persona and one role with either a legacy
-model ID or that Persona's linked-service model selection. A selection-only
-agent requires a Persona visible in the Activity workspace.
+output contract. An agent combines a Persona and one role. The Persona's
+workspace-scoped Linked Service selection supplies both the exact connection and
+model used for execution.
 
 - `generator`: produces a candidate solution or proposed output;
 - `reviewer`: evaluates a candidate and provides feedback for refinement;
@@ -58,11 +58,12 @@ a proposal, then the aggregator synthesizes those proposals into the final JSON
 operation plan. Reviewers are not allowed. The CLI applies only the
 aggregator's final plan, not the individual proposals.
 
-## Human Gate Activities
+## Human Activities
 
-Human gate Activities represent decisions or responses that require a person
-rather than model execution. They are valid Pipeline steps but cannot currently
-create persisted Activity runs.
+Human Activities represent decisions or responses that require a person rather
+than model execution. They create regular persisted Activity runs with the
+`human` executor, `awaiting_human_decision` state, and
+`submit_human_decision` continuation action.
 
 ### Approval
 
@@ -76,16 +77,15 @@ A `quiz` Activity collects a human quiz response. Its configuration requires a
 
 ## Activity Runs
 
-Loop Activities expose persisted runs. Each run identifies its owning Activity
-by `activity_id`; it does not expose a legacy loop identifier. The run executor
-resolves configured agent personas from the instruction library before invoking
-their models.
+Activities expose persisted runs. Each run identifies its owning Activity by
+`activity_id`; it does not expose a legacy loop identifier. Runtime executors
+resolve configured agent personas from the instruction library before invoking
+their models, while human executors submit a terminal decision checkpoint.
 
 ## Related Files
 
 - `src/app/models/activity.py` defines the Activity domain model;
 - `src/app/schemas/activity.py` validates Activity HTTP contracts;
 - `src/app/services/activity_runs/service.py` creates supported Activity runs;
-- `src/app/services/loop_runs/service.py` and
-  `src/app/services/loop_runs/generation.py` execute loop runs;
+- `src/app/services/activity_runs/generation.py` executes loop Activity runs;
 - `doc/endpoints/activities.md` documents the Activity REST API.

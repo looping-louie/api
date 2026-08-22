@@ -8,7 +8,7 @@ import aiosqlite
 
 from src.app.models.linked_service import LinkedService
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
-from src.app.repositories.providers.credential_mapper import parse_datetime
+from src.app.repositories.shared.datetime import parse_datetime
 
 
 class LinkedServiceRepository(Protocol):

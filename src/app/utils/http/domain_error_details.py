@@ -109,15 +109,6 @@ def _execution_instruction_not_found_details(
     }
 
 
-def _loop_details(error: Exception) -> ErrorDetails:
-    """Return the loop identity carried by loop-specific errors."""
-
-    return {
-        "resource_type": "loop",
-        "resource_id": getattr(error, "loop_id"),
-    }
-
-
 def _referenced_resources_details(error: Exception) -> ErrorDetails:
     """Return every unresolved resource reference."""
 

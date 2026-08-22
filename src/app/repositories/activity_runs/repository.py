@@ -40,6 +40,18 @@ class ActivityRunRepository(Protocol):
         """Return one activity-run page and its unpaginated total."""
         raise NotImplementedError
 
+    async def has_active_pipeline_lease(
+        self,
+        *,
+        workspace_id: str,
+        activity_run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        now: datetime,
+    ) -> bool:
+        """Return whether a Pipeline child has a valid current worker lease."""
+        raise NotImplementedError
+
     async def transition(
         self,
         *,
@@ -56,6 +68,8 @@ class ActivityRunRepository(Protocol):
         execution_context: dict[str, object],
         updated_at: datetime,
         iteration: int | None = None,
+        pipeline_run_id: str | None = None,
+        lease_token: str | None = None,
     ) -> ActivityRunDocument:
-        """Persist one validated checkpoint transition or return its replay."""
+        """Persist one fenced checkpoint transition or return its replay."""
         raise NotImplementedError

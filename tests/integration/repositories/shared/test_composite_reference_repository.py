@@ -7,16 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.providers.repository import (
-    SqliteProviderRepository,
-)
-from src.app.repositories.providers.state_repository import (
-    ProviderStateRepositoryAdapter,
-)
+from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -45,15 +39,8 @@ def build_repository(
     instruction_repository = SqliteInstructionRepository(
         database_path,
     )
-    provider_repository = SqliteProviderRepository(
-        database,
-    )
-    provider_state_repository = ProviderStateRepositoryAdapter(
-        provider_repository=provider_repository,
-        catalog=PROVIDER_CATALOG,
-    )
     availability_service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=SqliteLinkedServiceRepository(database),
     )
     tenant_service = TenantService(
         repository=SqliteTenantRepository(

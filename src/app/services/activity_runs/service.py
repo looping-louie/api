@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from secrets import token_urlsafe
 from typing import Mapping
 
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
+from src.app.repositories.activity_runs.errors import (
+    ActivityRunInvalidTransitionError,
+)
 from src.app.services.activities.service import ActivityService
-from src.app.services.activity_runs.types import ActivityRunUnavailableError
+from src.app.services.activity_runs.types import (
+    ActivityRunNotFoundError,
+    ActivityRunUnavailableError,
+    ActivityRunValidationError,
+)
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
-from src.app.services.loop_runs.generation import LoopRunGenerationService
-from src.app.services.loop_runs.types import LoopRunNotFoundError
-from src.app.services.loops.types import LoopValidationError
+from src.app.services.activity_runs.generation import (
+    ActivityRunGenerationService,
+)
 from src.app.services.model_execution import ModelExecutionService
+from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 
@@ -29,7 +38,7 @@ class ActivityRunService:
         activity_service: ActivityService,
         tenant_service: TenantService,
         id_factory: Callable[[], str],
-        clock: Callable[[], object],
+        clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -43,7 +52,7 @@ class ActivityRunService:
         self._clock = clock
         self._token_factory = token_factory
         self._generation_service = (
-            LoopRunGenerationService(
+            ActivityRunGenerationService(
                 model_execution_service=model_execution_service,
                 instruction_library_service=instruction_library_service,
             )
@@ -60,7 +69,7 @@ class ActivityRunService:
         input_text: str,
         requested_workspace_id: str | None = None,
     ) -> ActivityRunDocument:
-        """Persist a new run from an active executable activity."""
+        """Persist a new run from an active Activity definition."""
 
         activity = await self._active_activity(
             user_id=user_id,
@@ -79,8 +88,8 @@ class ActivityRunService:
                 activity_id=activity.id,
                 input=self._require_text(input_text, 'input'),
                 status='in_progress',
-                state='awaiting_snapshot',
-                next_action='collect_snapshot',
+                state=self._initial_state(activity),
+                next_action=self._initial_action(activity),
                 iteration=1,
                 token_revision=0,
                 continuation_token=self._token_factory(),
@@ -112,7 +121,10 @@ class ActivityRunService:
             run_id=run_id,
         )
         if document is None:
-            raise LoopRunNotFoundError(loop_id=activity_id, run_id=run_id)
+            raise ActivityRunNotFoundError(
+                activity_id=activity_id,
+                run_id=run_id,
+            )
         return document
 
     async def list(
@@ -131,7 +143,10 @@ class ActivityRunService:
             requested_workspace_id=requested_workspace_id,
         )
         if offset < 0:
-            raise LoopValidationError(field_name='offset', message='must be positive')
+            raise ActivityRunValidationError(
+                field_name='offset',
+                message='must be positive',
+            )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
@@ -150,13 +165,15 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         run_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
         continuation_token: str,
         idempotency_key: str,
         action: str,
         result: Mapping[str, object],
         requested_workspace_id: str | None = None,
     ) -> ActivityRunDocument:
-        """Advance one validated CLI checkpoint for an activity run."""
+        """Advance one validated runtime or human execution checkpoint."""
 
         await self._active_activity(
             user_id=user_id,
@@ -173,6 +190,34 @@ class ActivityRunService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
+        human_execution = document.activity_snapshot.get('executor') == 'human'
+        if not human_execution and not await self._repository.has_active_pipeline_lease(
+            workspace_id=workspace.workspace_id,
+            activity_run_id=document.id,
+            pipeline_run_id=pipeline_run_id,
+            lease_token=lease_token,
+            now=self._clock(),
+        ):
+            raise ActivityRunInvalidTransitionError()
+        if action == 'submit_human_decision':
+            decision = str(result.get('decision'))
+            return await self._transition(
+                document=document,
+                workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id,
+                lease_token=lease_token,
+                continuation_token=continuation_token,
+                idempotency_key=idempotency_key,
+                action=action,
+                status='completed' if decision == 'approved' else 'failed',
+                state='completed' if decision == 'approved' else 'failed',
+                next_action='none',
+                next_token=None,
+                context={
+                    **dict(document.execution_context),
+                    'human_decision': dict(result),
+                },
+            )
         context = dict(document.execution_context)
         if action == 'collect_snapshot':
             previous_review = context.get('review_result')
@@ -183,20 +228,35 @@ class ActivityRunService:
             if self._generation_service is None:
                 return await self._transition(
                     document=document, workspace_id=workspace.workspace_id,
+                    pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                     continuation_token=continuation_token, idempotency_key=idempotency_key,
                     action=action, status='in_progress', state='awaiting_generation',
                     next_action='none', next_token=None, context=context,
                 )
-            generated = await self._generation_service.generate_context(
-                loop_snapshot=document.activity_snapshot,
-                workspace_id=workspace.workspace_id,
-                user_id=user_id,
-                requested_workspace_id=requested_workspace_id,
-                input_text=document.input,
-                context=context,
-            )
+            try:
+                generated = await self._generation_service.generate_context(
+                    loop_snapshot=document.activity_snapshot,
+                    workspace_id=workspace.workspace_id,
+                    user_id=user_id,
+                    requested_workspace_id=requested_workspace_id,
+                    input_text=document.input,
+                    context=context,
+                )
+            except ModelServiceError as error:
+                return await self._generation_failure_transition(
+                    document=document,
+                    workspace_id=workspace.workspace_id,
+                    pipeline_run_id=pipeline_run_id,
+                    lease_token=lease_token,
+                    continuation_token=continuation_token,
+                    idempotency_key=idempotency_key,
+                    action=action,
+                    context=context,
+                    error=error,
+                )
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='in_progress', state='awaiting_apply',
                 next_action='apply_operations', next_token=self._token_factory(),
@@ -205,15 +265,31 @@ class ActivityRunService:
         if action == 'apply_operations':
             context['apply_result'] = dict(result)
             applied = result.get('applied') is True
+            commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
-                action=action, status='in_progress' if applied else 'failed',
-                state='awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
-                else ('awaiting_commit' if applied else 'failed'),
-                next_action='submit_review_input' if applied and self._has_reviewers(document.activity_snapshot)
-                else ('commit_if_allowed' if applied else 'none'),
-                next_token=self._token_factory() if applied else None, context=context,
+                action=action,
+                status=(
+                    'completed' if applied and commit_forbidden
+                    and not self._has_reviewers(document.activity_snapshot)
+                    else ('in_progress' if applied else 'failed')
+                ),
+                state=(
+                    'awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    else ('completed' if applied and commit_forbidden else ('awaiting_commit' if applied else 'failed'))
+                ),
+                next_action=(
+                    'submit_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    else ('none' if applied and commit_forbidden else ('commit_if_allowed' if applied else 'none'))
+                ),
+                next_token=(
+                    self._token_factory() if applied and (
+                        self._has_reviewers(document.activity_snapshot) or not commit_forbidden
+                    ) else None
+                ),
+                context=context,
             )
         if action == 'submit_review_input':
             if self._generation_service is None:
@@ -221,6 +297,8 @@ class ActivityRunService:
             review = await self._generation_service.generate_review_context(
                 loop_snapshot=document.activity_snapshot,
                 workspace_id=workspace.workspace_id,
+                user_id=user_id,
+                requested_workspace_id=requested_workspace_id,
                 input_text=document.input,
                 context=context,
                 final_diff=str(result.get('final_diff', '')),
@@ -229,31 +307,49 @@ class ActivityRunService:
             updated_context = {**context, 'review_input': dict(result), 'review_result': review}
             approved = review['approved'] is True
             retry = not approved and document.iteration < self._max_iterations(document.activity_snapshot)
+            commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
-                action=action, status='in_progress' if approved or retry else 'failed',
-                state='awaiting_commit' if approved else ('awaiting_snapshot' if retry else 'failed'),
-                next_action='commit_if_allowed' if approved else ('collect_snapshot' if retry else 'none'),
-                next_token=self._token_factory() if approved or retry else None,
+                action=action,
+                status=(
+                    'completed' if approved and commit_forbidden
+                    else ('in_progress' if approved or retry else 'failed')
+                ),
+                state=(
+                    'completed' if approved and commit_forbidden
+                    else ('awaiting_commit' if approved else ('awaiting_snapshot' if retry else 'failed'))
+                ),
+                next_action=(
+                    'none' if approved and commit_forbidden
+                    else ('commit_if_allowed' if approved else ('collect_snapshot' if retry else 'none'))
+                ),
+                next_token=self._token_factory() if (approved and not commit_forbidden) or retry else None,
                 context=updated_context, iteration=document.iteration + 1 if retry else None,
             )
         if action == 'commit_if_allowed':
             committed = result.get('committed') is True
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
+                pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='completed' if committed else 'failed',
                 state='completed' if committed else 'failed', next_action='none',
                 next_token=None, context={**context, 'commit_result': dict(result)},
             )
-        raise LoopValidationError(field_name='result.action', message='is not supported')
+        raise ActivityRunValidationError(
+            field_name='result.action',
+            message='is not supported',
+        )
 
     async def _transition(
         self,
         *,
         document: ActivityRunDocument,
         workspace_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
         continuation_token: str,
         idempotency_key: str,
         action: str,
@@ -268,26 +364,60 @@ class ActivityRunService:
 
         return await self._repository.transition(
             workspace_id=workspace_id, activity_id=document.activity_id,
-            run_id=document.id, continuation_token=continuation_token,
+            run_id=document.id, pipeline_run_id=pipeline_run_id,
+            lease_token=lease_token, continuation_token=continuation_token,
             idempotency_key=idempotency_key, expected_action=action, status=status,
             state=state, next_action=next_action, next_continuation_token=next_token,
             execution_context=context, updated_at=self._clock(), iteration=iteration,
         )
 
+    async def _generation_failure_transition(
+        self,
+        *,
+        document: ActivityRunDocument,
+        workspace_id: str,
+        pipeline_run_id: str | None,
+        lease_token: str | None,
+        continuation_token: str,
+        idempotency_key: str,
+        action: str,
+        context: dict[str, object],
+        error: ModelServiceError,
+    ) -> ActivityRunDocument:
+        """Persist an API-owned model configuration failure for the active claim."""
+
+        return await self._transition(
+            document=document,
+            workspace_id=workspace_id,
+            pipeline_run_id=pipeline_run_id,
+            lease_token=lease_token,
+            continuation_token=continuation_token,
+            idempotency_key=idempotency_key,
+            action=action,
+            status='failed',
+            state='failed',
+            next_action='none',
+            next_token=None,
+            context={
+                **context,
+                'failure': {
+                    'source': 'api',
+                    'type': type(error).__name__,
+                    'message': str(error),
+                },
+            },
+        )
+
     async def _active_activity(
         self, *, user_id: str, activity_id: str, requested_workspace_id: str | None,
     ) -> object:
-        """Return an active activity that has an executable configuration."""
+        """Return an active Activity supported by the execution protocol."""
 
         activity = await self._activity_service.get(
             user_id=user_id, activity_id=activity_id,
             requested_workspace_id=requested_workspace_id,
         )
-        if activity.type not in (
-            'direct_loop',
-            'refinement_loop',
-            'roundtable_loop',
-        ):
+        if activity.type not in ('approval', 'quiz', 'direct_loop', 'refinement_loop', 'roundtable_loop'):
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not executable')
         if activity.status != 'active':
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
@@ -295,20 +425,43 @@ class ActivityRunService:
 
     @staticmethod
     def _snapshot(activity: object) -> dict[str, object]:
-        """Shape an activity configuration for the shared generation engine."""
+        """Shape a frozen configuration for its assigned ActivityRun executor."""
 
         flow = {
             'direct_loop': 'direct',
             'refinement_loop': 'refinement',
             'roundtable_loop': 'roundtable',
         }
-        return {
+        snapshot = {
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
             **dict(getattr(activity, 'config')),
-            'flow': flow[getattr(activity, 'type')],
         }
+        activity_type = getattr(activity, 'type')
+        if activity_type in ('approval', 'quiz'):
+            return {**snapshot, 'type': activity_type, 'executor': 'human'}
+        return {**snapshot, 'flow': flow[activity_type], 'executor': 'runtime'}
+
+    @staticmethod
+    def _initial_state(activity: object) -> str:
+        """Return the first checkpoint state for the Activity's executor."""
+
+        return (
+            'awaiting_human_decision'
+            if getattr(activity, 'type') in ('approval', 'quiz')
+            else 'awaiting_snapshot'
+        )
+
+    @staticmethod
+    def _initial_action(activity: object) -> str:
+        """Return the first action expected from the Activity's executor."""
+
+        return (
+            'submit_human_decision'
+            if getattr(activity, 'type') in ('approval', 'quiz')
+            else 'collect_snapshot'
+        )
 
     @staticmethod
     def _has_reviewers(snapshot: Mapping[str, object]) -> bool:
@@ -343,5 +496,8 @@ class ActivityRunService:
 
         normalized = value.strip()
         if not normalized:
-            raise LoopValidationError(field_name=field_name, message='must not be empty')
+            raise ActivityRunValidationError(
+                field_name=field_name,
+                message='must not be empty',
+            )
         return normalized

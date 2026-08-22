@@ -40,6 +40,14 @@ EXPECTED_CHECKSUMS = {
     '0030_pipeline_runs.sql': 'ef9f73a426f846bfb3928b72b807388eb22022ab889f36c379c5fa4af894ed8d',
     '0031_linked_services.sql': '399cb66c3b888552553635427932f7593bc4212aa9b7793e7e93674d2739f54c',
     '0032_persona_linked_service_selections.sql': '4923a947721b2a190f2c8c4bf7ce7d4561907f42f9d3c0bdd238ca0552a74e47',
+    '0033_pipeline_run_worker_claims.sql': 'd326ceb9e751ab085f2f9ae87e923300357e960beaf637340004401930907252',
+    '0034_pipeline_run_commit_mode.sql': '52c030f8a4c0cff290abb586dcce45e4cc8e66b623ca1d97faf08c8eaad90b72',
+    '0035_remove_legacy_loops.sql': 'bf4cf4ec334c6b52e00bc243b3c91611e6373b42baf2905c1331d19162853daa',
+    '0036_pipeline_run_events_and_gates.sql': 'df75d045a0b973f63fbe411bd318540d1749a1016091774e57fc589992426127',
+    '0037_unify_human_activity_runs.sql': '07bd99705142318f3e18e9e1ad399e0de7d1e174e82f0a813b8078300e99c0f9',
+    '0038_prepared_pipeline_runs.sql': 'a829c560010eab5a7c88969acb380b2c819d6cd9a0d04fac031c39b0ce2dab0d',
+    '0039_workers.sql': '8c8fd031d67e718903a9e77af0bbefde9427b855882a21514eb297554710f1db',
+    '0040_retire_legacy_provider_credentials.sql': '4c065fa61ad7f25530e84e7b07dfb5fb43e0398407bb2d3412220ec2e7005b17',
 }
 
 

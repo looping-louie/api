@@ -1,22 +1,50 @@
 # Looping Louie Architecture
 
 Looping Louie API is the decision engine for iterative LLM software
-development. It orchestrates generators, reviewers, and aggregators while the
-CLI executes repository changes locally.
+development. It persists pipeline and activity state while the runtime executes
+repository changes on a worker.
 
 The runtime is independent from any programming language, framework, or LLM
 provider.
 
+## Worker provisioning
+
+The API provisions each workspace worker identity. The runtime stores the
+assigned ID in its workspace configuration and refreshes its heartbeat before
+polling. PipelineRun claims require an active worker heartbeat, while the
+existing PipelineRun lease continues to authorize only one claimed run.
+Heartbeat liveness never renews or revokes a lease.
+
 ## Ownership boundaries
 
-The API owns resource management, activity-run state, prompt generation, model
-decisions, and checkpoint transitions. The CLI owns workspace lifecycle,
-repository inspection, filesystem changes, Git operations, and multi-step
-workflow progression.
+The API owns resource management, durable pipeline and activity-run state,
+prompt generation, model decisions, and checkpoint transitions. The runtime
+owns workspace lifecycle, repository inspection, filesystem changes, Git
+operations, and activity execution after it claims a queued pipeline run.
 
-The API and CLI coordinate through the activity-run checkpoint protocol documented
-in [Execution](components/execution.md). The API never mutates the target
-repository directly, and the CLI does not make model or reviewer decisions.
+The API and runtime coordinate through the activity-run checkpoint protocol
+documented in [Execution](components/execution.md). The API never mutates the
+target repository directly, and the runtime does not make model or reviewer
+decisions. A claimed runtime worker must present its active lease token before
+it checkpoints an Activity child or advances Pipeline scheduling; the API
+rejects stale workers before either durable mutation.
+
+When API-owned generation detects a classified model catalog failure while
+processing a valid checkpoint, the API records a terminal failed Activity with
+a structured failure reason. It does not leave the claimed Pipeline child
+reclaimable after returning the error to the runtime.
+
+Each Pipeline run freezes its `commit_mode` authorization policy. A `forbid`
+run completes after approved operations without emitting a commit checkpoint;
+the runtime's local Git policy may further deny an allowed commit but cannot
+grant one forbidden by the persisted run policy.
+
+Pipeline runs preserve an append-only event ledger. A ready `approval` or
+`quiz` Activity creates a normal child Activity run with a human executor and
+transitions the Pipeline to `waiting` without assigning a worker lease. Users
+submit its decision through the Activity-run continuation API. A rejected
+human Activity run resets frozen predecessor steps for corrective execution;
+the scheduler creates a new human child after those steps complete again.
 
 ## Repository structure
 
@@ -50,8 +78,10 @@ services/
 |-- activities/
 |   `-- service.py                 Manages definitions and changelog history
 |-- activity_runs/
-|   `-- service.py                 Creates, reads, and advances activity-owned
-|                                  execution checkpoints
+|   |-- generation.py              Orchestrates model calls for loop Activities
+|   |-- service.py                 Creates, reads, and advances activity-owned
+|   |                              execution checkpoints
+|   `-- types.py                   Defines execution contracts and domain errors
 |-- catalog/
 |   `-- service.py                 Exposes static provider and model definitions
 |-- execution_instructions/
@@ -72,20 +102,6 @@ services/
 |   `-- validation.py              Normalizes and validates input
 |-- linked_services/
 |   `-- service.py                 Manages workspace-owned provider connections
-|-- loop_runs/
-|   |-- __init__.py                Defines the package's public imports
-|   |-- generation.py              Orchestrates model calls for direct and
-|   |                              roundtable runs
-|   |-- service.py                 Creates, reads, and advances Loop run
-|   |                              checkpoints
-|   |-- types.py                   Defines contracts and domain errors
-|   `-- validation.py              Normalizes and validates input
-|-- loops/
-|   |-- __init__.py                Defines the package's public imports
-|   |-- mutation.py                Builds updates and changelog data
-|   |-- service.py                 Coordinates definitions and changelogs
-|   |-- types.py                   Defines input types and domain errors
-|   `-- validation.py              Normalizes and validates definitions
 |-- model_execution/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Invokes provider-neutral endpoints through
@@ -157,13 +173,9 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- loop_run/
-|   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- advance.py                Advances CLI checkpoints
-|   |-- create.py                 Creates runs from definitions
-|   |-- describe.py               Describes one run
-|   |-- list.py                   Lists runs
-|   `-- utils.py                  Translates results to response schemas
+|-- activity_run.py               Coordinates Activity-run HTTP operations
+|-- activity_runs/
+|   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
 |   `-- __init__.py               Composes Linked Service controllers
 |-- model/
@@ -219,9 +231,6 @@ catalogs/
 |   |-- resource_loader.py         Loads JSON manifests and Markdown resources
 |   |-- resource_validation.py     Validates manifest values
 |   `-- types.py                   Defines catalog metadata and value types
-|-- loops/
-|   |-- __init__.py                Defines public catalog contracts
-|   `-- catalog.py                 Defines curated entries
 |-- models/
 |   |-- __init__.py                Combines and validates curated entries
 |   |-- helpers.py                 Builds shared pricing and capability values
@@ -269,22 +278,15 @@ repositories/
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
 |   |-- persona_linked_service_selection_repository.py Persists persona service selections
-|   |-- persona_model_repository.py Persists optional legacy persona-model associations
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- linked_services/
 |   `-- repository.py              Persists workspace provider connections
-|-- loop_runs/
-|   |-- __init__.py                Defines public persistence imports
+|-- activity_runs/
 |   |-- errors.py                  Defines checkpoint transition conflicts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists checkpoint records
-|-- loops/
-|   |-- __init__.py                Declares persistence contracts and helpers
-|   |-- mapping.py                 Maps SQLite rows and write values
-|   |-- repository.py              Defines the persistence contract and changelog
-|   `-- sqlite_repository.py       Persists records and changelog entries
 |-- pipelines/
 |   |-- __init__.py                Declares persistence contracts and adapters
 |   |-- mapping.py                 Maps SQLite rows and write values
@@ -292,11 +294,6 @@ repositories/
 |   `-- sqlite_repository.py       Persists records and changelog entries
 |-- pipeline_runs/
 |   `-- repository.py              Persists Pipeline execution state
-|-- providers/
-|   |-- __init__.py                Declares credential persistence and adapters
-|   |-- credential_mapper.py       Maps SQLite credential rows
-|   |-- repository.py              Persists encrypted credentials
-|   `-- state_repository.py        Exposes connection state to availability
 `-- shared/
   |-- __init__.py                Declares reusable persistence adapters
   |-- dependency_repository.py   Looks up resource dependencies
@@ -318,15 +315,13 @@ Activity definitions currently support `approval`, `quiz`, `direct_loop`,
 models/
 |
 |-- activity.py                    Defines definitions and changelog entries
+|-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
 |-- instruction.py                 Defines persisted and available resource data
-|-- loop.py                        Defines definitions, agents, output, and history
-|-- loop_run.py                    Defines execution state and checkpoints
 |-- linked_service.py              Defines workspace-owned provider connections
 |-- model.py                       Defines catalog and availability projections
 |-- persona.py                     Defines resource documents with skill links
 |-- pipeline.py                    Defines definitions, steps, and history
-|-- provider.py                    Defines credential and safe configuration state
 |-- reference.py                   Defines dependency and reference values
 `-- tenant.py                      Defines workspace and membership state
 ```
@@ -342,12 +337,10 @@ models/
 - [Providers](components/providers.md) records the static provider and model
   catalog boundary. Linked Services persist independent workspace-owned provider
   connections and derive their available deployment models from that catalog.
-  Persona linked-service selections replace the deprecated legacy Persona model
-  association for new configuration while requiring an enabled, configured
-  service with an active compatible deployment. During execution, a selection
-  routes its model request through that exact service. Loop agent model IDs
-  remain required only for legacy Personas without a selection; legacy Provider
-  routes remain available only for compatibility during the migration window.
+  Persona linked-service selections are workspace-scoped and require an enabled,
+  configured service with an active compatible deployment. During execution, a
+  selection routes its model request through that exact service. Legacy provider
+  credentials and Persona model associations are retired.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

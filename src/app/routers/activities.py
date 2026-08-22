@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
-from src.app.schemas.loop_run import ActivityRunListResponse, ActivityRunResponse, LoopRunCreateRequest, LoopRunContinueRequest
+from src.app.schemas.activity_run import (
+    ActivityRunContinueRequest,
+    ActivityRunListResponse,
+    ActivityRunResponse,
+)
 from src.app.schemas.activity import ActivityChangelogListResponse, ActivityCreateRequest, ActivityListResponse, ActivityPatchRequest, ActivityResponse
 from src.app.schemas.shared import DeleteResponse
 
@@ -44,13 +48,6 @@ async def list_activity_runs(context: ContextDependency, controller: RunControll
     return await controller.list(user_id=context.user_id, activity_id=activity_id, offset=offset, requested_workspace_id=context.requested_workspace_id)
 
 
-@router.post('/{activity_id}/runs', response_model=ActivityRunResponse, status_code=status.HTTP_201_CREATED, summary='Create activity run')
-async def create_activity_run(payload: LoopRunCreateRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath) -> ActivityRunResponse:
-    """Create a run from the selected active loop activity."""
-
-    return await controller.create(user_id=context.user_id, activity_id=activity_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
-
-
 @router.get('/{activity_id}/runs/{run_id}', response_model=ActivityRunResponse, summary='Get activity run')
 async def get_activity_run(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Return one run beneath the activity that created it."""
@@ -59,7 +56,7 @@ async def get_activity_run(context: ContextDependency, controller: RunController
 
 
 @router.post('/{activity_id}/runs/{run_id}/continue', response_model=ActivityRunResponse, summary='Continue activity run')
-async def continue_activity_run(payload: LoopRunContinueRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
+async def continue_activity_run(payload: ActivityRunContinueRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Advance one activity-owned CLI checkpoint."""
 
     return await controller.continue_run(user_id=context.user_id, activity_id=activity_id, run_id=run_id, payload=payload, requested_workspace_id=context.requested_workspace_id)

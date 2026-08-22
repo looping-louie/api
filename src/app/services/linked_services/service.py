@@ -132,7 +132,7 @@ class LinkedServiceService:
         key_ciphertext = self._encrypt(plaintext_api_key) if api_key_supplied else current.key_ciphertext
         key_trimmed = self._trim(plaintext_api_key) if api_key_supplied else current.key_trimmed
         resolved_base_url = resolve_base_url(
-            definition=definition, current=_credential_view(current), supplied=base_url,
+            definition=definition, current=current, supplied=base_url,
             supplied_explicitly=base_url_supplied,
         )
         target_enabled = current.enabled if enabled is None else enabled
@@ -204,7 +204,7 @@ class LinkedServiceService:
         from src.app.services.providers.configuration import is_configured
         return is_configured(
             definition=self._definition(linked_service.provider_type),
-            credential=_credential_view(linked_service),
+            credential=linked_service,
         )
 
     async def _workspace_id(self, user_id: str, requested_workspace_id: str | None) -> str:
@@ -264,16 +264,3 @@ class LinkedServiceService:
     def _default_id_factory() -> str:
         """Create a linked-service identifier."""
         return uuid4().hex
-
-
-def _credential_view(linked_service: LinkedService):
-    """Provide the fields required by the shared base-URL resolver."""
-    from src.app.models.provider import ProviderCredential
-    return ProviderCredential(
-        id=linked_service.id, workspace_id=linked_service.workspace_id,
-        provider=linked_service.provider_type, enabled=linked_service.enabled,
-        enabled_by=None, enabled_on=None, key_trimmed=linked_service.key_trimmed,
-        key_ciphertext=linked_service.key_ciphertext, key_version=linked_service.key_version,
-        base_url=linked_service.base_url, created_at=linked_service.created_at,
-        updated_at=linked_service.updated_at,
-    )

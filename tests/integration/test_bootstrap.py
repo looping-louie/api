@@ -17,11 +17,9 @@ from fastapi.testclient import TestClient
 from src.app.bootstrap import configure_application
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.loop_run import LoopRunController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
-from src.app.controllers.provider import ProviderController
 from src.app.controllers.skill import SkillController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
@@ -34,20 +32,11 @@ EXPECTED_TABLES = {
     "workspaces",
     "workspace_memberships",
     "instructions",
-    "loops",
-    "loop_agents",
-    "loop_catalog_installations",
-    "loop_changelog_entries",
-    "loop_runs",
-    "loop_run_checkpoints",
-    "loop_run_idempotency",
     "pipelines",
     "pipeline_steps",
     "pipeline_step_dependencies",
     "pipeline_changelog_entries",
-    "provider_credentials",
     "linked_services",
-    "persona_models",
     "persona_skills",
     "workspace_instruction_settings",
     "activities",
@@ -58,6 +47,8 @@ EXPECTED_TABLES = {
     "activity_run_idempotency",
     "pipeline_runs",
     "pipeline_run_steps",
+    "pipeline_run_events",
+    "workers",
 }
 
 
@@ -126,10 +117,6 @@ def test_bootstrap_configures_application_and_runs_migrations(
             ActivityRunController,
         )
         assert isinstance(
-            app.state.loop_run_controller,
-            LoopRunController,
-        )
-        assert isinstance(
             app.state.pipeline_controller,
             PipelineController,
         )
@@ -138,18 +125,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
             ModelController,
         )
         assert isinstance(
-            app.state.provider_controller,
-            ProviderController,
-        )
-        assert isinstance(
             app.state.database,
             SqliteDatabase,
-        )
-
-    with TestClient(app):
-        assert isinstance(
-            app.state.loop_run_controller,
-            LoopRunController,
         )
 
     assert database_path.exists() is True
@@ -189,6 +166,15 @@ def test_bootstrap_configures_application_and_runs_migrations(
     ]
 
     assert EXPECTED_TABLES <= table_names
+    assert not {
+        'loops',
+        'loop_agents',
+        'loop_catalog_installations',
+        'loop_changelog_entries',
+        'loop_runs',
+        'loop_run_checkpoints',
+        'loop_run_idempotency',
+    } & table_names
     assert migration_versions == [
         "0001_tenants",
         "0002_instructions",
@@ -220,7 +206,15 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0029_activity_runs",
         "0030_pipeline_runs",
         "0031_linked_services",
-            "0032_persona_linked_service_selections",
+        "0032_persona_linked_service_selections",
+        "0033_pipeline_run_worker_claims",
+        "0034_pipeline_run_commit_mode",
+        "0035_remove_legacy_loops",
+        "0036_pipeline_run_events_and_gates",
+        "0037_unify_human_activity_runs",
+        "0038_prepared_pipeline_runs",
+        "0039_workers",
+        "0040_retire_legacy_provider_credentials",
     ]
     assert activity_rows == []
 

@@ -14,6 +14,7 @@ ActivityRunState = Literal[
     'awaiting_apply',
     'awaiting_review_input',
     'awaiting_commit',
+    'awaiting_human_decision',
     'completed',
     'failed',
 ]
@@ -22,6 +23,7 @@ ActivityRunAction = Literal[
     'apply_operations',
     'submit_review_input',
     'commit_if_allowed',
+    'submit_human_decision',
     'none',
 ]
 

@@ -8,7 +8,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
-from src.app.schemas.loop_run import ActivityRunResponse
+from src.app.schemas.activity_run import ActivityRunResponse
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
@@ -105,7 +105,10 @@ class PipelineListResponse(ListResponse[PipelineResponse]):
     """Fixed-size offset page of pipeline definitions."""
 
 
-PipelineRunStatusValue = Literal['in_progress', 'failed', 'completed']
+PipelineRunStatusValue = Literal[
+    'prepared', 'queued', 'claimed', 'in_progress', 'waiting', 'failed', 'completed'
+]
+PipelineRunCommitModeValue = Literal['allow', 'forbid']
 PipelineRunStepStatusValue = Literal[
     'pending', 'in_progress', 'completed', 'failed', 'skipped'
 ]
@@ -115,6 +118,26 @@ class PipelineRunCreateRequest(RequestSchema):
     """Input used for each activity scheduled by a new pipeline run."""
 
     input: NonEmptyString
+    commit_mode: PipelineRunCommitModeValue = 'allow'
+
+
+class PipelineRunClaimRequest(RequestSchema):
+    """Worker identity and target status for a conditional run claim."""
+
+    worker_id: NonEmptyString
+    status: Literal['claimed']
+
+
+class PipelineRunLeaseRenewRequest(RequestSchema):
+    """Active worker token required to extend a claimed Pipeline run lease."""
+
+    lease_token: NonEmptyString
+
+
+class PipelineRunContinueRequest(RequestSchema):
+    """Worker token required only when continuing a runtime-owned child run."""
+
+    lease_token: NonEmptyString | None = None
 
 
 class PipelineRunStepResponse(ResponseSchema):
@@ -125,18 +148,60 @@ class PipelineRunStepResponse(ResponseSchema):
     activity_run_id: str | None
 
 
+class PipelineRunEventResponse(ResponseSchema):
+    """One immutable event in a Pipeline-run execution ledger."""
+
+    id: str
+    event_type: str
+    activity_id: str | None
+    actor_id: str
+    payload: dict[str, object]
+    created_at: datetime
+
+
+class PipelineRunEventListResponse(ListResponse[PipelineRunEventResponse]):
+    """All events recorded for one Pipeline execution."""
+
+
 class PipelineRunResponse(ResponseSchema):
     """Durable pipeline execution and its currently selected child run."""
 
     id: str
     pipeline_id: str
     input: str
+    commit_mode: PipelineRunCommitModeValue
     status: PipelineRunStatusValue
     current_activity_run: ActivityRunResponse | None
     steps: list[PipelineRunStepResponse]
     created_at: datetime
     created_by: str
     updated_at: datetime
+
+
+class PipelineRunClaimResponse(ResponseSchema):
+    """One worker-owned pipeline run and its secret lease token."""
+
+    run: PipelineRunResponse
+    lease_token: str | None
+
+
+class PipelineRunClaimableResponse(ResponseSchema):
+    """One claimable run with the entity tag required to claim it."""
+
+    run: PipelineRunResponse
+    etag: str
+
+
+class PipelineRunClaimableListResponse(
+    ListResponse[PipelineRunClaimableResponse]
+):
+    """Claimable pipeline runs owned by one active Pipeline."""
+
+
+class PipelineRunLeaseResponse(ResponseSchema):
+    """Current expiration returned after a successful worker lease renewal."""
+
+    lease_expires_at: datetime
 
 
 class PipelineChangelogEntryResponse(ResponseSchema):
