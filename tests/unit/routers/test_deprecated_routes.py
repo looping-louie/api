@@ -32,3 +32,14 @@ def test_legacy_loop_routes_are_not_exposed() -> None:
     paths = set(app.openapi()['paths'])
 
     assert not any(path.startswith('/api/v1/loops') for path in paths)
+
+
+def test_legacy_provider_routes_are_not_exposed() -> None:
+    """Linked Services replaces public legacy Provider configuration routes."""
+
+    app = FastAPI()
+    app.include_router(api_v1_router)
+    paths = set(app.openapi()['paths'])
+
+    assert '/api/v1/providers' not in paths
+    assert '/api/v1/providers/{provider_id}' not in paths

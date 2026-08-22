@@ -76,7 +76,7 @@ def build_service(
     return ModelCatalogService(
         tenant_service=tenant_service,
         availability_service=ModelAvailabilityService(
-            provider_state_repository=repository,
+                linked_service_repository=repository,
         ),
         catalog=catalog,
     )

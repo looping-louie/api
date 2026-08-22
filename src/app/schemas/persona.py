@@ -50,16 +50,8 @@ class PersonaCreateRequest(RequestSchema):
     name: ResourceName
     description: str = ""
     instructions: NonEmptyString
-    model: NonEmptyString | None = Field(
-        default=None,
-        description=(
-            'Legacy model selection. Use linked_service with config.model '
-            'for new Personas.'
-        ),
-        json_schema_extra={'deprecated': True},
-    )
-    linked_service: LinkedServiceReference | None = None
-    config: PersonaLinkedServiceConfig | None = None
+    linked_service: LinkedServiceReference
+    config: PersonaLinkedServiceConfig
     skill_ids: list[NonEmptyString] = Field(default_factory=list)
     metadata: PersonaMetadata = Field(default_factory=PersonaMetadata)
 
@@ -78,14 +70,7 @@ class PersonaCreateRequest(RequestSchema):
             raise ValueError("Skill ids must be unique.")
 
     def _require_linked_service_selection(self) -> None:
-        """Require linked-service reference and model configuration together."""
-
-        if (self.linked_service is None) != (self.config is None):
-            raise ValueError('Linked service and config must be supplied together.')
-        if self.model is not None and self.linked_service is not None:
-            raise ValueError(
-                'Model cannot be supplied with a linked-service selection.'
-            )
+        """Keep the executable connection fields explicit in the contract."""
 
 
 class PersonaPatchRequest(RequestSchema):
@@ -95,14 +80,6 @@ class PersonaPatchRequest(RequestSchema):
     name: ResourceName | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
-    model: NonEmptyString | None = Field(
-        default=None,
-        description=(
-            'Legacy model selection. Use linked_service with config.model '
-            'for new Personas.'
-        ),
-        json_schema_extra={'deprecated': True},
-    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[NonEmptyString] | None = None
@@ -117,7 +94,6 @@ class PersonaPatchRequest(RequestSchema):
             self.name,
             self.description,
             self.instructions,
-            self.model,
             self.linked_service,
             self.config,
             self.skill_ids,
@@ -150,11 +126,6 @@ class PersonaPatchRequest(RequestSchema):
             self.linked_service is None or self.config is None
         ):
             raise ValueError('Linked service and config must be non-null.')
-        if self.model is not None and linked_service_supplied:
-            raise ValueError(
-                'Model cannot be supplied with a linked-service selection.'
-            )
-
         return self
 
     def has_content_changes(self) -> bool:
@@ -166,7 +137,6 @@ class PersonaPatchRequest(RequestSchema):
                 self.name,
                 self.description,
                 self.instructions,
-                self.model,
                 self.linked_service,
                 self.config,
                 self.skill_ids,
@@ -181,10 +151,6 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
-    model: str | None = Field(
-        description='Legacy model selection retained for compatibility.',
-        json_schema_extra={'deprecated': True},
-    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     category: CatalogInstructionCategory | None = None
@@ -197,10 +163,6 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     name: str
     description: str
     instructions: str
-    model: str | None = Field(
-        description='Legacy model selection retained for compatibility.',
-        json_schema_extra={'deprecated': True},
-    )
     linked_service: LinkedServiceReference | None = None
     config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[str]

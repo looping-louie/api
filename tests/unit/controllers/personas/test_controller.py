@@ -33,8 +33,13 @@ async def test_persona_controller_patches_and_creates(
     copied = await controller.create(
         user_id='user-1',
         payload=PersonaCreateRequest(
-                name='Workspace_Lead',
+            name='Workspace_Lead',
             instructions='Lead workspace reviews.',
+            linked_service={
+                'type': 'LinkedServiceReference',
+                'reference_id': 'linked-service-1',
+            },
+            config={'model': 'service-model'},
         ),
     )
 

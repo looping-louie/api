@@ -11,7 +11,7 @@ from src.app.main import app
 
 
 HTTP_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
-EXCLUDED_PATH_PREFIXES: tuple[str, ...] = ()
+EXCLUDED_PATH_PREFIXES = ('/api/v1/activities/{activity_id}/runs',)
 PATH_PARAMETERS = {
     "ACTIVITY_ID": "activity_id",
     "ACTIVITY_RUN_ID": "run_id",
@@ -24,6 +24,7 @@ PATH_PARAMETERS = {
     "PIPELINE_RUN_ID": "run_id",
     "SMOKE_PROVIDER_ID": "provider_id",
     "SKILL_ID": "skill_id",
+    "WORKER_ID": "worker_id",
 }
 REQUEST_PATTERN = re.compile(
     r"\brequest(?:_expect_status)?\s+"

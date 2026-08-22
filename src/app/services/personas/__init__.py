@@ -8,7 +8,6 @@ from .types import (
     PersonaDocument,
     PersonaLinkedServiceSelection,
     PersonaLinkedServiceSelectionRepository,
-    PersonaModelRepository,
     PersonaSkillRepository,
     PersonaUpdate,
 )
@@ -21,7 +20,6 @@ __all__ = [
     "PersonaDocument",
     "PersonaLinkedServiceSelection",
     "PersonaLinkedServiceSelectionRepository",
-    "PersonaModelRepository",
     "PersonaService",
     "PersonaSkillRepository",
     "PersonaUpdate",

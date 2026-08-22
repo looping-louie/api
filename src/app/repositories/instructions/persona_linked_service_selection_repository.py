@@ -12,7 +12,7 @@ from src.app.services.personas.types import PersonaLinkedServiceSelection
 
 
 class SqlitePersonaLinkedServiceSelectionRepository:
-    """Persist one optional linked-service selection for each persona."""
+    """Persist one linked-service selection for each workspace persona."""
 
     def __init__(self, database_path: str | Path) -> None:
         """Initialize the repository for one SQLite database."""
@@ -22,6 +22,7 @@ class SqlitePersonaLinkedServiceSelectionRepository:
     async def get_for_persona(
         self,
         *,
+        workspace_id: str,
         persona_id: str,
     ) -> PersonaLinkedServiceSelection | None:
         """Return the stored linked-service selection when one exists."""
@@ -31,9 +32,9 @@ class SqlitePersonaLinkedServiceSelectionRepository:
                 '''
                 SELECT linked_service_id, model_id
                 FROM persona_linked_service_selections
-                WHERE persona_id = ?
+                WHERE workspace_id = ? AND persona_id = ?
                 ''',
-                (persona_id,),
+                (workspace_id, persona_id),
             )
             try:
                 row = await cursor.fetchone()
@@ -50,31 +51,31 @@ class SqlitePersonaLinkedServiceSelectionRepository:
     async def replace_for_persona(
         self,
         *,
+        workspace_id: str,
         persona_id: str,
-        selection: PersonaLinkedServiceSelection | None,
+        selection: PersonaLinkedServiceSelection,
     ) -> None:
-        """Store or remove the optional linked-service selection."""
+        """Store one workspace-scoped linked-service selection."""
 
         async with self._connect() as connection:
             try:
                 await connection.execute('BEGIN IMMEDIATE')
                 await connection.execute(
-                    'DELETE FROM persona_linked_service_selections WHERE persona_id = ?',
-                    (persona_id,),
+                    '''
+                    INSERT INTO persona_linked_service_selections (
+                        workspace_id, persona_id, linked_service_id, model_id
+                    ) VALUES (?, ?, ?, ?)
+                    ON CONFLICT (workspace_id, persona_id) DO UPDATE SET
+                        linked_service_id = excluded.linked_service_id,
+                        model_id = excluded.model_id
+                    ''',
+                    (
+                        workspace_id,
+                        persona_id,
+                        selection.linked_service_id,
+                        selection.model_id,
+                    ),
                 )
-                if selection is not None:
-                    await connection.execute(
-                        '''
-                        INSERT INTO persona_linked_service_selections (
-                            persona_id, linked_service_id, model_id
-                        ) VALUES (?, ?, ?)
-                        ''',
-                        (
-                            persona_id,
-                            selection.linked_service_id,
-                            selection.model_id,
-                        ),
-                    )
                 await connection.commit()
             except Exception:
                 await connection.rollback()

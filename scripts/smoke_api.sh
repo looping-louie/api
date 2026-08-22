@@ -18,6 +18,7 @@ SMOKE_LINKED_SERVICE_NAME="${SMOKE_LINKED_SERVICE_NAME:-smoke_linked_service}"
 
 SMOKE_MODEL_ID="${SMOKE_MODEL_ID:-}"
 SMOKE_RUN_ID="${SMOKE_RUN_ID:-$(date +%s)-$$}"
+WORKER_ID=""
 
 PERSONA_ID=""
 SKILL_ID=""
@@ -27,9 +28,6 @@ ACTIVITY_RUN_TOKEN=""
 PIPELINE_ID=""
 PIPELINE_RUN_ID=""
 PIPELINE_RUN_LEASE_TOKEN=""
-PROVIDER_CREATED=0
-PROVIDER_WAS_ENABLED=0
-PROVIDER_STATE_CAPTURED=0
 LINKED_SERVICE_ID=""
 CLEANUP_STARTED=0
 
@@ -205,57 +203,6 @@ print(available[0]["id"])
 '
 }
 
-provider_state() {
-    local provider_id="$1"
-
-    python3 -c '
-import json
-import sys
-
-provider_id = sys.argv[1]
-document = json.load(sys.stdin)
-
-if isinstance(document, list):
-    items = document
-else:
-    items = document.get("items", document.get("providers", []))
-
-for item in items:
-    if item.get("provider") == provider_id:
-        values = (
-            "1" if item.get("configured") else "0",
-            "1" if item.get("enabled") else "0",
-            "1" if item.get("requires_api_key") else "0",
-        )
-        print("\t".join(values))
-        raise SystemExit(0)
-
-raise SystemExit(f"Provider not found: {provider_id}")
-' "${provider_id}"
-}
-
-provider_payload() {
-    python3 - \
-        "${SMOKE_PROVIDER_API_KEY}" \
-        "${SMOKE_PROVIDER_BASE_URL}" <<'PY'
-import json
-import sys
-
-api_key = sys.argv[1]
-base_url = sys.argv[2]
-
-payload = {}
-
-if api_key:
-    payload["api_key"] = api_key
-
-if base_url:
-    payload["base_url"] = base_url
-
-print(json.dumps(payload))
-PY
-}
-
 cleanup() {
     local exit_code=$?
 
@@ -289,19 +236,6 @@ cleanup() {
         request DELETE "/personas/${PERSONA_ID}" >/dev/null
     fi
 
-    if [[ "${PROVIDER_CREATED}" == "1" ]]; then
-        request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
-    elif [[
-        "${PROVIDER_STATE_CAPTURED}" == "1"
-        && "${PROVIDER_WAS_ENABLED}" == "0"
-    ]]; then
-        request \
-            PATCH \
-            "/providers/${SMOKE_PROVIDER_ID}" \
-            '{"enabled": false}' \
-            >/dev/null
-    fi
-
     if [[ -n "${LINKED_SERVICE_ID}" ]]; then
         request DELETE "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
     fi
@@ -315,47 +249,10 @@ cleanup() {
 
 trap cleanup EXIT
 
-log "Checking provider catalog"
+log "Checking static catalogs"
 
-providers_response="$(request GET "/providers")"
-
-IFS=$'\t' read -r \
-    provider_configured \
-    provider_enabled \
-    provider_requires_key \
-    <<< "$(
-        printf '%s' "${providers_response}" \
-            | provider_state "${SMOKE_PROVIDER_ID}"
-    )"
-
-PROVIDER_WAS_ENABLED="${provider_enabled}"
-PROVIDER_STATE_CAPTURED=1
-
-request GET "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
 request GET "/catalog/providers" >/dev/null
 request GET "/catalog/models" >/dev/null
-
-if [[ "${provider_configured}" == "0" ]]; then
-    if [[ "${provider_requires_key}" == "1" \
-        && -z "${SMOKE_PROVIDER_API_KEY}" ]]; then
-        log "Provider ${SMOKE_PROVIDER_ID} requires SMOKE_PROVIDER_API_KEY."
-        exit 1
-    fi
-
-    request \
-        PATCH \
-        "/providers/${SMOKE_PROVIDER_ID}" \
-        "$(provider_payload)" \
-        >/dev/null
-
-    PROVIDER_CREATED=1
-fi
-
-request \
-    PATCH \
-    "/providers/${SMOKE_PROVIDER_ID}" \
-    '{"enabled": false}' \
-    >/dev/null
 
 log "Checking linked services"
 
@@ -379,11 +276,6 @@ LINKED_SERVICE_ID="$(printf '%s' "${linked_service_response}" | json_field id)"
 request GET "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
 request PATCH "/linked-services/${LINKED_SERVICE_ID}" '{"enabled":false}' >/dev/null
 request GET "/linked-services" >/dev/null
-request \
-    PATCH \
-    "/providers/${SMOKE_PROVIDER_ID}" \
-    '{"enabled": true}' \
-    >/dev/null
 
 log "Checking model catalog"
 
@@ -553,55 +445,13 @@ JSON
     )"
 )"
 
-log "Creating activity run"
-
-activity_run_response="$(
-    request POST "/activities/${ACTIVITY_ID}/runs" \
-        '{"input":"Produce an activity smoke-test answer."}'
-)"
-
-ACTIVITY_RUN_ID="$(printf '%s' "${activity_run_response}" | json_field "id")"
-ACTIVITY_RUN_TOKEN="$(
-    printf '%s' "${activity_run_response}" | json_field "continuation_token"
-)"
-
-request GET "/activities/${ACTIVITY_ID}/runs?offset=0" >/dev/null
-request GET "/activities/${ACTIVITY_ID}/runs/${ACTIVITY_RUN_ID}" >/dev/null
-request POST "/activities/${ACTIVITY_ID}/runs/${ACTIVITY_RUN_ID}/continue" "$(
-    cat <<JSON
-{
-    "continuation_token": "${ACTIVITY_RUN_TOKEN}",
-    "idempotency_key": "activity-smoke-snapshot-${SMOKE_RUN_ID}",
-    "result": {
-        "action": "collect_snapshot",
-        "repo_context": "Activity smoke-test repository context.",
-        "workspace_metadata": {
-            "workspace_path": "/workspace/smoke",
-            "source_commit_sha": "activity-smoke-${SMOKE_RUN_ID}"
-        },
-        "constitution": "Keep smoke-test changes small.",
-        "project_profile": {
-            "source_file_count": 1,
-            "approximate_source_chars": 1,
-            "extension_counts": {},
-            "top_level_entries": [],
-            "markers": {
-                "nuxt": false,
-                "package_json": false,
-                "fastapi": false,
-                "docker": false,
-                "tests": true
-            }
-        }
-    }
-}
-JSON
-)" >/dev/null
-
 PIPELINE_ID="$(
     printf '%s' "${pipeline_response}" | json_field "id"
 )"
 
+worker_response="$(request POST "/workers" '{}')"
+WORKER_ID="$(printf '%s' "${worker_response}" | json_field "id")"
+request POST "/workers/${WORKER_ID}/heartbeat" '{}' >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
 pipeline_run_response="$(
@@ -622,7 +472,7 @@ pipeline_claim_response="$(
     request \
         PATCH \
         "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" \
-        '{"worker_id":"smoke-runtime","status":"claimed"}' \
+        "{\"worker_id\":\"${WORKER_ID}\",\"status\":\"claimed\"}" \
         "If-Match: ${PIPELINE_RUN_ETAG}"
 )"
 PIPELINE_RUN_LEASE_TOKEN="$(
@@ -674,19 +524,6 @@ request GET "/activities" >/dev/null
 request GET "/pipelines" >/dev/null
 request GET "/skills" >/dev/null
 request GET "/personas" >/dev/null
-
-if [[ "${PROVIDER_CREATED}" == "1" ]]; then
-    request DELETE "/providers/${SMOKE_PROVIDER_ID}" >/dev/null
-    PROVIDER_CREATED=0
-elif [[ "${PROVIDER_WAS_ENABLED}" == "0" ]]; then
-    request \
-        PATCH \
-        "/providers/${SMOKE_PROVIDER_ID}" \
-        '{"enabled": false}' \
-        >/dev/null
-fi
-
-request GET "/providers" >/dev/null
 
 trap - EXIT
 log "✓ API smoke test passed"

@@ -63,6 +63,7 @@ from src.app.services.shared.reference_resolver import (
     ReferenceValidationError,
     ResourceNotFoundError,
 )
+from src.app.services.workers import WorkerNotFoundError, WorkerUnavailableError
 from src.app.services.shared.tenant import (
     TenantAccessDeniedError,
     TenantNotFoundError,
@@ -198,6 +199,14 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     PipelineRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='pipeline_run_unavailable',
+    ),
+    WorkerNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='worker_not_found',
+    ),
+    WorkerUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='worker_unavailable',
     ),
     InvalidPipelineStepsError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

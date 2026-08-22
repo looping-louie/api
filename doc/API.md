@@ -8,7 +8,6 @@ The endpoint reference is organized by top-level router:
 - [Endpoint overview](endpoints/overview.md) covers authentication, workspace
   selection, pagination, mutation conventions, and error responses.
 - [Catalog](endpoints/catalog.md) exposes static provider and model definitions.
-- [Providers](endpoints/providers.md) manages model-provider configuration.
 - [Linked Services](endpoints/linked-services.md) manages workspace-owned
   provider connections.
 - [Models](endpoints/models.md) exposes the curated model catalog.
@@ -19,6 +18,8 @@ The endpoint reference is organized by top-level router:
 - [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
   persists each supplied step as an independent Activity record, Pipeline-run
   event ledgers, and human Activity-run decisions.
+- [Workers](endpoints/workers.md) provisions runtime identities and records
+  liveness heartbeats required for PipelineRun claims.
 
 The API owns planning, generation, reviewer decisions, and durable execution
 state. The runtime owns local repository execution, including filesystem, Git,

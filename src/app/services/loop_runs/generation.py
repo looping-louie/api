@@ -347,28 +347,21 @@ class LoopRunGenerationService:
             if instruction_library is not None
             else None
         )
+        if linked_service_selection is None:
+            raise ActivityRunValidationError(
+                field_name='agents',
+                message='Persona requires a linked-service selection.',
+            )
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
-                if linked_service_selection is None:
-                    result = await self._model_execution_service.execute(
-                        workspace_id=workspace_id,
-                        model_id=model_id,
-                        prompt=retry_prompt,
-                        json_mode=True,
-                    )
-                else:
-                    result = (
-                        await self._model_execution_service.execute_with_linked_service(
-                            workspace_id=workspace_id,
-                            linked_service_id=(
-                                linked_service_selection.linked_service_id
-                            ),
-                            model_id=linked_service_selection.model_id,
-                            prompt=retry_prompt,
-                            json_mode=True,
-                        )
-                    )
+                result = await self._model_execution_service.execute(
+                    workspace_id=workspace_id,
+                    linked_service_id=linked_service_selection.linked_service_id,
+                    model_id=linked_service_selection.model_id,
+                    prompt=retry_prompt,
+                    json_mode=True,
+                )
             except ModelExecutionError as error:
                 LOGGER.warning(
                     'Loop agent execution failed: role=%s model_id=%s error=%s',

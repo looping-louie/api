@@ -17,9 +17,9 @@ from src.app.catalogs.instructions.loader import (
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
-from src.app.controllers.provider import ProviderController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.skill import SkillController
+from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
 )
@@ -35,9 +35,6 @@ from src.app.repositories.instructions.repository import (
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.repositories.instructions.persona_model_repository import (
-    SqlitePersonaModelRepository,
-)
 from src.app.repositories.instructions.persona_linked_service_selection_repository import (
     SqlitePersonaLinkedServiceSelectionRepository,
 )
@@ -47,13 +44,8 @@ from src.app.repositories.infrastructure.migration_runner import (
 from src.app.repositories.infrastructure.local_tenant_seed import (
     ensure_local_tenant,
 )
-from src.app.repositories.providers.repository import (
-    SqliteProviderRepository,
-)
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
-from src.app.repositories.providers.state_repository import (
-    ProviderStateRepositoryAdapter,
-)
+from src.app.repositories.workers import SqliteWorkerRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -82,13 +74,9 @@ from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.service import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
 from src.app.services.personas import PersonaService
-from src.app.services.providers.model_registry import (
-    CatalogModelRegistryService,
-)
 from src.app.services.providers.connection import (
     HttpProviderConnectionService,
 )
-from src.app.services.providers.service import ProviderService
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
@@ -98,6 +86,7 @@ from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
+from src.app.services.workers import WorkerService
 
 
 LOGGER = logging.getLogger(__name__)
@@ -170,9 +159,6 @@ async def configure_application(
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
-    persona_model_repository = SqlitePersonaModelRepository(
-        resolved_settings.database_path,
-    )
     persona_linked_service_selection_repository = (
         SqlitePersonaLinkedServiceSelectionRepository(
             resolved_settings.database_path,
@@ -184,20 +170,14 @@ async def configure_application(
     activity_run_repository = SqliteActivityRunRepository(
         resolved_settings.database_path,
     )
-    provider_repository = SqliteProviderRepository(
-        database,
-    )
     linked_service_repository = SqliteLinkedServiceRepository(database)
+    worker_repository = SqliteWorkerRepository(database)
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
     )
     dependency_repository = SqliteDependencyRepository(
         resolved_settings.database_path,
-    )
-    provider_state_repository = ProviderStateRepositoryAdapter(
-        provider_repository=provider_repository,
-        catalog=PROVIDER_CATALOG,
     )
 
     tenant_service = TenantService(
@@ -221,7 +201,7 @@ async def configure_application(
     )
 
     model_availability_service = ModelAvailabilityService(
-        provider_state_repository=provider_state_repository,
+        linked_service_repository=linked_service_repository,
     )
     model_catalog_service = ModelCatalogService(
         tenant_service=tenant_service,
@@ -261,7 +241,6 @@ async def configure_application(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
-        persona_model_repository=persona_model_repository,
         persona_linked_service_selection_repository=(
             persona_linked_service_selection_repository
         ),
@@ -290,19 +269,14 @@ async def configure_application(
         clock=utc_now,
         model_execution_service=ModelExecutionService(
             model_catalog_service=model_catalog_service,
-            provider_repository=provider_repository,
             secret_service=secret_service,
             linked_service_repository=linked_service_repository,
         ),
         instruction_library_service=execution_instruction_library_service,
     )
-    provider_service = ProviderService(
-        repository=provider_repository,
+    worker_service = WorkerService(
+        repository=worker_repository,
         tenant_service=tenant_service,
-        secret_service=secret_service,
-        connection_service=HttpProviderConnectionService(),
-        model_registry=CatalogModelRegistryService(),
-        catalog=PROVIDER_CATALOG,
         id_factory=create_identifier,
         clock=utc_now,
     )
@@ -324,17 +298,16 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
         activity_run_repository=activity_run_repository,
+        worker_service=worker_service,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
     )
     app.state.catalog_controller = catalog_controller
-    app.state.provider_controller = ProviderController(
-        provider_service=provider_service,
-    )
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
     )
+    app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database
     app.state.instruction_catalog = resolved_catalog

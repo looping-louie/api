@@ -14,7 +14,7 @@ from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
-from src.app.controllers.provider import ProviderController
+from src.app.controllers.worker import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
@@ -182,18 +182,6 @@ def get_catalog_controller(
     )
 
 
-def get_provider_controller(
-    request: Request,
-) -> ProviderController:
-    """Return the configured provider controller."""
-
-    return _get_controller(
-        request,
-        attribute_name="provider_controller",
-        expected_type=ProviderController,
-    )
-
-
 def get_linked_service_controller(
     request: Request,
 ) -> LinkedServiceController:
@@ -215,4 +203,14 @@ def get_execution_instruction_library_service(
         request,
         attribute_name="execution_instruction_library_service",
         expected_type=ExecutionInstructionLibraryService,
+    )
+
+
+def get_worker_controller(request: Request) -> WorkerController:
+    """Return the configured runtime worker registration controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='worker_controller',
+        expected_type=WorkerController,
     )

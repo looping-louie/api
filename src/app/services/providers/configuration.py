@@ -1,11 +1,17 @@
 """Pure helpers for interpreting provider configuration state."""
 
 from collections.abc import Mapping
+from typing import Protocol
 
 from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
-from src.app.models.provider import ProviderCredential, ProviderState
-
 from .errors import ProviderConfigurationError
+
+
+class ProviderConnection(Protocol):
+    """Minimum persisted configuration used by provider helper functions."""
+
+    base_url: str | None
+    key_ciphertext: str | None
 
 
 def clean_optional_value(value: str | None) -> str | None:
@@ -54,7 +60,7 @@ def validate_configuration(
 def resolve_base_url(
     *,
     definition: ProviderCatalogEntry,
-    current: ProviderCredential | None,
+    current: ProviderConnection | None,
     supplied: str | None,
     supplied_explicitly: bool,
 ) -> str | None:
@@ -75,7 +81,7 @@ def resolve_base_url(
 def is_configured(
     *,
     definition: ProviderCatalogEntry,
-    credential: ProviderCredential | None,
+    credential: ProviderConnection | None,
 ) -> bool:
     """Return whether stored values satisfy provider requirements."""
 
@@ -84,34 +90,3 @@ def is_configured(
     if definition.requires_api_key:
         return credential.key_ciphertext is not None
     return True
-
-
-def build_provider_state(
-    *,
-    definition: ProviderCatalogEntry,
-    credential: ProviderCredential | None,
-    model_count: int,
-) -> ProviderState:
-    """Combine catalog metadata with workspace credential state."""
-
-    configured = is_configured(
-        definition=definition,
-        credential=credential,
-    )
-    return ProviderState(
-        provider=definition.id.value,
-        name=definition.name,
-        description=definition.description,
-        logo_url=definition.logo_url,
-        requires_api_key=definition.requires_api_key,
-        configured=configured,
-        enabled=bool(credential and credential.enabled and configured),
-        key_trimmed=credential.key_trimmed if credential else None,
-        base_url=(
-            credential.base_url
-            if credential is not None
-            else definition.default_base_url
-        ),
-        model_count=model_count,
-        model_catalog_note=definition.model_catalog_note,
-    )

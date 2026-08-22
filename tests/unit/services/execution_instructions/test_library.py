@@ -5,6 +5,7 @@ from src.app.services.execution_instructions import (
 )
 from src.app.services.personas import (
     PersonaCreate,
+    PersonaLinkedServiceSelection,
     PersonaService,
 )
 from src.app.services.instructions import (
@@ -19,8 +20,17 @@ from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,
 )
-from tests.fakes.persona_model_repository import FakePersonaModelRepository
+from tests.fakes.persona_linked_service_selection_repository import (
+    FakePersonaLinkedServiceSelectionRepository,
+)
 from tests.fakes.reference_repository import FakeReferenceRepository
+
+
+class FakeLinkedServiceService:
+    """Accept test Persona selections without an external provider call."""
+
+    async def require_available_selection(self, **_: object) -> None:
+        """Accept the explicitly supplied test selection."""
 
 
 @pytest.mark.asyncio
@@ -38,10 +48,13 @@ async def test_api_custom_is_immediately_available_to_execution(
         tenant_service=tenant_service,
         instruction_service=instruction_service,
         persona_skill_repository=persona_skill_repository,
-        persona_model_repository=FakePersonaModelRepository(),
         reference_resolver=ReferenceResolver(
             repository=FakeReferenceRepository(),
         ),
+        persona_linked_service_selection_repository=(
+            FakePersonaLinkedServiceSelectionRepository()
+        ),
+        linked_service_service=FakeLinkedServiceService(),
     )
     runtime_service = ExecutionInstructionLibraryService(
         repository=instruction_repository,
@@ -63,6 +76,10 @@ async def test_api_custom_is_immediately_available_to_execution(
             description="Custom technical lead.",
             instructions="SQL persona content.",
             skill_ids=(skill.id,),
+            linked_service_selection=PersonaLinkedServiceSelection(
+                linked_service_id='linked-service-1',
+                model_id='service-model',
+            ),
         ),
     )
 

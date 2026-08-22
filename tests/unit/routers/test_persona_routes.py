@@ -58,9 +58,14 @@ def test_persona_rest_crud_routes(
     created = client.post(
         "/api/v1/personas",
         json={
-                "name": "API_Reviewer",
+            "name": "API_Reviewer",
             "description": "Reviews API contracts.",
             "instructions": "Review every public API contract.",
+            "linked_service": {
+                "type": "LinkedServiceReference",
+                "reference_id": "linked-service-1",
+            },
+            "config": {"model": "service-model"},
             "metadata": {"team": "platform"},
         },
     )
@@ -83,7 +88,7 @@ def test_persona_rest_crud_routes(
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
     assert described.status_code == 200
-    assert described.json()['model'] is None
+    assert described.json()['linked_service']['reference_id'] == 'linked-service-1'
     assert described.json()["instructions"] == (
         "Review every public API contract."
     )
@@ -137,6 +142,11 @@ def test_persona_routes_create_and_replace_skill_associations(
             "name": "Platform_reviewer",
             "instructions": "Review platform changes.",
             "skill_ids": [first_skill.id, second_skill.id],
+            "linked_service": {
+                "type": "LinkedServiceReference",
+                "reference_id": "linked-service-1",
+            },
+            "config": {"model": "service-model"},
         },
     )
     persona_id = created.json()["id"]
@@ -160,7 +170,7 @@ def test_persona_routes_create_and_replace_skill_associations(
 def test_persona_routes_accept_linked_service_selection(
     persona_controller: PersonaController,
 ) -> None:
-    """POST returns the new linked-service selection without removing model."""
+    """POST returns the required linked-service selection."""
 
     client = TestClient(build_app(controller=persona_controller))
     response = client.post(
@@ -177,7 +187,6 @@ def test_persona_routes_accept_linked_service_selection(
     )
 
     assert response.status_code == 201
-    assert response.json()['model'] is None
     assert response.json()['linked_service'] == {
         'type': 'LinkedServiceReference',
         'reference_id': 'linked-service-1',
@@ -303,10 +312,10 @@ def test_only_new_persona_routes_are_published(
     }
 
 
-def test_persona_legacy_model_is_deprecated_in_openapi(
+def test_persona_legacy_model_is_absent_from_openapi(
     persona_controller: PersonaController,
 ) -> None:
-    """OpenAPI marks legacy Persona model fields as deprecated."""
+    """OpenAPI no longer exposes retired Persona model fields."""
 
     client = TestClient(build_app(controller=persona_controller))
     schemas = client.get('/openapi.json').json()['components']['schemas']
@@ -317,4 +326,4 @@ def test_persona_legacy_model_is_deprecated_in_openapi(
         'PersonaSummaryResponse',
         'PersonaResponse',
     ):
-        assert schemas[schema_name]['properties']['model']['deprecated'] is True
+        assert 'model' not in schemas[schema_name]['properties']

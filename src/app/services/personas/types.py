@@ -19,7 +19,6 @@ from ..instructions import (
 class PersonaCreate(InstructionCreate):
     """Content and associations required to create a persona."""
 
-    model: str | None = None
     linked_service_selection: PersonaLinkedServiceSelection | None = None
     skill_ids: tuple[str, ...] = ()
 
@@ -28,7 +27,6 @@ class PersonaCreate(InstructionCreate):
 class PersonaUpdate(InstructionUpdate):
     """Partial persona content and association changes."""
 
-    model: str | None = None
     linked_service_selection: PersonaLinkedServiceSelection | None = None
     linked_service_selection_supplied: bool = False
     skill_ids: tuple[str, ...] | None = None
@@ -46,7 +44,6 @@ class PersonaLinkedServiceSelection:
 class PersonaDocument(InstructionDocument):
     """Custom persona document with its associated skills."""
 
-    model: str | None = None
     linked_service_selection: PersonaLinkedServiceSelection | None = None
     skill_ids: tuple[str, ...] = ()
 
@@ -55,7 +52,6 @@ class PersonaDocument(InstructionDocument):
 class AvailablePersonaDocument(AvailableInstructionDocument):
     """Workspace-visible persona document with associated skills."""
 
-    model: str | None = None
     linked_service_selection: PersonaLinkedServiceSelection | None = None
     skill_ids: tuple[str, ...] = ()
 
@@ -64,7 +60,6 @@ class AvailablePersonaDocument(AvailableInstructionDocument):
 class AvailablePersonaSummary(AvailableInstructionSummary):
     """Workspace-visible persona summary with its selected model."""
 
-    model: str | None = None
     linked_service_selection: PersonaLinkedServiceSelection | None = None
 
 
@@ -91,29 +86,13 @@ class PersonaSkillRepository(Protocol):
         ...
 
 
-class PersonaModelRepository(Protocol):
-    """Persistence contract for optional persona-model associations."""
-
-    async def get_for_persona(self, *, persona_id: str) -> str | None:
-        """Return the associated model identifier when one exists."""
-        ...
-
-    async def replace_for_persona(
-        self,
-        *,
-        persona_id: str,
-        model_id: str | None,
-    ) -> None:
-        """Store or remove the optional model association."""
-        ...
-
-
 class PersonaLinkedServiceSelectionRepository(Protocol):
-    """Persistence contract for optional persona linked-service selections."""
+    """Persist workspace-scoped Persona linked-service selections."""
 
     async def get_for_persona(
         self,
         *,
+        workspace_id: str,
         persona_id: str,
     ) -> PersonaLinkedServiceSelection | None:
         """Return the linked-service selection when one exists."""
@@ -122,8 +101,9 @@ class PersonaLinkedServiceSelectionRepository(Protocol):
     async def replace_for_persona(
         self,
         *,
+        workspace_id: str,
         persona_id: str,
-        selection: PersonaLinkedServiceSelection | None,
+        selection: PersonaLinkedServiceSelection,
     ) -> None:
         """Store or remove the optional linked-service selection."""
         ...
