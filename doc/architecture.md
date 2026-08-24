@@ -241,6 +241,7 @@ controllers/
 |   `-- utils.py                  Translates patch schemas to service changes
 |-- activity_run.py               Coordinates Activity-run HTTP operations
 |-- activity_runs/
+|   |-- __init__.py               Declares the controller package
 |   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
 |   `-- __init__.py               Composes Linked Service controllers
@@ -254,7 +255,8 @@ controllers/
 |   |-- delete.py                 Deletes resources
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
-|   `-- patch.py                  Applies supplied changes
+|   |-- patch.py                  Applies supplied changes
+|   `-- response.py               Translates Persona documents to responses
 |-- pipeline/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
@@ -263,20 +265,16 @@ controllers/
 |   |-- list.py                   Lists definitions
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
+|   |-- run.py                    Coordinates Pipeline-run operations
 |   `-- utils.py                  Translates request schemas to service inputs
-|-- provider/
+|-- skill/
 |   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- delete.py                 Deletes configuration
-|   |-- describe.py               Describes one configuration
-|   |-- list.py                   Lists configurations
+|   |-- create.py                 Creates resources
+|   |-- delete.py                 Deletes resources
+|   |-- describe.py               Describes one resource
+|   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
-`-- skill/
-    |-- __init__.py               Composes endpoint-specific controllers
-    |-- create.py                 Creates resources
-    |-- delete.py                 Deletes resources
-    |-- describe.py               Describes one resource
-    |-- list.py                   Lists resources
-    `-- patch.py                  Applies supplied changes
+`-- worker.py                     Coordinates Worker HTTP operations
 ```
 
 ### Catalogs
@@ -348,9 +346,11 @@ repositories/
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- linked_services/
+|   |-- __init__.py                Declares persistence contracts
 |   `-- repository.py              Persists workspace provider connections
 |-- activity_runs/
 |   |-- errors.py                  Defines checkpoint transition conflicts
+|   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists checkpoint records
 |-- pipelines/
@@ -359,14 +359,25 @@ repositories/
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists records and changelog entries
 |-- pipeline_runs/
-|   `-- repository.py              Persists Pipeline execution state
-`-- shared/
-  |-- __init__.py                Declares reusable persistence adapters
-  |-- dependency_repository.py   Looks up resource dependencies
-  |-- json_mapping.py            Serializes and deserializes JSON values
-  |-- reference_repository.py    Resolves instruction and model references
-  |-- tenant_repository.py       Persists workspace memberships
-  `-- validation_repository.py   Looks up normalized resource names
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Persists Pipeline execution state
+|   `-- sqlite_repository.py       Persists Pipeline execution state
+|-- providers/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists workspace provider configuration
+|-- shared/
+|   |-- __init__.py                Declares reusable persistence adapters
+|   |-- datetime.py                Maps SQLite timestamp values
+|   |-- dependency_repository.py   Looks up resource dependencies
+|   |-- json_mapping.py            Serializes and deserializes JSON values
+|   |-- reference_repository.py    Resolves instruction and model references
+|   |-- tenant_repository.py       Persists workspace memberships
+|   `-- validation_repository.py   Looks up normalized resource names
+`-- workers/
+    |-- __init__.py                Declares persistence contracts
+    |-- repository.py              Defines the persistence contract
+    `-- sqlite_repository.py       Persists Worker records
 ```
 
 ### Models
@@ -385,11 +396,12 @@ models/
 |-- changelog.py                   Defines shared immutable changelog values
 |-- instruction.py                 Defines persisted and available resource data
 |-- linked_service.py              Defines workspace-owned provider connections
-|-- model.py                       Defines catalog and availability projections
 |-- persona.py                     Defines resource documents with skill links
 |-- pipeline.py                    Defines definitions, steps, and history
+|-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
-`-- tenant.py                      Defines workspace and membership state
+|-- tenant.py                      Defines workspace and membership state
+`-- worker.py                      Defines Worker registration and Harness state
 ```
 
 ## Components
