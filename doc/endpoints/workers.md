@@ -2,8 +2,8 @@
 
 Workers are API-provisioned, workspace-scoped runtime identities. A runtime
 stores its assigned `worker_id` in the workspace configuration and refreshes a
-heartbeat before each workspace poll. An active heartbeat is required to claim
-a PipelineRun.
+heartbeat before each workspace poll. An active heartbeat and a matching
+Harness capability are required to claim a PipelineRun.
 
 Worker provisioning is separate from a PipelineRun lease. A heartbeat does not
 extend a lease, and an expired heartbeat does not revoke an existing lease.
@@ -29,11 +29,26 @@ remains the authoritative check that an active worker can claim queued work.
 ## Provision A Worker
 
 `POST /api/v1/workers` provisions a worker identity in the selected workspace.
-Store the returned ID in that workspace's runtime configuration.
+Its optional `harnesses` array declares local execution capabilities. Omitting
+the request body registers the compatibility default: `louie` v1 with an empty
+configuration. Store the returned ID in that workspace's runtime configuration.
 
 ```http
 POST /api/v1/workers
 X-Workspace-ID: workspace-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "harnesses": [
+    {
+      "kind": "louie",
+      "version": "v1",
+      "config": {}
+    }
+  ]
+}
 ```
 
 Example response (`201 Created`):
@@ -42,7 +57,14 @@ Example response (`201 Created`):
 {
   "id": "c1fa5f23a0fb4c4cad6b08a2ea774b21",
   "registered_at": "2026-08-21T10:00:00Z",
-  "last_heartbeat_at": "2026-08-21T10:00:00Z"
+  "last_heartbeat_at": "2026-08-21T10:00:00Z",
+  "harnesses": [
+    {
+      "kind": "louie",
+      "version": "v1",
+      "config": {}
+    }
+  ]
 }
 ```
 

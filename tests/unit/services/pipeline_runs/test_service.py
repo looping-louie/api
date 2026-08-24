@@ -24,7 +24,10 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
-from src.app.services.workers import WorkerUnavailableError
+from src.app.services.workers import (
+    WorkerHarnessUnavailableError,
+    WorkerUnavailableError,
+)
 from tests.conftest import IncrementingClock
 
 
@@ -195,11 +198,13 @@ class InMemoryPipelineRunRepository:
 class InMemoryWorkerService:
     """Control worker claim admission for PipelineRun scheduler tests."""
 
-    def __init__(self, *, active: bool) -> None:
+    def __init__(self, *, active: bool, supports_harness: bool = True) -> None:
         """Store whether registration liveness should admit claims."""
 
         self.active = active
+        self.supports_harness = supports_harness
         self.calls: list[tuple[str, str]] = []
+        self.harness_calls: list[tuple[str, str, dict[str, object]]] = []
 
     async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
         """Record one admission check and reject inactive worker identities."""
@@ -207,6 +212,19 @@ class InMemoryWorkerService:
         self.calls.append((workspace_id, worker_id))
         if not self.active:
             raise WorkerUnavailableError(worker_id)
+
+    async def require_harness(
+        self,
+        *,
+        workspace_id: str,
+        worker_id: str,
+        harness: dict[str, object],
+    ) -> None:
+        """Record one capability admission check and reject mismatches."""
+
+        self.harness_calls.append((workspace_id, worker_id, harness))
+        if not self.supports_harness:
+            raise WorkerHarnessUnavailableError(worker_id)
 
 
 class InMemoryActivityRunRepository:
@@ -338,6 +356,11 @@ async def test_prepared_run_starts_before_runtime_claim(
     }
     assert lease_token == 'token'
     assert workers.calls == [('workspace-1', 'worker-1')]
+    assert workers.harness_calls == [(
+        'workspace-1',
+        'worker-1',
+        {'kind': 'louie', 'version': 'v1', 'config': {}},
+    )]
 
     runs.document = replace(
         claimed,
@@ -369,6 +392,46 @@ async def test_prepared_run_starts_before_runtime_claim(
         await service.claim(
             user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
             worker_id='worker-3', if_match=pipeline_run_etag(created),
+            lease_duration=timedelta(minutes=1),
+        )
+
+
+@pytest.mark.asyncio
+async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
+    tenant_service: TenantService,
+) -> None:
+    """Worker liveness does not authorize an incompatible Harness claim."""
+
+    first = activity('activity-1')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run one step.', status='active',
+            steps=(PipelineActivityStep(activity_id=first.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    workers = InMemoryWorkerService(active=True, supports_harness=False)
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        worker_service=workers, id_factory=lambda: 'run-1',
+        clock=IncrementingClock(), token_factory=lambda: 'token',
+    )
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+    started, _ = await service.start(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+    )
+
+    with pytest.raises(WorkerHarnessUnavailableError):
+        await service.claim(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+            worker_id='worker-1', if_match=pipeline_run_etag(started),
             lease_duration=timedelta(minutes=1),
         )
 

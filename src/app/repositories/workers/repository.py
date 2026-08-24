@@ -15,6 +15,15 @@ class WorkerRepository(Protocol):
         """Persist one new workspace-scoped worker identity."""
         raise NotImplementedError
 
+    async def get(
+        self,
+        *,
+        workspace_id: str,
+        worker_id: str,
+    ) -> WorkerDocument | None:
+        """Return one persisted Worker and its declared capabilities."""
+        raise NotImplementedError
+
     async def heartbeat(
         self,
         *,

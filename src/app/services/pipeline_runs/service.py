@@ -212,6 +212,11 @@ class PipelineRunService:
                 workspace_id=details.document.workspace_id,
                 worker_id=normalized_worker_id,
             )
+            await self._worker_service.require_harness(
+                workspace_id=details.document.workspace_id,
+                worker_id=normalized_worker_id,
+                harness=self._harness_snapshot(candidate.pipeline_snapshot),
+            )
         if if_match != pipeline_run_etag(candidate):
             raise PipelineRunPreconditionFailedError(
                 pipeline_id=pipeline_id,

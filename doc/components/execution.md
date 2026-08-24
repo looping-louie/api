@@ -14,8 +14,9 @@ Activity-run. Existing Pipelines use `louie` v1 as the compatibility default.
 A Harness has a stable `kind`, a `version`, and a kind-specific `config`
 object. The API currently accepts only `louie` v1 with an empty `config`.
 Workers retain ownership of local checkout paths, executable locations,
-credentials, and other machine configuration. Future Harness kinds add worker
-capability validation before a Pipeline run is assigned.
+credentials, and other machine configuration. Workers advertise Harness
+capabilities at registration, and an active Worker claims a PipelineRun only
+when it advertises an exact match for the frozen selection.
 
 Human Activities do not use the Pipeline Harness. `approval` and `quiz`
 Activities use the built-in `human` execution mode and accept only human

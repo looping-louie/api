@@ -32,3 +32,7 @@ API accepts only an empty `louie` v1 configuration. Human `approval` and `quiz`
 Activities remain human-executed and do not use the Pipeline Harness. The API
 documents Harness semantics in [Architecture](architecture.md) and
 [Execution](components/execution.md).
+
+Workers advertise their available Harness capabilities during registration. A
+PipelineRun claim requires an active Worker heartbeat and an exact match for
+the frozen Pipeline Harness selection.

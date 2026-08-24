@@ -75,11 +75,12 @@ future Codex CLI policy places Codex-specific properties within `config`:
 
 `codex_cli` is a planned Harness kind and is not accepted by the current API.
 It does not replace API-directed scheduling, reviewer decisions, lease
-validation, or commit authorization. Its implementation adds worker Harness
-capability reporting and API eligibility validation before a Pipeline run is
-assigned. The initial `codex_cli` scope is a single `direct_loop` turn that
-reports its final response, checkout diff, changed files, usage, diagnostics,
-and optional opaque session reference to the existing checkpoint protocol.
+validation, or commit authorization. Workers already advertise Harness
+capabilities during registration, and the API requires an exact capability
+match before a PipelineRun claim. The initial `codex_cli` scope is a single
+`direct_loop` turn that reports its final response, checkout diff, changed
+files, usage, diagnostics, and optional opaque session reference to the
+existing checkpoint protocol.
 
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the
