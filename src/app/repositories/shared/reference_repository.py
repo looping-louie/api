@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from src.app.services.persona_skills import (
-    InstructionRepository,
+    DefinitionRepository,
 )
 from src.app.services.models.catalog import ModelCatalogService
 
@@ -30,7 +30,7 @@ class CompositeReferenceRepository:
     def __init__(
         self,
         *,
-        instruction_repository: InstructionRepository,
+        instruction_repository: DefinitionRepository,
         model_catalog_service: ModelCatalogService,
     ) -> None:
         """Store the instruction and model lookup dependencies."""

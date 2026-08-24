@@ -10,8 +10,8 @@ from typing import Mapping, Sequence
 from src.app.catalogs.persona_skills import InstructionOrigin
 
 from ..persona_skills import (
-    AvailableInstructionDocument,
-    InstructionRepository,
+    AvailableDefinitionDocument,
+    DefinitionRepository,
     InstructionType,
 )
 from ..shared.tenant import TenantService
@@ -178,7 +178,7 @@ class ExecutionInstructionLibraryService:
     def __init__(
         self,
         *,
-        repository: InstructionRepository,
+        repository: DefinitionRepository,
         persona_skill_repository: PersonaSkillRepository,
         tenant_service: TenantService,
         persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository | None = None,
@@ -242,7 +242,7 @@ class ExecutionInstructionLibraryService:
             workspace_id=workspace_id,
             instruction_type=instruction_type,
         )
-        documents: list[AvailableInstructionDocument] = []
+        documents: list[AvailableDefinitionDocument] = []
 
         for summary in summaries:
             if not summary.selectable:
@@ -303,7 +303,7 @@ class ExecutionInstructionLibraryService:
 
     @staticmethod
     def _runtime_id(
-        document: AvailableInstructionDocument,
+        document: AvailableDefinitionDocument,
     ) -> str:
         if document.origin == InstructionOrigin.BUILTIN:
             return document.id.rsplit(":", maxsplit=1)[-1]

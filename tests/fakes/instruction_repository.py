@@ -9,11 +9,11 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionStatus,
 )
 from src.app.services.persona_skills import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
-    AvailableInstructionSummary,
-    InstructionDocument,
-    InstructionSummary,
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
+    AvailableDefinitionSummary,
+    DefinitionDocument,
+    DefinitionSummary,
     InstructionType,
 )
 
@@ -24,11 +24,11 @@ class FakeInstructionRepository:
     def __init__(self) -> None:
         self._documents: dict[
             tuple[str, InstructionType, str],
-            InstructionDocument,
+            DefinitionDocument,
         ] = {}
         self._available_documents: dict[
             tuple[InstructionType, str],
-            AvailableInstructionDocument,
+            AvailableDefinitionDocument,
         ] = {}
         self._enabled_settings: dict[
             tuple[str, str],
@@ -36,7 +36,7 @@ class FakeInstructionRepository:
         ] = {}
 
     @property
-    def documents(self) -> list[InstructionDocument]:
+    def documents(self) -> list[DefinitionDocument]:
         """Return copies of every stored document."""
 
         return [
@@ -44,7 +44,7 @@ class FakeInstructionRepository:
             for document in self._documents.values()
         ]
 
-    def seed(self, document: InstructionDocument) -> None:
+    def seed(self, document: DefinitionDocument) -> None:
         """Insert a document directly into the fake repository."""
 
         key = self._build_key(
@@ -56,7 +56,7 @@ class FakeInstructionRepository:
 
     def seed_available(
         self,
-        document: AvailableInstructionDocument,
+        document: AvailableDefinitionDocument,
     ) -> None:
         """Insert a global or marketplace definition for service tests."""
 
@@ -73,7 +73,7 @@ class FakeInstructionRepository:
         workspace_id: str,
         instruction_type: InstructionType,
         search: str | None = None,
-    ) -> Sequence[InstructionSummary]:
+    ) -> Sequence[DefinitionSummary]:
         documents = [
             document
             for document in self._documents.values()
@@ -93,7 +93,7 @@ class FakeInstructionRepository:
         documents.sort(key=lambda document: document.name.casefold())
 
         return [
-            InstructionSummary(
+            DefinitionSummary(
                 id=document.id,
                 name=document.name,
                 description=document.description,
@@ -110,7 +110,7 @@ class FakeInstructionRepository:
         workspace_id: str,
         instruction_type: InstructionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         key = self._build_key(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
@@ -135,7 +135,7 @@ class FakeInstructionRepository:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return a filtered catalog page matching SQLite persistence."""
 
         documents = self._available_for_workspace(
@@ -194,7 +194,7 @@ class FakeInstructionRepository:
             documents.sort(key=self._available_sort_key)
 
         summaries = tuple(
-            AvailableInstructionSummary(
+            AvailableDefinitionSummary(
                 id=document.id,
                 workspace_id=document.workspace_id,
                 instruction_type=document.instruction_type,
@@ -223,14 +223,14 @@ class FakeInstructionRepository:
             if limit is not None
             else summaries[offset:]
         )
-        return AvailableInstructionPage(
+        return AvailableDefinitionPage(
             items=page_items,
             total=len(summaries),
         )
 
     @staticmethod
     def _available_sort_key(
-        document: AvailableInstructionDocument,
+        document: AvailableDefinitionDocument,
     ) -> tuple[str, str, str]:
         """Return the deterministic alphabetical catalog sort key."""
 
@@ -247,7 +247,7 @@ class FakeInstructionRepository:
         instruction_type: InstructionType,
         instruction_id: str,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument | None:
+    ) -> AvailableDefinitionDocument | None:
         matches = [
             document
             for document in self._available_for_workspace(
@@ -269,7 +269,7 @@ class FakeInstructionRepository:
         workspace_id: str,
         instruction_type: InstructionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         return await self.get(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
@@ -326,8 +326,8 @@ class FakeInstructionRepository:
     async def create(
         self,
         *,
-        document: InstructionDocument,
-    ) -> InstructionDocument:
+        document: DefinitionDocument,
+    ) -> DefinitionDocument:
         key = self._build_key(
             workspace_id=document.workspace_id,
             instruction_type=document.instruction_type,
@@ -343,9 +343,9 @@ class FakeInstructionRepository:
     async def update(
         self,
         *,
-        document: InstructionDocument,
+        document: DefinitionDocument,
         expected_version: int,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         key = self._build_key(
             workspace_id=document.workspace_id,
             instruction_type=document.instruction_type,
@@ -384,7 +384,7 @@ class FakeInstructionRepository:
         workspace_id: str,
         instruction_type: InstructionType,
         include_deprecated: bool,
-    ) -> list[AvailableInstructionDocument]:
+    ) -> list[AvailableDefinitionDocument]:
         documents = [
             self._custom_to_available(
                 document,
@@ -442,10 +442,10 @@ class FakeInstructionRepository:
 
     def _custom_to_available(
         self,
-        document: InstructionDocument,
+        document: DefinitionDocument,
         *,
         workspace_id: str,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         enabled_by_default = True
         enabled = self._enabled_settings.get(
             (
@@ -454,7 +454,7 @@ class FakeInstructionRepository:
             ),
             enabled_by_default,
         )
-        return AvailableInstructionDocument(
+        return AvailableDefinitionDocument(
             id=document.id,
             workspace_id=workspace_id,
             instruction_type=document.instruction_type,

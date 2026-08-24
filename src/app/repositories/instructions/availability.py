@@ -11,8 +11,8 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionStatus,
 )
 from src.app.services.persona_skills import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
     InstructionType,
 )
 
@@ -39,7 +39,7 @@ class InstructionAvailabilityMixin:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return a filtered page of the workspace instruction library."""
 
         if offset < 0:
@@ -164,7 +164,7 @@ class InstructionAvailabilityMixin:
             finally:
                 await cursor.close()
 
-        return AvailableInstructionPage(
+        return AvailableDefinitionPage(
             items=tuple(
                 to_available_summary(
                     row,
@@ -223,7 +223,7 @@ class InstructionAvailabilityMixin:
         instruction_type: InstructionType,
         instruction_id: str,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument | None:
+    ) -> AvailableDefinitionDocument | None:
         """Resolve one visible instruction, even when it is disabled."""
 
         deprecated_clause = (

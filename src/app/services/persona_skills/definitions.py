@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .lifecycle import _DefinitionLifecycleService
-from .types import Clock, IdFactory, InstructionRepository
+from .types import Clock, IdFactory, DefinitionRepository
 from ..shared.dependency_checker import DependencyChecker
 from ..shared.validation import ValidationService
 
@@ -14,7 +14,7 @@ class PersonaDefinitionService(_DefinitionLifecycleService):
     def __init__(
         self,
         *,
-        repository: InstructionRepository,
+        repository: DefinitionRepository,
         validation_service: ValidationService,
         dependency_checker: DependencyChecker,
         id_factory: IdFactory | None = None,
@@ -38,7 +38,7 @@ class SkillDefinitionService(_DefinitionLifecycleService):
     def __init__(
         self,
         *,
-        repository: InstructionRepository,
+        repository: DefinitionRepository,
         validation_service: ValidationService,
         dependency_checker: DependencyChecker,
         id_factory: IdFactory | None = None,

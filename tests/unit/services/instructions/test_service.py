@@ -6,7 +6,7 @@ import pytest
 
 from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.services.persona_skills import (
-    AvailableInstructionDocument,
+    AvailableDefinitionDocument,
     BuiltinInstructionImmutableError,
     DefinitionCreate,
     InstructionDisabledError,
@@ -26,11 +26,11 @@ def seed_builtin(
     repository: FakeInstructionRepository,
     *,
     instruction_type: InstructionType,
-) -> AvailableInstructionDocument:
+) -> AvailableDefinitionDocument:
     """Seed one selectable built-in definition."""
 
     now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
-    document = AvailableInstructionDocument(
+    document = AvailableDefinitionDocument(
         id=f"builtin:{instruction_type}:security",
         workspace_id="catalog",
         instruction_type=instruction_type,

@@ -12,9 +12,9 @@ from src.app.catalogs.persona_skills import (
 )
 
 from ..persona_skills import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
-    InstructionDocument,
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
+    DefinitionDocument,
     SkillDefinitionService,
 )
 from ..shared.tenant import TenantService
@@ -49,7 +49,7 @@ class SkillService:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return one filtered page of skills in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -74,7 +74,7 @@ class SkillService:
         skill_id: str,
         requested_workspace_id: str | None = None,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Return a complete skill."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -95,7 +95,7 @@ class SkillService:
         skill_id: str,
         enabled: bool,
         requested_workspace_id: str | None = None,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Set whether a skill is enabled in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -118,7 +118,7 @@ class SkillService:
         user_id: str,
         payload: SkillCreate,
         requested_workspace_id: str | None = None,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Create a skill in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -140,7 +140,7 @@ class SkillService:
         skill_id: str,
         payload: SkillUpdate,
         requested_workspace_id: str | None = None,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Update an existing skill."""
 
         workspace_id = await self._resolve_workspace_id(

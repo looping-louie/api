@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
 from ..persona_skills import (
-    AvailableInstructionDocument,
-    AvailableInstructionSummary,
+    AvailableDefinitionDocument,
+    AvailableDefinitionSummary,
     DefinitionCreate,
-    InstructionDocument,
+    DefinitionDocument,
     DefinitionUpdate,
 )
 
@@ -41,7 +41,7 @@ class PersonaLinkedServiceSelection:
 
 
 @dataclass(frozen=True, slots=True)
-class PersonaDocument(InstructionDocument):
+class PersonaDocument(DefinitionDocument):
     """Custom persona document with its associated skills."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -49,7 +49,7 @@ class PersonaDocument(InstructionDocument):
 
 
 @dataclass(frozen=True, slots=True)
-class AvailablePersonaDocument(AvailableInstructionDocument):
+class AvailablePersonaDocument(AvailableDefinitionDocument):
     """Workspace-visible persona document with associated skills."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -57,13 +57,13 @@ class AvailablePersonaDocument(AvailableInstructionDocument):
 
 
 @dataclass(frozen=True, slots=True)
-class AvailablePersonaSummary(AvailableInstructionSummary):
+class AvailablePersonaSummary(AvailableDefinitionSummary):
     """Workspace-visible persona summary with its selected model."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
 
 
-PersonaBaseDocument = InstructionDocument | AvailableInstructionDocument
+PersonaBaseDocument = DefinitionDocument | AvailableDefinitionDocument
 PersonaResultDocument = PersonaDocument | AvailablePersonaDocument
 PersonaSummaryDocument = AvailablePersonaSummary
 DocumentType = TypeVar("DocumentType", bound=PersonaBaseDocument)

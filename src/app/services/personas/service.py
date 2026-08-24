@@ -13,8 +13,8 @@ from src.app.catalogs.persona_skills import (
 )
 
 from ..persona_skills import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
     DefinitionCreate,
     DefinitionUpdate,
     PersonaDefinitionService,
@@ -76,7 +76,7 @@ class PersonaService:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return one filtered page of personas in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -110,7 +110,7 @@ class PersonaService:
                     linked_service_selection=linked_service_selection,
                 )
             )
-        return AvailableInstructionPage(items=tuple(items), total=page.total)
+        return AvailableDefinitionPage(items=tuple(items), total=page.total)
 
     async def describe(
         self,
@@ -344,7 +344,7 @@ class PersonaService:
             for field in fields(document)
         }
 
-        if isinstance(document, AvailableInstructionDocument):
+        if isinstance(document, AvailableDefinitionDocument):
             return AvailablePersonaDocument(
                 **values,
                 linked_service_selection=linked_service_selection,

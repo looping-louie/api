@@ -7,7 +7,7 @@ from typing import Any
 import aiosqlite
 
 from src.app.services.persona_skills import (
-    InstructionDocument,
+    DefinitionDocument,
     InstructionType,
 )
 
@@ -23,8 +23,8 @@ class InstructionMutationMixin:
 
     async def create(
         self,
-        document: InstructionDocument,
-    ) -> InstructionDocument:
+        document: DefinitionDocument,
+    ) -> DefinitionDocument:
         """Insert one instruction document."""
 
         async with self._connect() as connection:
@@ -80,10 +80,10 @@ class InstructionMutationMixin:
 
     async def update(
         self,
-        document: InstructionDocument,
+        document: DefinitionDocument,
         *,
         expected_version: int,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """
         Update one document when its stored version matches.
 
@@ -197,7 +197,7 @@ class InstructionMutationMixin:
         workspace_id: str,
         instruction_type: InstructionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return one owned custom instruction using an open connection."""
 
         raise NotImplementedError

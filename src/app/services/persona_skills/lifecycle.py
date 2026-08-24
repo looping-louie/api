@@ -17,15 +17,15 @@ from ..shared.dependency_checker import DependencyChecker
 from ..shared.reference_resolver import ResourceReference
 from ..shared.validation import ValidationService
 from .types import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
     BuiltinInstructionImmutableError,
     DefinitionCreate,
     InstructionDisabledError,
-    InstructionDocument,
+    DefinitionDocument,
     InstructionNotFoundError,
     InstructionNotOwnedError,
-    InstructionRepository,
+    DefinitionRepository,
     InstructionType,
     DefinitionUpdate,
     InstructionVersionConflictError,
@@ -51,7 +51,7 @@ class _DefinitionLifecycleService:
     def __init__(
         self,
         *,
-        repository: InstructionRepository,
+        repository: DefinitionRepository,
         validation_service: ValidationService,
         dependency_checker: DependencyChecker,
         instruction_type: InstructionType,
@@ -75,7 +75,7 @@ class _DefinitionLifecycleService:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return a filtered page of the effective instruction catalog."""
 
         summaries = await self._repository.list_available_for_workspace(
@@ -97,7 +97,7 @@ class _DefinitionLifecycleService:
         workspace_id: str,
         instruction_id: str,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Return a visible instruction, including disabled definitions."""
 
         document = await self._require_available(
@@ -114,7 +114,7 @@ class _DefinitionLifecycleService:
         *,
         workspace_id: str,
         payload: DefinitionCreate,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Create a workspace-owned custom instruction."""
 
         workspace_id = require_text(workspace_id, "workspace_id")
@@ -130,7 +130,7 @@ class _DefinitionLifecycleService:
         *,
         workspace_id: str,
         instruction_id: str,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Enable a visible instruction for new compositions."""
 
         return await self._set_enabled(
@@ -145,7 +145,7 @@ class _DefinitionLifecycleService:
         *,
         workspace_id: str,
         instruction_id: str,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Disable a visible instruction without hiding its definition."""
 
         return await self._set_enabled(
@@ -161,7 +161,7 @@ class _DefinitionLifecycleService:
         workspace_id: str,
         instruction_id: str,
         name: str | None = None,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Fork a visible instruction into a new editable custom copy."""
 
         workspace_id = require_text(
@@ -201,7 +201,7 @@ class _DefinitionLifecycleService:
         *,
         workspace_id: str,
         instruction_id: str,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Resolve an instruction that may be used in new compositions."""
 
         document = await self.describe(
@@ -224,7 +224,7 @@ class _DefinitionLifecycleService:
         workspace_id: str,
         instruction_id: str,
         payload: DefinitionUpdate,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Update a persona or skill using optimistic concurrency."""
 
         workspace_id = require_text(workspace_id, "workspace_id")
@@ -332,7 +332,7 @@ class _DefinitionLifecycleService:
         instruction_type: InstructionType,
         payload: DefinitionCreate,
         source_instruction_id: str | None,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         normalized = normalize_create(payload)
 
         await self._validation_service.require_unique_name(
@@ -342,7 +342,7 @@ class _DefinitionLifecycleService:
         )
 
         now = self._clock()
-        document = InstructionDocument(
+        document = DefinitionDocument(
             id=self._id_factory(),
             workspace_id=workspace_id,
             instruction_type=instruction_type,
@@ -367,7 +367,7 @@ class _DefinitionLifecycleService:
         instruction_type: InstructionType,
         instruction_id: str,
         enabled: bool,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         require_instruction_type(instruction_type)
         workspace_id = require_text(
             workspace_id,
@@ -416,7 +416,7 @@ class _DefinitionLifecycleService:
         instruction_type: InstructionType,
         instruction_id: str,
         include_deprecated: bool,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         document = await self._repository.get_available_for_workspace(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
@@ -438,7 +438,7 @@ class _DefinitionLifecycleService:
         workspace_id: str,
         instruction_type: InstructionType,
         instruction_id: str,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         available = await self._repository.get_available_for_workspace(
             workspace_id=workspace_id,
             instruction_type=instruction_type,

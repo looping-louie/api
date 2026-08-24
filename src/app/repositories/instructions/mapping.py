@@ -11,18 +11,18 @@ import aiosqlite
 
 from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.services.persona_skills import (
-    AvailableInstructionDocument,
-    AvailableInstructionSummary,
-    InstructionDocument,
-    InstructionSummary,
+    AvailableDefinitionDocument,
+    AvailableDefinitionSummary,
+    DefinitionDocument,
+    DefinitionSummary,
     InstructionType,
 )
 
 
-def to_summary(row: aiosqlite.Row) -> InstructionSummary:
+def to_summary(row: aiosqlite.Row) -> DefinitionSummary:
     """Convert a SQLite row into an editable instruction summary."""
 
-    return InstructionSummary(
+    return DefinitionSummary(
         id=str(row["id"]),
         name=str(row["name"]),
         description=str(row["description"]),
@@ -32,10 +32,10 @@ def to_summary(row: aiosqlite.Row) -> InstructionSummary:
     )
 
 
-def to_document(row: aiosqlite.Row) -> InstructionDocument:
+def to_document(row: aiosqlite.Row) -> DefinitionDocument:
     """Convert a SQLite row into an editable instruction document."""
 
-    return InstructionDocument(
+    return DefinitionDocument(
         id=str(row["id"]),
         workspace_id=str(row["workspace_id"]),
         instruction_type=cast(
@@ -61,10 +61,10 @@ def to_available_summary(
     row: aiosqlite.Row,
     *,
     workspace_id: str,
-) -> AvailableInstructionSummary:
+) -> AvailableDefinitionSummary:
     """Convert a row into a workspace-scoped available summary."""
 
-    return AvailableInstructionSummary(
+    return AvailableDefinitionSummary(
         id=str(row["id"]),
         workspace_id=workspace_id,
         instruction_type=cast(
@@ -107,10 +107,10 @@ def to_available_document(
     row: aiosqlite.Row,
     *,
     workspace_id: str,
-) -> AvailableInstructionDocument:
+) -> AvailableDefinitionDocument:
     """Convert a row into a workspace-scoped available document."""
 
-    return AvailableInstructionDocument(
+    return AvailableDefinitionDocument(
         id=str(row["id"]),
         workspace_id=workspace_id,
         instruction_type=cast(
