@@ -8,7 +8,7 @@ import aiosqlite
 
 from src.app.services.persona_skills import (
     DefinitionDocument,
-    InstructionType,
+    DefinitionType,
 )
 
 from .mapping import (
@@ -151,7 +151,7 @@ class InstructionMutationMixin:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
         """Delete one instruction and report whether it existed."""
@@ -195,7 +195,7 @@ class InstructionMutationMixin:
         *,
         connection: aiosqlite.Connection,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return one owned custom instruction using an open connection."""

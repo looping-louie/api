@@ -7,11 +7,11 @@ import pytest
 from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.services.persona_skills import (
     AvailableDefinitionDocument,
-    BuiltinInstructionImmutableError,
+    BuiltinDefinitionImmutableError,
     DefinitionCreate,
-    InstructionDisabledError,
-    InstructionNotOwnedError,
-    InstructionType,
+    DefinitionDisabledError,
+    DefinitionNotOwnedError,
+    DefinitionType,
     DefinitionUpdate,
     PersonaDefinitionService,
     SkillDefinitionService,
@@ -25,7 +25,7 @@ from tests.fakes.instruction_repository import FakeInstructionRepository
 def seed_builtin(
     repository: FakeInstructionRepository,
     *,
-    instruction_type: InstructionType,
+    instruction_type: DefinitionType,
 ) -> AvailableDefinitionDocument:
     """Seed one selectable built-in definition."""
 
@@ -109,12 +109,12 @@ async def test_builtin_definition_can_be_toggled_but_not_mutated(
     )
 
     assert not disabled.enabled
-    with pytest.raises(InstructionDisabledError):
+    with pytest.raises(DefinitionDisabledError):
         await persona_definition_service.resolve_for_selection(
             workspace_id="workspace-1",
             instruction_id=builtin.id,
         )
-    with pytest.raises(BuiltinInstructionImmutableError):
+    with pytest.raises(BuiltinDefinitionImmutableError):
         await persona_definition_service.delete(
             workspace_id="workspace-1",
             instruction_id=builtin.id,
@@ -146,7 +146,7 @@ async def test_skill_definition_checks_dependencies_before_deletion(
             workspace_id="workspace-1",
             instruction_id=created.id,
         )
-    with pytest.raises(InstructionNotOwnedError):
+    with pytest.raises(DefinitionNotOwnedError):
         await skill_definition_service.update(
             workspace_id="workspace-2",
             instruction_id=created.id,

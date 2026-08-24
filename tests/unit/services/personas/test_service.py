@@ -10,7 +10,7 @@ from src.app.services.personas import (
     PersonaUpdate,
 )
 from src.app.services.persona_skills import (
-    InstructionNotFoundError,
+    DefinitionNotFoundError,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
@@ -156,7 +156,7 @@ async def test_persona_crud_flow(
         persona_id=created.id,
     )
 
-    with pytest.raises(InstructionNotFoundError):
+    with pytest.raises(DefinitionNotFoundError):
         await service.describe(
             user_id="user-1",
             persona_id=created.id,

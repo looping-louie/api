@@ -51,13 +51,13 @@ from src.app.services.shared.dependency_checker import (
     ResourceInUseError,
 )
 from src.app.services.persona_skills import (
-    BuiltinInstructionImmutableError,
-    InstructionDisabledError,
-    InstructionNotFoundError,
-    InstructionNotOwnedError,
-    InstructionValidationError,
-    InstructionVersionConflictError,
-    InvalidInstructionTypeError,
+    BuiltinDefinitionImmutableError,
+    DefinitionDisabledError,
+    DefinitionNotFoundError,
+    DefinitionNotOwnedError,
+    DefinitionValidationError,
+    DefinitionVersionConflictError,
+    InvalidDefinitionTypeError,
 )
 from src.app.services.shared.reference_resolver import (
     ReferenceValidationError,
@@ -127,37 +127,37 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         public_message="A workspace must be selected for this request.",
         details_builder=_workspace_selection_details,
     ),
-    InvalidInstructionTypeError: ErrorDefinition(
+    InvalidDefinitionTypeError: ErrorDefinition(
         status_code=status.HTTP_400_BAD_REQUEST,
         code="unsupported_instruction_type",
         details_builder=_invalid_instruction_type_details,
     ),
-    InstructionNotFoundError: ErrorDefinition(
+    DefinitionNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code="instruction_not_found",
         details_builder=_instruction_not_found_details,
     ),
-    BuiltinInstructionImmutableError: ErrorDefinition(
+    BuiltinDefinitionImmutableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code="builtin_instruction_immutable",
         details_builder=_instruction_access_details,
     ),
-    InstructionDisabledError: ErrorDefinition(
+    DefinitionDisabledError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code="instruction_disabled",
         details_builder=_instruction_access_details,
     ),
-    InstructionNotOwnedError: ErrorDefinition(
+    DefinitionNotOwnedError: ErrorDefinition(
         status_code=status.HTTP_403_FORBIDDEN,
         code="instruction_not_owned",
         details_builder=_instruction_access_details,
     ),
-    InstructionVersionConflictError: ErrorDefinition(
+    DefinitionVersionConflictError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code="version_conflict",
         details_builder=_version_conflict_details,
     ),
-    InstructionValidationError: ErrorDefinition(
+    DefinitionValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="instruction_validation_error",
         details_builder=_validation_details,

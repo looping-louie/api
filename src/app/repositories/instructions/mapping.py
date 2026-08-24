@@ -15,7 +15,7 @@ from src.app.services.persona_skills import (
     AvailableDefinitionSummary,
     DefinitionDocument,
     DefinitionSummary,
-    InstructionType,
+    DefinitionType,
 )
 
 
@@ -39,7 +39,7 @@ def to_document(row: aiosqlite.Row) -> DefinitionDocument:
         id=str(row["id"]),
         workspace_id=str(row["workspace_id"]),
         instruction_type=cast(
-            InstructionType,
+            DefinitionType,
             str(row["instruction_type"]),
         ),
         source_instruction_id=(
@@ -68,7 +68,7 @@ def to_available_summary(
         id=str(row["id"]),
         workspace_id=workspace_id,
         instruction_type=cast(
-            InstructionType,
+            DefinitionType,
             str(row["instruction_type"]),
         ),
         origin=InstructionOrigin(str(row["origin"])),
@@ -114,7 +114,7 @@ def to_available_document(
         id=str(row["id"]),
         workspace_id=workspace_id,
         instruction_type=cast(
-            InstructionType,
+            DefinitionType,
             str(row["instruction_type"]),
         ),
         origin=InstructionOrigin(str(row["origin"])),

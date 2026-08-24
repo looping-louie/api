@@ -14,7 +14,7 @@ from src.app.services.persona_skills import (
     AvailableDefinitionSummary,
     DefinitionDocument,
     DefinitionSummary,
-    InstructionType,
+    DefinitionType,
 )
 
 
@@ -23,11 +23,11 @@ class FakeInstructionRepository:
 
     def __init__(self) -> None:
         self._documents: dict[
-            tuple[str, InstructionType, str],
+            tuple[str, DefinitionType, str],
             DefinitionDocument,
         ] = {}
         self._available_documents: dict[
-            tuple[InstructionType, str],
+            tuple[DefinitionType, str],
             AvailableDefinitionDocument,
         ] = {}
         self._enabled_settings: dict[
@@ -71,7 +71,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
     ) -> Sequence[DefinitionSummary]:
         documents = [
@@ -108,7 +108,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         key = self._build_key(
@@ -127,7 +127,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
         status: CatalogInstructionStatus | None = None,
@@ -244,7 +244,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
     ) -> AvailableDefinitionDocument | None:
@@ -267,7 +267,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         return await self.get(
@@ -363,7 +363,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
         key = self._build_key(
@@ -382,7 +382,7 @@ class FakeInstructionRepository:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         include_deprecated: bool,
     ) -> list[AvailableDefinitionDocument]:
         documents = [
@@ -479,7 +479,7 @@ class FakeInstructionRepository:
     def _build_key(
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> tuple[str, InstructionType, str]:
+    ) -> tuple[str, DefinitionType, str]:
         return workspace_id, instruction_type, instruction_id

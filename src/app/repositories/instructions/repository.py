@@ -11,7 +11,7 @@ import aiosqlite
 from src.app.services.persona_skills import (
     DefinitionDocument,
     DefinitionSummary,
-    InstructionType,
+    DefinitionType,
 )
 
 from .availability import InstructionAvailabilityMixin
@@ -42,7 +42,7 @@ class SqliteInstructionRepository(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
     ) -> list[DefinitionSummary]:
         """Return owned custom summaries for legacy editing services."""
@@ -87,7 +87,7 @@ class SqliteInstructionRepository(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return one custom instruction owned by the workspace."""
@@ -102,7 +102,7 @@ class SqliteInstructionRepository(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return a custom instruction owned by the workspace."""
@@ -120,7 +120,7 @@ class SqliteInstructionRepository(
         *,
         connection: aiosqlite.Connection,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return one owned custom instruction using an open connection."""

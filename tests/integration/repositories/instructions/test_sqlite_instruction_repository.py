@@ -16,7 +16,7 @@ from src.app.repositories.instructions.repository import (
 )
 from src.app.services.persona_skills import (
     DefinitionDocument,
-    InstructionType,
+    DefinitionType,
 )
 
 
@@ -27,7 +27,7 @@ def build_instruction(
     *,
     instruction_id: str = "instruction-1",
     workspace_id: str = "workspace-1",
-    instruction_type: InstructionType = "persona",
+    instruction_type: DefinitionType = "persona",
     name: str = "Security Reviewer",
     description: str = "Reviews security concerns.",
     instructions: str = "Review the supplied work for security issues.",

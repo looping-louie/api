@@ -13,7 +13,7 @@ from src.app.catalogs.persona_skills import (
 from src.app.services.persona_skills import (
     AvailableDefinitionDocument,
     AvailableDefinitionPage,
-    InstructionType,
+    DefinitionType,
 )
 
 from .mapping import (
@@ -31,7 +31,7 @@ class InstructionAvailabilityMixin:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
         status: CatalogInstructionStatus | None = None,
@@ -220,7 +220,7 @@ class InstructionAvailabilityMixin:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
     ) -> AvailableDefinitionDocument | None:

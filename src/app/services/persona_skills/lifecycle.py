@@ -19,16 +19,16 @@ from ..shared.validation import ValidationService
 from .types import (
     AvailableDefinitionDocument,
     AvailableDefinitionPage,
-    BuiltinInstructionImmutableError,
+    BuiltinDefinitionImmutableError,
     DefinitionCreate,
-    InstructionDisabledError,
+    DefinitionDisabledError,
     DefinitionDocument,
-    InstructionNotFoundError,
-    InstructionNotOwnedError,
+    DefinitionNotFoundError,
+    DefinitionNotOwnedError,
     DefinitionRepository,
-    InstructionType,
+    DefinitionType,
     DefinitionUpdate,
-    InstructionVersionConflictError,
+    DefinitionVersionConflictError,
     Clock,
     IdFactory,
     copy_available_instruction_document,
@@ -54,7 +54,7 @@ class _DefinitionLifecycleService:
         repository: DefinitionRepository,
         validation_service: ValidationService,
         dependency_checker: DependencyChecker,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         id_factory: IdFactory | None = None,
         clock: Clock | None = None,
     ) -> None:
@@ -211,7 +211,7 @@ class _DefinitionLifecycleService:
         )
 
         if not document.selectable:
-            raise InstructionDisabledError(
+            raise DefinitionDisabledError(
                 instruction_type=self._instruction_type,
                 instruction_id=instruction_id,
             )
@@ -320,7 +320,7 @@ class _DefinitionLifecycleService:
         )
 
         if not deleted:
-            raise InstructionNotFoundError(
+            raise DefinitionNotFoundError(
                 instruction_type=self._instruction_type,
                 instruction_id=instruction_id,
             )
@@ -329,7 +329,7 @@ class _DefinitionLifecycleService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         payload: DefinitionCreate,
         source_instruction_id: str | None,
     ) -> DefinitionDocument:
@@ -364,7 +364,7 @@ class _DefinitionLifecycleService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         enabled: bool,
     ) -> AvailableDefinitionDocument:
@@ -385,7 +385,7 @@ class _DefinitionLifecycleService:
         )
 
         if current.deprecated:
-            raise InstructionDisabledError(
+            raise DefinitionDisabledError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -397,7 +397,7 @@ class _DefinitionLifecycleService:
         )
 
         if not persisted:
-            raise InstructionNotFoundError(
+            raise DefinitionNotFoundError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -413,7 +413,7 @@ class _DefinitionLifecycleService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool,
     ) -> AvailableDefinitionDocument:
@@ -425,7 +425,7 @@ class _DefinitionLifecycleService:
         )
 
         if document is None:
-            raise InstructionNotFoundError(
+            raise DefinitionNotFoundError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -436,7 +436,7 @@ class _DefinitionLifecycleService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument:
         available = await self._repository.get_available_for_workspace(
@@ -450,7 +450,7 @@ class _DefinitionLifecycleService:
             available is not None
             and available.origin == InstructionOrigin.BUILTIN
         ):
-            raise BuiltinInstructionImmutableError(
+            raise BuiltinDefinitionImmutableError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -462,7 +462,7 @@ class _DefinitionLifecycleService:
         )
 
         if document is None:
-            raise InstructionNotOwnedError(
+            raise DefinitionNotOwnedError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -473,7 +473,7 @@ class _DefinitionLifecycleService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         expected_version: int,
     ) -> None:
@@ -484,12 +484,12 @@ class _DefinitionLifecycleService:
         )
 
         if current is None:
-            raise InstructionNotOwnedError(
+            raise DefinitionNotOwnedError(
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
 
-        raise InstructionVersionConflictError(
+        raise DefinitionVersionConflictError(
             instruction_type=instruction_type,
             instruction_id=instruction_id,
             expected_version=expected_version,

@@ -12,7 +12,7 @@ from src.app.catalogs.persona_skills import InstructionOrigin
 from ..persona_skills import (
     AvailableDefinitionDocument,
     DefinitionRepository,
-    InstructionType,
+    DefinitionType,
 )
 from ..shared.tenant import TenantService
 from ..personas.types import (
@@ -28,7 +28,7 @@ class ExecutionInstructionNotFoundError(LookupError):
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -45,7 +45,7 @@ class ExecutionInstruction:
 
     id: str
     source_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     origin: InstructionOrigin
     version: int
     catalog_version: int | None
@@ -159,7 +159,7 @@ class ExecutionInstructionLibrary:
         *,
         instruction_id: str,
         aliases: Mapping[str, str],
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
     ) -> str:
         normalized = instruction_id.strip()
         runtime_id = aliases.get(normalized)
@@ -236,7 +236,7 @@ class ExecutionInstructionLibraryService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
     ) -> tuple[ExecutionInstruction, ...]:
         summaries = await self._repository.list_available_for_workspace(
             workspace_id=workspace_id,

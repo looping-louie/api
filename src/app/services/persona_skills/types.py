@@ -16,7 +16,7 @@ from src.app.catalogs.persona_skills import (
 )
 
 
-InstructionType = Literal["persona", "skill"]
+DefinitionType = Literal["persona", "skill"]
 IdFactory = Callable[[], str]
 Clock = Callable[[], datetime]
 
@@ -46,7 +46,7 @@ class DefinitionDocument:
 
     id: str
     workspace_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     name: str
     description: str
     instructions: str
@@ -63,7 +63,7 @@ class AvailableDefinitionSummary:
 
     id: str
     workspace_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     origin: InstructionOrigin
     owner_workspace_id: str | None
     source_instruction_id: str | None
@@ -127,7 +127,7 @@ class AvailableDefinitionDocument:
 
     id: str
     workspace_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     origin: InstructionOrigin
     owner_workspace_id: str | None
     source_instruction_id: str | None
@@ -194,7 +194,7 @@ class DefinitionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
     ) -> Sequence[DefinitionSummary]:
         """Return owned custom summaries for editing workflows."""
@@ -204,7 +204,7 @@ class DefinitionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return one custom instruction owned by the workspace."""
@@ -214,7 +214,7 @@ class DefinitionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
         status: CatalogInstructionStatus | None = None,
@@ -230,7 +230,7 @@ class DefinitionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
     ) -> AvailableDefinitionDocument | None:
@@ -241,7 +241,7 @@ class DefinitionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return a custom instruction owned by the workspace."""
@@ -287,18 +287,18 @@ class DefinitionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
         """Delete an instruction and report whether it existed."""
         ...
 
 
-class InstructionServiceError(Exception):
+class DefinitionServiceError(Exception):
     """Base error raised by InstructionService."""
 
 
-class InvalidInstructionTypeError(InstructionServiceError):
+class InvalidDefinitionTypeError(DefinitionServiceError):
     """Raised when an unsupported instruction type is requested."""
 
     def __init__(self, instruction_type: str) -> None:
@@ -306,13 +306,13 @@ class InvalidInstructionTypeError(InstructionServiceError):
         self.instruction_type = instruction_type
 
 
-class InstructionNotFoundError(InstructionServiceError):
+class DefinitionNotFoundError(DefinitionServiceError):
     """Raised when an instruction cannot be found."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         message = f"{instruction_type.capitalize()} '{instruction_id}' was not found."
@@ -321,13 +321,13 @@ class InstructionNotFoundError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class BuiltinInstructionImmutableError(InstructionServiceError):
+class BuiltinDefinitionImmutableError(DefinitionServiceError):
     """Raised when a builtin is passed to a mutation operation."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -337,13 +337,13 @@ class BuiltinInstructionImmutableError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class InstructionDisabledError(InstructionServiceError):
+class DefinitionDisabledError(DefinitionServiceError):
     """Raised when an instruction cannot be selected for new work."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -354,13 +354,13 @@ class InstructionDisabledError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class InstructionNotOwnedError(InstructionServiceError):
+class DefinitionNotOwnedError(DefinitionServiceError):
     """Raised when a mutation target is not owned by the workspace."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -371,13 +371,13 @@ class InstructionNotOwnedError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class InstructionVersionConflictError(InstructionServiceError):
+class DefinitionVersionConflictError(DefinitionServiceError):
     """Raised when an update uses a stale resource version."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         expected_version: int,
         current_version: int,
@@ -393,7 +393,7 @@ class InstructionVersionConflictError(InstructionServiceError):
         self.current_version = current_version
 
 
-class InstructionValidationError(InstructionServiceError):
+class DefinitionValidationError(DefinitionServiceError):
     """Raised when instruction content is invalid."""
 
     def __init__(self, *, field_name: str, message: str) -> None:

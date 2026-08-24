@@ -7,9 +7,9 @@ from copy import deepcopy
 from .types import (
     DefinitionCreate,
     DefinitionUpdate,
-    InstructionValidationError,
+    DefinitionValidationError,
     SUPPORTED_INSTRUCTION_TYPES,
-    InvalidInstructionTypeError,
+    InvalidDefinitionTypeError,
 )
 
 
@@ -17,7 +17,7 @@ def require_instruction_type(instruction_type: str) -> None:
     """Require one supported instruction type."""
 
     if instruction_type not in SUPPORTED_INSTRUCTION_TYPES:
-        raise InvalidInstructionTypeError(instruction_type)
+        raise InvalidDefinitionTypeError(instruction_type)
 
 
 def require_text(value: str, field_name: str) -> str:
@@ -26,7 +26,7 @@ def require_text(value: str, field_name: str) -> str:
     normalized = value.strip()
 
     if not normalized:
-        raise InstructionValidationError(
+        raise DefinitionValidationError(
             field_name=field_name,
             message="must not be empty",
         )
@@ -65,7 +65,7 @@ def normalize_update(payload: DefinitionUpdate) -> DefinitionUpdate:
     """Normalize and validate partial update values."""
 
     if payload.expected_version < 1:
-        raise InstructionValidationError(
+        raise DefinitionValidationError(
             field_name="expected_version",
             message="must be greater than zero",
         )
