@@ -292,6 +292,11 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert created.status == 'prepared'
     assert created.commit_mode == 'forbid'
     assert created.current_activity_run_id is None
+    assert created.pipeline_snapshot['harness'] == {
+        'kind': 'louie',
+        'version': 'v1',
+        'config': {},
+    }
     assert [step.status for step in created.steps] == ['pending']
     assert child is None
     assert runs.children == {}
@@ -326,6 +331,11 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert claimed.attempt == 1
     assert claimed_child.activity_id == first.id
     assert claimed_child.activity_snapshot['commit_mode'] == 'forbid'
+    assert claimed_child.activity_snapshot['harness'] == {
+        'kind': 'louie',
+        'version': 'v1',
+        'config': {},
+    }
     assert lease_token == 'token'
     assert workers.calls == [('workspace-1', 'worker-1')]
 

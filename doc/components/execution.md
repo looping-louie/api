@@ -9,12 +9,13 @@ operations, and performs the authorized commit.
 
 A Pipeline selects one Harness for its runtime-executable Activities. The
 selection is frozen in the Pipeline-run snapshot and copied to each child
-Activity-run. Existing Pipelines use `louie` as the compatibility default.
+Activity-run. Existing Pipelines use `louie` v1 as the compatibility default.
 
 A Harness has a stable `kind`, a `version`, and a kind-specific `config`
-object. The API validates the declared Harness against Worker capabilities
-before a Pipeline run is assigned. Workers retain ownership of local checkout
-paths, executable locations, credentials, and other machine configuration.
+object. The API currently accepts only `louie` v1 with an empty `config`.
+Workers retain ownership of local checkout paths, executable locations,
+credentials, and other machine configuration. Future Harness kinds add worker
+capability validation before a Pipeline run is assigned.
 
 Human Activities do not use the Pipeline Harness. `approval` and `quiz`
 Activities use the built-in `human` execution mode and accept only human
@@ -24,9 +25,9 @@ The following Harness kinds define the initial compatibility model:
 
 | Harness kind | Supported Activity types | Execution behavior |
 | ------------ | ------------------------ | ------------------ |
-| `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | API generates operation plans; the Harness applies them locally. |
+| `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
 | `human` | `approval`, `quiz` | A person submits a terminal decision. |
-| `codex_cli` | Planned: `direct_loop` | A local Codex CLI turn returns normalized observations. |
+| `codex_cli` | Planned: `direct_loop` | Not yet accepted; a local Codex CLI turn returns normalized observations. |
 
 ## Execution lifecycle
 
@@ -120,9 +121,9 @@ Contains the original task, Git diff, changed file contents, and review skill.
 Workspace lifecycle is runtime-owned. The API persists activity-run
 orchestration state in SQLite.
 
-The API queues a persisted Pipeline run. A compatible Worker claims it, its
-selected Harness iterates the `/continue` checkpoint, commits an approved
-result, and reports Activity outcomes so the API can select the next step.
+The API queues a persisted Pipeline run. A Worker claims it, the frozen `louie`
+Harness iterates the `/continue` checkpoint, commits an approved result, and
+reports Activity outcomes so the API can select the next step.
 
 Harnesses report normalized execution observations. A report can include a
 final message, diff, changed files, duration, usage, bounded diagnostics, and

@@ -43,6 +43,7 @@ from src.app.services.pipelines.types import (
 from src.app.services.pipelines.validation import (
     document_content,
     normalize_description,
+    normalize_harness,
     normalize_status,
     normalize_steps,
     require_text,
@@ -200,6 +201,7 @@ class PipelineService:
             description=normalize_description(payload.description),
             status="active",
             steps=(),
+            harness=normalize_harness(payload.harness),
             created_at=now,
             created_by=actor_id,
             updated_at=now,
@@ -268,7 +270,14 @@ class PipelineService:
             )
         updated = apply_patch(
             current,
-            payload,
+            replace(
+                payload,
+                harness=(
+                    normalize_harness(payload.harness)
+                    if payload.harness is not None
+                    else None
+                ),
+            ),
             actor_id=actor_id,
             changed_at=self._clock(),
             steps=generated_steps,

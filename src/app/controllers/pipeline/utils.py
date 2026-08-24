@@ -3,11 +3,13 @@
 from src.app.schemas.pipeline import (
     PipelineActivityStepRequest,
     PipelineActivityStepResponse,
+    PipelineHarnessRequest,
+    PipelineHarnessResponse,
     PipelineStepDependencyResponse,
     PipelineResponse,
 )
 from src.app.models.pipeline import PipelineDetails
-from src.app.services.pipelines.types import PipelineActivityInput
+from src.app.services.pipelines.types import PipelineActivityInput, PipelineHarnessInput
 from src.app.services.pipelines.types import PipelineActivityDependencyInput
 
 
@@ -35,6 +37,16 @@ def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
     )
 
 
+def pipeline_harness(value: PipelineHarnessRequest) -> PipelineHarnessInput:
+    """Translate one Pipeline Harness request without business validation."""
+
+    return PipelineHarnessInput(
+        kind=value.kind,
+        version=value.version,
+        config=dict(value.config),
+    )
+
+
 def pipeline_details_response(details: PipelineDetails) -> PipelineResponse:
     """Translate ordered pipeline Activity documents to the detailed response."""
 
@@ -44,6 +56,11 @@ def pipeline_details_response(details: PipelineDetails) -> PipelineResponse:
         name=document.name,
         description=document.description,
         enabled=document.enabled,
+        harness=PipelineHarnessResponse(
+            kind=document.harness.kind,
+            version=document.harness.version,
+            config=dict(document.harness.config),
+        ),
         steps=_step_responses(details),
         created_at=document.created_at,
         updated_at=document.updated_at,

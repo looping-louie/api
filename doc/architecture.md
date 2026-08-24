@@ -31,8 +31,9 @@ the Activity in a worker's configured checkout and reports normalized results.
 
 The current API-directed repository executor is the `louie` Harness. It
 collects repository context, applies API-approved file operations, gathers
-review input, and commits only when the API authorizes the handoff. `louie` is
-the compatibility default for existing Pipelines.
+review input, and commits only when the API authorizes the handoff. `louie` v1
+is the compatibility default for existing Pipelines and is the only Harness
+kind currently accepted by the API.
 
 A Pipeline selects one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
@@ -41,9 +42,23 @@ Harness and its configuration; each child Activity-run receives that frozen
 selection. A Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
-object. The API stores only policy that it can validate and audit. Worker-local
-configuration, including checkout paths, executable locations, credentials,
-and secrets, remains outside Pipeline definitions.
+object. The implemented `louie` v1 configuration must be empty. The API stores
+only policy that it can validate and audit. Worker-local configuration,
+including checkout paths, executable locations, credentials, and secrets,
+remains outside Pipeline definitions.
+
+```json
+{
+  "harness": {
+    "kind": "louie",
+    "version": "v1",
+    "config": {}
+  }
+}
+```
+
+Future Harness kinds retain the same configuration shape. For example, a
+future Codex CLI policy places Codex-specific properties within `config`:
 
 ```json
 {
@@ -58,13 +73,13 @@ and secrets, remains outside Pipeline definitions.
 }
 ```
 
-`codex_cli` is a planned Harness kind. It does not replace API-directed
-scheduling, reviewer decisions, lease validation, or commit authorization. A
-worker advertises its available Harness capabilities, and the API assigns a
-Pipeline run only to a compatible worker. The initial `codex_cli` scope is a
-single `direct_loop` turn that reports its final response, checkout diff,
-changed files, usage, diagnostics, and optional opaque session reference to
-the existing checkpoint protocol.
+`codex_cli` is a planned Harness kind and is not accepted by the current API.
+It does not replace API-directed scheduling, reviewer decisions, lease
+validation, or commit authorization. Its implementation adds worker Harness
+capability reporting and API eligibility validation before a Pipeline run is
+assigned. The initial `codex_cli` scope is a single `direct_loop` turn that
+reports its final response, checkout diff, changed files, usage, diagnostics,
+and optional opaque session reference to the existing checkpoint protocol.
 
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the

@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineHarnessInput:
+    """Harness selection supplied with a Pipeline mutation."""
+
+    kind: str
+    version: str
+    config: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +41,11 @@ class PipelineCreate:
     name: str
     description: str
     steps: tuple[PipelineActivityInput, ...]
+    harness: PipelineHarnessInput = field(
+        default_factory=lambda: PipelineHarnessInput(
+            kind='louie', version='v1', config={},
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +57,7 @@ class PipelinePatch:
     description: str | None = None
     enabled: bool | None = None
     steps: tuple[PipelineActivityInput, ...] | None = None
+    harness: PipelineHarnessInput | None = None
 
 
 class PipelineServiceError(Exception):

@@ -86,9 +86,9 @@ models. Human Activities use the built-in `human` execution mode and submit a
 terminal decision checkpoint; they do not inherit the Pipeline Harness.
 
 An Activity defines logical work rather than a machine-specific executor. A
-Pipeline selects the Harness so the same reusable Activity can run through an
-API-directed `louie` Harness or, where compatible, a future local coding-agent
-Harness such as `codex_cli`.
+Pipeline selects the Harness so the same reusable Activity runs through the
+API-directed `louie` Harness. Future compatible local coding-agent Harnesses,
+such as `codex_cli`, use the same Pipeline-level selection boundary.
 
 ## Related Files
 

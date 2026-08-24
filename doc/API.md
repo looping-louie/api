@@ -26,8 +26,9 @@ durable execution state. The runtime owns local repository execution, including
 filesystem, Git, workspace lifecycle operations, and Worker-local Harness
 configuration. The CLI submits and manages API resources.
 
-Pipelines use the `louie` Harness by default. A future Pipeline Harness
-selection uses a stable `kind`, `version`, and type-specific `config` object.
-Human `approval` and `quiz` Activities remain human-executed and do not use the
-Pipeline Harness. The API documents the planned Harness semantics in
-[Architecture](architecture.md) and [Execution](components/execution.md).
+Pipelines persist a `louie` v1 Harness selection by default. Harness selections
+use a stable `kind`, `version`, and type-specific `config` object. The current
+API accepts only an empty `louie` v1 configuration. Human `approval` and `quiz`
+Activities remain human-executed and do not use the Pipeline Harness. The API
+documents Harness semantics in [Architecture](architecture.md) and
+[Execution](components/execution.md).

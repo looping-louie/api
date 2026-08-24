@@ -11,6 +11,7 @@ from src.app.models.pipeline import (
     PipelineChangelogEntry,
     PipelineChangeType,
     PipelineDocument,
+    PipelineHarness,
     PipelineActivityStep,
     PipelineStepDependency,
     PipelineStatus,
@@ -30,9 +31,9 @@ async def insert_pipeline(
     await connection.execute(
         """
         INSERT INTO pipelines (
-            id, workspace_id, name, description, status,
+            id, workspace_id, name, description, status, harness_json,
             created_at, created_by, updated_at, updated_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             document.id,
@@ -40,6 +41,11 @@ async def insert_pipeline(
             document.name,
             document.description,
             document.status,
+            serialize_json({
+                'kind': document.harness.kind,
+                'version': document.harness.version,
+                'config': dict(document.harness.config),
+            }),
             document.created_at.isoformat(),
             document.created_by,
             document.updated_at.isoformat(),
@@ -169,6 +175,7 @@ async def to_document(
         name=str(row["name"]),
         description=str(row["description"]),
         status=cast(PipelineStatus, row["status"]),
+        harness=_to_harness(row['harness_json']),
         steps=tuple(
             _to_step(
                 step_row,
@@ -193,6 +200,22 @@ def _to_step(
         activity_id=str(row["activity_id"]),
         depends_on=tuple(dependencies),
     )
+
+
+def _to_harness(value: str) -> PipelineHarness:
+    """Build one persisted Pipeline Harness selection."""
+
+    parsed = deserialize_json_object(value)
+    config = parsed.get('config') if parsed is not None else None
+    if (
+        parsed is None
+        or parsed.get('kind') != 'louie'
+        or parsed.get('version') != 'v1'
+        or not isinstance(config, dict)
+        or config
+    ):
+        raise RuntimeError('Pipeline harness is invalid.')
+    return PipelineHarness()
 
 
 def to_changelog_entry(row: aiosqlite.Row) -> PipelineChangelogEntry:

@@ -27,9 +27,11 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
 
 Creation requires a non-empty `name`, a `description`, and at least one step.
-New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
-`steps`; supplying `steps` replaces the complete ordered array. Archived
-pipelines are immutable and omitted from unfiltered listings.
+New pipelines are enabled and persist the `louie` v1 Harness by default. PATCH
+accepts `name`, `description`, `enabled`, `steps`, and `harness`; supplying
+`steps` replaces the complete ordered array. The API currently accepts only an
+empty `louie` v1 Harness configuration. Archived pipelines are immutable and
+omitted from unfiltered listings.
 
 ## Pipeline Step Schema
 
@@ -242,6 +244,7 @@ each stored step to its full persisted Activity.
 | `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Yes | May be empty. |
 | `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
+| `harness` | Object | No | Defaults to `{"kind":"louie","version":"v1","config":{}}`. Only this empty `louie` v1 configuration is accepted. |
 
 ```http
 POST /api/v1/pipelines
