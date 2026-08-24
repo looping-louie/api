@@ -134,6 +134,7 @@ services/
 |   `-- service.py                 Manages definitions and changelog history
 |-- activity_runs/
 |   |-- generation.py              Orchestrates model calls for loop Activities
+|   |-- operation_plan.py          Validates model-generated filesystem changes
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints
 |   `-- types.py                   Defines execution contracts and domain errors
@@ -201,9 +202,6 @@ services/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured metadata
 |   `-- service.py                 Manages workspace resources
-`-- task_checkpoint/
-  |-- __init__.py                Defines the package's public imports
-  `-- service.py                 Parses and validates filesystem operations
 ```
 
 ### Controllers

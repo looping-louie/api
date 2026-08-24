@@ -10,13 +10,13 @@ from src.app.services.execution_instructions import (
     ExecutionInstructionLibrary,
     ExecutionInstructionLibraryService,
 )
+from src.app.services.activity_runs.operation_plan import parse_file_operations
 from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.model_execution import (
     ModelExecutionError,
     ModelExecutionService,
     ModelOutputValidationError,
 )
-from src.app.services.task_checkpoint import parse_file_operations
 
 
 LOGGER = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-"""Helpers for persisted loop-run operation contracts."""
+"""Validation for model-generated ActivityRun operation plans."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ def parse_file_operations(
     require_non_empty: bool = False,
 ) -> list[dict]:
     """Parse and validate generator output operations."""
+
     cleaned = _extract_json_object(raw)
 
     try:
@@ -92,6 +93,7 @@ def _file_entries_as_create_operations(
 
 def _extract_json_object(raw: str) -> str:
     """Extract the first JSON object from raw model output."""
+
     text = raw.strip()
 
     if text.startswith('```'):
@@ -113,6 +115,7 @@ def _extract_json_object(raw: str) -> str:
 
 def _validate_operation(operation: dict) -> None:
     """Validate one file operation object."""
+
     if not isinstance(operation, dict):
         raise ValueError('Each operation must be an object')
 
