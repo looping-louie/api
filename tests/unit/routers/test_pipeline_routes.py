@@ -219,14 +219,14 @@ def test_pipeline_creation_persists_inline_activity_definitions(
     assert len(response.json()['steps']) == 2
 
 
-def test_pipeline_defaults_and_validates_the_louie_harness(
+def test_pipeline_defaults_and_validates_supported_harnesses(
     tenant_service: TenantService,
 ) -> None:
-    """Pipelines persist Louie by default and reject unavailable Harness kinds."""
+    """Pipelines persist Louie by default and accept an empty Codex selection."""
 
     client = build_client(tenant_service=tenant_service)
     created = client.post('/api/v1/pipelines', json=pipeline_payload())
-    invalid_kind = client.post(
+    codex = client.post(
         '/api/v1/pipelines',
         json={
             **pipeline_payload(),
@@ -251,7 +251,12 @@ def test_pipeline_defaults_and_validates_the_louie_harness(
         'version': 'v1',
         'config': {},
     }
-    assert invalid_kind.status_code == 422
+    assert codex.status_code == 201
+    assert codex.json()['harness'] == {
+        'kind': 'codex_cli',
+        'version': 'v1',
+        'config': {},
+    }
     assert invalid_config.status_code == 422
 
 

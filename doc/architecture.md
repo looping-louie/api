@@ -29,11 +29,10 @@ It is distinct from an Activity agent: an agent is a generator, reviewer, or
 aggregator role backed by a Persona and model selection; a Harness carries out
 the Activity in a worker's configured checkout and reports normalized results.
 
-The current API-directed repository executor is the `louie` Harness. It
+The API-directed repository executor is the `louie` Harness. It
 collects repository context, applies API-approved file operations, gathers
 review input, and commits only when the API authorizes the handoff. `louie` v1
-is the compatibility default for existing Pipelines and is the only Harness
-kind currently accepted by the API.
+is the compatibility default for existing Pipelines.
 
 A Pipeline selects one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
@@ -57,30 +56,26 @@ remains outside Pipeline definitions.
 }
 ```
 
-Future Harness kinds retain the same configuration shape. For example, a
-future Codex CLI policy places Codex-specific properties within `config`:
+Harness kinds retain the same configuration shape. `codex_cli` v1 currently
+uses an empty configuration. Its executable, sandbox policy, timeout,
+credentials, and other local settings remain Worker-owned:
 
 ```json
 {
   "harness": {
     "kind": "codex_cli",
     "version": "v1",
-    "config": {
-      "sandbox": "workspace-write",
-      "turn_timeout_seconds": 1800
-    }
+    "config": {}
   }
 }
 ```
 
-`codex_cli` is a planned Harness kind and is not accepted by the current API.
-It does not replace API-directed scheduling, reviewer decisions, lease
-validation, or commit authorization. Workers already advertise Harness
-capabilities during registration, and the API requires an exact capability
-match before a PipelineRun claim. The initial `codex_cli` scope is a single
-`direct_loop` turn that reports its final response, checkout diff, changed
-files, usage, diagnostics, and optional opaque session reference to the
-existing checkpoint protocol.
+`codex_cli` supports a single `direct_loop` turn. It does not replace
+API-directed scheduling, reviewer decisions, lease validation, or commit
+authorization. Workers advertise Harness capabilities during registration, and
+the API requires an exact capability match before a PipelineRun claim. The
+runtime reports the turn's final response, checkout diff, changed files, usage,
+diagnostics, and optional opaque session reference through `run_harness`.
 
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the

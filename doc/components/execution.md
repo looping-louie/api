@@ -3,7 +3,9 @@
 A persisted Activity run coordinates API-owned decisions with a Harness that
 executes repository work in a runtime-owned checkout. The API plans and
 reviews changes; the `louie` Harness collects repository context, applies
-operations, and performs the authorized commit.
+operations, and performs the authorized commit. The `codex_cli` Harness runs
+one local direct-loop turn and reports its result for the same API-owned review
+and commit decisions.
 
 ## Harness Selection
 
@@ -12,7 +14,8 @@ selection is frozen in the Pipeline-run snapshot and copied to each child
 Activity-run. Existing Pipelines use `louie` v1 as the compatibility default.
 
 A Harness has a stable `kind`, a `version`, and a kind-specific `config`
-object. The API currently accepts only `louie` v1 with an empty `config`.
+object. The API accepts `louie` v1 and `codex_cli` v1, each with an empty
+`config`.
 Workers retain ownership of local checkout paths, executable locations,
 credentials, and other machine configuration. Workers advertise Harness
 capabilities at registration, and an active Worker claims a PipelineRun only
@@ -28,7 +31,7 @@ The following Harness kinds define the initial compatibility model:
 | ------------ | ------------------------ | ------------------ |
 | `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
 | `human` | `approval`, `quiz` | A person submits a terminal decision. |
-| `codex_cli` | Planned: `direct_loop` | Not yet accepted; a local Codex CLI turn returns normalized observations. |
+| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn, then reports normalized results through `run_harness`. |
 
 ## Execution lifecycle
 

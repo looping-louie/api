@@ -9,7 +9,7 @@ from typing import Literal, Mapping
 class WorkerHarnessCapability:
     """One local Harness capability advertised by a Worker."""
 
-    kind: Literal['louie'] = 'louie'
+    kind: Literal['louie', 'codex_cli'] = 'louie'
     version: Literal['v1'] = 'v1'
     config: Mapping[str, object] = field(default_factory=dict)
 

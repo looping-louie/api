@@ -61,10 +61,10 @@ def normalize_harness(value: object) -> PipelineHarness:
             field_name='harness',
             message='must select a supported Harness',
         )
-    if value.kind != 'louie':
+    if value.kind not in ('louie', 'codex_cli'):
         raise InvalidPipelineStepsError(
             field_name='harness.kind',
-            message='must be louie',
+            message='must be louie or codex_cli',
         )
     if value.version != 'v1':
         raise InvalidPipelineStepsError(
@@ -74,9 +74,9 @@ def normalize_harness(value: object) -> PipelineHarness:
     if value.config:
         raise InvalidPipelineStepsError(
             field_name='harness.config',
-            message='must be empty for louie',
+            message=f'must be empty for {value.kind}',
         )
-    return PipelineHarness()
+    return PipelineHarness(kind=value.kind)
 
 
 def normalize_steps(

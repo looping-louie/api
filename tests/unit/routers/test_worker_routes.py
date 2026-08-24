@@ -132,10 +132,10 @@ def test_create_then_heartbeat_refreshes_one_workspace_worker(
     assert heartbeated.json()['last_heartbeat_at'] > registered.json()['last_heartbeat_at']
 
 
-def test_worker_registration_rejects_unsupported_harnesses(
+def test_worker_registration_accepts_codex_cli_harness(
     tenant_service: TenantService,
 ) -> None:
-    """Registration accepts only the current Louie Harness capability."""
+    """Registration persists the initial Codex CLI Harness capability."""
 
     response = build_client(tenant_service).post(
         '/api/v1/workers',
@@ -147,8 +147,12 @@ def test_worker_registration_rejects_unsupported_harnesses(
         },
     )
 
-    assert response.status_code == 422
-    assert response.json()['error']['code'] == 'request_validation_error'
+    assert response.status_code == 201
+    assert response.json()['harnesses'] == [{
+        'kind': 'codex_cli',
+        'version': 'v1',
+        'config': {},
+    }]
 
 
 def test_heartbeat_requires_workspace_worker_registration(

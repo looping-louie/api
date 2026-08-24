@@ -19,7 +19,7 @@ PipelineChangeType = Literal[
     "archived",
 ]
 PipelineDependencyCondition = Literal['success', 'failure']
-PipelineHarnessKind = Literal['louie']
+PipelineHarnessKind = Literal['louie', 'codex_cli']
 
 
 @dataclass(frozen=True, slots=True)

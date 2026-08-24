@@ -166,11 +166,11 @@ def _deserialize_harnesses(value: str) -> tuple[WorkerHarnessCapability, ...]:
         config = capability.get('config') if isinstance(capability, dict) else None
         if (
             not isinstance(capability, dict)
-            or capability.get('kind') != 'louie'
+            or capability.get('kind') not in ('louie', 'codex_cli')
             or capability.get('version') != 'v1'
             or not isinstance(config, dict)
             or config
         ):
             raise RuntimeError('Worker Harness capabilities are invalid.')
-        capabilities.append(WorkerHarnessCapability())
+        capabilities.append(WorkerHarnessCapability(kind=capability['kind']))
     return tuple(capabilities)
