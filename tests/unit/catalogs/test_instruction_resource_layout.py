@@ -23,7 +23,7 @@ def test_every_manifest_entry_resolves_one_unique_markdown() -> None:
         }
         markdown_paths = {
             path.relative_to(catalog_dir).as_posix()
-            for path in (catalog_dir / "items").rglob("*.md")
+            for path in (catalog_dir / "items").glob("*.md")
         }
 
         assert len(manifest_paths) == len(registry)
