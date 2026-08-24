@@ -22,6 +22,61 @@ prompt generation, model decisions, and checkpoint transitions. The runtime
 owns workspace lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 
+## Harnesses
+
+A Harness is the local execution mechanism for runtime-executable Activities.
+It is distinct from an Activity agent: an agent is a generator, reviewer, or
+aggregator role backed by a Persona and model selection; a Harness carries out
+the Activity in a worker's configured checkout and reports normalized results.
+
+The API-directed repository executor is the `louie` Harness. It
+collects repository context, applies API-approved file operations, gathers
+review input, and commits only when the API authorizes the handoff. `louie` v1
+is the compatibility default for existing Pipelines.
+
+A Pipeline selects one Harness for its runtime-executable Activities. Human
+Activities (`approval` and `quiz`) remain intrinsically human-executed and do
+not use the selected Harness. The Pipeline-run snapshot freezes the selected
+Harness and its configuration; each child Activity-run receives that frozen
+selection. A Pipeline edit must not change the Harness used by an existing run.
+
+Harness definitions use a stable kind, a version, and a kind-specific `config`
+object. The implemented `louie` v1 configuration must be empty. The API stores
+only policy that it can validate and audit. Worker-local configuration,
+including checkout paths, executable locations, credentials, and secrets,
+remains outside Pipeline definitions.
+
+```json
+{
+  "harness": {
+    "kind": "louie",
+    "version": "v1",
+    "config": {}
+  }
+}
+```
+
+Harness kinds retain the same configuration shape. `codex_cli` v1 currently
+uses an empty configuration. Its executable, sandbox policy, timeout,
+credentials, and other local settings remain Worker-owned:
+
+```json
+{
+  "harness": {
+    "kind": "codex_cli",
+    "version": "v1",
+    "config": {}
+  }
+}
+```
+
+`codex_cli` supports a single `direct_loop` turn. It does not replace
+API-directed scheduling, reviewer decisions, lease validation, or commit
+authorization. Workers advertise Harness capabilities during registration, and
+the API requires an exact capability match before a PipelineRun claim. The
+runtime reports the turn's final response, checkout diff, changed files, usage,
+diagnostics, and optional opaque session reference through `run_harness`.
+
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the
 target repository directly, and the runtime does not make model or reviewer

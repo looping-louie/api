@@ -8,6 +8,7 @@ from src.app.models.changelog import JsonObject
 from src.app.schemas.activity import validate_activity_config
 from src.app.models.pipeline import (
     PipelineDocument,
+    PipelineHarness,
     PipelineStatus,
     PipelineStep,
 )
@@ -15,6 +16,7 @@ from src.app.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineActivityDependencyInput,
     PipelineActivityInput,
+    PipelineHarnessInput,
 )
 
 
@@ -49,6 +51,32 @@ def normalize_status(value: object) -> PipelineStatus:
             message="must be active, disabled, or archived",
         )
     return value  # type: ignore[return-value]
+
+
+def normalize_harness(value: object) -> PipelineHarness:
+    """Return the currently supported Pipeline Harness selection."""
+
+    if not isinstance(value, PipelineHarnessInput):
+        raise InvalidPipelineStepsError(
+            field_name='harness',
+            message='must select a supported Harness',
+        )
+    if value.kind not in ('louie', 'codex_cli'):
+        raise InvalidPipelineStepsError(
+            field_name='harness.kind',
+            message='must be louie or codex_cli',
+        )
+    if value.version != 'v1':
+        raise InvalidPipelineStepsError(
+            field_name='harness.version',
+            message='must be v1',
+        )
+    if value.config:
+        raise InvalidPipelineStepsError(
+            field_name='harness.config',
+            message=f'must be empty for {value.kind}',
+        )
+    return PipelineHarness(kind=value.kind)
 
 
 def normalize_steps(
@@ -241,6 +269,11 @@ def document_content(document: PipelineDocument) -> JsonObject:
         "description": document.description,
         "enabled": document.enabled,
         "status": document.status,
+        "harness": {
+            'kind': document.harness.kind,
+            'version': document.harness.version,
+            'config': dict(document.harness.config),
+        },
         "steps": [step_content(step) for step in document.steps],
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat(),

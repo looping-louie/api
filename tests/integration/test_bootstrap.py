@@ -215,6 +215,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0038_prepared_pipeline_runs",
         "0039_workers",
         "0040_retire_legacy_provider_credentials",
+            "0041_pipeline_harness",
+            "0042_worker_harnesses",
     ]
     assert activity_rows == []
 

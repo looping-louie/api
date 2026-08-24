@@ -1,15 +1,44 @@
 # Execution
 
-A persisted activity run coordinates model decisions with runtime-owned repository
-execution. The API plans and reviews changes; the runtime collects repository
-context, applies operations, and performs the commit.
+A persisted Activity run coordinates API-owned decisions with a Harness that
+executes repository work in a runtime-owned checkout. The API plans and
+reviews changes; the `louie` Harness collects repository context, applies
+operations, and performs the authorized commit. The `codex_cli` Harness runs
+one local direct-loop turn and reports its result for the same API-owned review
+and commit decisions.
+
+## Harness Selection
+
+A Pipeline selects one Harness for its runtime-executable Activities. The
+selection is frozen in the Pipeline-run snapshot and copied to each child
+Activity-run. Existing Pipelines use `louie` v1 as the compatibility default.
+
+A Harness has a stable `kind`, a `version`, and a kind-specific `config`
+object. The API accepts `louie` v1 and `codex_cli` v1, each with an empty
+`config`.
+Workers retain ownership of local checkout paths, executable locations,
+credentials, and other machine configuration. Workers advertise Harness
+capabilities at registration, and an active Worker claims a PipelineRun only
+when it advertises an exact match for the frozen selection.
+
+Human Activities do not use the Pipeline Harness. `approval` and `quiz`
+Activities use the built-in `human` execution mode and accept only human
+decision checkpoints.
+
+The following Harness kinds define the initial compatibility model:
+
+| Harness kind | Supported Activity types | Execution behavior |
+| ------------ | ------------------------ | ------------------ |
+| `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
+| `human` | `approval`, `quiz` | A person submits a terminal decision. |
+| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn, then reports normalized results through `run_harness`. |
 
 ## Execution lifecycle
 
 ### 1. Create and persist an activity run
 
-The API persists the activity snapshot, run status, checkpoint action, iteration,
-and continuation revision in SQLite.
+The API persists the activity snapshot, frozen Harness selection, run status,
+checkpoint action, iteration, and continuation revision in SQLite.
 
 The run also persists a versioned `instructions-snapshot.json`. It contains the
 instruction definitions available when the run starts. The same in-memory
@@ -93,12 +122,17 @@ Contains the original task, Git diff, changed file contents, and review skill.
 
 ## Workspace and workflow ownership
 
-Workspace lifecycle is runtime-owned. The API persists activity-run orchestration state
-in SQLite.
+Workspace lifecycle is runtime-owned. The API persists activity-run
+orchestration state in SQLite.
 
-The API queues a persisted pipeline run. The runtime claims it, iterates its
-`/continue` checkpoint, commits an approved result, and reports activity
-outcomes so the API can select the next step.
+The API queues a persisted Pipeline run. A Worker claims it, the frozen `louie`
+Harness iterates the `/continue` checkpoint, commits an approved result, and
+reports Activity outcomes so the API can select the next step.
+
+Harnesses report normalized execution observations. A report can include a
+final message, diff, changed files, duration, usage, bounded diagnostics, and
+an optional opaque session reference. The API retains ownership of durable
+state transitions, review decisions, retries, and commit authorization.
 
 ## Run artefacts
 

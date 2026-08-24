@@ -5,6 +5,7 @@ from src.app.schemas.activity_run import (
     ActivityRunResponse,
     ActivityRunCollectSnapshotResult,
     ActivityRunContinueRequest,
+    ActivityRunHarnessResult,
     ActivityRunHumanDecisionResult,
 )
 from src.app.services.activity_runs import ActivityRunService
@@ -82,6 +83,8 @@ class ActivityRunController:
                 payload.result
             ).model_dump(mode='json')
             if action == 'submit_human_decision'
+            else ActivityRunHarnessResult.model_validate(payload.result).model_dump(mode='json')
+            if action == 'run_harness'
             else action_result(payload.result).model_dump(mode='json')
         )
         document = await self._activity_run_service.continue_run(

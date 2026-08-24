@@ -325,7 +325,7 @@ class SqlitePipelineRepository:
         cursor = await connection.execute(
             """
             UPDATE pipelines
-            SET name = ?, description = ?, status = ?,
+            SET name = ?, description = ?, status = ?, harness_json = ?,
                 updated_at = ?, updated_by = ?
             WHERE workspace_id = ? AND id = ?
             """,
@@ -333,6 +333,11 @@ class SqlitePipelineRepository:
                 document.name,
                 document.description,
                 document.status,
+                json.dumps({
+                    'kind': document.harness.kind,
+                    'version': document.harness.version,
+                    'config': dict(document.harness.config),
+                }),
                 document.updated_at.isoformat(),
                 document.updated_by,
                 document.workspace_id,

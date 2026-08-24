@@ -9,7 +9,7 @@ from src.app.schemas.pipeline import (
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import PipelinePatch
 
-from .utils import pipeline_details_response, pipeline_steps
+from .utils import pipeline_details_response, pipeline_harness, pipeline_steps
 
 
 class PipelinePatchController:
@@ -40,6 +40,11 @@ class PipelinePatchController:
                 steps=(
                     pipeline_steps(payload.steps)
                     if payload.steps is not None
+                    else None
+                ),
+                harness=(
+                    pipeline_harness(payload.harness)
+                    if payload.harness is not None
                     else None
                 ),
             ),

@@ -1,7 +1,11 @@
 """HTTP controller for workspace runtime worker registration."""
 
-from src.app.models.worker import WorkerDocument
-from src.app.schemas.worker import WorkerResponse
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
+from src.app.schemas.worker import (
+    WorkerCreateRequest,
+    WorkerHarnessCapabilityResponse,
+    WorkerResponse,
+)
 from src.app.services.workers import WorkerService
 
 
@@ -17,12 +21,25 @@ class WorkerController:
         self,
         *,
         user_id: str,
+        payload: WorkerCreateRequest | None = None,
         requested_workspace_id: str | None = None,
     ) -> WorkerResponse:
         """Provision one API-owned workspace worker identity."""
 
         return self._response(await self._worker_service.create(
             user_id=user_id,
+            harnesses=(
+                tuple(
+                    WorkerHarnessCapability(
+                        kind=harness.kind,
+                        version=harness.version,
+                        config=dict(harness.config),
+                    )
+                    for harness in payload.harnesses
+                )
+                if payload is not None
+                else None
+            ),
             requested_workspace_id=requested_workspace_id,
         ))
 
@@ -49,4 +66,12 @@ class WorkerController:
             id=worker.id,
             registered_at=worker.registered_at,
             last_heartbeat_at=worker.last_heartbeat_at,
+            harnesses=[
+                WorkerHarnessCapabilityResponse(
+                    kind=harness.kind,
+                    version=harness.version,
+                    config=dict(harness.config),
+                )
+                for harness in worker.harnesses
+            ],
         )

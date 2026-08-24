@@ -9,7 +9,7 @@ from src.app.schemas.pipeline import (
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import PipelineCreate
 
-from .utils import pipeline_details_response, pipeline_steps
+from .utils import pipeline_details_response, pipeline_harness, pipeline_steps
 
 
 class PipelineCreateController:
@@ -34,6 +34,7 @@ class PipelineCreateController:
                 name=payload.name,
                 description=payload.description,
                 steps=pipeline_steps(payload.steps),
+                harness=pipeline_harness(payload.harness),
             ),
         )
         details = await self._pipeline_service.describe(

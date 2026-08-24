@@ -212,6 +212,11 @@ class PipelineRunService:
                 workspace_id=details.document.workspace_id,
                 worker_id=normalized_worker_id,
             )
+            await self._worker_service.require_harness(
+                workspace_id=details.document.workspace_id,
+                worker_id=normalized_worker_id,
+                harness=self._harness_snapshot(candidate.pipeline_snapshot),
+            )
         if if_match != pipeline_run_etag(candidate):
             raise PipelineRunPreconditionFailedError(
                 pipeline_id=pipeline_id,
@@ -493,6 +498,7 @@ class PipelineRunService:
             activity_snapshot={
                 **ready.activity_snapshot,
                 'commit_mode': document.commit_mode,
+                'harness': self._harness_snapshot(document.pipeline_snapshot),
             },
             execution_context={}, created_at=now, created_by=user_id, updated_at=now,
         )
@@ -636,6 +642,11 @@ class PipelineRunService:
 
         return {
             'pipeline_id': details.document.id,
+            'harness': {
+                'kind': details.document.harness.kind,
+                'version': details.document.harness.version,
+                'config': dict(details.document.harness.config),
+            },
             'steps': [
                 {
                     'activity_id': step.activity_id,
@@ -675,6 +686,15 @@ class PipelineRunService:
             'id': activity.id, 'title': activity.name,
             'description': activity.description, **activity.config, 'flow': flow,
         }
+
+    @staticmethod
+    def _harness_snapshot(snapshot: Mapping[str, object]) -> dict[str, object]:
+        """Return the persisted Harness or the legacy Louie compatibility value."""
+
+        harness = snapshot.get('harness')
+        if isinstance(harness, Mapping):
+            return dict(harness)
+        return {'kind': 'louie', 'version': 'v1', 'config': {}}
 
     @staticmethod
     def _dependencies(snapshot: Mapping[str, object]) -> dict[str, list[dict[str, str]]]:

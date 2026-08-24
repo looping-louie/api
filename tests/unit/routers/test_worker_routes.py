@@ -49,9 +49,20 @@ class InMemoryWorkerRepository:
             workspace_id=current.workspace_id,
             registered_at=current.registered_at,
             last_heartbeat_at=occurred_at,
+            harnesses=current.harnesses,
         )
         self.documents[(workspace_id, worker_id)] = updated
         return updated
+
+    async def get(
+        self,
+        *,
+        workspace_id: str,
+        worker_id: str,
+    ) -> WorkerDocument | None:
+        """Return one stored Worker capability registration."""
+
+        return self.documents.get((workspace_id, worker_id))
 
     async def is_active(
         self,
@@ -111,8 +122,37 @@ def test_create_then_heartbeat_refreshes_one_workspace_worker(
     assert registered.status_code == 201
     assert heartbeated.status_code == 200
     assert registered.json()['id'] == 'worker-1'
+    assert registered.json()['harnesses'] == [{
+        'kind': 'louie',
+        'version': 'v1',
+        'config': {},
+    }]
+    assert heartbeated.json()['harnesses'] == registered.json()['harnesses']
     assert heartbeated.json()['registered_at'] == registered.json()['registered_at']
     assert heartbeated.json()['last_heartbeat_at'] > registered.json()['last_heartbeat_at']
+
+
+def test_worker_registration_accepts_codex_cli_harness(
+    tenant_service: TenantService,
+) -> None:
+    """Registration persists the initial Codex CLI Harness capability."""
+
+    response = build_client(tenant_service).post(
+        '/api/v1/workers',
+        headers={'X-Workspace-ID': 'workspace-1'},
+        json={
+            'harnesses': [
+                {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()['harnesses'] == [{
+        'kind': 'codex_cli',
+        'version': 'v1',
+        'config': {},
+    }]
 
 
 def test_heartbeat_requires_workspace_worker_registration(

@@ -78,9 +78,17 @@ A `quiz` Activity collects a human quiz response. Its configuration requires a
 ## Activity Runs
 
 Activities expose persisted runs. Each run identifies its owning Activity by
-`activity_id`; it does not expose a legacy loop identifier. Runtime executors
-resolve configured agent personas from the instruction library before invoking
-their models, while human executors submit a terminal decision checkpoint.
+`activity_id`; it does not expose a legacy loop identifier. A Pipeline-run
+freezes its selected Harness and applies it to every runtime-executable child
+Activity-run. The `louie` Harness is the compatibility default and resolves
+configured agent Personas from the instruction library before invoking their
+models. Human Activities use the built-in `human` execution mode and submit a
+terminal decision checkpoint; they do not inherit the Pipeline Harness.
+
+An Activity defines logical work rather than a machine-specific executor. A
+Pipeline selects the Harness so the same reusable Activity runs through the
+API-directed `louie` Harness. Future compatible local coding-agent Harnesses,
+such as `codex_cli`, use the same Pipeline-level selection boundary.
 
 ## Related Files
 

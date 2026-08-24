@@ -28,6 +28,30 @@ PipelineChangeTypeValue = Literal[
 ]
 
 
+class PipelineHarnessRequest(RequestSchema):
+    """One supported Pipeline Harness selection."""
+
+    kind: Literal['louie', 'codex_cli'] = 'louie'
+    version: Literal['v1'] = 'v1'
+    config: dict[str, object] = Field(default_factory=dict)
+
+    @model_validator(mode='after')
+    def require_empty_harness_config(self) -> 'PipelineHarnessRequest':
+        """Reject settings not supported by the initial Harness contract."""
+
+        if self.config:
+            raise ValueError(f'{self.kind} harness config must be empty.')
+        return self
+
+
+class PipelineHarnessResponse(ResponseSchema):
+    """The persisted Harness selection for a Pipeline."""
+
+    kind: Literal['louie', 'codex_cli']
+    version: Literal['v1']
+    config: dict[str, object]
+
+
 class PipelineStepDependencyRequest(RequestSchema):
     """One named Activity condition required by a pipeline step."""
 
@@ -58,6 +82,7 @@ class PipelineCreateRequest(RequestSchema):
     name: ResourceName
     description: str
     steps: list[PipelineActivityStepRequest]
+    harness: PipelineHarnessRequest = Field(default_factory=PipelineHarnessRequest)
 
 
 class PipelinePatchRequest(RequestSchema):
@@ -67,6 +92,7 @@ class PipelinePatchRequest(RequestSchema):
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
+    harness: PipelineHarnessRequest | None = None
 
     @model_validator(mode="after")
     def require_supplied_non_null_change(self) -> Self:
@@ -96,6 +122,7 @@ class PipelineResponse(ResponseSchema):
     name: str
     description: str
     enabled: bool
+    harness: PipelineHarnessResponse
     steps: list[PipelineActivityStepResponse]
     created_at: datetime
     updated_at: datetime
