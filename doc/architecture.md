@@ -396,9 +396,7 @@ models/
 |-- activity.py                    Defines definitions and changelog entries
 |-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
-|-- instruction.py                 Defines persisted and available resource data
 |-- linked_service.py              Defines workspace-owned provider connections
-|-- persona.py                     Defines resource documents with skill links
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
