@@ -63,7 +63,7 @@ from src.app.services.shared.settings import (
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instructions.synchronization import (
+from src.app.services.persona_skills.synchronization import (
     CatalogChecksumPolicy,
     PersonaSkillCatalogSynchronizer,
 )
@@ -81,7 +81,7 @@ from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )

@@ -14,7 +14,7 @@ from src.app.catalogs.persona_skills import (
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.instructions import InstructionDocument
+from src.app.services.persona_skills import InstructionDocument
 
 
 WorkspaceFactory = Callable[..., Awaitable[None]]

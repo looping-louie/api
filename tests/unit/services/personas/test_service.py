@@ -9,7 +9,7 @@ from src.app.services.personas import (
     PersonaService,
     PersonaUpdate,
 )
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     InstructionNotFoundError,
     PersonaDefinitionService,
     SkillDefinitionService,

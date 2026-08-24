@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.app.controllers.persona import PersonaController
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )

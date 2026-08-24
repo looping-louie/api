@@ -9,7 +9,7 @@ from typing import Mapping, Sequence
 
 from src.app.catalogs.persona_skills import InstructionOrigin
 
-from ..instructions import (
+from ..persona_skills import (
     AvailableInstructionDocument,
     InstructionRepository,
     InstructionType,

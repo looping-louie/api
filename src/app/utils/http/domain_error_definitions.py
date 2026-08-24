@@ -50,7 +50,7 @@ from src.app.services.shared.dependency_checker import (
     DependencyValidationError,
     ResourceInUseError,
 )
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     BuiltinInstructionImmutableError,
     InstructionDisabledError,
     InstructionNotFoundError,

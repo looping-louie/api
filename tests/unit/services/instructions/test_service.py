@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     AvailableInstructionDocument,
     BuiltinInstructionImmutableError,
     DefinitionCreate,

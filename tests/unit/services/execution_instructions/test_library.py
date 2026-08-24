@@ -8,7 +8,7 @@ from src.app.services.personas import (
     PersonaLinkedServiceSelection,
     PersonaService,
 )
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     DefinitionCreate,
     DefinitionUpdate,
     PersonaDefinitionService,

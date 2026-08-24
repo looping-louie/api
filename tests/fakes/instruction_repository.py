@@ -8,7 +8,7 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     AvailableInstructionDocument,
     AvailableInstructionPage,
     AvailableInstructionSummary,

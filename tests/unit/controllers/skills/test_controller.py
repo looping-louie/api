@@ -5,7 +5,7 @@ import pytest
 from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.controllers.skill import SkillController
 from src.app.schemas.skill import SkillCreateRequest, SkillPatchRequest
-from src.app.services.instructions import SkillDefinitionService
+from src.app.services.persona_skills import SkillDefinitionService
 from src.app.services.skills import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin

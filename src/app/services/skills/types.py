@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..instructions import DefinitionCreate, DefinitionUpdate
+from ..persona_skills import DefinitionCreate, DefinitionUpdate
 
 
 @dataclass(frozen=True, slots=True)

@@ -12,7 +12,7 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionStatus,
 )
 
-from ..instructions import (
+from ..persona_skills import (
     AvailableInstructionDocument,
     AvailableInstructionPage,
     DefinitionCreate,

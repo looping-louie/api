@@ -8,7 +8,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     InstructionDocument,
     InstructionSummary,
     InstructionType,

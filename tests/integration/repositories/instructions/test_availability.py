@@ -13,7 +13,7 @@ from src.app.catalogs import InstructionOrigin, load_persona_skill_catalog
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.instructions.synchronization import (
+from src.app.services.persona_skills.synchronization import (
     PersonaSkillCatalogSynchronizer,
 )
 from tests.integration.repositories.instructions.helpers import (

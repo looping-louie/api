@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     InstructionDocument,
     InstructionType,
 )

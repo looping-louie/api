@@ -10,7 +10,7 @@ from src.app.services.providers.errors import (
 )
 from src.app.services.linked_services import LinkedServiceNotFoundError
 from src.app.services.shared.dependency_checker import ResourceInUseError
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     InstructionNotFoundError,
     InvalidInstructionTypeError,
 )

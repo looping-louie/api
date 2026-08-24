@@ -153,7 +153,7 @@ services/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
 |                                  for prompt assembly
-|-- instructions/
+|-- persona_skills/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- definitions.py             Binds lifecycle behavior to Persona and Skill
 |   |-- lifecycle.py               Shares private definition persistence mechanics

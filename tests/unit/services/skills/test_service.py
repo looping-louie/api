@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     DefinitionCreate,
     DefinitionUpdate,
     SkillDefinitionService,

@@ -8,7 +8,7 @@ from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     AvailableInstructionDocument,
     InstructionDocument,
 )

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.persona import PersonaController
 from src.app.routers.personas import router as personas_router
-from src.app.services.instructions import (
+from src.app.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )

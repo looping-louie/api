@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
-from ..instructions import (
+from ..persona_skills import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
     DefinitionCreate,
