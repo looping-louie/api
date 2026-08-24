@@ -5,8 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 from .types import (
-    InstructionCreate,
-    InstructionUpdate,
+    DefinitionCreate,
+    DefinitionUpdate,
     InstructionValidationError,
     SUPPORTED_INSTRUCTION_TYPES,
     InvalidInstructionTypeError,
@@ -50,10 +50,10 @@ def normalize_search(search: str | None) -> str | None:
     return normalized or None
 
 
-def normalize_create(payload: InstructionCreate) -> InstructionCreate:
+def normalize_create(payload: DefinitionCreate) -> DefinitionCreate:
     """Normalize and validate create values."""
 
-    return InstructionCreate(
+    return DefinitionCreate(
         name=require_text(payload.name, "name"),
         description=normalize_description(payload.description),
         instructions=require_text(payload.instructions, "instructions"),
@@ -61,7 +61,7 @@ def normalize_create(payload: InstructionCreate) -> InstructionCreate:
     )
 
 
-def normalize_update(payload: InstructionUpdate) -> InstructionUpdate:
+def normalize_update(payload: DefinitionUpdate) -> DefinitionUpdate:
     """Normalize and validate partial update values."""
 
     if payload.expected_version < 1:
@@ -70,7 +70,7 @@ def normalize_update(payload: InstructionUpdate) -> InstructionUpdate:
             message="must be greater than zero",
         )
 
-    return InstructionUpdate(
+    return DefinitionUpdate(
         expected_version=payload.expected_version,
         name=(
             require_text(payload.name, "name")

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..instructions import InstructionCreate, InstructionUpdate
+from ..instructions import DefinitionCreate, DefinitionUpdate
 
 
 @dataclass(frozen=True, slots=True)
-class SkillCreate(InstructionCreate):
+class SkillCreate(DefinitionCreate):
     """Content required to create a Skill."""
 
 
 @dataclass(frozen=True, slots=True)
-class SkillUpdate(InstructionUpdate):
+class SkillUpdate(DefinitionUpdate):
     """Partial content changes applied to a Skill."""

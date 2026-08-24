@@ -167,7 +167,7 @@ class AvailableInstructionDocument:
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionCreate:
+class DefinitionCreate:
     """Data required to create a persona or skill."""
 
     name: str
@@ -177,7 +177,7 @@ class InstructionCreate:
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionUpdate:
+class DefinitionUpdate:
     """Partial changes applied to a persona or skill."""
 
     expected_version: int

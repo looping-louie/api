@@ -9,8 +9,8 @@ from src.app.services.personas import (
     PersonaService,
 )
 from src.app.services.instructions import (
-    InstructionCreate,
-    InstructionUpdate,
+    DefinitionCreate,
+    DefinitionUpdate,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
@@ -66,7 +66,7 @@ async def test_api_custom_is_immediately_available_to_execution(
     )
     skill = await skill_service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Workspace Security",
             description="Custom security checks.",
             instructions="SQL skill content version one.",
@@ -132,7 +132,7 @@ async def test_fresh_execution_read_reflects_sql_update(
     )
     skill = await skill_service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Mutable Runtime Skill",
             description="Loaded from SQL.",
             instructions="SQL content before update.",
@@ -143,7 +143,7 @@ async def test_fresh_execution_read_reflects_sql_update(
     await skill_service.update(
         user_id="user-1",
         skill_id=skill.id,
-        payload=InstructionUpdate(
+        payload=DefinitionUpdate(
             expected_version=1,
             instructions="SQL content after update.",
         ),

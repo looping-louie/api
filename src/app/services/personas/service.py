@@ -15,8 +15,8 @@ from src.app.catalogs.persona_skills import (
 from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionPage,
-    InstructionCreate,
-    InstructionUpdate,
+    DefinitionCreate,
+    DefinitionUpdate,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
@@ -187,7 +187,7 @@ class PersonaService:
 
         document = await self._persona_definition_service.create(
             workspace_id=workspace_id,
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name=payload.name,
                 description=payload.description,
                 instructions=payload.instructions,
@@ -250,7 +250,7 @@ class PersonaService:
             document = await self._persona_definition_service.update(
                 workspace_id=workspace_id,
                 instruction_id=persona_id,
-                payload=InstructionUpdate(
+                payload=DefinitionUpdate(
                     expected_version=payload.expected_version,
                     name=payload.name,
                     description=payload.description,

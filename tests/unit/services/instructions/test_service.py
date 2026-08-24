@@ -8,11 +8,11 @@ from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.services.instructions import (
     AvailableInstructionDocument,
     BuiltinInstructionImmutableError,
-    InstructionCreate,
+    DefinitionCreate,
     InstructionDisabledError,
     InstructionNotOwnedError,
     InstructionType,
-    InstructionUpdate,
+    DefinitionUpdate,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
@@ -62,7 +62,7 @@ async def test_persona_definition_lifecycle_is_independent(
 
     created = await persona_definition_service.create(
         workspace_id="workspace-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="  Tech Lead  ",
             description="  Reviews architecture  ",
             instructions="  Review the proposed architecture.  ",
@@ -84,7 +84,7 @@ async def test_skill_definition_rejects_duplicate_names(
 ) -> None:
     """Skill definitions enforce their own workspace name uniqueness."""
 
-    payload = InstructionCreate(
+    payload = DefinitionCreate(
         name="Security",
         description="Security review",
         instructions="Review security.",
@@ -130,7 +130,7 @@ async def test_skill_definition_checks_dependencies_before_deletion(
 
     created = await skill_definition_service.create(
         workspace_id="workspace-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Accessibility",
             description="Accessibility review",
             instructions="Review accessibility.",
@@ -150,5 +150,5 @@ async def test_skill_definition_checks_dependencies_before_deletion(
         await skill_definition_service.update(
             workspace_id="workspace-2",
             instruction_id=created.id,
-            payload=InstructionUpdate(expected_version=1),
+            payload=DefinitionUpdate(expected_version=1),
         )

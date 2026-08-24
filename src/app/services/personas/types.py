@@ -9,14 +9,14 @@ from typing import Protocol, TypeVar
 from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,
-    InstructionCreate,
+    DefinitionCreate,
     InstructionDocument,
-    InstructionUpdate,
+    DefinitionUpdate,
 )
 
 
 @dataclass(frozen=True, slots=True)
-class PersonaCreate(InstructionCreate):
+class PersonaCreate(DefinitionCreate):
     """Content and associations required to create a persona."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -24,7 +24,7 @@ class PersonaCreate(InstructionCreate):
 
 
 @dataclass(frozen=True, slots=True)
-class PersonaUpdate(InstructionUpdate):
+class PersonaUpdate(DefinitionUpdate):
     """Partial persona content and association changes."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None

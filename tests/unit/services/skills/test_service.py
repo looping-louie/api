@@ -3,8 +3,8 @@
 import pytest
 
 from src.app.services.instructions import (
-    InstructionCreate,
-    InstructionUpdate,
+    DefinitionCreate,
+    DefinitionUpdate,
     SkillDefinitionService,
 )
 from src.app.services.shared.tenant import (
@@ -50,7 +50,7 @@ async def test_create_skill_with_valid_metadata(
 
     created = await service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Security",
             description="Reviews security risks",
             instructions="Review the code for security vulnerabilities.",
@@ -82,7 +82,7 @@ async def test_create_skill_rejects_unknown_category(
     with pytest.raises(SkillValidationError):
         await service.create(
             user_id="user-1",
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name="Unknown area",
                 description="Uses an unsupported category.",
                 instructions="Review the supplied work.",
@@ -102,7 +102,7 @@ async def test_create_skill_rejects_duplicate_applies_when(
     with pytest.raises(SkillValidationError):
         await service.create(
             user_id="user-1",
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name="Security",
                 description="Reviews security",
                 instructions="Review security.",
@@ -124,7 +124,7 @@ async def test_create_skill_rejects_empty_applies_when(
     with pytest.raises(SkillValidationError):
         await service.create(
             user_id="user-1",
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name="Security",
                 description="Reviews security",
                 instructions="Review security.",
@@ -146,7 +146,7 @@ async def test_create_skill_rejects_invalid_strictness(
     with pytest.raises(SkillValidationError):
         await service.create(
             user_id="user-1",
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name="Security",
                 description="Reviews security",
                 instructions="Review security.",
@@ -170,7 +170,7 @@ async def test_create_skill_rejects_unknown_strictness_phase(
     with pytest.raises(SkillValidationError):
         await service.create(
             user_id="user-1",
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name="Security",
                 description="Reviews security",
                 instructions="Review security.",
@@ -193,7 +193,7 @@ async def test_update_skill_without_metadata_preserves_metadata(
 
     created = await service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Security",
             description="Initial description",
             instructions="Review security.",
@@ -206,7 +206,7 @@ async def test_update_skill_without_metadata_preserves_metadata(
     updated = await service.update(
         user_id="user-1",
         skill_id=created.id,
-        payload=InstructionUpdate(
+        payload=DefinitionUpdate(
             expected_version=1,
             description="Updated description",
         ),
@@ -244,7 +244,7 @@ async def test_skill_service_sets_enabled_and_creates_content(
     )
     created = await service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Workspace Security",
             description=builtin.description,
             instructions=builtin.instructions,

@@ -20,14 +20,14 @@ from .types import (
     AvailableInstructionDocument,
     AvailableInstructionPage,
     BuiltinInstructionImmutableError,
-    InstructionCreate,
+    DefinitionCreate,
     InstructionDisabledError,
     InstructionDocument,
     InstructionNotFoundError,
     InstructionNotOwnedError,
     InstructionRepository,
     InstructionType,
-    InstructionUpdate,
+    DefinitionUpdate,
     InstructionVersionConflictError,
     Clock,
     IdFactory,
@@ -113,7 +113,7 @@ class _DefinitionLifecycleService:
         self,
         *,
         workspace_id: str,
-        payload: InstructionCreate,
+        payload: DefinitionCreate,
     ) -> InstructionDocument:
         """Create a workspace-owned custom instruction."""
 
@@ -187,7 +187,7 @@ class _DefinitionLifecycleService:
         return await self._create_custom(
             workspace_id=workspace_id,
             instruction_type=self._instruction_type,
-            payload=InstructionCreate(
+            payload=DefinitionCreate(
                 name=duplicate_name,
                 description=source.description,
                 instructions=source.instructions,
@@ -223,7 +223,7 @@ class _DefinitionLifecycleService:
         *,
         workspace_id: str,
         instruction_id: str,
-        payload: InstructionUpdate,
+        payload: DefinitionUpdate,
     ) -> InstructionDocument:
         """Update a persona or skill using optimistic concurrency."""
 
@@ -330,7 +330,7 @@ class _DefinitionLifecycleService:
         *,
         workspace_id: str,
         instruction_type: InstructionType,
-        payload: InstructionCreate,
+        payload: DefinitionCreate,
         source_instruction_id: str | None,
     ) -> InstructionDocument:
         normalized = normalize_create(payload)
