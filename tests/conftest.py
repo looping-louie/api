@@ -9,7 +9,10 @@ import pytest
 from src.app.controllers.model import ModelController
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
-from src.app.services.instructions import InstructionService
+from src.app.services.instructions import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
+)
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import (
     TenantService,
@@ -116,19 +119,45 @@ def reference_resolver(
 
 
 @pytest.fixture
-def instruction_service(
+def persona_definition_service(
     instruction_repository: FakeInstructionRepository,
     validation_service: ValidationService,
     dependency_checker: FakeDependencyChecker,
-) -> InstructionService:
+) -> PersonaDefinitionService:
+    """Create a deterministic Persona definition lifecycle service."""
+
     identifier_counter = count(1)
 
     def create_identifier() -> str:
-        return f"instruction-{next(identifier_counter)}"
+        return f"persona-{next(identifier_counter)}"
 
     clock: Callable[[], datetime] = IncrementingClock()
 
-    return InstructionService(
+    return PersonaDefinitionService(
+        repository=instruction_repository,
+        validation_service=validation_service,
+        dependency_checker=dependency_checker,
+        id_factory=create_identifier,
+        clock=clock,
+    )
+
+
+@pytest.fixture
+def skill_definition_service(
+    instruction_repository: FakeInstructionRepository,
+    validation_service: ValidationService,
+    dependency_checker: FakeDependencyChecker,
+) -> SkillDefinitionService:
+    """Create a deterministic Skill definition lifecycle service."""
+
+    identifier_counter = count(1)
+
+    def create_identifier() -> str:
+        return f"skill-{next(identifier_counter)}"
+
+    clock: Callable[[], datetime] = IncrementingClock()
+
+    return SkillDefinitionService(
         repository=instruction_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,

@@ -45,8 +45,8 @@ from .validation import (
 )
 
 
-class InstructionService:
-    """Shared application service for personas and skills."""
+class _DefinitionLifecycleService:
+    """Shared lifecycle mechanics bound to one definition type."""
 
     def __init__(
         self,
@@ -54,12 +54,14 @@ class InstructionService:
         repository: InstructionRepository,
         validation_service: ValidationService,
         dependency_checker: DependencyChecker,
+        instruction_type: InstructionType,
         id_factory: IdFactory | None = None,
         clock: Clock | None = None,
     ) -> None:
         self._repository = repository
         self._validation_service = validation_service
         self._dependency_checker = dependency_checker
+        self._instruction_type = instruction_type
         self._id_factory = id_factory or default_id_factory
         self._clock = clock or default_clock
 
@@ -67,7 +69,6 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         search: str | None = None,
         status: CatalogInstructionStatus | None = None,
         categories: Sequence[CatalogInstructionCategory] = (),
@@ -77,11 +78,9 @@ class InstructionService:
     ) -> AvailableInstructionPage:
         """Return a filtered page of the effective instruction catalog."""
 
-        require_instruction_type(instruction_type)
-
         summaries = await self._repository.list_available_for_workspace(
             workspace_id=require_text(workspace_id, "workspace_id"),
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             search=normalize_search(search),
             status=status,
             categories=categories,
@@ -96,17 +95,14 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
         include_deprecated: bool = False,
     ) -> AvailableInstructionDocument:
         """Return a visible instruction, including disabled definitions."""
 
-        require_instruction_type(instruction_type)
-
         document = await self._require_available(
             workspace_id=require_text(workspace_id, "workspace_id"),
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=require_text(instruction_id, "instruction_id"),
             include_deprecated=include_deprecated,
         )
@@ -117,16 +113,14 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         payload: InstructionCreate,
     ) -> InstructionDocument:
         """Create a workspace-owned custom instruction."""
 
-        require_instruction_type(instruction_type)
         workspace_id = require_text(workspace_id, "workspace_id")
         return await self._create_custom(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             payload=payload,
             source_instruction_id=None,
         )
@@ -135,14 +129,13 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
     ) -> AvailableInstructionDocument:
         """Enable a visible instruction for new compositions."""
 
         return await self._set_enabled(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=instruction_id,
             enabled=True,
         )
@@ -151,14 +144,13 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
     ) -> AvailableInstructionDocument:
         """Disable a visible instruction without hiding its definition."""
 
         return await self._set_enabled(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=instruction_id,
             enabled=False,
         )
@@ -167,13 +159,11 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
         name: str | None = None,
     ) -> InstructionDocument:
         """Fork a visible instruction into a new editable custom copy."""
 
-        require_instruction_type(instruction_type)
         workspace_id = require_text(
             workspace_id,
             "workspace_id",
@@ -184,7 +174,7 @@ class InstructionService:
         )
         source = await self._require_available(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=instruction_id,
             include_deprecated=False,
         )
@@ -196,7 +186,7 @@ class InstructionService:
 
         return await self._create_custom(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             payload=InstructionCreate(
                 name=duplicate_name,
                 description=source.description,
@@ -210,21 +200,19 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
     ) -> AvailableInstructionDocument:
         """Resolve an instruction that may be used in new compositions."""
 
         document = await self.describe(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
             instruction_id=instruction_id,
             include_deprecated=True,
         )
 
         if not document.selectable:
             raise InstructionDisabledError(
-                instruction_type=instruction_type,
+                instruction_type=self._instruction_type,
                 instruction_id=instruction_id,
             )
 
@@ -234,19 +222,17 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
         payload: InstructionUpdate,
     ) -> InstructionDocument:
         """Update a persona or skill using optimistic concurrency."""
 
-        require_instruction_type(instruction_type)
         workspace_id = require_text(workspace_id, "workspace_id")
         instruction_id = require_text(instruction_id, "instruction_id")
 
         current = await self._require_owned_custom(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=instruction_id,
         )
 
@@ -260,7 +246,7 @@ class InstructionService:
         if normalized.name is not None:
             await self._validation_service.require_unique_name(
                 workspace_id=workspace_id,
-                resource_type=instruction_type,
+                resource_type=self._instruction_type,
                 name=normalized.name,
                 exclude_resource_id=instruction_id,
             )
@@ -295,7 +281,7 @@ class InstructionService:
         if persisted is None:
             await self._raise_update_conflict(
                 workspace_id=workspace_id,
-                instruction_type=instruction_type,
+                instruction_type=self._instruction_type,
                 instruction_id=instruction_id,
                 expected_version=payload.expected_version,
             )
@@ -306,38 +292,36 @@ class InstructionService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
         instruction_id: str,
     ) -> None:
         """Delete a persona or skill after checking its dependencies."""
 
-        require_instruction_type(instruction_type)
         workspace_id = require_text(workspace_id, "workspace_id")
         instruction_id = require_text(instruction_id, "instruction_id")
 
         await self._require_owned_custom(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=instruction_id,
         )
 
         await self._dependency_checker.require_deletable(
             workspace_id=workspace_id,
             target=ResourceReference(
-                resource_type=instruction_type,
+                resource_type=self._instruction_type,
                 resource_id=instruction_id,
             ),
         )
 
         deleted = await self._repository.delete(
             workspace_id=workspace_id,
-            instruction_type=instruction_type,
+            instruction_type=self._instruction_type,
             instruction_id=instruction_id,
         )
 
         if not deleted:
             raise InstructionNotFoundError(
-                instruction_type=instruction_type,
+                instruction_type=self._instruction_type,
                 instruction_id=instruction_id,
             )
 

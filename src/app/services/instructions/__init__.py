@@ -1,7 +1,8 @@
-"""Shared application services and contracts for instructions."""
+"""Persona and skill definition contracts and lifecycle services."""
 
-from .service import (
-    InstructionService,
+from .definitions import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
 )
 from .types import (
     AvailableInstructionDocument,
@@ -35,7 +36,8 @@ __all__ = [
     "InstructionNotFoundError",
     "InstructionNotOwnedError",
     "InstructionRepository",
-    "InstructionService",
+    "PersonaDefinitionService",
+    "SkillDefinitionService",
     "InstructionServiceError",
     "InstructionSummary",
     "InstructionType",

@@ -16,8 +16,9 @@ from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionPage,
     InstructionCreate,
-    InstructionService,
     InstructionUpdate,
+    PersonaDefinitionService,
+    SkillDefinitionService,
 )
 from ..shared.tenant import TenantService
 from ..shared.reference_resolver import (
@@ -47,16 +48,18 @@ class PersonaService:
         self,
         *,
         tenant_service: TenantService,
-        instruction_service: InstructionService,
+        persona_definition_service: PersonaDefinitionService,
+        skill_definition_service: SkillDefinitionService,
         persona_skill_repository: PersonaSkillRepository,
         reference_resolver: ReferenceResolver,
         persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository,
         linked_service_service: LinkedServiceService,
     ) -> None:
-        """Initialize workspace resolution and shared instruction behavior."""
+        """Initialize workspace resolution and Persona/Skill definitions."""
 
         self._tenant_service = tenant_service
-        self._instruction_service = instruction_service
+        self._persona_definition_service = persona_definition_service
+        self._skill_definition_service = skill_definition_service
         self._persona_skill_repository = persona_skill_repository
         self._persona_linked_service_selection_repository = persona_linked_service_selection_repository
         self._linked_service_service = linked_service_service
@@ -81,9 +84,8 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        page = await self._instruction_service.list(
+        page = await self._persona_definition_service.list(
             workspace_id=workspace_id,
-            instruction_type="persona",
             search=search,
             status=status,
             categories=categories,
@@ -125,9 +127,8 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        document = await self._instruction_service.describe(
+        document = await self._persona_definition_service.describe(
             workspace_id=workspace_id,
-            instruction_type="persona",
             instruction_id=persona_id,
             include_deprecated=include_deprecated,
         )
@@ -148,13 +149,12 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
         operation = (
-            self._instruction_service.enable
+            self._persona_definition_service.enable
             if enabled
-            else self._instruction_service.disable
+            else self._persona_definition_service.disable
         )
         document = await operation(
             workspace_id=workspace_id,
-            instruction_type="persona",
             instruction_id=persona_id,
         )
         return await self._with_skill_ids(document)
@@ -185,9 +185,8 @@ class PersonaService:
             selection=payload.linked_service_selection,
         )
 
-        document = await self._instruction_service.create(
+        document = await self._persona_definition_service.create(
             workspace_id=workspace_id,
-            instruction_type="persona",
             payload=InstructionCreate(
                 name=payload.name,
                 description=payload.description,
@@ -248,9 +247,8 @@ class PersonaService:
                 payload.metadata,
             )
         ):
-            document = await self._instruction_service.update(
+            document = await self._persona_definition_service.update(
                 workspace_id=workspace_id,
-                instruction_type="persona",
                 instruction_id=persona_id,
                 payload=InstructionUpdate(
                     expected_version=payload.expected_version,
@@ -261,9 +259,8 @@ class PersonaService:
                 ),
             )
         else:
-            document = await self._instruction_service.describe(
+            document = await self._persona_definition_service.describe(
                 workspace_id=workspace_id,
-                instruction_type='persona',
                 instruction_id=persona_id,
             )
         if payload.skill_ids is not None:
@@ -293,9 +290,8 @@ class PersonaService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        await self._instruction_service.delete(
+        await self._persona_definition_service.delete(
             workspace_id=workspace_id,
-            instruction_type="persona",
             instruction_id=persona_id,
         )
 
@@ -308,9 +304,8 @@ class PersonaService:
         """Ensure every associated skill is visible and non-deprecated."""
 
         for skill_id in skill_ids:
-            await self._instruction_service.describe(
+            await self._skill_definition_service.describe(
                 workspace_id=workspace_id,
-                instruction_type="skill",
                 instruction_id=skill_id,
             )
 

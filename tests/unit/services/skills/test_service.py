@@ -4,8 +4,8 @@ import pytest
 
 from src.app.services.instructions import (
     InstructionCreate,
-    InstructionService,
     InstructionUpdate,
+    SkillDefinitionService,
 )
 from src.app.services.shared.tenant import (
     TenantService,
@@ -20,7 +20,7 @@ from tests.unit.services.instructions.test_service import seed_builtin
 
 
 def build_skill_service(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> SkillService:
     """Build a skill service with one default workspace membership."""
 
@@ -36,17 +36,17 @@ def build_skill_service(
 
     return SkillService(
         tenant_service=TenantService(repository=repository),
-        instruction_service=instruction_service,
+        skill_definition_service=skill_definition_service,
     )
 
 
 @pytest.mark.asyncio
 async def test_create_skill_with_valid_metadata(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Valid structured metadata is preserved on skill creation."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     created = await service.create(
         user_id="user-1",
@@ -73,11 +73,11 @@ async def test_create_skill_with_valid_metadata(
 
 @pytest.mark.asyncio
 async def test_create_skill_rejects_unknown_category(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Custom skills use the same stable taxonomy as packaged skills."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     with pytest.raises(SkillValidationError):
         await service.create(
@@ -93,11 +93,11 @@ async def test_create_skill_rejects_unknown_category(
 
 @pytest.mark.asyncio
 async def test_create_skill_rejects_duplicate_applies_when(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Applicability values must be unique without case differences."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     with pytest.raises(SkillValidationError):
         await service.create(
@@ -115,11 +115,11 @@ async def test_create_skill_rejects_duplicate_applies_when(
 
 @pytest.mark.asyncio
 async def test_create_skill_rejects_empty_applies_when(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Applicability metadata cannot be an empty list."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     with pytest.raises(SkillValidationError):
         await service.create(
@@ -137,11 +137,11 @@ async def test_create_skill_rejects_empty_applies_when(
 
 @pytest.mark.asyncio
 async def test_create_skill_rejects_invalid_strictness(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Strictness values must stay within the supported range."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     with pytest.raises(SkillValidationError):
         await service.create(
@@ -161,11 +161,11 @@ async def test_create_skill_rejects_invalid_strictness(
 
 @pytest.mark.asyncio
 async def test_create_skill_rejects_unknown_strictness_phase(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Strictness metadata rejects unsupported project phases."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     with pytest.raises(SkillValidationError):
         await service.create(
@@ -185,11 +185,11 @@ async def test_create_skill_rejects_unknown_strictness_phase(
 
 @pytest.mark.asyncio
 async def test_update_skill_without_metadata_preserves_metadata(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Omitted update metadata preserves the stored metadata."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
 
     created = await service.create(
         user_id="user-1",
@@ -220,12 +220,12 @@ async def test_update_skill_without_metadata_preserves_metadata(
 
 @pytest.mark.asyncio
 async def test_skill_service_sets_enabled_and_creates_content(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
     """Skill-specific methods support PATCH and direct POST workflows."""
 
-    service = build_skill_service(instruction_service)
+    service = build_skill_service(skill_definition_service)
     builtin = seed_builtin(
         instruction_repository,
         instruction_type="skill",

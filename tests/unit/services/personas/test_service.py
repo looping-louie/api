@@ -11,7 +11,8 @@ from src.app.services.personas import (
 )
 from src.app.services.instructions import (
     InstructionNotFoundError,
-    InstructionService,
+    PersonaDefinitionService,
+    SkillDefinitionService,
 )
 from src.app.services.shared.tenant import (
     TenantService,
@@ -53,7 +54,8 @@ class FakeLinkedServiceSelectionValidator:
 
 
 def build_persona_service(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
     persona_skill_repository: FakePersonaSkillRepository | None = None,
     persona_linked_service_selection_repository: (
         FakePersonaLinkedServiceSelectionRepository | None
@@ -75,7 +77,8 @@ def build_persona_service(
 
     return PersonaService(
         tenant_service=TenantService(repository=repository),
-        instruction_service=instruction_service,
+        persona_definition_service=persona_definition_service,
+        skill_definition_service=skill_definition_service,
         persona_skill_repository=(
             persona_skill_repository
             or FakePersonaSkillRepository()
@@ -95,11 +98,15 @@ def build_persona_service(
 
 @pytest.mark.asyncio
 async def test_persona_crud_flow(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """Persona CRUD delegates to shared instruction behavior."""
 
-    service = build_persona_service(instruction_service)
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
 
     selection = PersonaLinkedServiceSelection(
         linked_service_id='linked-service-1',
@@ -158,12 +165,16 @@ async def test_persona_crud_flow(
 
 @pytest.mark.asyncio
 async def test_persona_service_sets_enabled_and_creates_content(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
     """Persona-specific methods support PATCH and direct POST workflows."""
 
-    service = build_persona_service(instruction_service)
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
     builtin = seed_builtin(
         instruction_repository,
         instruction_type="persona",
@@ -200,14 +211,16 @@ async def test_persona_service_sets_enabled_and_creates_content(
 
 @pytest.mark.asyncio
 async def test_persona_service_manages_skill_associations(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
     """Persona writes create and replace ordered skill IDs."""
 
     association_repository = FakePersonaSkillRepository()
     service = build_persona_service(
-        instruction_service,
+        persona_definition_service,
+        skill_definition_service,
         association_repository,
     )
     skill = seed_builtin(
@@ -251,13 +264,15 @@ async def test_persona_service_manages_skill_associations(
 @pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_persona_service_persists_validated_linked_service_selection(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """New selections coexist with the legacy persona model association."""
 
     validator = FakeLinkedServiceSelectionValidator()
     service = build_persona_service(
-        instruction_service,
+        persona_definition_service,
+        skill_definition_service,
         linked_service_service=validator,
     )
 
@@ -284,11 +299,15 @@ async def test_persona_service_persists_validated_linked_service_selection(
 
 @pytest.mark.asyncio
 async def test_persona_service_requires_linked_service_selection(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> None:
     """A custom Persona cannot omit its execution connection."""
 
-    service = build_persona_service(instruction_service)
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
 
     with pytest.raises(ValueError, match='linked-service selection is required'):
         await service.create(

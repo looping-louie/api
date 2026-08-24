@@ -16,8 +16,8 @@ from ..instructions import (
     AvailableInstructionPage,
     InstructionCreate,
     InstructionDocument,
-    InstructionService,
     InstructionUpdate,
+    SkillDefinitionService,
 )
 from ..shared.tenant import TenantService
 from .metadata_validator import (
@@ -32,12 +32,12 @@ class SkillService:
         self,
         *,
         tenant_service: TenantService,
-        instruction_service: InstructionService,
+        skill_definition_service: SkillDefinitionService,
     ) -> None:
-        """Initialize workspace resolution and shared instruction behavior."""
+        """Initialize workspace resolution and Skill definitions."""
 
         self._tenant_service = tenant_service
-        self._instruction_service = instruction_service
+        self._skill_definition_service = skill_definition_service
 
     async def list(
         self,
@@ -58,9 +58,8 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.list(
+        return await self._skill_definition_service.list(
             workspace_id=workspace_id,
-            instruction_type="skill",
             search=search,
             status=status,
             categories=categories,
@@ -84,9 +83,8 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.describe(
+        return await self._skill_definition_service.describe(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
             include_deprecated=include_deprecated,
         )
@@ -106,13 +104,12 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
         operation = (
-            self._instruction_service.enable
+            self._skill_definition_service.enable
             if enabled
-            else self._instruction_service.disable
+            else self._skill_definition_service.disable
         )
         return await operation(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
         )
 
@@ -132,9 +129,8 @@ class SkillService:
 
         validate_skill_metadata(payload.metadata)
 
-        return await self._instruction_service.create(
+        return await self._skill_definition_service.create(
             workspace_id=workspace_id,
-            instruction_type="skill",
             payload=payload,
         )
 
@@ -156,9 +152,8 @@ class SkillService:
         if payload.metadata is not None:
             validate_skill_metadata(payload.metadata)
 
-        return await self._instruction_service.update(
+        return await self._skill_definition_service.update(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
             payload=payload,
         )
@@ -177,9 +172,8 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        await self._instruction_service.delete(
+        await self._skill_definition_service.delete(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
         )
 

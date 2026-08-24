@@ -81,7 +81,10 @@ from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
-from src.app.services.instructions import InstructionService
+from src.app.services.instructions import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
+)
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
@@ -219,7 +222,14 @@ async def configure_application(
         repository=reference_repository,
     )
 
-    instruction_service = InstructionService(
+    persona_definition_service = PersonaDefinitionService(
+        repository=instruction_repository,
+        validation_service=validation_service,
+        dependency_checker=dependency_checker,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
+    skill_definition_service = SkillDefinitionService(
         repository=instruction_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
@@ -239,7 +249,8 @@ async def configure_application(
     )
     persona_service = PersonaService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        persona_definition_service=persona_definition_service,
+        skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
         persona_linked_service_selection_repository=(
             persona_linked_service_selection_repository
@@ -249,7 +260,7 @@ async def configure_application(
     )
     skill_service = SkillService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        skill_definition_service=skill_definition_service,
     )
     activity_service = ActivityService(
         repository=activity_repository,
