@@ -7,10 +7,10 @@ manifests and Markdown live under:
 src/app/catalogs/
 |-- skills/
 |   |-- registry.json
-|   `-- content/
+|   `-- items/
 `-- personas/
     |-- registry.json
-    `-- content/
+    `-- items/
 ```
 
 At startup the application loads both resource sets into one

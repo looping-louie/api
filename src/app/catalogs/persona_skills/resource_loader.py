@@ -223,7 +223,7 @@ def resolve_content_path(
     if (
         relative.is_absolute()
         or not relative.parts
-        or relative.parts[0] != "content"
+        or relative.parts[0] != "items"
         or relative.suffix != ".md"
     ):
         raise CatalogLoadError(

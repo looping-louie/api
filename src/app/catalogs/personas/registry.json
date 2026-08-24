@@ -6,7 +6,7 @@
     "version": 2,
     "category": "product_discovery_strategy",
     "enabled_by_default": true,
-    "content_path": "content/product_manager.md",
+    "content_path": "items/product_manager.md",
     "description": "Frames work around user problems, product outcomes, scope, requirements, trade-offs, prioritisation, and acceptance criteria.",
     "applies_when": [
       "product",
@@ -36,7 +36,7 @@
     "version": 2,
     "category": "product_discovery_strategy",
     "enabled_by_default": true,
-    "content_path": "content/founder.md",
+    "content_path": "items/founder.md",
     "description": "Evaluates strategic fit, speed, differentiation, customer value, business risk, and whether the work advances the company.",
     "applies_when": [
       "strategy",
@@ -64,7 +64,7 @@
     "version": 2,
     "category": "product_design_ux",
     "enabled_by_default": true,
-    "content_path": "content/ux_designer.md",
+    "content_path": "items/ux_designer.md",
     "description": "Focuses on user goals, interaction clarity, information architecture, accessibility, usability, consistency, and friction.",
     "applies_when": [
       "ux",
@@ -93,7 +93,7 @@
     "version": 2,
     "category": "software_engineering",
     "enabled_by_default": true,
-    "content_path": "content/tech_lead.md",
+    "content_path": "items/tech_lead.md",
     "description": "Optimises for correct implementation, maintainable code, sensible scope, framework conventions, testability, and safe delivery.",
     "applies_when": [
       "code",
@@ -126,7 +126,7 @@
     "version": 2,
     "category": "customer_success_support",
     "enabled_by_default": true,
-    "content_path": "content/enterprise_customer.md",
+    "content_path": "items/enterprise_customer.md",
     "description": "Assesses whether the result is trustworthy, governable, supportable, auditable, secure, and suitable for enterprise adoption.",
     "applies_when": [
       "enterprise",
@@ -155,7 +155,7 @@
     "version": 2,
     "category": "growth_acquisition",
     "enabled_by_default": true,
-    "content_path": "content/growth.md",
+    "content_path": "items/growth.md",
     "description": "Looks for acquisition, activation, conversion, retention, discoverability, measurement, and scalable distribution opportunities.",
     "applies_when": [
       "growth",
@@ -185,7 +185,7 @@
     "version": 2,
     "category": "quality_reliability",
     "enabled_by_default": true,
-    "content_path": "content/devils_advocate.md",
+    "content_path": "items/devils_advocate.md",
     "description": "Challenges assumptions, searches for failure modes, tests edge cases, and identifies reasons the proposed solution may not work.",
     "applies_when": [
       "risk",
@@ -213,7 +213,7 @@
     "version": 2,
     "category": "research_analytics",
     "enabled_by_default": true,
-    "content_path": "content/finance.md",
+    "content_path": "items/finance.md",
     "description": "Evaluates cost, pricing, margin, resource use, financial exposure, commercial viability, and measurable return.",
     "applies_when": [
       "finance",
@@ -241,7 +241,7 @@
     "version": 2,
     "category": "software_engineering",
     "enabled_by_default": true,
-    "content_path": "content/platform_architect.md",
+    "content_path": "items/platform_architect.md",
     "description": "Focuses on system boundaries, deployment portability, scalability, reliability, observability, integration contracts, and operational risk.",
     "applies_when": [
       "architecture",
@@ -272,7 +272,7 @@
     "version": 2,
     "category": "content_brand",
     "enabled_by_default": true,
-    "content_path": "content/editor.md",
+    "content_path": "items/editor.md",
     "description": "Improves clarity, structure, consistency, precision, readability, tone, and suitability for the intended audience.",
     "applies_when": [
       "content",

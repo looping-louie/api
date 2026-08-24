@@ -299,23 +299,26 @@ catalogs/
 |   `-- types.py                   Defines catalog metadata and value types
 |-- models/
 |   |-- __init__.py                Combines and validates curated entries
-|   |-- helpers.py                 Builds shared pricing and capability values
-|   |-- nvidia.py                  Defines NVIDIA entries
-|   |-- primary.py                 Defines primary provider entries
-|   |-- secondary.py               Defines secondary provider entries
+|   |-- items/
+|   |   |-- __init__.py            Combines provider-specific model items
+|   |   |-- anthropic.py           Defines Anthropic items
+|   |   |-- helpers.py             Builds shared pricing and capability values
+|   |   |-- nvidia.py              Defines NVIDIA items
+|   |   |-- openai.py              Defines OpenAI items
+|   |   `-- together.py            Defines Together items
 |   |-- types.py                   Defines catalog contracts
 |   `-- validation.py              Validates catalog consistency
 |-- personas/
 |   |-- __init__.py                Declares packaged resources
-|   |-- content/                   Contains Markdown definitions
+|   |-- items/                     Contains Markdown definitions
 |   |-- loader.py                  Loads and validates entries
 |   `-- registry.json              Declares resource metadata
 |-- providers/
 |   |-- __init__.py                Defines public catalog contracts
-|   `-- catalog.py                 Defines supported provider metadata
+|   `-- items.py                   Defines supported provider metadata
 `-- skills/
   |-- __init__.py                Declares packaged resources
-  |-- content/                   Contains Markdown definitions
+  |-- items/                     Contains Markdown definitions
   |-- loader.py                  Loads and validates entries
   `-- registry.json              Declares resource metadata
 ```

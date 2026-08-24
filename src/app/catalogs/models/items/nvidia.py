@@ -2,9 +2,9 @@
 
 from datetime import date
 
-from ..providers import ProviderId
+from ...providers import ProviderId
 from .helpers import TEXT
-from .types import (
+from ..types import (
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
@@ -12,7 +12,7 @@ from .types import (
 )
 
 
-NVIDIA_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
+NVIDIA_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
     ModelCatalogEntry(
         id="inkling",
         name="Inkling",

@@ -1,6 +1,6 @@
 """Public curated provider catalog and contracts."""
 
-from .catalog import (
+from .items import (
     PROVIDER_CATALOG,
     PROVIDER_CATALOG_BY_ID,
     ProviderCatalogEntry,

@@ -1,10 +1,10 @@
-"""Additional hosted open-model catalog entries."""
+"""Together-hosted curated model items."""
 
 from datetime import date
 
-from ..providers import ProviderId
-from .helpers import TEXT, _pricing
-from .types import (
+from ...providers import ProviderId
+from .helpers import GENERAL_REASONING, TEXT, _pricing
+from ..types import (
     ModelCapability,
     ModelCatalogEntry,
     ModelDeployment,
@@ -14,7 +14,7 @@ from .types import (
 )
 
 
-SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
+TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
     ModelCatalogEntry(
         id="qwen3.7-max",
         name="Qwen3.7 Max",
@@ -313,5 +313,105 @@ SECONDARY_MODEL_CATALOG: tuple[ModelCatalogEntry, ...] = (
             ),
         ),
         tags=("open-model", "vision", "small"),
+    ),
+    ModelCatalogEntry(
+        id="kimi-k2.6",
+        name="Kimi K2.6",
+        vendor="Moonshot AI",
+        lab=ModelLab.MOONSHOT,
+        family="Kimi",
+        description="Multimodal reasoning model for agents and tool use.",
+        released_at=date(2026, 4, 20),
+        capabilities=GENERAL_REASONING,
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="moonshotai/Kimi-K2.6",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                pricing=_pricing("1.20", "4.50", "0.20"),
+            ),
+        ),
+        tags=("open-model", "vision", "agents"),
+    ),
+    ModelCatalogEntry(
+        id="glm-5.2",
+        name="GLM-5.2",
+        vendor="Z.ai",
+        lab=ModelLab.Z,
+        family="GLM",
+        description="Reasoning and coding model for long-horizon agents.",
+        released_at=date(2026, 6, 16),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+                ModelCapability.CODING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="zai-org/GLM-5.2",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                max_output_tokens=128_000,
+                pricing=_pricing("1.40", "4.40", "0.26"),
+            ),
+        ),
+        tags=("open-model", "coding", "agents"),
+    ),
+    ModelCatalogEntry(
+        id="glm-5.1",
+        name="GLM-5.1",
+        vendor="Z.ai",
+        lab=ModelLab.Z,
+        family="GLM",
+        description="Previous GLM reasoning and function-calling model.",
+        released_at=date(2026, 4, 7),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.CODING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="zai-org/GLM-5.1",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=202_752,
+                pricing=_pricing("1.40", "4.40", "0.26"),
+                status=ModelStatus.DEPRECATED,
+                deprecated_at=date(2026, 6, 26),
+            ),
+        ),
+        status=ModelStatus.DEPRECATED,
+        replacement_model_id="glm-5.2",
+        tags=("open-model", "deprecated"),
+    ),
+    ModelCatalogEntry(
+        id="kimi-k2.7-code",
+        name="Kimi K2.7 Code",
+        vendor="Moonshot AI",
+        lab=ModelLab.MOONSHOT,
+        family="Kimi",
+        description="Kimi model specialised in coding agents.",
+        released_at=date(2026, 6, 12),
+        capabilities=GENERAL_REASONING,
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="moonshotai/Kimi-K2.7-Code",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                pricing=_pricing("0.95", "4.00", "0.19"),
+            ),
+        ),
+        tags=("open-model", "coding", "agents"),
     ),
 )

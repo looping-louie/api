@@ -185,7 +185,7 @@ def test_rejects_missing_content_file(tmp_path: Path) -> None:
     skill_dir, _ = copy_catalogs(tmp_path)
 
     def change_content_path(data: list[dict[str, Any]]) -> None:
-        data[0]["content_path"] = "content/nonexistent.md"
+        data[0]["content_path"] = "items/nonexistent.md"
         data[0]["key"] = "nonexistent"
         data[0]["id"] = "builtin:skill:nonexistent"
 

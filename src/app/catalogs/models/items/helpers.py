@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from .types import ModelCapability, ModelPricing
+from ..types import ModelCapability, ModelPricing
 
 
 def _pricing(
