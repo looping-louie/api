@@ -7,12 +7,12 @@ from typing import Mapping
 
 from ..persona_skills.entries import PersonaCatalogEntry
 from ..persona_skills.errors import CatalogLoadError
-from ..persona_skills.resource_loader import (
+from ..persona_skills.loader import (
     load_catalog_resources,
     require_heading,
     require_text,
 )
-from ..persona_skills.resource_validation import (
+from ..persona_skills.validation import (
     require_boolean,
     require_positive_integer,
     require_string_tuple,

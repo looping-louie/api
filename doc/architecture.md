@@ -293,9 +293,8 @@ catalogs/
 |   |-- __init__.py                Defines public catalog contracts
 |   |-- entries.py                 Defines immutable persona and skill entries
 |   |-- errors.py                  Defines catalog loading errors
-|   |-- loader.py                  Loads catalogs and validates cross-references
-|   |-- resource_loader.py         Loads JSON manifests and Markdown resources
-|   |-- resource_validation.py     Validates manifest values
+|   |-- loader.py                  Loads manifests, resources, and combined catalogs
+|   |-- validation.py              Validates manifest values
 |   `-- types.py                   Defines catalog metadata and value types
 |-- models/
 |   |-- __init__.py                Combines and validates curated entries

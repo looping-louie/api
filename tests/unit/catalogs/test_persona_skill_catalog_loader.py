@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 
 import src.app.bootstrap.application as bootstrap
-from src.app.catalogs.persona_skills.resource_loader import CatalogLoadError
+from src.app.catalogs.persona_skills.errors import CatalogLoadError
 from src.app.catalogs.persona_skills import (
     PersonaCatalogEntry,
     SkillCatalogEntry,
