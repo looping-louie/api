@@ -10,9 +10,9 @@ from src.app.bootstrap.pipeline import build_pipeline_controller
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.catalog import CatalogController
-from src.app.catalogs.instructions.loader import (
-    InstructionCatalog,
-    load_instruction_catalog,
+from src.app.catalogs.persona_skills.loader import (
+    PersonaSkillCatalog,
+    load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
@@ -65,7 +65,7 @@ from src.app.services.execution_instructions import (
 )
 from src.app.services.instructions.synchronization import (
     CatalogChecksumPolicy,
-    InstructionCatalogSynchronizer,
+    PersonaSkillCatalogSynchronizer,
 )
 from src.app.services.activities.service import ActivityService
 from src.app.services.catalogs import StaticCatalogService
@@ -96,7 +96,7 @@ async def configure_application(
     app: FastAPI,
     *,
     settings: AppSettings | None = None,
-    instruction_catalog: InstructionCatalog | None = None,
+    persona_skill_catalog: PersonaSkillCatalog | None = None,
 ) -> None:
     """Build and register the SQLite application dependencies."""
 
@@ -107,11 +107,11 @@ async def configure_application(
     )
 
     resolved_catalog = (
-        instruction_catalog
-        if instruction_catalog is not None
-        else load_instruction_catalog()
+        persona_skill_catalog
+        if persona_skill_catalog is not None
+        else load_persona_skill_catalog()
     )
-    catalog_synchronizer = InstructionCatalogSynchronizer(
+    catalog_synchronizer = PersonaSkillCatalogSynchronizer(
         database_path=resolved_settings.database_path,
         checksum_policy=(
             CatalogChecksumPolicy.REQUIRE_VERSION_INCREMENT
@@ -127,7 +127,7 @@ async def configure_application(
         resolved_catalog,
     )
     LOGGER.info(
-        "Instruction catalog synchronized: inserted=%d updated=%d "
+        "Persona and Skill catalog synchronized: inserted=%d updated=%d "
         "unchanged=%d deprecated=%d",
         catalog_synchronization.inserted,
         catalog_synchronization.updated,
@@ -310,7 +310,7 @@ async def configure_application(
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database
-    app.state.instruction_catalog = resolved_catalog
+    app.state.persona_skill_catalog = resolved_catalog
     app.state.catalog_synchronization = catalog_synchronization
     app.state.execution_instruction_library_service = (
         execution_instruction_library_service

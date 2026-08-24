@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CATALOG_INSTRUCTION_PAGE_SIZE,
     CatalogInstructionCategory,
     CatalogInstructionSort,

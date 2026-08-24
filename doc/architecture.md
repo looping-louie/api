@@ -286,8 +286,8 @@ It does not access SQLite or workspace state.
 ```text
 catalogs/
 |
-|-- __init__.py                    Exposes the combined instruction catalog
-|-- instructions/
+|-- __init__.py                    Exposes the combined Persona and Skill catalog
+|-- persona_skills/
 |   |-- __init__.py                Defines public catalog contracts
 |   |-- entries.py                 Defines immutable persona and skill entries
 |   |-- errors.py                  Defines catalog loading errors
@@ -410,8 +410,8 @@ models/
   prompts, review, finalisation, artefacts, and metrics.
 - [Activities](components/activities.md) defines Activity categories, loop
   roles, and supported Activity-run behavior.
-- [Instruction catalog](components/instruction-catalog.md) describes builtin
-  instruction ownership, synchronization, and maintenance.
+- [Persona and Skill catalog](components/persona-skill-catalog.md) describes
+  builtin Persona and Skill ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records the static provider and model
   catalog boundary. Linked Services persist independent workspace-owned provider
   connections and derive their available deployment models from that catalog.

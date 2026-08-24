@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Mapping
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 
 
 InstructionType = Literal['persona', 'skill']

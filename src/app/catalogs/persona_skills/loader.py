@@ -1,4 +1,4 @@
-"""Combined typed loader for packaged instruction definitions."""
+"""Combined typed loader for packaged Persona and Skill definitions."""
 
 from __future__ import annotations
 
@@ -22,8 +22,8 @@ from ..skills.loader import (
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionCatalog:
-    """Immutable skill and persona catalog loaded as one unit."""
+class PersonaSkillCatalog:
+    """Immutable Persona and Skill catalog loaded as one unit."""
 
     skills: tuple[SkillCatalogEntry, ...]
     personas: tuple[PersonaCatalogEntry, ...]
@@ -35,12 +35,12 @@ class InstructionCatalog:
         return (*self.skills, *self.personas)
 
 
-def load_instruction_catalog(
+def load_persona_skill_catalog(
     *,
     skill_catalog_dir: Path = SKILL_CATALOG_DIR,
     persona_catalog_dir: Path = PERSONA_CATALOG_DIR,
-) -> InstructionCatalog:
-    """Load both catalogs and validate all cross-references."""
+) -> PersonaSkillCatalog:
+    """Load Persona and Skill catalogs and validate their cross-references."""
 
     skills = load_skill_catalog(skill_catalog_dir)
     personas = load_persona_catalog(persona_catalog_dir)
@@ -53,7 +53,7 @@ def load_instruction_catalog(
     for entry in (*skills, *personas):
         if entry.id in all_ids:
             raise CatalogLoadError(
-                f"Duplicate instruction catalog id: {entry.id}"
+                f"Duplicate Persona and Skill catalog id: {entry.id}"
             )
 
         all_ids.add(entry.id)
@@ -71,7 +71,7 @@ def load_instruction_catalog(
                 f"skills: {sorted(missing_skill_ids)}."
             )
 
-    return InstructionCatalog(
+    return PersonaSkillCatalog(
         skills=skills,
         personas=personas,
     )

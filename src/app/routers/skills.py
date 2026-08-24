@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping, Sequence
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 
 from ..instructions import (
     AvailableInstructionDocument,

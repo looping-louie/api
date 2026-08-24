@@ -1,4 +1,4 @@
-"""Public instruction catalog contracts."""
+"""Public Persona and Skill catalog contracts."""
 
 from .entries import (
     CatalogInstructionEntry,

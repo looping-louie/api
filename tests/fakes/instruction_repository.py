@@ -2,8 +2,8 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import Sequence
 
-from src.app.catalogs.instructions import InstructionOrigin
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import InstructionOrigin
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,

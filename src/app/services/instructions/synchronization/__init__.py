@@ -1,4 +1,4 @@
-"""Builtin instruction catalog materialization services."""
+"""Builtin Persona and Skill catalog materialization services."""
 
 from .synchronizer import (
     CatalogChecksumConflictError,
@@ -7,7 +7,7 @@ from .synchronizer import (
     CatalogSynchronizationError,
     CatalogSynchronizationResult,
     CatalogVersionRegressionError,
-    InstructionCatalogSynchronizer,
+    PersonaSkillCatalogSynchronizer,
 )
 
 
@@ -18,5 +18,5 @@ __all__ = [
     "CatalogSynchronizationError",
     "CatalogSynchronizationResult",
     "CatalogVersionRegressionError",
-    "InstructionCatalogSynchronizer",
+    "PersonaSkillCatalogSynchronizer",
 ]

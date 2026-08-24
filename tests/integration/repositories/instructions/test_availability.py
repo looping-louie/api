@@ -9,12 +9,12 @@ from typing import Any
 import pytest
 
 from src.app.repositories.instructions import repository as repository_module
-from src.app.catalogs import InstructionOrigin, load_instruction_catalog
+from src.app.catalogs import InstructionOrigin, load_persona_skill_catalog
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
 from src.app.services.instructions.synchronization import (
-    InstructionCatalogSynchronizer,
+    PersonaSkillCatalogSynchronizer,
 )
 from tests.integration.repositories.instructions.helpers import (
     insert_custom,
@@ -170,10 +170,10 @@ def library_database(
         )
         connection.commit()
 
-    InstructionCatalogSynchronizer(
+    PersonaSkillCatalogSynchronizer(
         database_path=database_path,
     ).synchronize(
-        load_instruction_catalog()
+        load_persona_skill_catalog()
     )
 
     async def connect(

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,

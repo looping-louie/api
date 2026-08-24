@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Callable, Literal, Mapping, Protocol, Sequence
 from uuid import uuid4
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,

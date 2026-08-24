@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import replace
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,

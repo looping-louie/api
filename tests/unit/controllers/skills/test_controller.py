@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.controllers.skill import SkillController
 from src.app.schemas.skill import SkillCreateRequest, SkillPatchRequest
 from src.app.services.instructions import InstructionService

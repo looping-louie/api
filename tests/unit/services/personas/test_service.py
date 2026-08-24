@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.services.personas import (
     PersonaCreate,
     PersonaLinkedServiceSelection,

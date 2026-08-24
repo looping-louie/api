@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import aiosqlite
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.services.instructions import (
     AvailableInstructionDocument,
     AvailableInstructionSummary,

@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs import load_instruction_catalog
-from src.app.catalogs.instructions.loader import InstructionCatalog
+from src.app.catalogs import load_persona_skill_catalog
+from src.app.catalogs.persona_skills.loader import PersonaSkillCatalog
 from src.app.services.instructions.synchronization import (
     CatalogChecksumConflictError,
     CatalogChecksumPolicy,
     CatalogVersionRegressionError,
-    InstructionCatalogSynchronizer,
+    PersonaSkillCatalogSynchronizer,
 )
 
 
@@ -56,8 +56,8 @@ def build_synchronizer(
     policy: CatalogChecksumPolicy = (
         CatalogChecksumPolicy.ALLOW_WITH_WARNING
     ),
-) -> InstructionCatalogSynchronizer:
-    return InstructionCatalogSynchronizer(
+) -> PersonaSkillCatalogSynchronizer:
+    return PersonaSkillCatalogSynchronizer(
         database_path=database_path,
         checksum_policy=policy,
         clock=lambda: FIXED_NOW,
@@ -65,16 +65,16 @@ def build_synchronizer(
 
 
 def replace_skill(
-    catalog: InstructionCatalog,
+    catalog: PersonaSkillCatalog,
     position: int,
     **changes: object,
-) -> InstructionCatalog:
+) -> PersonaSkillCatalog:
     skills = list(catalog.skills)
     skills[position] = replace(
         skills[position],
         **changes,
     )
-    return InstructionCatalog(
+    return PersonaSkillCatalog(
         skills=tuple(skills),
         personas=catalog.personas,
     )
@@ -83,7 +83,7 @@ def replace_skill(
 def test_synchronization_is_idempotent(
     catalog_database: Path,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     synchronizer = build_synchronizer(catalog_database)
 
     first = synchronizer.synchronize(catalog)
@@ -112,7 +112,7 @@ def test_synchronization_persists_persona_skill_associations(
 ) -> None:
     """Catalog synchronization stores ordered associations relationally."""
 
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     persona = catalog.personas[0]
 
     build_synchronizer(catalog_database).synchronize(catalog)
@@ -198,7 +198,7 @@ def test_synchronization_does_not_modify_custom_instructions(
         connection.commit()
 
     build_synchronizer(catalog_database).synchronize(
-        load_instruction_catalog()
+        load_persona_skill_catalog()
     )
 
     with sqlite3.connect(catalog_database) as connection:
@@ -227,9 +227,9 @@ def test_synchronization_does_not_modify_custom_instructions(
 def test_removed_builtin_is_deprecated_but_not_deleted(
     catalog_database: Path,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     removed = catalog.skills[0]
-    reduced = InstructionCatalog(
+    reduced = PersonaSkillCatalog(
         skills=catalog.skills[1:],
         personas=catalog.personas,
     )
@@ -265,7 +265,7 @@ def test_removed_builtin_is_deprecated_but_not_deleted(
 def test_higher_catalog_version_updates_stable_id(
     catalog_database: Path,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     original = catalog.skills[0]
     assert original.catalog_version is not None
     changed = replace_skill(
@@ -302,7 +302,7 @@ def test_higher_catalog_version_updates_stable_id(
 def test_catalog_version_cannot_regress(
     catalog_database: Path,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     entry = catalog.skills[0]
     assert entry.catalog_version is not None
     synchronizer = build_synchronizer(catalog_database)
@@ -333,7 +333,7 @@ def test_development_policy_warns_and_updates_checksum(
     catalog_database: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     changed = replace_skill(
         catalog,
         0,
@@ -353,7 +353,7 @@ def test_development_policy_warns_and_updates_checksum(
 def test_strict_policy_rejects_unversioned_checksum_change(
     catalog_database: Path,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     entry = catalog.skills[0]
     changed = replace_skill(
         catalog,
@@ -392,7 +392,7 @@ def test_database_failure_rolls_back_every_update(
     catalog_database: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
     first = catalog.skills[0]
     second = catalog.skills[1]
     changed = replace_skill(

@@ -1,6 +1,6 @@
 """Contract tests for the shared instruction business taxonomy."""
 
-from src.app.catalogs.instructions import CatalogInstructionCategory
+from src.app.catalogs.persona_skills import CatalogInstructionCategory
 from src.app.catalogs.personas.loader import load_persona_catalog
 from src.app.catalogs.skills.loader import load_skill_catalog
 
