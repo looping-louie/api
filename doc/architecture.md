@@ -126,6 +126,12 @@ This package implements application use cases and reusable business rules. It
 coordinates catalog definitions, domain models, and repositories without
 handling FastAPI request-response concerns or direct persistence.
 
+Service package names identify a bounded context and use plural nouns. A
+package's primary use-case coordinator uses `service.py`; narrower modules use
+the responsibility they own. `catalog.py` provides a domain's curated catalog
+view, `static.py` exposes application-shipped definitions without workspace
+state, and `synchronization/` materializes packaged definitions into SQLite.
+
 ```text
 services/
 |
@@ -138,15 +144,15 @@ services/
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints
 |   `-- types.py                   Defines execution contracts and domain errors
-|-- catalog/
-|   `-- service.py                 Exposes static provider and model definitions
+|-- catalogs/
+|   `-- static.py                  Exposes static provider and model definitions
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- library.py                 Builds immutable SQL snapshots
 |                                  for prompt assembly
 |-- instructions/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- catalog/
+|   |-- synchronization/
 |   |   |-- __init__.py            Defines the package's public imports
 |   |   |-- serialization.py       Serializes catalog entries for persistence
 |   |   `-- synchronizer.py        Materializes builtins in SQLite, applies
@@ -165,7 +171,7 @@ services/
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- availability.py            Calculates workspace availability
-|   `-- service.py                 Queries the curated catalog
+|   `-- catalog.py                 Queries the curated model catalog
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- service.py                 Manages workspace resources and skill links
@@ -187,7 +193,7 @@ services/
 |   |-- errors.py                  Defines configuration errors
 |   |-- model_registry.py          Queries catalog models by provider
 |   |-- secret.py                  Encrypts, decrypts, and masks API keys
-|   `-- service.py                 Supports deprecated legacy configuration
+|   `-- configuration.py           Interprets deprecated legacy configuration
 |-- shared/
 |   |-- __init__.py                Declares shared service utilities
 |   |-- changelog.py               Builds changelog metadata and field diffs

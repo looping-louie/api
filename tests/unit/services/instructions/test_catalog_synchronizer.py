@@ -12,7 +12,7 @@ import pytest
 
 from src.app.catalogs import load_instruction_catalog
 from src.app.catalogs.instructions.loader import InstructionCatalog
-from src.app.services.instructions.catalog import (
+from src.app.services.instructions.synchronization import (
     CatalogChecksumConflictError,
     CatalogChecksumPolicy,
     CatalogVersionRegressionError,

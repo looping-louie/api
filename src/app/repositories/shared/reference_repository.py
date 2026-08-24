@@ -8,7 +8,7 @@ from typing import Any
 from src.app.services.instructions import (
     InstructionRepository,
 )
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 
 
 _INSTRUCTION_TYPES = frozenset(

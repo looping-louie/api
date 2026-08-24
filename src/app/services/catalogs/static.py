@@ -13,7 +13,7 @@ from src.app.catalogs.models import (
 from src.app.catalogs.providers import PROVIDER_CATALOG, ProviderCatalogEntry
 
 
-class CatalogService:
+class StaticCatalogService:
     """Expose curated provider and model definitions without workspace state."""
 
     def __init__(

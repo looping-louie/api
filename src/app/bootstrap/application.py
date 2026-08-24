@@ -63,15 +63,15 @@ from src.app.services.shared.settings import (
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instructions.catalog import (
+from src.app.services.instructions.synchronization import (
     CatalogChecksumPolicy,
     InstructionCatalogSynchronizer,
 )
 from src.app.services.activities.service import ActivityService
-from src.app.services.catalog import CatalogService
+from src.app.services.catalogs import StaticCatalogService
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
 from src.app.services.personas import PersonaService
 from src.app.services.providers.connection import (
@@ -208,7 +208,7 @@ async def configure_application(
         availability_service=model_availability_service,
     )
     catalog_controller = CatalogController(
-        catalog_service=CatalogService(),
+        static_catalog_service=StaticCatalogService(),
     )
 
     reference_repository = CompositeReferenceRepository(
