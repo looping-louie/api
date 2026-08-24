@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.skill import SkillController
 from src.app.routers.skills import router as skills_router
-from src.app.services.instructions import InstructionService
+from src.app.services.persona_skills import SkillDefinitionService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
@@ -39,12 +39,12 @@ def build_app(*, controller: SkillController) -> FastAPI:
 
 @pytest.fixture
 def skill_controller(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> SkillController:
     """Build a controller backed by deterministic in-memory fakes."""
 
     return SkillController(
-        skill_service=build_skill_service(instruction_service),
+        skill_service=build_skill_service(skill_definition_service),
     )
 
 
@@ -140,7 +140,7 @@ def test_list_skills_filters_sorts_and_paginates(
         assert created.status_code == 201
 
     disabled = client.patch(
-        "/api/v1/skills/instruction-2",
+        "/api/v1/skills/skill-2",
         json={"enabled": False},
     )
     assert disabled.status_code == 200

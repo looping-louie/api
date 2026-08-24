@@ -8,10 +8,10 @@ from pathlib import Path
 
 import aiosqlite
 
-from src.app.services.instructions import (
-    InstructionDocument,
-    InstructionSummary,
-    InstructionType,
+from src.app.services.persona_skills import (
+    DefinitionDocument,
+    DefinitionSummary,
+    DefinitionType,
 )
 
 from .availability import InstructionAvailabilityMixin
@@ -42,9 +42,9 @@ class SqliteInstructionRepository(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
-    ) -> list[InstructionSummary]:
+    ) -> list[DefinitionSummary]:
         """Return owned custom summaries for legacy editing services."""
 
         async with self._connect() as connection:
@@ -87,9 +87,9 @@ class SqliteInstructionRepository(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return one custom instruction owned by the workspace."""
 
         return await self.get_owned_custom(
@@ -102,9 +102,9 @@ class SqliteInstructionRepository(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return a custom instruction owned by the workspace."""
 
         async with self._connect() as connection:
@@ -120,9 +120,9 @@ class SqliteInstructionRepository(
         *,
         connection: aiosqlite.Connection,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return one owned custom instruction using an open connection."""
 
         cursor = await connection.execute(

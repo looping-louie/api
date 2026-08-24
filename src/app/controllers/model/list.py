@@ -12,7 +12,7 @@ from src.app.catalogs.models import (
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.schemas.model import ModelListResponse, ModelSummaryResponse
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 
 
 MODEL_PAGE_SIZE = 24

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.model import ModelResponse
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 
 
 class ModelDescribeController:

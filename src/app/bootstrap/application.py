@@ -10,9 +10,9 @@ from src.app.bootstrap.pipeline import build_pipeline_controller
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.catalog import CatalogController
-from src.app.catalogs.instructions.loader import (
-    InstructionCatalog,
-    load_instruction_catalog,
+from src.app.catalogs.persona_skills.loader import (
+    PersonaSkillCatalog,
+    load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
@@ -63,15 +63,15 @@ from src.app.services.shared.settings import (
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instructions.catalog import (
+from src.app.services.persona_skills.synchronization import (
     CatalogChecksumPolicy,
-    InstructionCatalogSynchronizer,
+    PersonaSkillCatalogSynchronizer,
 )
 from src.app.services.activities.service import ActivityService
-from src.app.services.catalog import CatalogService
+from src.app.services.catalogs import StaticCatalogService
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.model_execution import ModelExecutionService
 from src.app.services.personas import PersonaService
 from src.app.services.providers.connection import (
@@ -81,7 +81,10 @@ from src.app.services.linked_services import LinkedServiceService
 from src.app.services.providers.secret import FernetSecretService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.generation import create_identifier, utc_now
-from src.app.services.instructions import InstructionService
+from src.app.services.persona_skills import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
+)
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
@@ -96,7 +99,7 @@ async def configure_application(
     app: FastAPI,
     *,
     settings: AppSettings | None = None,
-    instruction_catalog: InstructionCatalog | None = None,
+    persona_skill_catalog: PersonaSkillCatalog | None = None,
 ) -> None:
     """Build and register the SQLite application dependencies."""
 
@@ -107,11 +110,11 @@ async def configure_application(
     )
 
     resolved_catalog = (
-        instruction_catalog
-        if instruction_catalog is not None
-        else load_instruction_catalog()
+        persona_skill_catalog
+        if persona_skill_catalog is not None
+        else load_persona_skill_catalog()
     )
-    catalog_synchronizer = InstructionCatalogSynchronizer(
+    catalog_synchronizer = PersonaSkillCatalogSynchronizer(
         database_path=resolved_settings.database_path,
         checksum_policy=(
             CatalogChecksumPolicy.REQUIRE_VERSION_INCREMENT
@@ -127,7 +130,7 @@ async def configure_application(
         resolved_catalog,
     )
     LOGGER.info(
-        "Instruction catalog synchronized: inserted=%d updated=%d "
+        "Persona and Skill catalog synchronized: inserted=%d updated=%d "
         "unchanged=%d deprecated=%d",
         catalog_synchronization.inserted,
         catalog_synchronization.updated,
@@ -208,7 +211,7 @@ async def configure_application(
         availability_service=model_availability_service,
     )
     catalog_controller = CatalogController(
-        catalog_service=CatalogService(),
+        static_catalog_service=StaticCatalogService(),
     )
 
     reference_repository = CompositeReferenceRepository(
@@ -219,7 +222,14 @@ async def configure_application(
         repository=reference_repository,
     )
 
-    instruction_service = InstructionService(
+    persona_definition_service = PersonaDefinitionService(
+        repository=instruction_repository,
+        validation_service=validation_service,
+        dependency_checker=dependency_checker,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
+    skill_definition_service = SkillDefinitionService(
         repository=instruction_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
@@ -239,7 +249,8 @@ async def configure_application(
     )
     persona_service = PersonaService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        persona_definition_service=persona_definition_service,
+        skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
         persona_linked_service_selection_repository=(
             persona_linked_service_selection_repository
@@ -249,7 +260,7 @@ async def configure_application(
     )
     skill_service = SkillService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        skill_definition_service=skill_definition_service,
     )
     activity_service = ActivityService(
         repository=activity_repository,
@@ -310,7 +321,7 @@ async def configure_application(
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database
-    app.state.instruction_catalog = resolved_catalog
+    app.state.persona_skill_catalog = resolved_catalog
     app.state.catalog_synchronization = catalog_synchronization
     app.state.execution_instruction_library_service = (
         execution_instruction_library_service

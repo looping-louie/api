@@ -7,7 +7,7 @@ from typing import Literal, Self
 
 from pydantic import ConfigDict, Field, StrictBool, model_validator
 
-from src.app.catalogs.instructions import CatalogInstructionCategory
+from src.app.catalogs.persona_skills import CatalogInstructionCategory
 
 from .shared import (
     InstructionCapabilitiesResponse,

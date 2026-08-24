@@ -16,7 +16,7 @@ from src.app.services.models.availability import (
     ModelNotFoundError,
     ProviderConnectionState,
 )
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.shared.tenant import TenantService
 from tests.factories.models import (
     build_deployment,

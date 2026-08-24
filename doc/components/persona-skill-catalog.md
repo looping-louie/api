@@ -1,6 +1,6 @@
-# Builtin Instruction Catalog
+# Builtin Persona and Skill Catalog
 
-Builtin skills and personas are versioned application resources. Their
+Builtin Personas and Skills are versioned application resources. Their
 manifests and Markdown live under:
 
 ```text
@@ -13,9 +13,10 @@ src/app/catalogs/
     `-- content/
 ```
 
-At startup the application validates these files and synchronizes them into
-SQL. API and execution services read instructions only from SQL after that
-point.
+At startup the application loads both resource sets into one
+`PersonaSkillCatalog`, validates their IDs and cross-references, and
+synchronizes the result into SQL. API and execution services read instruction
+records only from SQL after that point.
 
 ## Add a builtin
 
@@ -56,8 +57,8 @@ and workspace-aware data.
 The design is:
 
 ```text
-Git-tracked manifest + Markdown
-        -> validate and synchronize at startup
+Git-tracked Persona and Skill manifests + Markdown
+    -> load PersonaSkillCatalog and synchronize at startup
 SQL runtime projection
         -> API, availability resolution, loop-run execution
 ```
@@ -82,9 +83,9 @@ Startup has one ordered catalog boundary:
 ```text
 run migrations
     v
-load and validate packaged catalog
+load and validate packaged Persona and Skill catalog
     v
-synchronize builtins into SQL
+synchronize built-in Personas and Skills into SQL
     v
 ensure local tenant
     v

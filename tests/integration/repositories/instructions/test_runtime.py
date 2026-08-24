@@ -16,7 +16,7 @@ from src.app.repositories.instructions.persona_skill_repository import (
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instructions import InstructionDocument
+from src.app.services.persona_skills import DefinitionDocument
 from src.app.services.shared.tenant import (
     TenantService,
     WorkspaceMembership,
@@ -36,7 +36,7 @@ async def test_custom_persists_source_instruction_id(
 
     repository = SqliteInstructionRepository(library_database)
     now = datetime(2026, 7, 23, 13, 0, tzinfo=UTC)
-    document = InstructionDocument(
+    document = DefinitionDocument(
         id="forked-security",
         workspace_id="workspace-1",
         instruction_type="skill",

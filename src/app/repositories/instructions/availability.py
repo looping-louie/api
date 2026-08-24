@@ -5,15 +5,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.services.instructions import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
-    InstructionType,
+from src.app.services.persona_skills import (
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
+    DefinitionType,
 )
 
 from .mapping import (
@@ -31,7 +31,7 @@ class InstructionAvailabilityMixin:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
         status: CatalogInstructionStatus | None = None,
@@ -39,7 +39,7 @@ class InstructionAvailabilityMixin:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return a filtered page of the workspace instruction library."""
 
         if offset < 0:
@@ -164,7 +164,7 @@ class InstructionAvailabilityMixin:
             finally:
                 await cursor.close()
 
-        return AvailableInstructionPage(
+        return AvailableDefinitionPage(
             items=tuple(
                 to_available_summary(
                     row,
@@ -220,10 +220,10 @@ class InstructionAvailabilityMixin:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument | None:
+    ) -> AvailableDefinitionDocument | None:
         """Resolve one visible instruction, even when it is disabled."""
 
         deprecated_clause = (

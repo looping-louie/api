@@ -10,12 +10,12 @@ import pytest
 from fastapi import FastAPI
 
 import src.app.bootstrap.application as bootstrap
-from src.app.catalogs.instructions.resource_loader import CatalogLoadError
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills.resource_loader import CatalogLoadError
+from src.app.catalogs.persona_skills import (
     PersonaCatalogEntry,
     SkillCatalogEntry,
 )
-from src.app.catalogs.instructions.loader import load_instruction_catalog
+from src.app.catalogs.persona_skills.loader import load_persona_skill_catalog
 from src.app.catalogs.personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
@@ -58,7 +58,7 @@ def find_by_key(entries: Any, key: str) -> Any:
 
 
 def test_loaders_return_immutable_typed_entries() -> None:
-    catalog = load_instruction_catalog()
+    catalog = load_persona_skill_catalog()
 
     assert isinstance(catalog.skills[0], SkillCatalogEntry)
     assert isinstance(catalog.personas[0], PersonaCatalogEntry)
@@ -68,8 +68,8 @@ def test_loaders_return_immutable_typed_entries() -> None:
 
 
 def test_checksum_is_deterministic() -> None:
-    first_load = load_instruction_catalog()
-    second_load = load_instruction_catalog()
+    first_load = load_persona_skill_catalog()
+    second_load = load_persona_skill_catalog()
 
     assert [
         entry.checksum
@@ -246,7 +246,7 @@ def test_rejects_unknown_associated_skill_reference(
         CatalogLoadError,
         match="unknown associated skills",
     ):
-        load_instruction_catalog(
+        load_persona_skill_catalog(
             skill_catalog_dir=skill_dir,
             persona_catalog_dir=persona_dir,
         )
@@ -296,7 +296,7 @@ async def test_invalid_catalog_prevents_application_startup(
     )
     monkeypatch.setattr(
         bootstrap,
-        "load_instruction_catalog",
+        "load_persona_skill_catalog",
         reject_catalog,
     )
     settings = cast(

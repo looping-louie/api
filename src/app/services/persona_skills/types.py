@@ -1,4 +1,4 @@
-"""Instruction domain contracts and errors."""
+"""Persona and Skill definition contracts and errors."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Callable, Literal, Mapping, Protocol, Sequence
 from uuid import uuid4
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,
@@ -16,7 +16,7 @@ from src.app.catalogs.instructions import (
 )
 
 
-InstructionType = Literal["persona", "skill"]
+DefinitionType = Literal["persona", "skill"]
 IdFactory = Callable[[], str]
 Clock = Callable[[], datetime]
 
@@ -29,8 +29,8 @@ SUPPORTED_INSTRUCTION_TYPES: frozenset[str] = frozenset(
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionSummary:
-    """Lightweight instruction representation used by list endpoints."""
+class DefinitionSummary:
+    """Lightweight definition representation used by list endpoints."""
 
     id: str
     name: str
@@ -41,12 +41,12 @@ class InstructionSummary:
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionDocument:
-    """Complete persona or skill document."""
+class DefinitionDocument:
+    """Complete Persona or Skill definition."""
 
     id: str
     workspace_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     name: str
     description: str
     instructions: str
@@ -58,12 +58,12 @@ class InstructionDocument:
 
 
 @dataclass(frozen=True, slots=True)
-class AvailableInstructionSummary:
-    """Instruction visible in one workspace's effective library."""
+class AvailableDefinitionSummary:
+    """Definition visible in one workspace's effective library."""
 
     id: str
     workspace_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     origin: InstructionOrigin
     owner_workspace_id: str | None
     source_instruction_id: str | None
@@ -101,10 +101,10 @@ class AvailableInstructionSummary:
 
 
 @dataclass(frozen=True, slots=True)
-class AvailableInstructionPage(Sequence[AvailableInstructionSummary]):
-    """One filtered page of a workspace's effective instruction catalog."""
+class AvailableDefinitionPage(Sequence[AvailableDefinitionSummary]):
+    """One filtered page of a workspace's effective definition catalog."""
 
-    items: tuple[AvailableInstructionSummary, ...]
+    items: tuple[AvailableDefinitionSummary, ...]
     total: int
 
     def __len__(self) -> int:
@@ -115,19 +115,19 @@ class AvailableInstructionPage(Sequence[AvailableInstructionSummary]):
     def __getitem__(
         self,
         index: int | slice,
-    ) -> AvailableInstructionSummary | tuple[AvailableInstructionSummary, ...]:
+    ) -> AvailableDefinitionSummary | tuple[AvailableDefinitionSummary, ...]:
         """Return one summary or a slice from the current page."""
 
         return self.items[index]
 
 
 @dataclass(frozen=True, slots=True)
-class AvailableInstructionDocument:
-    """Complete instruction resolved in one workspace's library."""
+class AvailableDefinitionDocument:
+    """Complete definition resolved in one workspace's library."""
 
     id: str
     workspace_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     origin: InstructionOrigin
     owner_workspace_id: str | None
     source_instruction_id: str | None
@@ -167,7 +167,7 @@ class AvailableInstructionDocument:
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionCreate:
+class DefinitionCreate:
     """Data required to create a persona or skill."""
 
     name: str
@@ -177,7 +177,7 @@ class InstructionCreate:
 
 
 @dataclass(frozen=True, slots=True)
-class InstructionUpdate:
+class DefinitionUpdate:
     """Partial changes applied to a persona or skill."""
 
     expected_version: int
@@ -187,16 +187,16 @@ class InstructionUpdate:
     metadata: Mapping[str, object] | None = None
 
 
-class InstructionRepository(Protocol):
-    """Persistence contract required by InstructionService."""
+class DefinitionRepository(Protocol):
+    """Persistence contract required by definition lifecycle services."""
 
     async def list_summaries(
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
-    ) -> Sequence[InstructionSummary]:
+    ) -> Sequence[DefinitionSummary]:
         """Return owned custom summaries for editing workflows."""
         ...
 
@@ -204,9 +204,9 @@ class InstructionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return one custom instruction owned by the workspace."""
         ...
 
@@ -214,7 +214,7 @@ class InstructionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
         status: CatalogInstructionStatus | None = None,
@@ -222,7 +222,7 @@ class InstructionRepository(Protocol):
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int | None = None,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return a filtered page of the workspace instruction catalog."""
         ...
 
@@ -230,10 +230,10 @@ class InstructionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument | None:
+    ) -> AvailableDefinitionDocument | None:
         """Resolve a visible instruction, including disabled definitions."""
         ...
 
@@ -241,9 +241,9 @@ class InstructionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return a custom instruction owned by the workspace."""
         ...
 
@@ -269,17 +269,17 @@ class InstructionRepository(Protocol):
     async def create(
         self,
         *,
-        document: InstructionDocument,
-    ) -> InstructionDocument:
+        document: DefinitionDocument,
+    ) -> DefinitionDocument:
         """Persist and return a new instruction document."""
         ...
 
     async def update(
         self,
         *,
-        document: InstructionDocument,
+        document: DefinitionDocument,
         expected_version: int,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Persist an instruction update atomically."""
         ...
 
@@ -287,18 +287,18 @@ class InstructionRepository(Protocol):
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
         """Delete an instruction and report whether it existed."""
         ...
 
 
-class InstructionServiceError(Exception):
+class DefinitionServiceError(Exception):
     """Base error raised by InstructionService."""
 
 
-class InvalidInstructionTypeError(InstructionServiceError):
+class InvalidDefinitionTypeError(DefinitionServiceError):
     """Raised when an unsupported instruction type is requested."""
 
     def __init__(self, instruction_type: str) -> None:
@@ -306,13 +306,13 @@ class InvalidInstructionTypeError(InstructionServiceError):
         self.instruction_type = instruction_type
 
 
-class InstructionNotFoundError(InstructionServiceError):
+class DefinitionNotFoundError(DefinitionServiceError):
     """Raised when an instruction cannot be found."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         message = f"{instruction_type.capitalize()} '{instruction_id}' was not found."
@@ -321,13 +321,13 @@ class InstructionNotFoundError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class BuiltinInstructionImmutableError(InstructionServiceError):
+class BuiltinDefinitionImmutableError(DefinitionServiceError):
     """Raised when a builtin is passed to a mutation operation."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -337,13 +337,13 @@ class BuiltinInstructionImmutableError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class InstructionDisabledError(InstructionServiceError):
+class DefinitionDisabledError(DefinitionServiceError):
     """Raised when an instruction cannot be selected for new work."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -354,13 +354,13 @@ class InstructionDisabledError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class InstructionNotOwnedError(InstructionServiceError):
+class DefinitionNotOwnedError(DefinitionServiceError):
     """Raised when a mutation target is not owned by the workspace."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -371,13 +371,13 @@ class InstructionNotOwnedError(InstructionServiceError):
         self.instruction_id = instruction_id
 
 
-class InstructionVersionConflictError(InstructionServiceError):
+class DefinitionVersionConflictError(DefinitionServiceError):
     """Raised when an update uses a stale resource version."""
 
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
         expected_version: int,
         current_version: int,
@@ -393,7 +393,7 @@ class InstructionVersionConflictError(InstructionServiceError):
         self.current_version = current_version
 
 
-class InstructionValidationError(InstructionServiceError):
+class DefinitionValidationError(DefinitionServiceError):
     """Raised when instruction content is invalid."""
 
     def __init__(self, *, field_name: str, message: str) -> None:
@@ -403,8 +403,8 @@ class InstructionValidationError(InstructionServiceError):
 
 
 def copy_instruction_document(
-    document: InstructionDocument,
-) -> InstructionDocument:
+    document: DefinitionDocument,
+) -> DefinitionDocument:
     """Copy a document without sharing mutable metadata."""
 
     return replace(
@@ -414,8 +414,8 @@ def copy_instruction_document(
 
 
 def copy_available_instruction_document(
-    document: AvailableInstructionDocument,
-) -> AvailableInstructionDocument:
+    document: AvailableDefinitionDocument,
+) -> AvailableDefinitionDocument:
     """Copy a visible document without sharing mutable metadata."""
 
     return replace(

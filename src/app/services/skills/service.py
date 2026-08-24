@@ -4,25 +4,24 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CATALOG_INSTRUCTION_PAGE_SIZE,
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
 
-from ..instructions import (
-    AvailableInstructionDocument,
-    AvailableInstructionPage,
-    InstructionCreate,
-    InstructionDocument,
-    InstructionService,
-    InstructionUpdate,
+from ..persona_skills import (
+    AvailableDefinitionDocument,
+    AvailableDefinitionPage,
+    DefinitionDocument,
+    SkillDefinitionService,
 )
 from ..shared.tenant import TenantService
 from .metadata_validator import (
     validate_skill_metadata,
 )
+from .types import SkillCreate, SkillUpdate
 
 
 class SkillService:
@@ -32,12 +31,12 @@ class SkillService:
         self,
         *,
         tenant_service: TenantService,
-        instruction_service: InstructionService,
+        skill_definition_service: SkillDefinitionService,
     ) -> None:
-        """Initialize workspace resolution and shared instruction behavior."""
+        """Initialize workspace resolution and Skill definitions."""
 
         self._tenant_service = tenant_service
-        self._instruction_service = instruction_service
+        self._skill_definition_service = skill_definition_service
 
     async def list(
         self,
@@ -50,7 +49,7 @@ class SkillService:
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
         limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
-    ) -> AvailableInstructionPage:
+    ) -> AvailableDefinitionPage:
         """Return one filtered page of skills in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -58,9 +57,8 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.list(
+        return await self._skill_definition_service.list(
             workspace_id=workspace_id,
-            instruction_type="skill",
             search=search,
             status=status,
             categories=categories,
@@ -76,7 +74,7 @@ class SkillService:
         skill_id: str,
         requested_workspace_id: str | None = None,
         include_deprecated: bool = False,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Return a complete skill."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -84,9 +82,8 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        return await self._instruction_service.describe(
+        return await self._skill_definition_service.describe(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
             include_deprecated=include_deprecated,
         )
@@ -98,7 +95,7 @@ class SkillService:
         skill_id: str,
         enabled: bool,
         requested_workspace_id: str | None = None,
-    ) -> AvailableInstructionDocument:
+    ) -> AvailableDefinitionDocument:
         """Set whether a skill is enabled in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -106,13 +103,12 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
         operation = (
-            self._instruction_service.enable
+            self._skill_definition_service.enable
             if enabled
-            else self._instruction_service.disable
+            else self._skill_definition_service.disable
         )
         return await operation(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
         )
 
@@ -120,9 +116,9 @@ class SkillService:
         self,
         *,
         user_id: str,
-        payload: InstructionCreate,
+        payload: SkillCreate,
         requested_workspace_id: str | None = None,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Create a skill in the resolved workspace."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -132,9 +128,8 @@ class SkillService:
 
         validate_skill_metadata(payload.metadata)
 
-        return await self._instruction_service.create(
+        return await self._skill_definition_service.create(
             workspace_id=workspace_id,
-            instruction_type="skill",
             payload=payload,
         )
 
@@ -143,9 +138,9 @@ class SkillService:
         *,
         user_id: str,
         skill_id: str,
-        payload: InstructionUpdate,
+        payload: SkillUpdate,
         requested_workspace_id: str | None = None,
-    ) -> InstructionDocument:
+    ) -> DefinitionDocument:
         """Update an existing skill."""
 
         workspace_id = await self._resolve_workspace_id(
@@ -156,9 +151,8 @@ class SkillService:
         if payload.metadata is not None:
             validate_skill_metadata(payload.metadata)
 
-        return await self._instruction_service.update(
+        return await self._skill_definition_service.update(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
             payload=payload,
         )
@@ -177,9 +171,8 @@ class SkillService:
             requested_workspace_id=requested_workspace_id,
         )
 
-        await self._instruction_service.delete(
+        await self._skill_definition_service.delete(
             workspace_id=workspace_id,
-            instruction_type="skill",
             instruction_id=skill_id,
         )
 

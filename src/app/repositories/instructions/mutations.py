@@ -6,9 +6,9 @@ from typing import Any
 
 import aiosqlite
 
-from src.app.services.instructions import (
-    InstructionDocument,
-    InstructionType,
+from src.app.services.persona_skills import (
+    DefinitionDocument,
+    DefinitionType,
 )
 
 from .mapping import (
@@ -23,8 +23,8 @@ class InstructionMutationMixin:
 
     async def create(
         self,
-        document: InstructionDocument,
-    ) -> InstructionDocument:
+        document: DefinitionDocument,
+    ) -> DefinitionDocument:
         """Insert one instruction document."""
 
         async with self._connect() as connection:
@@ -80,10 +80,10 @@ class InstructionMutationMixin:
 
     async def update(
         self,
-        document: InstructionDocument,
+        document: DefinitionDocument,
         *,
         expected_version: int,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """
         Update one document when its stored version matches.
 
@@ -151,7 +151,7 @@ class InstructionMutationMixin:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
         """Delete one instruction and report whether it existed."""
@@ -195,9 +195,9 @@ class InstructionMutationMixin:
         *,
         connection: aiosqlite.Connection,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
-    ) -> InstructionDocument | None:
+    ) -> DefinitionDocument | None:
         """Return one owned custom instruction using an open connection."""
 
         raise NotImplementedError

@@ -5,11 +5,11 @@ from __future__ import annotations
 from copy import deepcopy
 
 from .types import (
-    InstructionCreate,
-    InstructionUpdate,
-    InstructionValidationError,
+    DefinitionCreate,
+    DefinitionUpdate,
+    DefinitionValidationError,
     SUPPORTED_INSTRUCTION_TYPES,
-    InvalidInstructionTypeError,
+    InvalidDefinitionTypeError,
 )
 
 
@@ -17,7 +17,7 @@ def require_instruction_type(instruction_type: str) -> None:
     """Require one supported instruction type."""
 
     if instruction_type not in SUPPORTED_INSTRUCTION_TYPES:
-        raise InvalidInstructionTypeError(instruction_type)
+        raise InvalidDefinitionTypeError(instruction_type)
 
 
 def require_text(value: str, field_name: str) -> str:
@@ -26,7 +26,7 @@ def require_text(value: str, field_name: str) -> str:
     normalized = value.strip()
 
     if not normalized:
-        raise InstructionValidationError(
+        raise DefinitionValidationError(
             field_name=field_name,
             message="must not be empty",
         )
@@ -50,10 +50,10 @@ def normalize_search(search: str | None) -> str | None:
     return normalized or None
 
 
-def normalize_create(payload: InstructionCreate) -> InstructionCreate:
+def normalize_create(payload: DefinitionCreate) -> DefinitionCreate:
     """Normalize and validate create values."""
 
-    return InstructionCreate(
+    return DefinitionCreate(
         name=require_text(payload.name, "name"),
         description=normalize_description(payload.description),
         instructions=require_text(payload.instructions, "instructions"),
@@ -61,16 +61,16 @@ def normalize_create(payload: InstructionCreate) -> InstructionCreate:
     )
 
 
-def normalize_update(payload: InstructionUpdate) -> InstructionUpdate:
+def normalize_update(payload: DefinitionUpdate) -> DefinitionUpdate:
     """Normalize and validate partial update values."""
 
     if payload.expected_version < 1:
-        raise InstructionValidationError(
+        raise DefinitionValidationError(
             field_name="expected_version",
             message="must be greater than zero",
         )
 
-    return InstructionUpdate(
+    return DefinitionUpdate(
         expected_version=payload.expected_version,
         name=(
             require_text(payload.name, "name")

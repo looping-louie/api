@@ -13,15 +13,15 @@ from cryptography.fernet import Fernet
 from fastapi import FastAPI
 
 import src.app.bootstrap.application as bootstrap
-from src.app.catalogs import load_instruction_catalog
-from src.app.catalogs.instructions.loader import InstructionCatalog
+from src.app.catalogs import load_persona_skill_catalog
+from src.app.catalogs.persona_skills.loader import PersonaSkillCatalog
 from src.app.services.shared.settings import AppSettings
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.instructions.catalog import (
+from src.app.services.persona_skills.synchronization import (
     CatalogSynchronizationError,
-    InstructionCatalogSynchronizer,
+    PersonaSkillCatalogSynchronizer,
 )
 
 
@@ -67,7 +67,7 @@ async def test_bootstrap_orders_catalog_steps_and_is_idempotent(
 ) -> None:
     database_path = tmp_path / "bootstrap.db"
     settings = build_settings(database_path)
-    packaged_catalog = load_instruction_catalog()
+    packaged_catalog = load_persona_skill_catalog()
     events: list[str] = []
 
     async def migrate(*, database_path: Path) -> None:
@@ -76,12 +76,12 @@ async def test_bootstrap_orders_catalog_steps_and_is_idempotent(
             database_path=database_path,
         )
 
-    def load_catalog() -> InstructionCatalog:
+    def load_catalog() -> PersonaSkillCatalog:
         events.append("load")
         return packaged_catalog
 
-    class RecordingSynchronizer(InstructionCatalogSynchronizer):
-        def synchronize(self, catalog: InstructionCatalog):
+    class RecordingSynchronizer(PersonaSkillCatalogSynchronizer):
+        def synchronize(self, catalog: PersonaSkillCatalog):
             events.append("synchronize")
             return super().synchronize(catalog)
 
@@ -95,12 +95,12 @@ async def test_bootstrap_orders_catalog_steps_and_is_idempotent(
     )
     monkeypatch.setattr(
         bootstrap,
-        "load_instruction_catalog",
+        "load_persona_skill_catalog",
         load_catalog,
     )
     monkeypatch.setattr(
         bootstrap,
-        "InstructionCatalogSynchronizer",
+        "PersonaSkillCatalogSynchronizer",
         RecordingSynchronizer,
     )
     monkeypatch.setattr(
@@ -192,8 +192,8 @@ async def test_bootstrap_accepts_an_injected_catalog(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "injected.db"
-    packaged = load_instruction_catalog()
-    injected = InstructionCatalog(
+    packaged = load_persona_skill_catalog()
+    injected = PersonaSkillCatalog(
         skills=(packaged.skills[0],),
         personas=(),
     )
@@ -201,7 +201,7 @@ async def test_bootstrap_accepts_an_injected_catalog(
     async def ensure_tenant(**_: object) -> None:
         return None
 
-    def must_not_load_packaged_catalog() -> InstructionCatalog:
+    def must_not_load_packaged_catalog() -> PersonaSkillCatalog:
         raise AssertionError(
             "Packaged catalog loader must not run when one is injected."
         )
@@ -218,7 +218,7 @@ async def test_bootstrap_accepts_an_injected_catalog(
     )
     monkeypatch.setattr(
         bootstrap,
-        "load_instruction_catalog",
+        "load_persona_skill_catalog",
         must_not_load_packaged_catalog,
     )
     app = FastAPI()
@@ -226,7 +226,7 @@ async def test_bootstrap_accepts_an_injected_catalog(
     await bootstrap.configure_application(
         app,
         settings=build_settings(database_path),
-        instruction_catalog=injected,
+        persona_skill_catalog=injected,
     )
 
     with sqlite3.connect(database_path) as connection:
@@ -239,7 +239,7 @@ async def test_bootstrap_accepts_an_injected_catalog(
         ).fetchall()
 
     assert rows == [(packaged.skills[0].id,)]
-    assert app.state.instruction_catalog is injected
+    assert app.state.persona_skill_catalog is injected
 
 
 @pytest.mark.asyncio
@@ -256,7 +256,7 @@ async def test_synchronization_failure_stops_service_construction(
 
         def synchronize(
             self,
-            catalog: InstructionCatalog,
+            catalog: PersonaSkillCatalog,
         ) -> None:
             raise CatalogSynchronizationError(
                 "Forced catalog synchronization failure."
@@ -273,7 +273,7 @@ async def test_synchronization_failure_stops_service_construction(
     )
     monkeypatch.setattr(
         bootstrap,
-        "InstructionCatalogSynchronizer",
+        "PersonaSkillCatalogSynchronizer",
         RejectingSynchronizer,
     )
     monkeypatch.setattr(
@@ -290,7 +290,7 @@ async def test_synchronization_failure_stops_service_construction(
         await bootstrap.configure_application(
             app,
             settings=build_settings(database_path),
-            instruction_catalog=load_instruction_catalog(),
+            persona_skill_catalog=load_persona_skill_catalog(),
         )
 
     assert tenant_called is False

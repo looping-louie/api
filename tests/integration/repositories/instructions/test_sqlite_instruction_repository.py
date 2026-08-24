@@ -14,9 +14,9 @@ import pytest
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.instructions import (
-    InstructionDocument,
-    InstructionType,
+from src.app.services.persona_skills import (
+    DefinitionDocument,
+    DefinitionType,
 )
 
 
@@ -27,7 +27,7 @@ def build_instruction(
     *,
     instruction_id: str = "instruction-1",
     workspace_id: str = "workspace-1",
-    instruction_type: InstructionType = "persona",
+    instruction_type: DefinitionType = "persona",
     name: str = "Security Reviewer",
     description: str = "Reviews security concerns.",
     instructions: str = "Review the supplied work for security issues.",
@@ -35,7 +35,7 @@ def build_instruction(
     version: int = 1,
     created_at: datetime | None = None,
     updated_at: datetime | None = None,
-) -> InstructionDocument:
+) -> DefinitionDocument:
     """Build one instruction document for integration tests."""
 
     created = created_at or datetime(
@@ -47,7 +47,7 @@ def build_instruction(
         tzinfo=UTC,
     )
 
-    return InstructionDocument(
+    return DefinitionDocument(
         id=instruction_id,
         workspace_id=workspace_id,
         instruction_type=instruction_type,

@@ -5,20 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from ..instructions.entries import SkillCatalogEntry
-from ..instructions.errors import CatalogLoadError
-from ..instructions.resource_loader import (
+from ..persona_skills.entries import SkillCatalogEntry
+from ..persona_skills.errors import CatalogLoadError
+from ..persona_skills.resource_loader import (
     load_catalog_resources,
     require_heading,
     require_text,
 )
-from ..instructions.resource_validation import (
+from ..persona_skills.resource_validation import (
     require_boolean,
     require_mapping,
     require_positive_integer,
     require_string_tuple,
 )
-from ..instructions.types import (
+from ..persona_skills.types import (
     AgentRole,
     CatalogInstructionCategory,
     CatalogInstructionType,

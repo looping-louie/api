@@ -6,17 +6,17 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
-from ..instructions import (
-    AvailableInstructionDocument,
-    AvailableInstructionSummary,
-    InstructionCreate,
-    InstructionDocument,
-    InstructionUpdate,
+from ..persona_skills import (
+    AvailableDefinitionDocument,
+    AvailableDefinitionSummary,
+    DefinitionCreate,
+    DefinitionDocument,
+    DefinitionUpdate,
 )
 
 
 @dataclass(frozen=True, slots=True)
-class PersonaCreate(InstructionCreate):
+class PersonaCreate(DefinitionCreate):
     """Content and associations required to create a persona."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -24,7 +24,7 @@ class PersonaCreate(InstructionCreate):
 
 
 @dataclass(frozen=True, slots=True)
-class PersonaUpdate(InstructionUpdate):
+class PersonaUpdate(DefinitionUpdate):
     """Partial persona content and association changes."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -41,7 +41,7 @@ class PersonaLinkedServiceSelection:
 
 
 @dataclass(frozen=True, slots=True)
-class PersonaDocument(InstructionDocument):
+class PersonaDocument(DefinitionDocument):
     """Custom persona document with its associated skills."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -49,7 +49,7 @@ class PersonaDocument(InstructionDocument):
 
 
 @dataclass(frozen=True, slots=True)
-class AvailablePersonaDocument(AvailableInstructionDocument):
+class AvailablePersonaDocument(AvailableDefinitionDocument):
     """Workspace-visible persona document with associated skills."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
@@ -57,13 +57,13 @@ class AvailablePersonaDocument(AvailableInstructionDocument):
 
 
 @dataclass(frozen=True, slots=True)
-class AvailablePersonaSummary(AvailableInstructionSummary):
+class AvailablePersonaSummary(AvailableDefinitionSummary):
     """Workspace-visible persona summary with its selected model."""
 
     linked_service_selection: PersonaLinkedServiceSelection | None = None
 
 
-PersonaBaseDocument = InstructionDocument | AvailableInstructionDocument
+PersonaBaseDocument = DefinitionDocument | AvailableDefinitionDocument
 PersonaResultDocument = PersonaDocument | AvailablePersonaDocument
 PersonaSummaryDocument = AvailablePersonaSummary
 DocumentType = TypeVar("DocumentType", bound=PersonaBaseDocument)

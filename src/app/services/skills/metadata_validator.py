@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping, Sequence
 
-from src.app.catalogs.instructions import CatalogInstructionCategory
+from src.app.catalogs.persona_skills import CatalogInstructionCategory
 
 
 STRICTNESS_PHASES: frozenset[str] = frozenset(

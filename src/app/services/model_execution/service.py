@@ -16,7 +16,7 @@ from src.app.catalogs.models import (
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
 from src.app.repositories.linked_services import LinkedServiceRepository
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.providers.secret import SecretService
 
 

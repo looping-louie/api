@@ -1,4 +1,4 @@
-"""Transactional materialization of builtin instruction catalogs."""
+"""Transactional materialization of builtin Persona and Skill catalogs."""
 
 from __future__ import annotations
 
@@ -10,12 +10,12 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionEntry,
     InstructionOrigin,
     PersonaCatalogEntry,
 )
-from src.app.catalogs.instructions.loader import InstructionCatalog
+from src.app.catalogs.persona_skills.loader import PersonaSkillCatalog
 from .serialization import (
     serialize_catalog_metadata,
 )
@@ -33,7 +33,7 @@ class CatalogChecksumPolicy(StrEnum):
 
 
 class CatalogSynchronizationError(RuntimeError):
-    """Base error raised while materializing the instruction catalog."""
+    """Base error raised while materializing the Persona and Skill catalog."""
 
 
 class CatalogVersionRegressionError(CatalogSynchronizationError):
@@ -67,7 +67,7 @@ class _StoredInstruction:
     deprecated: bool
 
 
-class InstructionCatalogSynchronizer:
+class PersonaSkillCatalogSynchronizer:
     """Synchronize immutable builtin definitions into SQLite."""
 
     def __init__(
@@ -87,7 +87,7 @@ class InstructionCatalogSynchronizer:
 
     def synchronize(
         self,
-        catalog: InstructionCatalog,
+        catalog: PersonaSkillCatalog,
     ) -> CatalogSynchronizationResult:
         """Materialize one validated catalog in a single transaction."""
 
@@ -444,10 +444,10 @@ class InstructionCatalogSynchronizer:
                 )
 
             seen_ids.add(entry.id)
-            InstructionCatalogSynchronizer._require_catalog_version(
+            PersonaSkillCatalogSynchronizer._require_catalog_version(
                 entry
             )
-            InstructionCatalogSynchronizer._require_checksum(entry)
+            PersonaSkillCatalogSynchronizer._require_checksum(entry)
 
     @staticmethod
     def _require_catalog_version(

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.services.instructions import InstructionDocument
+from src.app.services.persona_skills import DefinitionDocument
 from src.app.services.shared.validation import (
     DomainValidationError,
     DuplicateResourceError,
@@ -32,7 +32,7 @@ def seed_persona(
     now = datetime(2026, 7, 13, tzinfo=UTC)
 
     repository.seed(
-        InstructionDocument(
+        DefinitionDocument(
             id=persona_id,
             workspace_id="workspace-1",
             instruction_type="persona",

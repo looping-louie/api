@@ -9,20 +9,20 @@ from typing import Any, cast
 
 import aiosqlite
 
-from src.app.catalogs.instructions import InstructionOrigin
-from src.app.services.instructions import (
-    AvailableInstructionDocument,
-    AvailableInstructionSummary,
-    InstructionDocument,
-    InstructionSummary,
-    InstructionType,
+from src.app.catalogs.persona_skills import InstructionOrigin
+from src.app.services.persona_skills import (
+    AvailableDefinitionDocument,
+    AvailableDefinitionSummary,
+    DefinitionDocument,
+    DefinitionSummary,
+    DefinitionType,
 )
 
 
-def to_summary(row: aiosqlite.Row) -> InstructionSummary:
+def to_summary(row: aiosqlite.Row) -> DefinitionSummary:
     """Convert a SQLite row into an editable instruction summary."""
 
-    return InstructionSummary(
+    return DefinitionSummary(
         id=str(row["id"]),
         name=str(row["name"]),
         description=str(row["description"]),
@@ -32,14 +32,14 @@ def to_summary(row: aiosqlite.Row) -> InstructionSummary:
     )
 
 
-def to_document(row: aiosqlite.Row) -> InstructionDocument:
+def to_document(row: aiosqlite.Row) -> DefinitionDocument:
     """Convert a SQLite row into an editable instruction document."""
 
-    return InstructionDocument(
+    return DefinitionDocument(
         id=str(row["id"]),
         workspace_id=str(row["workspace_id"]),
         instruction_type=cast(
-            InstructionType,
+            DefinitionType,
             str(row["instruction_type"]),
         ),
         source_instruction_id=(
@@ -61,14 +61,14 @@ def to_available_summary(
     row: aiosqlite.Row,
     *,
     workspace_id: str,
-) -> AvailableInstructionSummary:
+) -> AvailableDefinitionSummary:
     """Convert a row into a workspace-scoped available summary."""
 
-    return AvailableInstructionSummary(
+    return AvailableDefinitionSummary(
         id=str(row["id"]),
         workspace_id=workspace_id,
         instruction_type=cast(
-            InstructionType,
+            DefinitionType,
             str(row["instruction_type"]),
         ),
         origin=InstructionOrigin(str(row["origin"])),
@@ -107,14 +107,14 @@ def to_available_document(
     row: aiosqlite.Row,
     *,
     workspace_id: str,
-) -> AvailableInstructionDocument:
+) -> AvailableDefinitionDocument:
     """Convert a row into a workspace-scoped available document."""
 
-    return AvailableInstructionDocument(
+    return AvailableDefinitionDocument(
         id=str(row["id"]),
         workspace_id=workspace_id,
         instruction_type=cast(
-            InstructionType,
+            DefinitionType,
             str(row["instruction_type"]),
         ),
         origin=InstructionOrigin(str(row["origin"])),

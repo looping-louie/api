@@ -7,12 +7,12 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping, Sequence
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 
-from ..instructions import (
-    AvailableInstructionDocument,
-    InstructionRepository,
-    InstructionType,
+from ..persona_skills import (
+    AvailableDefinitionDocument,
+    DefinitionRepository,
+    DefinitionType,
 )
 from ..shared.tenant import TenantService
 from ..personas.types import (
@@ -28,7 +28,7 @@ class ExecutionInstructionNotFoundError(LookupError):
     def __init__(
         self,
         *,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
         instruction_id: str,
     ) -> None:
         super().__init__(
@@ -45,7 +45,7 @@ class ExecutionInstruction:
 
     id: str
     source_id: str
-    instruction_type: InstructionType
+    instruction_type: DefinitionType
     origin: InstructionOrigin
     version: int
     catalog_version: int | None
@@ -159,7 +159,7 @@ class ExecutionInstructionLibrary:
         *,
         instruction_id: str,
         aliases: Mapping[str, str],
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
     ) -> str:
         normalized = instruction_id.strip()
         runtime_id = aliases.get(normalized)
@@ -178,7 +178,7 @@ class ExecutionInstructionLibraryService:
     def __init__(
         self,
         *,
-        repository: InstructionRepository,
+        repository: DefinitionRepository,
         persona_skill_repository: PersonaSkillRepository,
         tenant_service: TenantService,
         persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository | None = None,
@@ -236,13 +236,13 @@ class ExecutionInstructionLibraryService:
         self,
         *,
         workspace_id: str,
-        instruction_type: InstructionType,
+        instruction_type: DefinitionType,
     ) -> tuple[ExecutionInstruction, ...]:
         summaries = await self._repository.list_available_for_workspace(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
         )
-        documents: list[AvailableInstructionDocument] = []
+        documents: list[AvailableDefinitionDocument] = []
 
         for summary in summaries:
             if not summary.selectable:
@@ -303,7 +303,7 @@ class ExecutionInstructionLibraryService:
 
     @staticmethod
     def _runtime_id(
-        document: AvailableInstructionDocument,
+        document: AvailableDefinitionDocument,
     ) -> str:
         if document.origin == InstructionOrigin.BUILTIN:
             return document.id.rsplit(":", maxsplit=1)[-1]

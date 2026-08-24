@@ -8,10 +8,11 @@ from src.app.services.personas import (
     PersonaLinkedServiceSelection,
     PersonaService,
 )
-from src.app.services.instructions import (
-    InstructionCreate,
-    InstructionService,
-    InstructionUpdate,
+from src.app.services.persona_skills import (
+    DefinitionCreate,
+    DefinitionUpdate,
+    PersonaDefinitionService,
+    SkillDefinitionService,
 )
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.reference_resolver import ReferenceResolver
@@ -35,18 +36,20 @@ class FakeLinkedServiceService:
 
 @pytest.mark.asyncio
 async def test_api_custom_is_immediately_available_to_execution(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
     tenant_service: TenantService,
 ) -> None:
     persona_skill_repository = FakePersonaSkillRepository()
     skill_service = SkillService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        skill_definition_service=skill_definition_service,
     )
     persona_service = PersonaService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        persona_definition_service=persona_definition_service,
+        skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
         reference_resolver=ReferenceResolver(
             repository=FakeReferenceRepository(),
@@ -63,7 +66,7 @@ async def test_api_custom_is_immediately_available_to_execution(
     )
     skill = await skill_service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Workspace Security",
             description="Custom security checks.",
             instructions="SQL skill content version one.",
@@ -113,14 +116,14 @@ async def test_api_custom_is_immediately_available_to_execution(
 
 @pytest.mark.asyncio
 async def test_fresh_execution_read_reflects_sql_update(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
     tenant_service: TenantService,
 ) -> None:
     persona_skill_repository = FakePersonaSkillRepository()
     skill_service = SkillService(
         tenant_service=tenant_service,
-        instruction_service=instruction_service,
+        skill_definition_service=skill_definition_service,
     )
     runtime_service = ExecutionInstructionLibraryService(
         repository=instruction_repository,
@@ -129,7 +132,7 @@ async def test_fresh_execution_read_reflects_sql_update(
     )
     skill = await skill_service.create(
         user_id="user-1",
-        payload=InstructionCreate(
+        payload=DefinitionCreate(
             name="Mutable Runtime Skill",
             description="Loaded from SQL.",
             instructions="SQL content before update.",
@@ -140,7 +143,7 @@ async def test_fresh_execution_read_reflects_sql_update(
     await skill_service.update(
         user_id="user-1",
         skill_id=skill.id,
-        payload=InstructionUpdate(
+        payload=DefinitionUpdate(
             expected_version=1,
             instructions="SQL content after update.",
         ),

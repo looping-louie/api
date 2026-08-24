@@ -10,9 +10,9 @@ from src.app.services.providers.errors import (
 )
 from src.app.services.linked_services import LinkedServiceNotFoundError
 from src.app.services.shared.dependency_checker import ResourceInUseError
-from src.app.services.instructions import (
-    InstructionNotFoundError,
-    InvalidInstructionTypeError,
+from src.app.services.persona_skills import (
+    DefinitionNotFoundError,
+    InvalidDefinitionTypeError,
 )
 from src.app.services.shared.reference_resolver import ResourceNotFoundError
 from src.app.services.shared.tenant import TenantSelectionRequiredError
@@ -79,7 +79,7 @@ def _validation_details(error: Exception) -> ErrorDetails:
 def _instruction_not_found_details(error: Exception) -> ErrorDetails:
     """Return the missing instruction identity."""
 
-    assert isinstance(error, InstructionNotFoundError)
+    assert isinstance(error, DefinitionNotFoundError)
 
     return {
         "resource_type": error.instruction_type,
@@ -190,7 +190,7 @@ def _workspace_selection_details(error: Exception) -> ErrorDetails:
 def _invalid_instruction_type_details(error: Exception) -> ErrorDetails:
     """Return the unsupported instruction type."""
 
-    assert isinstance(error, InvalidInstructionTypeError)
+    assert isinstance(error, InvalidDefinitionTypeError)
 
     return {
         "instruction_type": error.instruction_type,

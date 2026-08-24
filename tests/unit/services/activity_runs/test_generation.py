@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.app.catalogs.instructions import InstructionOrigin
+from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.catalogs.providers import ProviderId
 from src.app.services.execution_instructions import (
     ExecutionInstruction,

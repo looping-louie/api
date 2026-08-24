@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.catalog import CatalogController
 from src.app.routers.catalog import router as catalog_router
-from src.app.services.catalog import CatalogService
+from src.app.services.catalogs import StaticCatalogService
 from src.app.utils.http import register_exception_handlers
 
 
@@ -17,7 +17,7 @@ def build_app(*, authenticated: bool = True) -> FastAPI:
 
     app = FastAPI()
     app.state.catalog_controller = CatalogController(
-        catalog_service=CatalogService(),
+        static_catalog_service=StaticCatalogService(),
     )
 
     if authenticated:

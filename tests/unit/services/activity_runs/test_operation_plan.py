@@ -1,10 +1,10 @@
-"""Tests for parsing model-generated checkpoint operations."""
+"""Tests for parsing model-generated ActivityRun operation plans."""
 
 import json
 
 import pytest
 
-from src.app.services.task_checkpoint import parse_file_operations
+from src.app.services.activity_runs.operation_plan import parse_file_operations
 
 
 def test_parse_file_operations_normalizes_model_file_entries() -> None:

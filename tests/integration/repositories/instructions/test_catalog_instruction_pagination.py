@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,
@@ -14,13 +14,13 @@ from src.app.catalogs.instructions import (
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.instructions import InstructionDocument
+from src.app.services.persona_skills import DefinitionDocument
 
 
 WorkspaceFactory = Callable[..., Awaitable[None]]
 
 
-def build_skill(index: int) -> InstructionDocument:
+def build_skill(index: int) -> DefinitionDocument:
     """Build a dated custom skill for deterministic page assertions."""
 
     created_at = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(
@@ -31,7 +31,7 @@ def build_skill(index: int) -> InstructionDocument:
         if index % 2 == 0
         else CatalogInstructionCategory.SALES
     )
-    return InstructionDocument(
+    return DefinitionDocument(
         id=f"skill-{index:02d}",
         workspace_id="workspace-1",
         instruction_type="skill",
