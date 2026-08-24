@@ -21,6 +21,13 @@ The endpoint reference is organized by top-level router:
 - [Workers](endpoints/workers.md) provisions runtime identities and records
   liveness heartbeats required for PipelineRun claims.
 
-The API owns planning, generation, reviewer decisions, and durable execution
-state. The runtime owns local repository execution, including filesystem, Git,
-and workspace lifecycle operations. The CLI submits and manages API resources.
+The API owns planning, generation, reviewer decisions, Harness selection, and
+durable execution state. The runtime owns local repository execution, including
+filesystem, Git, workspace lifecycle operations, and Worker-local Harness
+configuration. The CLI submits and manages API resources.
+
+Pipelines use the `louie` Harness by default. A future Pipeline Harness
+selection uses a stable `kind`, `version`, and type-specific `config` object.
+Human `approval` and `quiz` Activities remain human-executed and do not use the
+Pipeline Harness. The API documents the planned Harness semantics in
+[Architecture](architecture.md) and [Execution](components/execution.md).

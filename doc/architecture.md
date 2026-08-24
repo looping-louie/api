@@ -22,6 +22,50 @@ prompt generation, model decisions, and checkpoint transitions. The runtime
 owns workspace lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 
+## Harnesses
+
+A Harness is the local execution mechanism for runtime-executable Activities.
+It is distinct from an Activity agent: an agent is a generator, reviewer, or
+aggregator role backed by a Persona and model selection; a Harness carries out
+the Activity in a worker's configured checkout and reports normalized results.
+
+The current API-directed repository executor is the `louie` Harness. It
+collects repository context, applies API-approved file operations, gathers
+review input, and commits only when the API authorizes the handoff. `louie` is
+the compatibility default for existing Pipelines.
+
+A Pipeline selects one Harness for its runtime-executable Activities. Human
+Activities (`approval` and `quiz`) remain intrinsically human-executed and do
+not use the selected Harness. The Pipeline-run snapshot freezes the selected
+Harness and its configuration; each child Activity-run receives that frozen
+selection. A Pipeline edit must not change the Harness used by an existing run.
+
+Harness definitions use a stable kind, a version, and a kind-specific `config`
+object. The API stores only policy that it can validate and audit. Worker-local
+configuration, including checkout paths, executable locations, credentials,
+and secrets, remains outside Pipeline definitions.
+
+```json
+{
+  "harness": {
+    "kind": "codex_cli",
+    "version": "v1",
+    "config": {
+      "sandbox": "workspace-write",
+      "turn_timeout_seconds": 1800
+    }
+  }
+}
+```
+
+`codex_cli` is a planned Harness kind. It does not replace API-directed
+scheduling, reviewer decisions, lease validation, or commit authorization. A
+worker advertises its available Harness capabilities, and the API assigns a
+Pipeline run only to a compatible worker. The initial `codex_cli` scope is a
+single `direct_loop` turn that reports its final response, checkout diff,
+changed files, usage, diagnostics, and optional opaque session reference to
+the existing checkpoint protocol.
+
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the
 target repository directly, and the runtime does not make model or reviewer
