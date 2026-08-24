@@ -14,15 +14,14 @@ from src.app.catalogs.persona_skills import (
 from ..instructions import (
     AvailableInstructionDocument,
     AvailableInstructionPage,
-    InstructionCreate,
     InstructionDocument,
-    InstructionUpdate,
     SkillDefinitionService,
 )
 from ..shared.tenant import TenantService
 from .metadata_validator import (
     validate_skill_metadata,
 )
+from .types import SkillCreate, SkillUpdate
 
 
 class SkillService:
@@ -117,7 +116,7 @@ class SkillService:
         self,
         *,
         user_id: str,
-        payload: InstructionCreate,
+        payload: SkillCreate,
         requested_workspace_id: str | None = None,
     ) -> InstructionDocument:
         """Create a skill in the resolved workspace."""
@@ -139,7 +138,7 @@ class SkillService:
         *,
         user_id: str,
         skill_id: str,
-        payload: InstructionUpdate,
+        payload: SkillUpdate,
         requested_workspace_id: str | None = None,
     ) -> InstructionDocument:
         """Update an existing skill."""

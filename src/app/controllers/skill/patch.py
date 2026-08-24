@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.skill import SkillPatchRequest, SkillResponse
-from src.app.services.instructions import InstructionUpdate
-from src.app.services.skills import SkillService
+from src.app.services.skills import SkillService, SkillUpdate
 
 
 class SkillPatchController:
@@ -34,7 +33,7 @@ class SkillPatchController:
                 user_id=user_id,
                 skill_id=skill_id,
                 requested_workspace_id=requested_workspace_id,
-                payload=InstructionUpdate(
+                payload=SkillUpdate(
                     expected_version=payload.expected_version,
                     name=payload.name,
                     description=payload.description,

@@ -212,7 +212,8 @@ services/
 |-- skills/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured metadata
-|   `-- service.py                 Manages workspace resources
+|   |-- service.py                 Manages workspace resources
+|   `-- types.py                   Defines Skill lifecycle input contracts
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
