@@ -137,14 +137,17 @@ services/
 |
 |-- __init__.py                    Declares the services package
 |-- activities/
+|   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages definitions and changelog history
 |-- activity_runs/
+|   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for loop Activities
 |   |-- operation_plan.py          Validates model-generated filesystem changes
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints
 |   `-- types.py                   Defines execution contracts and domain errors
 |-- catalogs/
+|   |-- __init__.py                Defines the package's public imports
 |   `-- static.py                  Exposes static provider and model definitions
 |-- execution_instructions/
 |   |-- __init__.py                Defines the package's public imports
@@ -163,6 +166,7 @@ services/
 |   |-- types.py                   Defines contracts and domain errors
 |   `-- validation.py              Normalizes and validates input
 |-- linked_services/
+|   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages workspace-owned provider connections
 |-- model_execution/
 |   |-- __init__.py                Defines the package's public imports
@@ -185,15 +189,15 @@ services/
 |   `-- validation.py              Normalizes and validates definitions
 |-- pipeline_runs/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Creates, reads, and advances Pipeline runs
+|   |-- etag.py                    Creates concurrency entity tags
+|   |-- service.py                 Creates, reads, and advances Pipeline runs
+|   `-- types.py                   Defines execution errors
 |-- providers/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- configuration.py           Interprets and validates settings
+|   |-- configuration.py           Provides pure configuration helpers
 |   |-- connection.py              Tests configured connectivity
 |   |-- errors.py                  Defines configuration errors
-|   |-- model_registry.py          Queries catalog models by provider
-|   |-- secret.py                  Encrypts, decrypts, and masks API keys
-|   `-- configuration.py           Interprets deprecated legacy configuration
+|   `-- secret.py                  Encrypts, decrypts, and masks API keys
 |-- shared/
 |   |-- __init__.py                Declares shared service utilities
 |   |-- changelog.py               Builds changelog metadata and field diffs
@@ -208,6 +212,9 @@ services/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured metadata
 |   `-- service.py                 Manages workspace resources
+`-- workers/
+    |-- __init__.py                Defines the package's public imports
+    `-- service.py                 Manages worker registration and liveness
 ```
 
 ### Controllers
