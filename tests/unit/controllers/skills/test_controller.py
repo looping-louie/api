@@ -5,7 +5,7 @@ import pytest
 from src.app.catalogs.persona_skills import InstructionOrigin
 from src.app.controllers.skill import SkillController
 from src.app.schemas.skill import SkillCreateRequest, SkillPatchRequest
-from src.app.services.instructions import InstructionService
+from src.app.services.instructions import SkillDefinitionService
 from src.app.services.skills import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
@@ -14,11 +14,11 @@ from tests.unit.services.skills.test_service import build_skill_service
 
 @pytest.mark.asyncio
 async def test_skill_controller_lists_patches_and_creates(
-    instruction_service: InstructionService,
+    skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
 ) -> None:
     """Skill controller lists, patches enablement, and creates content."""
-    service: SkillService = build_skill_service(instruction_service)
+    service: SkillService = build_skill_service(skill_definition_service)
     controller = SkillController(skill_service=service)
     builtin = seed_builtin(
         instruction_repository,

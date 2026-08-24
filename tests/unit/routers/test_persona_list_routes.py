@@ -4,19 +4,26 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.app.controllers.persona import PersonaController
-from src.app.services.instructions import InstructionService
+from src.app.services.instructions import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
+)
 from tests.unit.routers.test_persona_routes import build_app
 from tests.unit.services.personas.test_service import build_persona_service
 
 
 @pytest.fixture
 def persona_controller(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> PersonaController:
     """Build a controller backed by deterministic in-memory fakes."""
 
     return PersonaController(
-        persona_service=build_persona_service(instruction_service),
+        persona_service=build_persona_service(
+            persona_definition_service,
+            skill_definition_service,
+        ),
     )
 
 
@@ -51,7 +58,7 @@ def test_list_personas_filters_sorts_and_paginates(
         assert created.status_code == 201
 
     disabled = client.patch(
-        "/api/v1/personas/instruction-2",
+        "/api/v1/personas/persona-2",
         json={"enabled": False},
     )
     assert disabled.status_code == 200

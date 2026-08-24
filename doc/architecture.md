@@ -155,6 +155,8 @@ services/
 |                                  for prompt assembly
 |-- instructions/
 |   |-- __init__.py                Defines the package's public imports
+|   |-- definitions.py             Binds lifecycle behavior to Persona and Skill
+|   |-- lifecycle.py               Shares private definition persistence mechanics
 |   |-- synchronization/
 |   |   |-- __init__.py            Defines the package's public imports
 |   |   |-- serialization.py       Serializes catalog entries for persistence
@@ -162,7 +164,6 @@ services/
 |   |                              version and checksum policy, deprecates
 |   |                              removed entries, and synchronizes
 |   |                              persona-skill associations
-|   |-- service.py                 Coordinates resource operations
 |   |-- types.py                   Defines contracts and domain errors
 |   `-- validation.py              Normalizes and validates input
 |-- linked_services/

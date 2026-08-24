@@ -10,7 +10,10 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.persona import PersonaController
 from src.app.routers.personas import router as personas_router
-from src.app.services.instructions import InstructionService
+from src.app.services.instructions import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
+)
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
@@ -40,12 +43,16 @@ def build_app(*, controller: PersonaController) -> FastAPI:
 
 @pytest.fixture
 def persona_controller(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> PersonaController:
     """Build a controller backed by deterministic in-memory fakes."""
 
     return PersonaController(
-        persona_service=build_persona_service(instruction_service),
+        persona_service=build_persona_service(
+            persona_definition_service,
+            skill_definition_service,
+        ),
     )
 
 
