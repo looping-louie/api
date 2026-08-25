@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.app.models.workspace import ModelTarget, WorkspaceDefaults
+from src.app.models.execution import ModelTarget
+from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.pipeline import PipelineHarness
 from src.app.services.workspaces import WorkspaceService
 from src.app.services.shared.tenant import TenantService, WorkspaceMembership

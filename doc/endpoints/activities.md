@@ -26,6 +26,17 @@ include a `type` field; its required shape is selected by the top-level type.
 The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
 
+Activities also accept nullable top-level `model_target` and `harness`
+overrides. Loop agents accept nullable `model_target` values in addition to
+their retained legacy `model_id`. A model target always contains both
+`linked_service_id` and `model_id`; the API validates it against the selected
+workspace's available Linked Service. `null` clears an Activity override.
+PipelineRun resolution does not yet consume these stored candidates.
+
+Every Activity response includes top-level `model_target` and `harness` keys,
+with `null` for an unset override. The type-specific response examples below
+omit those repeated `null` fields unless an override is relevant.
+
 ## Activity Definition Schema
 
 `POST /api/v1/activities` accepts the following JSON properties. `PATCH`
@@ -37,6 +48,8 @@ accepts the mutable properties marked as optional; it rejects an empty request.
 | `description` | String | Required | Optional | May be empty. |
 | `type` | String | Required | Not allowed | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. Immutable after creation. |
 | `config` | Object | Required | Optional | Shape is selected by `type`. Does not contain a nested `type` property. |
+| `model_target` | Object or null | Optional | Optional | A linked service and model pair. `null` clears the override. |
+| `harness` | Object or null | Optional | Optional | An empty `louie` v1 or `codex_cli` v1 configuration. `null` clears the override. |
 | `status` | String | Not allowed | Optional | One of `active`, `disabled`, or `archived`. |
 
 The following table describes the required `config` shape for every Activity
@@ -50,10 +63,10 @@ type.
 | `refinement_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator, at least one reviewer, and no aggregator. |
 | `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
 
-Every loop agent requires a `persona_id` and `role`. The referenced Persona must
-have a Linked Service selection in the selected workspace. Execution always uses
-that exact service and its selected model; an agent `model_id` does not select an
-execution route.
+Every loop agent requires a `persona_id` and `role`. An explicit agent
+`model_target` is validated as a linked-service/model pair. Without one, the
+legacy Persona selection behavior remains available; `model_id` is retained for
+compatibility until Persona routing is removed.
 
 ## Activity runs
 
@@ -500,9 +513,10 @@ Example response (`201 Created`):
 ## Update an activity
 
 `PATCH /api/v1/activities/{activity_id}` accepts one or more of `name`,
-`description`, `status`, and `config`. `status` must be `active`, `disabled`,
-or `archived`. A replacement `config` must match the persisted immutable
-Activity type and must not include `type`.
+`description`, `status`, `config`, `model_target`, and `harness`. `status` must
+be `active`, `disabled`, or `archived`. A replacement `config` must match the
+persisted immutable Activity type and must not include `type`. Setting
+`model_target` or `harness` to `null` clears that override.
 
 ```http
 PATCH /api/v1/activities/activity-implementation

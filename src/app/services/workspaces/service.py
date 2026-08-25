@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
-from src.app.models.workspace import ModelTarget, WorkspaceDefaults
+from src.app.models.execution import ModelTarget
+from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.pipeline import PipelineHarness
 from src.app.repositories.workspaces import WorkspaceRepository
 from src.app.services.linked_services import LinkedServiceService

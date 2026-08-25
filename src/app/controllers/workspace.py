@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from src.app.models.workspace import ModelTarget, WorkspaceDefaults
+from src.app.models.execution import ModelTarget
+from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.pipeline import PipelineHarness
 from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,

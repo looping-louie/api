@@ -2,8 +2,9 @@
 
 Workspace defaults store optional model-target and Harness overrides for the
 selected workspace. They are configuration candidates for the hierarchical
-execution-default system; PipelineRun snapshot resolution does not yet consume
-them.
+execution-default system. Pipeline, Activity, and loop-agent configuration can
+now define narrower persisted overrides; PipelineRun snapshot resolution does
+not yet consume any of these scopes.
 
 ## Workspace calls
 

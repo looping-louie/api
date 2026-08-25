@@ -4,34 +4,25 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from src.app.schemas.pipeline import PipelineHarnessRequest, PipelineHarnessResponse
-from src.app.schemas.shared import NonEmptyString, RequestSchema, ResponseSchema
-
-
-class ModelTargetRequest(RequestSchema):
-    """One explicit provider connection and logical model selection."""
-
-    linked_service_id: NonEmptyString
-    model_id: NonEmptyString
-
-
-class ModelTargetResponse(ResponseSchema):
-    """One effective provider connection and logical model selection."""
-
-    linked_service_id: str
-    model_id: str
+from src.app.schemas.execution import (
+    HarnessRequest,
+    HarnessResponse,
+    ModelTargetRequest,
+    ModelTargetResponse,
+)
+from src.app.schemas.shared import RequestSchema, ResponseSchema
 
 
 class WorkspaceDefaultsReplaceRequest(RequestSchema):
     """Complete optional workspace execution-default configuration."""
 
     model_target: ModelTargetRequest | None = None
-    harness: PipelineHarnessRequest | None = None
+    harness: HarnessRequest | None = None
 
 
 class WorkspaceDefaultsResponse(ResponseSchema):
     """Workspace execution defaults, with null fields inheriting elsewhere."""
 
     model_target: ModelTargetResponse | None
-    harness: PipelineHarnessResponse | None
+    harness: HarnessResponse | None
     updated_at: datetime

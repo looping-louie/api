@@ -28,12 +28,14 @@ durable execution state. The runtime owns local repository execution, including
 filesystem, Git, workspace lifecycle operations, and Worker-local Harness
 configuration. The CLI submits and manages API resources.
 
-Pipelines persist a `louie` v1 Harness selection by default. Harness selections
-use a stable `kind`, `version`, and type-specific `config` object. The current
-API accepts only an empty `louie` v1 configuration. Human `approval` and `quiz`
-Activities remain human-executed and do not use the Pipeline Harness. The API
-documents Harness semantics in [Architecture](architecture.md) and
-[Execution](components/execution.md).
+Workspace, Pipeline, and Activity definitions persist nullable `model_target`
+and `harness` overrides. Loop agents can persist a nullable `model_target` in
+their typed configuration while retaining legacy `model_id`. Every non-null
+model target is validated against an enabled, configured linked service and an
+active model deployment in the selected workspace. These are configuration
+scopes only: PipelineRun does not yet resolve them by hierarchy. It continues
+to snapshot an explicit Pipeline Harness, or the legacy `louie` v1 compatibility
+default when the Pipeline Harness override is unset.
 
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for

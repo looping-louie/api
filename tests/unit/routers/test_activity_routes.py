@@ -113,12 +113,33 @@ class EmptyInstructionLibraryService:
         return None
 
 
+class RecordingLinkedServiceService:
+    """Record explicit model-target validation requests."""
+
+    def __init__(self) -> None:
+        """Initialize the validation call log."""
+
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def require_available_selection(
+        self,
+        *,
+        workspace_id: str,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Record one availability validation request."""
+
+        self.calls.append((workspace_id, service_id, model_id))
+
+
 def build_client(
     *,
     tenant_service: TenantService,
     persona_selection_repository: FakePersonaLinkedServiceSelectionRepository | None = None,
     reference_repository: FakeReferenceRepository | None = None,
     model_execution_service: object | None = None,
+    linked_service_service: RecordingLinkedServiceService | None = None,
 ) -> TestClient:
     """Build an authenticated activity application with in-memory storage."""
 
@@ -135,6 +156,7 @@ def build_client(
         ),
         id_factory=lambda: f'activity-{next(identifiers)}',
         clock=lambda: datetime(2026, 8, 12, tzinfo=UTC),
+        linked_service_service=linked_service_service,
     )
     app = FastAPI()
     app.state.activity_controller = ActivityController(activity_service=service)
@@ -291,6 +313,39 @@ def test_activity_rejects_agent_without_model_or_persona_selection(
     assert response.json()['error']['details']['reason'].endswith(
         'requires a linked-service selection in this workspace'
     )
+
+
+def test_activity_validates_and_returns_explicit_model_targets(
+    tenant_service: TenantService,
+) -> None:
+    """Activity and loop-agent targets validate against the selected workspace."""
+
+    linked_services = RecordingLinkedServiceService()
+    client = build_client(
+        tenant_service=tenant_service,
+        linked_service_service=linked_services,
+    )
+    payload = direct_loop_payload()
+    payload['model_target'] = {
+        'linked_service_id': 'service-activity',
+        'model_id': 'model-activity',
+    }
+    payload['config']['agents'][0]['model_target'] = {
+        'linked_service_id': 'service-agent',
+        'model_id': 'model-agent',
+    }
+
+    response = client.post('/api/v1/activities', json=payload)
+
+    assert response.status_code == 201
+    assert response.json()['model_target'] == payload['model_target']
+    assert response.json()['config']['agents'][0]['model_target'] == (
+        payload['config']['agents'][0]['model_target']
+    )
+    assert linked_services.calls == [
+        ('workspace-1', 'service-activity', 'model-activity'),
+        ('workspace-1', 'service-agent', 'model-agent'),
+    ]
 
 
 def test_activity_rejects_unavailable_persona_before_selection_check(

@@ -8,6 +8,7 @@ from src.app.schemas.pipeline import (
     PipelineStepDependencyResponse,
     PipelineResponse,
 )
+from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineDetails
 from src.app.services.pipelines.types import PipelineActivityInput, PipelineHarnessInput
 from src.app.services.pipelines.types import PipelineActivityDependencyInput
@@ -37,9 +38,13 @@ def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
     )
 
 
-def pipeline_harness(value: PipelineHarnessRequest) -> PipelineHarnessInput:
+def pipeline_harness(
+    value: PipelineHarnessRequest | None,
+) -> PipelineHarnessInput | None:
     """Translate one Pipeline Harness request without business validation."""
 
+    if value is None:
+        return None
     return PipelineHarnessInput(
         kind=value.kind,
         version=value.version,
@@ -56,10 +61,22 @@ def pipeline_details_response(details: PipelineDetails) -> PipelineResponse:
         name=document.name,
         description=document.description,
         enabled=document.enabled,
-        harness=PipelineHarnessResponse(
-            kind=document.harness.kind,
-            version=document.harness.version,
-            config=dict(document.harness.config),
+        model_target=(
+            ModelTargetResponse(
+                linked_service_id=document.model_target.linked_service_id,
+                model_id=document.model_target.model_id,
+            )
+            if document.model_target is not None
+            else None
+        ),
+        harness=(
+            PipelineHarnessResponse(
+                kind=document.harness.kind,
+                version=document.harness.version,
+                config=dict(document.harness.config),
+            )
+            if document.harness is not None
+            else None
         ),
         steps=_step_responses(details),
         created_at=document.created_at,

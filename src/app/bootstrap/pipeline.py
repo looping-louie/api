@@ -13,6 +13,7 @@ from src.app.repositories.pipelines.sqlite_repository import (
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.sqlite_repository import SqlitePipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.linked_services import LinkedServiceService
 from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.shared.tenant import TenantService
 from src.app.services.workers import WorkerService
@@ -26,6 +27,7 @@ def build_pipeline_controller(
     clock: Callable[[], datetime],
     activity_run_repository: ActivityRunRepository,
     worker_service: WorkerService,
+    linked_service_service: LinkedServiceService,
 ) -> PipelineController:
     """Build the pipeline persistence, service, and HTTP layers."""
 
@@ -33,6 +35,7 @@ def build_pipeline_controller(
     service = PipelineService(
         repository=repository,
         tenant_service=tenant_service,
+        linked_service_service=linked_service_service,
         id_factory=id_factory,
         clock=clock,
     )

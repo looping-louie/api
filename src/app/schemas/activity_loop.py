@@ -6,6 +6,7 @@ from typing import Any, Literal, Self
 
 from pydantic import Field, model_validator
 
+from .execution import ModelTargetRequest
 from .shared import NonEmptyString, PositiveInteger, RequestSchema
 
 
@@ -41,6 +42,7 @@ class ActivityLoopAgentSchema(RequestSchema):
 
     id: NonEmptyString | None = None
     model_id: NonEmptyString | None = None
+    model_target: ModelTargetRequest | None = None
     persona_id: NonEmptyString
     role: ActivityLoopRoleValue
 

@@ -219,10 +219,10 @@ def test_pipeline_creation_persists_inline_activity_definitions(
     assert len(response.json()['steps']) == 2
 
 
-def test_pipeline_defaults_and_validates_supported_harnesses(
+def test_pipeline_persists_nullable_and_supported_harness_overrides(
     tenant_service: TenantService,
 ) -> None:
-    """Pipelines persist Louie by default and accept an empty Codex selection."""
+    """Pipelines inherit an unset Harness and accept an empty Codex override."""
 
     client = build_client(tenant_service=tenant_service)
     created = client.post('/api/v1/pipelines', json=pipeline_payload())
@@ -246,11 +246,7 @@ def test_pipeline_defaults_and_validates_supported_harnesses(
     )
 
     assert created.status_code == 201
-    assert created.json()['harness'] == {
-        'kind': 'louie',
-        'version': 'v1',
-        'config': {},
-    }
+    assert created.json()['harness'] is None
     assert codex.status_code == 201
     assert codex.json()['harness'] == {
         'kind': 'codex_cli',

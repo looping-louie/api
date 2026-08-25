@@ -44,7 +44,7 @@ def apply_patch(
     values: dict[str, object] = {}
     for field_name in payload.provided_fields:
         value = getattr(payload, field_name)
-        if value is None:
+        if value is None and field_name not in {'model_target', 'harness'}:
             raise InvalidPipelineStepsError(
                 field_name=field_name,
                 message="must not be null",

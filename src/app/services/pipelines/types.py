@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
+
+from src.app.models.execution import ModelTarget
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,11 +43,8 @@ class PipelineCreate:
     name: str
     description: str
     steps: tuple[PipelineActivityInput, ...]
-    harness: PipelineHarnessInput = field(
-        default_factory=lambda: PipelineHarnessInput(
-            kind='louie', version='v1', config={},
-        )
-    )
+    model_target: ModelTarget | None = None
+    harness: PipelineHarnessInput | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +56,7 @@ class PipelinePatch:
     description: str | None = None
     enabled: bool | None = None
     steps: tuple[PipelineActivityInput, ...] | None = None
+    model_target: ModelTarget | None = None
     harness: PipelineHarnessInput | None = None
 
 

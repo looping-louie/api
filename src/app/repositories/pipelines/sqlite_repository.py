@@ -325,7 +325,8 @@ class SqlitePipelineRepository:
         cursor = await connection.execute(
             """
             UPDATE pipelines
-            SET name = ?, description = ?, status = ?, harness_json = ?,
+            SET name = ?, description = ?, status = ?, model_target_json = ?,
+                harness_json = ?,
                 updated_at = ?, updated_by = ?
             WHERE workspace_id = ? AND id = ?
             """,
@@ -334,10 +335,14 @@ class SqlitePipelineRepository:
                 document.description,
                 document.status,
                 json.dumps({
+                    'linked_service_id': document.model_target.linked_service_id,
+                    'model_id': document.model_target.model_id,
+                }) if document.model_target is not None else None,
+                json.dumps({
                     'kind': document.harness.kind,
                     'version': document.harness.version,
                     'config': dict(document.harness.config),
-                }),
+                }) if document.harness is not None else None,
                 document.updated_at.isoformat(),
                 document.updated_by,
                 document.workspace_id,
@@ -378,7 +383,10 @@ class SqlitePipelineRepository:
             raise ValueError("Activity documents and changelog entries must align.")
         for document, entry in zip(documents, entries, strict=True):
             await connection.execute(
-                "INSERT INTO activities VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO activities (id, workspace_id, name, description, "
+                "status, activity_type, config_json, model_target_json, "
+                "harness_json, created_at, created_by, updated_at, updated_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     document.id,
                     document.workspace_id,
@@ -387,6 +395,15 @@ class SqlitePipelineRepository:
                     document.status,
                     document.type,
                     json.dumps(document.config),
+                    json.dumps({
+                        'linked_service_id': document.model_target.linked_service_id,
+                        'model_id': document.model_target.model_id,
+                    }) if document.model_target is not None else None,
+                    json.dumps({
+                        'kind': document.harness.kind,
+                        'version': document.harness.version,
+                        'config': dict(document.harness.config),
+                    }) if document.harness is not None else None,
                     document.created_at.isoformat(),
                     document.created_by,
                     document.updated_at.isoformat(),

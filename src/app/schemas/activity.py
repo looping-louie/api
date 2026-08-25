@@ -12,6 +12,12 @@ from .activity_loop import (
     ActivityLoopOutputContractSchema,
     ActivityLoopStopConditionsSchema,
 )
+from .execution import (
+    HarnessRequest,
+    HarnessResponse,
+    ModelTargetRequest,
+    ModelTargetResponse,
+)
 from .shared import ListResponse, RequestSchema, ResourceName, ResponseSchema
 
 
@@ -132,6 +138,8 @@ class ActivityCreateRequest(RequestSchema):
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
+    model_target: ModelTargetRequest | None = None
+    harness: HarnessRequest | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -158,6 +166,8 @@ class ActivityPatchRequest(RequestSchema):
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None
+    model_target: ModelTargetRequest | None = None
+    harness: HarnessRequest | None = None
 
     @model_validator(mode='after')
     def require_supplied_non_null_change(self) -> 'ActivityPatchRequest':
@@ -165,7 +175,7 @@ class ActivityPatchRequest(RequestSchema):
 
         if not self.model_fields_set:
             raise ValueError('At least one activity field must be supplied.')
-        for field_name in self.model_fields_set:
+        for field_name in self.model_fields_set - {'model_target', 'harness'}:
             if getattr(self, field_name) is None:
                 raise ValueError(f'{field_name} must not be null.')
         return self
@@ -181,6 +191,8 @@ class ActivityResponse(ResponseSchema):
     status: ActivityStatusValue
     type: ActivityTypeValue
     config: ActivityConfig
+    model_target: ModelTargetResponse | None
+    harness: HarnessResponse | None
     created_at: datetime
     created_by: str
     updated_at: datetime

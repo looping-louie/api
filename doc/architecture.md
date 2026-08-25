@@ -29,11 +29,15 @@ target always binds a logical catalog `model_id` to a
 workspace-owned `linked_service_id`; a bare model ID cannot deterministically
 select a provider connection. A missing value explicitly means inheritance.
 
-The workspace resource is the first persisted scope for the default hierarchy.
+The hierarchy persists candidates at workspace, Pipeline, Activity, and
+loop-agent scopes. Pipeline and Activity store first-class nullable
+`model_target` and `harness` fields; agents store nullable `model_target` in
+their typed loop configuration and keep legacy `model_id` for compatibility.
 It is intentionally separate from Personas, which are reusable instructions
 rather than model-routing or provider-connection resources. PipelineRun
-snapshot resolution will consume the workspace candidates when the remaining
-Pipeline, Activity, and agent override scopes are implemented.
+snapshot resolution and effective-value selection remain intentionally
+unimplemented, except that an unset Pipeline Harness retains the existing
+`louie` v1 compatibility snapshot.
 
 ## Harnesses
 
@@ -47,10 +51,11 @@ collects repository context, applies API-approved file operations, gathers
 review input, and commits only when the API authorizes the handoff. `louie` v1
 is the compatibility default for existing Pipelines.
 
-A Pipeline selects one Harness for its runtime-executable Activities. Human
+A Pipeline may select one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
-not use the selected Harness. The Pipeline-run snapshot freezes the selected
-Harness and its configuration; each child Activity-run receives that frozen
+not use the selected Harness. Until hierarchy resolution is implemented, a
+Pipeline-run snapshot freezes either the explicit Pipeline Harness or the
+`louie` v1 compatibility default; each child Activity-run receives that frozen
 selection. A Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
@@ -419,6 +424,7 @@ models/
 |-- activity.py                    Defines definitions and changelog entries
 |-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
+|-- execution.py                   Defines atomic linked-service model targets
 |-- linked_service.py              Defines workspace-owned provider connections
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events

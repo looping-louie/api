@@ -20,6 +20,26 @@ from tests.conftest import IncrementingClock
 from tests.fakes.pipeline_repository import FakePipelineRepository
 
 
+class RecordingLinkedServiceService:
+    """Record pipeline model-target validation requests."""
+
+    def __init__(self) -> None:
+        """Initialize the validation call log."""
+
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def require_available_selection(
+        self,
+        *,
+        workspace_id: str,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Record one explicit model-target availability request."""
+
+        self.calls.append((workspace_id, service_id, model_id))
+
+
 def activity_step(
     name: str = 'Implementation activity',
     depends_on: tuple[PipelineActivityDependencyInput, ...] = (),
@@ -79,6 +99,7 @@ def build_service(
     *,
     tenant_service: TenantService,
     repository: FakePipelineRepository | None = None,
+    linked_service_service: RecordingLinkedServiceService | None = None,
 ) -> tuple[PipelineService, FakePipelineRepository]:
     """Build deterministic Pipeline service dependencies."""
 
@@ -88,6 +109,7 @@ def build_service(
         PipelineService(
             repository=pipeline_repository,
             tenant_service=tenant_service,
+            linked_service_service=linked_service_service,
             id_factory=lambda: f'id-{next(identifiers)}',
             clock=IncrementingClock(),
         ),

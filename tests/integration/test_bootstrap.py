@@ -224,6 +224,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
             "0041_pipeline_harness",
             "0042_worker_harnesses",
             "0043_workspace_execution_defaults",
+            "0044_execution_overrides",
     ]
     assert activity_rows == []
 

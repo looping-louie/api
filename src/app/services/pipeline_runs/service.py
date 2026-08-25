@@ -9,7 +9,7 @@ from typing import Callable, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline import PipelineDetails
+from src.app.models.pipeline import PipelineDetails, PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
     PipelineRunDocument,
@@ -640,12 +640,13 @@ class PipelineRunService:
     def _pipeline_snapshot(details: PipelineDetails) -> dict[str, object]:
         """Capture graph dependencies by immutable activity IDs for scheduling."""
 
+        harness = details.document.harness or PipelineHarness()
         return {
             'pipeline_id': details.document.id,
             'harness': {
-                'kind': details.document.harness.kind,
-                'version': details.document.harness.version,
-                'config': dict(details.document.harness.config),
+                'kind': harness.kind,
+                'version': harness.version,
+                'config': dict(harness.config),
             },
             'steps': [
                 {

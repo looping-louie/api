@@ -5,16 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineHarness
-
-
-@dataclass(frozen=True, slots=True)
-class ModelTarget:
-    """One provider connection and logical model selected for execution."""
-
-    linked_service_id: str
-    model_id: str
-
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceDefaults:

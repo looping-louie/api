@@ -281,6 +281,7 @@ async def configure_application(
         ),
         id_factory=create_identifier,
         clock=utc_now,
+        linked_service_service=linked_service_service,
     )
     activity_run_service = ActivityRunService(
         repository=activity_run_repository,
@@ -320,6 +321,7 @@ async def configure_application(
         clock=utc_now,
         activity_run_repository=activity_run_repository,
         worker_service=worker_service,
+        linked_service_service=linked_service_service,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
