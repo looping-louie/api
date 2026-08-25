@@ -18,6 +18,7 @@ from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
+from src.app.controllers.workspace import WorkspaceController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
@@ -46,6 +47,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 )
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
+from src.app.repositories.workspaces import SqliteWorkspaceRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -90,6 +92,7 @@ from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
 from src.app.services.workers import WorkerService
+from src.app.services.workspaces import WorkspaceService
 
 
 LOGGER = logging.getLogger(__name__)
@@ -175,6 +178,7 @@ async def configure_application(
     )
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
+    workspace_repository = SqliteWorkspaceRepository(database)
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -247,6 +251,12 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    workspace_service = WorkspaceService(
+        repository=workspace_repository,
+        tenant_service=tenant_service,
+        linked_service_service=linked_service_service,
+        clock=utc_now,
+    )
     persona_service = PersonaService(
         tenant_service=tenant_service,
         persona_definition_service=persona_definition_service,
@@ -317,6 +327,9 @@ async def configure_application(
     app.state.catalog_controller = catalog_controller
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
+    )
+    app.state.workspace_controller = WorkspaceController(
+        service=workspace_service,
     )
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 

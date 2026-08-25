@@ -50,6 +50,7 @@ EXPECTED_CHECKSUMS = {
     '0040_retire_legacy_provider_credentials.sql': 'd278ba81730874bfa717f3152aff0b21410cea26d767fa610808f5f43ca8926f',
     '0041_pipeline_harness.sql': '8bbd7a703c01025dfaf0f3988af9b167fce5759e852b95e811b977fb8f901a3a',
     '0042_worker_harnesses.sql': '12904d2b0b1f7ceae8974ff65c9a694b7ad95fd844ebfbac1b7a2f1d5eeb8564',
+    '0043_workspace_execution_defaults.sql': 'c517eef124262e9b9fcf4889b9cfc675161dd7c04933b226f3b7011f600a2e7c',
 }
 
 

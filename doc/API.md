@@ -10,6 +10,8 @@ The endpoint reference is organized by top-level router:
 - [Catalog](endpoints/catalog.md) exposes static provider and model definitions.
 - [Linked Services](endpoints/linked-services.md) manages workspace-owned
   provider connections.
+- [Workspaces](endpoints/workspaces.md) manages workspace-owned execution
+  defaults.
 - [Models](endpoints/models.md) exposes the curated model catalog.
 - [Personas](endpoints/personas.md) manages persona instructions.
 - [Skills](endpoints/skills.md) manages skill instructions.
@@ -36,3 +38,9 @@ documents Harness semantics in [Architecture](architecture.md) and
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for
 the frozen Pipeline Harness selection.
+
+Workspace defaults use explicit nullable values: an absent `model_target` or
+`harness` means the workspace inherits that value from a higher-level or
+system-level source. Workspace default candidates are persisted now; Pipeline
+and Activity resolution will consume them when the execution-default hierarchy
+is completed.

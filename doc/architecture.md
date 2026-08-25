@@ -22,6 +22,19 @@ prompt generation, model decisions, and checkpoint transitions. The runtime
 owns workspace lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 
+## Execution defaults
+
+Workspace defaults persist optional model-target and Harness overrides. A model
+target always binds a logical catalog `model_id` to a
+workspace-owned `linked_service_id`; a bare model ID cannot deterministically
+select a provider connection. A missing value explicitly means inheritance.
+
+The workspace resource is the first persisted scope for the default hierarchy.
+It is intentionally separate from Personas, which are reusable instructions
+rather than model-routing or provider-connection resources. PipelineRun
+snapshot resolution will consume the workspace candidates when the remaining
+Pipeline, Activity, and agent override scopes are implemented.
+
 ## Harnesses
 
 A Harness is the local execution mechanism for runtime-executable Activities.
@@ -214,6 +227,9 @@ services/
 |   |-- metadata_validator.py      Validates structured metadata
 |   |-- service.py                 Manages workspace resources
 |   `-- types.py                   Defines Skill lifecycle input contracts
+|-- workspaces/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Manages workspace-owned defaults
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -276,6 +292,7 @@ controllers/
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
+|-- workspace.py                  Coordinates Workspace HTTP operations
 `-- worker.py                     Coordinates Worker HTTP operations
 ```
 
@@ -378,6 +395,10 @@ repositories/
 |   |-- reference_repository.py    Resolves instruction and model references
 |   |-- tenant_repository.py       Persists workspace memberships
 |   `-- validation_repository.py   Looks up normalized resource names
+|-- workspaces/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists workspace defaults
 `-- workers/
     |-- __init__.py                Declares persistence contracts
     |-- repository.py              Defines the persistence contract
@@ -403,6 +424,7 @@ models/
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
 |-- tenant.py                      Defines workspace and membership state
+|-- workspace.py                   Defines workspace default values
 `-- worker.py                      Defines Worker registration and Harness state
 ```
 
