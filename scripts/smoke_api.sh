@@ -253,6 +253,8 @@ log "Checking static catalogs"
 
 request GET "/catalog/providers" >/dev/null
 request GET "/catalog/models" >/dev/null
+request GET "/catalog/personas" >/dev/null
+request GET "/catalog/skills" >/dev/null
 
 log "Checking linked services"
 

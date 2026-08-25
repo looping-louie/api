@@ -9,6 +9,8 @@ workspace configuration, credentials, enablement, or effective availability.
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/catalog/providers` | Lists supported static provider types. |
 | `GET` | `/api/v1/catalog/models` | Lists active static logical model definitions. |
+| `GET` | `/api/v1/catalog/personas` | Lists packaged built-in Persona definitions. |
+| `GET` | `/api/v1/catalog/skills` | Lists packaged built-in Skill definitions. |
 
 ## List provider catalog
 
@@ -46,6 +48,87 @@ Example response (`200 OK`):
 ]
 ```
 
+## List built-in Persona catalog
+
+`GET /api/v1/catalog/personas` returns packaged built-in Persona definitions.
+It does not return custom Personas, workspace enablement, or workspace action
+capabilities.
+
+```http
+GET /api/v1/catalog/personas
+```
+
+Each array item includes its immutable `id`, `name`, `description`, complete
+`instructions`, applicability `metadata`, `enabled_by_default`,
+`catalog_version`, `deprecated` state, `category`, associated `skill_ids`, and
+the `default_for` agent roles.
+
+Example response (`200 OK`):
+
+```json
+[
+  {
+    "id": "builtin:persona:tech_lead",
+    "name": "Tech Lead",
+    "description": "Optimises for correct implementation and maintainable code.",
+    "instructions": "# Persona: Tech Lead\n...",
+    "metadata": {
+      "applies_when": ["code", "implementation"],
+      "applies_to": ["generator", "reviewer"]
+    },
+    "enabled_by_default": true,
+    "catalog_version": 2,
+    "deprecated": false,
+    "category": "software_engineering",
+    "skill_ids": ["builtin:skill:security"],
+    "default_for": ["generator"]
+  }
+]
+```
+
+## List built-in Skill catalog
+
+`GET /api/v1/catalog/skills` returns packaged built-in Skill definitions. It
+does not return custom Skills, workspace enablement, or workspace action
+capabilities.
+
+```http
+GET /api/v1/catalog/skills
+```
+
+Each array item includes the shared static instruction fields described for
+Personas, plus `reviewer_default_strictness`, `phase`, `artifacts`, and
+`output` when the Skill defines them.
+
+Example response (`200 OK`):
+
+```json
+[
+  {
+    "id": "builtin:skill:security",
+    "name": "Security",
+    "description": "Evaluates security risks.",
+    "instructions": "# Security\n...",
+    "metadata": {
+      "applies_when": ["code", "implementation"],
+      "applies_to": ["reviewer"]
+    },
+    "enabled_by_default": true,
+    "catalog_version": 2,
+    "deprecated": false,
+    "category": "security_privacy",
+    "reviewer_default_strictness": {
+      "prototype": 40,
+      "mvp": 65,
+      "production": 85
+    },
+    "phase": "code_review",
+    "artifacts": ["changed_files", "git_diff"],
+    "output": "json"
+  }
+]
+```
+
 ## List model catalog
 
 `GET /api/v1/catalog/models` returns active logical models. `provider_ids`
@@ -55,6 +138,15 @@ or available workspace connections.
 ```http
 GET /api/v1/catalog/models
 ```
+
+The response is an object with the following properties:
+
+| Property | JSON type | Description |
+| -------- | --------- | ----------- |
+| `items` | Array | Active logical model definitions. |
+| `total` | Integer | Total number of active logical model definitions. |
+
+Each `items` entry has the following properties:
 
 | Property | JSON type | Description |
 | -------- | --------- | ----------- |
@@ -74,20 +166,23 @@ GET /api/v1/catalog/models
 Example response (`200 OK`):
 
 ```json
-[
-  {
-    "id": "gpt-5",
-    "name": "GPT-5",
-    "vendor": "OpenAI",
-    "family": "GPT",
-    "description": "A general-purpose model.",
-    "released_at": "2026-08-07",
-    "capabilities": ["coding", "text"],
-    "status": "active",
-    "provider_ids": ["openai"],
-    "deployment_count": 1,
-    "starting_price": null,
-    "tags": ["general-purpose"]
-  }
-]
+{
+  "items": [
+    {
+      "id": "gpt-5",
+      "name": "GPT-5",
+      "vendor": "OpenAI",
+      "family": "GPT",
+      "description": "A general-purpose model.",
+      "released_at": "2026-08-07",
+      "capabilities": ["coding", "text"],
+      "status": "active",
+      "provider_ids": ["openai"],
+      "deployment_count": 1,
+      "starting_price": null,
+      "tags": ["general-purpose"]
+    }
+  ],
+  "total": 1
+}
 ```

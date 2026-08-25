@@ -100,9 +100,28 @@ Example response (`200 OK`):
               "max_iterations": 2
             },
             "agents": [
-              {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-              {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-              {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+              {
+                "model_target": {
+                  "linked_service_id": "linked-service-openai-primary",
+                  "model_id": "gpt-5"
+                },
+                "persona_id": "release-manager",
+                "role": "generator"},
+              {
+                "model_target": {
+                  "linked_service_id": "linked-service-openai-primary",
+                  "model_id": "gpt-5"
+                },
+                "persona_id": "quality-engineer",
+                "role": "generator"},
+              {
+                "model_target": {
+                  "linked_service_id": "linked-service-openai-primary",
+                  "model_id": "gpt-5"
+                },
+                "persona_id": "technical-lead",
+                "role": "aggregator"
+              }
             ],
             "output_contract": {
               "type": "text",
@@ -119,7 +138,10 @@ Example response (`200 OK`):
           "workspace_id": "workspace-acme",
           "name": "DeploymentReadinessQuiz",
           "dependsOn": [
-            {"activity": "ReviewReleasePlan", "condition": "success"}
+            {
+              "activity": "ReviewReleasePlan",
+              "condition": "success"
+            }
           ],
           "description": "Confirm operational readiness before deployment.",
           "status": "active",
@@ -139,8 +161,14 @@ Example response (`200 OK`):
           "workspace_id": "workspace-acme",
           "name": "ApproveProductionRelease",
           "dependsOn": [
-            {"activity": "DeploymentReadinessQuiz", "condition": "success"},
-            {"activity": "ReviewReleasePlan", "condition": "failure"}
+            {
+              "activity": "DeploymentReadinessQuiz",
+              "condition": "success"
+            },
+            {
+              "activity": "ReviewReleasePlan",
+              "condition": "failure"
+            }
           ],
           "description": "A release manager approves deployment.",
           "status": "active",
@@ -211,7 +239,10 @@ Example response (`200 OK`):
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "success"}
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "success"
+        }
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
@@ -288,9 +319,30 @@ Content-Type: application/json
           "max_iterations": 2
         },
         "agents": [
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "release-manager",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "quality-engineer",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "technical-lead",
+            "role": "aggregator"
+          }
         ],
         "output_contract": {
           "type": "text",
@@ -347,9 +399,30 @@ Example response (`201 Created`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "release-manager",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "quality-engineer",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "technical-lead",
+            "role": "aggregator"
+          }
         ],
         "output_contract": {
           "type": "text",

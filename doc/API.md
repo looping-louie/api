@@ -7,7 +7,8 @@ The endpoint reference is organized by top-level router:
 
 - [Endpoint overview](endpoints/overview.md) covers authentication, workspace
   selection, pagination, mutation conventions, and error responses.
-- [Catalog](endpoints/catalog.md) exposes static provider and model definitions.
+- [Catalog](endpoints/catalog.md) exposes static provider, model, built-in
+  Persona, and built-in Skill definitions.
 - [Linked Services](endpoints/linked-services.md) manages workspace-owned
   provider connections.
 - [Workspaces](endpoints/workspaces.md) manages workspace-owned execution
