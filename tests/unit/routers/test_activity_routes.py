@@ -20,7 +20,7 @@ from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.activities.service import ActivityService
 from src.app.services.models.availability import ModelNotFoundError
-from src.app.services.model_execution import ModelExecutionResult
+from src.app.services.models import ModelExecutionResult
 from src.app.catalogs.providers import ProviderId
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService

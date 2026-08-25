@@ -22,7 +22,7 @@ from src.app.services.execution_instructions import ExecutionInstructionLibraryS
 from src.app.services.activity_runs.generation import (
     ActivityRunGenerationService,
 )
-from src.app.services.model_execution import ModelExecutionService
+from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService

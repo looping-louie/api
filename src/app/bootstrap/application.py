@@ -71,7 +71,7 @@ from src.app.services.catalogs import StaticCatalogService
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
-from src.app.services.model_execution import ModelExecutionService
+from src.app.services.models import ModelExecutionService
 from src.app.services.personas import PersonaService
 from src.app.services.providers.connection import (
     HttpProviderConnectionService,

@@ -15,7 +15,7 @@ from src.app.services.activity_runs.generation import (
     _json_object_payload,
 )
 from src.app.services.activity_runs.types import ActivityRunValidationError
-from src.app.services.model_execution import ModelExecutionResult
+from src.app.services.models import ModelExecutionResult
 
 
 class InvalidThenValidModelExecutionService:

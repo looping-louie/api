@@ -189,14 +189,12 @@ services/
 |-- linked_services/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages workspace-owned provider connections
-|-- model_execution/
-|   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Invokes provider-neutral endpoints through
-|                                  an explicit Linked Service or legacy fallback
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- availability.py            Calculates workspace availability
-|   `-- catalog.py                 Queries the curated model catalog
+|   |-- catalog.py                 Queries the curated model catalog
+|   `-- model_execution.py         Invokes provider-neutral endpoints through
+|                                  an explicit Linked Service
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- service.py                 Manages workspace resources and skill links

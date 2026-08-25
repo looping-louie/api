@@ -12,7 +12,7 @@ from src.app.services.execution_instructions import (
 )
 from src.app.services.activity_runs.operation_plan import parse_file_operations
 from src.app.services.activity_runs.types import ActivityRunValidationError
-from src.app.services.model_execution import (
+from src.app.services.models import (
     ModelExecutionError,
     ModelExecutionService,
     ModelOutputValidationError,
