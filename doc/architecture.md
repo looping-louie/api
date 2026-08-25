@@ -22,6 +22,25 @@ prompt generation, model decisions, and checkpoint transitions. The runtime
 owns workspace lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 
+## Execution defaults
+
+Workspace defaults persist optional model-target and Harness overrides. A model
+target always binds a logical catalog `model_id` to a
+workspace-owned `linked_service_id`; a bare model ID cannot deterministically
+select a provider connection. A missing value explicitly means inheritance.
+
+The hierarchy persists candidates at workspace, Pipeline, Activity, and
+loop-agent scopes. Pipeline and Activity store first-class nullable
+`model_target` and `harness` fields; agents store nullable `model_target` in
+their typed loop configuration.
+It is intentionally separate from Personas, which are reusable instructions
+rather than model-routing or provider-connection resources. PipelineRun
+creation resolves and freezes effective values: agent, Activity, Pipeline, then
+Workspace for model targets; and Activity, Pipeline, then Workspace for
+Harnesses. An agent without an explicit target fails generation; Personas are
+instruction-only resources. An unset effective Harness becomes the `louie` v1
+compatibility default.
+
 ## Harnesses
 
 A Harness is the local execution mechanism for runtime-executable Activities.
@@ -34,11 +53,12 @@ collects repository context, applies API-approved file operations, gathers
 review input, and commits only when the API authorizes the handoff. `louie` v1
 is the compatibility default for existing Pipelines.
 
-A Pipeline selects one Harness for its runtime-executable Activities. Human
+A Pipeline may select one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
-not use the selected Harness. The Pipeline-run snapshot freezes the selected
-Harness and its configuration; each child Activity-run receives that frozen
-selection. A Pipeline edit must not change the Harness used by an existing run.
+not use the selected Harness. PipelineRun creation freezes the effective
+Harness for each Activity, preferring its own override before Pipeline and
+Workspace candidates, then using the `louie` v1 compatibility default. A
+Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
 object. The implemented `louie` v1 configuration must be empty. The API stores
@@ -169,14 +189,12 @@ services/
 |-- linked_services/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages workspace-owned provider connections
-|-- model_execution/
-|   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Invokes provider-neutral endpoints through
-|                                  an explicit Linked Service or legacy fallback
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- availability.py            Calculates workspace availability
-|   `-- catalog.py                 Queries the curated model catalog
+|   |-- catalog.py                 Queries the curated model catalog
+|   `-- model_execution.py         Invokes provider-neutral endpoints through
+|                                  an explicit Linked Service
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- service.py                 Manages workspace resources and skill links
@@ -214,6 +232,9 @@ services/
 |   |-- metadata_validator.py      Validates structured metadata
 |   |-- service.py                 Manages workspace resources
 |   `-- types.py                   Defines Skill lifecycle input contracts
+|-- workspaces/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Manages workspace-owned defaults
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -276,6 +297,7 @@ controllers/
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
+|-- workspace.py                  Coordinates Workspace HTTP operations
 `-- worker.py                     Coordinates Worker HTTP operations
 ```
 
@@ -345,7 +367,6 @@ repositories/
 |   |-- availability.py            Persists workspace availability settings
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
-|   |-- persona_linked_service_selection_repository.py Persists persona service selections
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
@@ -378,6 +399,10 @@ repositories/
 |   |-- reference_repository.py    Resolves instruction and model references
 |   |-- tenant_repository.py       Persists workspace memberships
 |   `-- validation_repository.py   Looks up normalized resource names
+|-- workspaces/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists workspace defaults
 `-- workers/
     |-- __init__.py                Declares persistence contracts
     |-- repository.py              Defines the persistence contract
@@ -398,11 +423,13 @@ models/
 |-- activity.py                    Defines definitions and changelog entries
 |-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
+|-- execution.py                   Defines atomic linked-service model targets
 |-- linked_service.py              Defines workspace-owned provider connections
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
 |-- tenant.py                      Defines workspace and membership state
+|-- workspace.py                   Defines workspace default values
 `-- worker.py                      Defines Worker registration and Harness state
 ```
 
@@ -417,10 +444,7 @@ models/
 - [Providers](components/providers.md) records the static provider and model
   catalog boundary. Linked Services persist independent workspace-owned provider
   connections and derive their available deployment models from that catalog.
-  Persona linked-service selections are workspace-scoped and require an enabled,
-  configured service with an active compatible deployment. During execution, a
-  selection routes its model request through that exact service. Legacy provider
-  credentials and Persona model associations are retired.
+  Legacy provider credentials and Persona model associations are retired.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

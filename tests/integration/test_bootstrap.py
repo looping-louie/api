@@ -21,6 +21,7 @@ from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.skill import SkillController
+from src.app.controllers.workspace import WorkspaceController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
@@ -49,6 +50,7 @@ EXPECTED_TABLES = {
     "pipeline_run_steps",
     "pipeline_run_events",
     "workers",
+    "workspace_execution_defaults",
 }
 
 
@@ -123,6 +125,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.model_controller,
             ModelController,
+        )
+        assert isinstance(
+            app.state.workspace_controller,
+            WorkspaceController,
         )
         assert isinstance(
             app.state.database,
@@ -217,6 +223,9 @@ def test_bootstrap_configures_application_and_runs_migrations(
         "0040_retire_legacy_provider_credentials",
             "0041_pipeline_harness",
             "0042_worker_harnesses",
+            "0043_workspace_execution_defaults",
+            "0044_execution_overrides",
+                "0045_remove_persona_linked_service_selections",
     ]
     assert activity_rows == []
 

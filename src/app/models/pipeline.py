@@ -8,6 +8,7 @@ from typing import Literal, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
+from src.app.models.execution import ModelTarget
 
 
 PipelineStatus = Literal["active", "disabled", "archived"]
@@ -64,7 +65,8 @@ class PipelineDocument:
     created_by: str
     updated_at: datetime
     updated_by: str
-    harness: PipelineHarness = field(default_factory=PipelineHarness)
+    model_target: ModelTarget | None = None
+    harness: PipelineHarness | None = None
 
     @property
     def enabled(self) -> bool:

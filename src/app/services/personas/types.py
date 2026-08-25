@@ -19,7 +19,6 @@ from ..persona_skills import (
 class PersonaCreate(DefinitionCreate):
     """Content and associations required to create a persona."""
 
-    linked_service_selection: PersonaLinkedServiceSelection | None = None
     skill_ids: tuple[str, ...] = ()
 
 
@@ -27,24 +26,13 @@ class PersonaCreate(DefinitionCreate):
 class PersonaUpdate(DefinitionUpdate):
     """Partial persona content and association changes."""
 
-    linked_service_selection: PersonaLinkedServiceSelection | None = None
-    linked_service_selection_supplied: bool = False
     skill_ids: tuple[str, ...] | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class PersonaLinkedServiceSelection:
-    """A persona's model selection through one linked service."""
-
-    linked_service_id: str
-    model_id: str
 
 
 @dataclass(frozen=True, slots=True)
 class PersonaDocument(DefinitionDocument):
     """Custom persona document with its associated skills."""
 
-    linked_service_selection: PersonaLinkedServiceSelection | None = None
     skill_ids: tuple[str, ...] = ()
 
 
@@ -52,15 +40,12 @@ class PersonaDocument(DefinitionDocument):
 class AvailablePersonaDocument(AvailableDefinitionDocument):
     """Workspace-visible persona document with associated skills."""
 
-    linked_service_selection: PersonaLinkedServiceSelection | None = None
     skill_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class AvailablePersonaSummary(AvailableDefinitionSummary):
-    """Workspace-visible persona summary with its selected model."""
-
-    linked_service_selection: PersonaLinkedServiceSelection | None = None
+    """Workspace-visible persona summary."""
 
 
 PersonaBaseDocument = DefinitionDocument | AvailableDefinitionDocument
@@ -74,7 +59,7 @@ class PersonaSkillRepository(Protocol):
 
     async def list_for_persona(self, *, persona_id: str) -> tuple[str, ...]:
         """Return associated skills in their declared order."""
-        ...
+        raise NotImplementedError
 
     async def replace_for_persona(
         self,
@@ -83,27 +68,10 @@ class PersonaSkillRepository(Protocol):
         skill_ids: Sequence[str],
     ) -> None:
         """Replace every skill associated with a persona."""
-        ...
+        raise NotImplementedError
 
 
-class PersonaLinkedServiceSelectionRepository(Protocol):
-    """Persist workspace-scoped Persona linked-service selections."""
 
-    async def get_for_persona(
-        self,
-        *,
-        workspace_id: str,
-        persona_id: str,
-    ) -> PersonaLinkedServiceSelection | None:
-        """Return the linked-service selection when one exists."""
-        ...
 
-    async def replace_for_persona(
-        self,
-        *,
-        workspace_id: str,
-        persona_id: str,
-        selection: PersonaLinkedServiceSelection,
-    ) -> None:
-        """Store or remove the optional linked-service selection."""
-        ...
+
+

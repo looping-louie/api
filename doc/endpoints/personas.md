@@ -8,8 +8,8 @@ immutable; they can be enabled or disabled.
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/personas` | Lists persona metadata without full instructions. |
-| `GET` | `/api/v1/personas/{persona_id}` | Describes a persona including its complete instructions. |
 | `POST` | `/api/v1/personas` | Creates a custom persona. |
+| `GET` | `/api/v1/personas/{persona_id}` | Describes a persona including its complete instructions. |
 | `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
 
@@ -17,8 +17,6 @@ immutable; they can be enabled or disabled.
 
 `GET /api/v1/personas` returns summary metadata without instructions, skill
 IDs, or metadata. An optional `search` matches eligible persona content.
-`linked_service` and `config` identify the workspace-scoped connection and model
-used for execution when a selection exists.
 
 The endpoint returns 12 personas per page and accepts `offset`, `search`,
 `status` (`enabled` or `disabled`), repeatable `category`, and `sort`
@@ -42,8 +40,6 @@ Example response (`200 OK`):
       "id": "persona-api-reviewer",
       "name": "ApiReviewer",
       "description": "Reviews public API compatibility.",
-      "linked_service": {"type": "LinkedServiceReference", "reference_id": "service-acme"},
-      "config": {"model": "kimi-k2.6"},
       "origin": "custom",
       "enabled": true,
       "editable": true,
@@ -63,8 +59,7 @@ Example response (`200 OK`):
 ## Describe a persona
 
 `GET /api/v1/personas/{persona_id}` returns the complete persona, including
-instructions, its Linked Service selection when configured, associated skill IDs,
-and metadata.
+instructions, associated skill IDs, and metadata.
 
 ```http
 GET /api/v1/personas/persona-api-reviewer
@@ -79,10 +74,12 @@ Example response (`200 OK`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "linked_service": {"type": "LinkedServiceReference", "reference_id": "service-acme"},
-  "config": {"model": "kimi-k2.6"},
-  "skill_ids": ["skill-api-compatibility"],
-  "metadata": {"team": "platform"},
+  "skill_ids": [
+    "skill-api-compatibility"
+    ],
+  "metadata": {
+    "team": "platform"
+  },
   "origin": "custom",
   "enabled": true,
   "editable": true,
@@ -106,8 +103,6 @@ Example response (`200 OK`):
 | `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Optional | Optional | Defaults to an empty string on create. May be empty. |
 | `instructions` | String | Required | Optional | Must not be empty. |
-| `linked_service` | Object or `null` | Required | Optional | Must be supplied together with `config`; has `type: "LinkedServiceReference"` and immutable `reference_id`. The selected service must belong to the workspace, be enabled, and be configured. A PATCH cannot remove an existing selection. |
-| `config` | Object or `null` | Required | Optional | Must be supplied together with `linked_service`; contains `model`, which requires an active deployment for the linked service provider type. |
 | `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to `[]` on create. |
 | `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to `{}` on create. |
 | `expected_version` | Integer | Not allowed | Required for content changes | Positive current Persona version. Not required for an enablement-only update. |
@@ -124,13 +119,6 @@ Content-Type: application/json
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "linked_service": {
-    "type": "LinkedServiceReference",
-    "reference_id": "linked-service-openai-primary"
-  },
-  "config": {
-    "model": "gpt-5"
-  },
   "skill_ids": [
     "skill-api-compatibility"
   ],
@@ -148,16 +136,12 @@ Example response (`201 Created`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "model": null,
-  "linked_service": {
-    "type": "LinkedServiceReference",
-    "reference_id": "linked-service-openai-primary"
+  "skill_ids": [
+    "skill-api-compatibility"
+  ],
+  "metadata": {
+    "team": "platform"
   },
-  "config": {
-    "model": "gpt-5"
-  },
-  "skill_ids": ["skill-api-compatibility"],
-  "metadata": {"team": "platform"},
   "origin": "custom",
   "enabled": true,
   "editable": true,
@@ -173,10 +157,8 @@ Example response (`201 Created`):
 
 ## Update a persona
 
-Include at least one of `name`, `description`, `instructions`, `model`,
-`linked_service`, `config`, `skill_ids`, `metadata`, or `enabled`. `model` is
-deprecated; new model selections use `linked_service` and `config`. Supplying
-`skill_ids` replaces the complete
+Include at least one of `name`, `description`, `instructions`, `skill_ids`,
+`metadata`, or `enabled`. Supplying `skill_ids` replaces the complete
 association; an empty list removes every skill. Content changes require
 `expected_version`; an enabled-only change does not. `enabled` must be `true`
 or `false`, not `null`. Built-in content is immutable, but its enabled state
@@ -203,9 +185,12 @@ Example response (`200 OK`):
   "name": "ApiReviewer",
   "description": "Reviews public API compatibility and migration impact.",
   "instructions": "Inspect every public contract and report breaking changes.",
-  "model": "kimi-k2.6",
-  "skill_ids": ["skill-api-compatibility"],
-  "metadata": {"team": "platform"},
+  "skill_ids": [
+    "skill-api-compatibility"
+  ],
+  "metadata": {
+    "team": "platform"
+  },
   "origin": "custom",
   "enabled": true,
   "editable": true,
@@ -220,11 +205,10 @@ Example response (`200 OK`):
 ```
 
 Write and describe operations return the complete persona, including `id`,
-instructions, legacy `model`, optional `linked_service` and `config`,
-`skill_ids`, metadata, origin and capabilities, version, and timestamps.
-Deleting a custom skill automatically removes its ID from every associated
-persona. A linked service selected by a Persona cannot be deleted. List items
-omit instructions, skill IDs, and metadata but include their top-level category.
+instructions, `skill_ids`, metadata, origin and capabilities, version, and
+timestamps. Deleting a custom skill automatically removes its ID from every
+associated persona. List items omit instructions, skill IDs, and metadata but
+include their top-level category.
 
 ## Delete a persona
 

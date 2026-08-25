@@ -18,6 +18,7 @@ from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
+from src.app.controllers.workspace import WorkspaceController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
@@ -35,9 +36,6 @@ from src.app.repositories.instructions.repository import (
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.repositories.instructions.persona_linked_service_selection_repository import (
-    SqlitePersonaLinkedServiceSelectionRepository,
-)
 from src.app.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -46,6 +44,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 )
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
+from src.app.repositories.workspaces import SqliteWorkspaceRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -72,7 +71,7 @@ from src.app.services.catalogs import StaticCatalogService
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
-from src.app.services.model_execution import ModelExecutionService
+from src.app.services.models import ModelExecutionService
 from src.app.services.personas import PersonaService
 from src.app.services.providers.connection import (
     HttpProviderConnectionService,
@@ -90,6 +89,7 @@ from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
 from src.app.services.workers import WorkerService
+from src.app.services.workspaces import WorkspaceService
 
 
 LOGGER = logging.getLogger(__name__)
@@ -162,11 +162,6 @@ async def configure_application(
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
-    persona_linked_service_selection_repository = (
-        SqlitePersonaLinkedServiceSelectionRepository(
-            resolved_settings.database_path,
-        )
-    )
     activity_repository = SqliteActivityRepository(
         resolved_settings.database_path,
     )
@@ -175,6 +170,7 @@ async def configure_application(
     )
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
+    workspace_repository = SqliteWorkspaceRepository(database)
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -191,9 +187,6 @@ async def configure_application(
             repository=instruction_repository,
             persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
-            persona_linked_service_selection_repository=(
-                persona_linked_service_selection_repository
-            ),
         )
     )
     validation_service = ValidationService(
@@ -247,16 +240,17 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    workspace_service = WorkspaceService(
+        repository=workspace_repository,
+        tenant_service=tenant_service,
+        linked_service_service=linked_service_service,
+        clock=utc_now,
+    )
     persona_service = PersonaService(
         tenant_service=tenant_service,
         persona_definition_service=persona_definition_service,
         skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
-        persona_linked_service_selection_repository=(
-            persona_linked_service_selection_repository
-        ),
-        linked_service_service=linked_service_service,
-        reference_resolver=reference_resolver,
     )
     skill_service = SkillService(
         tenant_service=tenant_service,
@@ -266,11 +260,9 @@ async def configure_application(
         repository=activity_repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
-        persona_linked_service_selection_repository=(
-            persona_linked_service_selection_repository
-        ),
         id_factory=create_identifier,
         clock=utc_now,
+        linked_service_service=linked_service_service,
     )
     activity_run_service = ActivityRunService(
         repository=activity_run_repository,
@@ -310,6 +302,8 @@ async def configure_application(
         clock=utc_now,
         activity_run_repository=activity_run_repository,
         worker_service=worker_service,
+        linked_service_service=linked_service_service,
+        workspace_service=workspace_service,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,
@@ -317,6 +311,9 @@ async def configure_application(
     app.state.catalog_controller = catalog_controller
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
+    )
+    app.state.workspace_controller = WorkspaceController(
+        service=workspace_service,
     )
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 

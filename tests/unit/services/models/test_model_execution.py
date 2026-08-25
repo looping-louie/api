@@ -18,7 +18,7 @@ from src.app.catalogs.models import (
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
-from src.app.services.model_execution import (
+from src.app.services.models import (
     ModelDeploymentUnavailableError,
     ModelExecutionService,
 )

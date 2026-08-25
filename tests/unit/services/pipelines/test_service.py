@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from itertools import count
 
 import pytest
@@ -13,11 +14,33 @@ from src.app.services.pipelines.types import (
     PipelineArchivedError,
     PipelineActivityInput,
     PipelineCreate,
+    PipelineHarnessInput,
     PipelinePatch,
 )
+from src.app.models.execution import ModelTarget
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.pipeline_repository import FakePipelineRepository
+
+
+class RecordingLinkedServiceService:
+    """Record pipeline model-target validation requests."""
+
+    def __init__(self) -> None:
+        """Initialize the validation call log."""
+
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def require_available_selection(
+        self,
+        *,
+        workspace_id: str,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Record one explicit model-target availability request."""
+
+        self.calls.append((workspace_id, service_id, model_id))
 
 
 def activity_step(
@@ -34,7 +57,6 @@ def activity_step(
             'stop_conditions': {'max_iterations': 1},
             'agents': [
                 {
-                    'model_id': 'model-1',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 }
@@ -79,6 +101,7 @@ def build_service(
     *,
     tenant_service: TenantService,
     repository: FakePipelineRepository | None = None,
+    linked_service_service: RecordingLinkedServiceService | None = None,
 ) -> tuple[PipelineService, FakePipelineRepository]:
     """Build deterministic Pipeline service dependencies."""
 
@@ -88,6 +111,7 @@ def build_service(
         PipelineService(
             repository=pipeline_repository,
             tenant_service=tenant_service,
+            linked_service_service=linked_service_service,
             id_factory=lambda: f'id-{next(identifiers)}',
             clock=IncrementingClock(),
         ),
@@ -147,6 +171,47 @@ async def test_create_supports_one_step(
 
     assert len(created.steps) == 1
     assert len(repository.activity_documents) == 1
+
+
+@pytest.mark.asyncio
+async def test_create_persists_inline_activity_execution_overrides(
+    tenant_service: TenantService,
+) -> None:
+    """Inline step model and Harness overrides persist on its Activity."""
+
+    linked_service_service = RecordingLinkedServiceService()
+    service, repository = build_service(
+        tenant_service=tenant_service,
+        linked_service_service=linked_service_service,
+    )
+    target = ModelTarget(
+        linked_service_id='linked-service-1',
+        model_id='gpt-5',
+    )
+    created = await service.create(
+        user_id='user-1',
+        payload=payload(
+            steps=(
+                replace(
+                    activity_step(),
+                    model_target=target,
+                    harness=PipelineHarnessInput(
+                        kind='codex_cli',
+                        version='v1',
+                        config={},
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    activity = repository.activity_documents[0]
+    assert activity.model_target == target
+    assert activity.harness is not None
+    assert activity.harness.kind == 'codex_cli'
+    assert linked_service_service.calls == [
+        ('workspace-1', 'linked-service-1', 'gpt-5'),
+    ]
 
 
 @pytest.mark.asyncio

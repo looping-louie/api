@@ -53,9 +53,11 @@ def normalize_status(value: object) -> PipelineStatus:
     return value  # type: ignore[return-value]
 
 
-def normalize_harness(value: object) -> PipelineHarness:
+def normalize_harness(value: object) -> PipelineHarness | None:
     """Return the currently supported Pipeline Harness selection."""
 
+    if value is None:
+        return None
     if not isinstance(value, PipelineHarnessInput):
         raise InvalidPipelineStepsError(
             field_name='harness',
@@ -129,6 +131,8 @@ def normalize_steps(
                 description=normalize_description(value.description),
                 type=require_text(value.type, f"steps.{position}.type"),
                 config=config,
+                model_target=value.model_target,
+                harness=value.harness,
                 depends_on=_normalize_dependencies(value.depends_on, position),
             )
         )
@@ -269,11 +273,23 @@ def document_content(document: PipelineDocument) -> JsonObject:
         "description": document.description,
         "enabled": document.enabled,
         "status": document.status,
-        "harness": {
-            'kind': document.harness.kind,
-            'version': document.harness.version,
-            'config': dict(document.harness.config),
-        },
+        'model_target': (
+            {
+                'linked_service_id': document.model_target.linked_service_id,
+                'model_id': document.model_target.model_id,
+            }
+            if document.model_target is not None
+            else None
+        ),
+        'harness': (
+            {
+                'kind': document.harness.kind,
+                'version': document.harness.version,
+                'config': dict(document.harness.config),
+            }
+            if document.harness is not None
+            else None
+        ),
         "steps": [step_content(step) for step in document.steps],
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat(),

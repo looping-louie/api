@@ -22,7 +22,7 @@ from src.app.services.models.availability import (
     ModelNotFoundError,
     ModelValidationError,
 )
-from src.app.services.model_execution import (
+from src.app.services.models import (
     ModelExecutionError,
     ModelOutputValidationError,
 )

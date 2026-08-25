@@ -20,16 +20,12 @@ from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService
 from src.app.services.activities.service import ActivityService
 from src.app.services.models.availability import ModelNotFoundError
-from src.app.services.model_execution import ModelExecutionResult
+from src.app.services.models import ModelExecutionResult
 from src.app.catalogs.providers import ProviderId
-from src.app.services.personas import PersonaLinkedServiceSelection
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.activity_repository import FakeActivityRepository
-from tests.fakes.persona_linked_service_selection_repository import (
-    FakePersonaLinkedServiceSelectionRepository,
-)
 from tests.fakes.reference_repository import FakeReferenceRepository
 
 
@@ -113,12 +109,32 @@ class EmptyInstructionLibraryService:
         return None
 
 
+class RecordingLinkedServiceService:
+    """Record explicit model-target validation requests."""
+
+    def __init__(self) -> None:
+        """Initialize the validation call log."""
+
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def require_available_selection(
+        self,
+        *,
+        workspace_id: str,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Record one availability validation request."""
+
+        self.calls.append((workspace_id, service_id, model_id))
+
+
 def build_client(
     *,
     tenant_service: TenantService,
-    persona_selection_repository: FakePersonaLinkedServiceSelectionRepository | None = None,
     reference_repository: FakeReferenceRepository | None = None,
     model_execution_service: object | None = None,
+    linked_service_service: RecordingLinkedServiceService | None = None,
 ) -> TestClient:
     """Build an authenticated activity application with in-memory storage."""
 
@@ -129,12 +145,9 @@ def build_client(
         reference_resolver=ReferenceResolver(
             repository=reference_repository or FakeReferenceRepository(),
         ),
-        persona_linked_service_selection_repository=(
-            persona_selection_repository
-            or FakePersonaLinkedServiceSelectionRepository()
-        ),
         id_factory=lambda: f'activity-{next(identifiers)}',
         clock=lambda: datetime(2026, 8, 12, tzinfo=UTC),
+        linked_service_service=linked_service_service,
     )
     app = FastAPI()
     app.state.activity_controller = ActivityController(activity_service=service)
@@ -174,7 +187,7 @@ def direct_loop_payload() -> dict[str, object]:
         'type': 'direct_loop',
         'config': {
             'stop_conditions': {'max_tokens': 100},
-            'agents': [{'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'}],
+            'agents': [agent('persona-1', 'generator')],
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
     }
@@ -190,12 +203,25 @@ def roundtable_loop_payload() -> dict[str, object]:
         'config': {
             'stop_conditions': {'max_tokens': 100},
             'agents': [
-                {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
-                {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'generator'},
-                {'model_id': 'model-3', 'persona_id': 'persona-3', 'role': 'aggregator'},
+                agent('persona-1', 'generator'),
+                agent('persona-2', 'generator'),
+                agent('persona-3', 'aggregator'),
             ],
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
+    }
+
+
+def agent(persona_id: str, role: str) -> dict[str, object]:
+    """Build one loop agent with an explicit executable model target."""
+
+    return {
+        'model_target': {
+            'linked_service_id': 'linked-service-1',
+            'model_id': 'model-1',
+        },
+        'persona_id': persona_id,
+        'role': role,
     }
 
 
@@ -220,8 +246,8 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
         'config': {
             'stop_conditions': {'max_tokens': 100},
             'agents': [
-                {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
-                {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+                agent('persona-1', 'generator'),
+                agent('persona-2', 'reviewer'),
             ],
             'output_contract': {'type': 'text', 'description': 'A result.'},
         },
@@ -265,10 +291,10 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     assert 'error' in legacy_config_type.json()
 
 
-def test_activity_rejects_agent_without_model_or_persona_selection(
+def test_activity_allows_agent_without_model_target_or_persona_selection(
     tenant_service: TenantService,
 ) -> None:
-    """Activities require one execution source for every loop agent."""
+    """Activity validation leaves target enforcement to execution."""
 
     reference_repository = FakeReferenceRepository()
     reference_repository.seed(
@@ -282,102 +308,58 @@ def test_activity_rejects_agent_without_model_or_persona_selection(
         reference_repository=reference_repository,
     )
     payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_id')
-
-    response = client.post('/api/v1/activities', json=payload)
-
-    assert response.status_code == 422
-    assert response.json()['error']['code'] == 'activity_validation_error'
-    assert response.json()['error']['details']['reason'].endswith(
-        'requires a linked-service selection in this workspace'
-    )
-
-
-def test_activity_rejects_unavailable_persona_before_selection_check(
-    tenant_service: TenantService,
-) -> None:
-    """Selection-only agents resolve Personas before validating selections."""
-
-    client = build_client(tenant_service=tenant_service)
-    payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_id')
-
-    response = client.post('/api/v1/activities', json=payload)
-
-    assert response.status_code == 404
-    assert response.json()['error']['code'] == 'referenced_resource_not_found'
-
-
-@pytest.mark.asyncio
-async def test_activity_allows_agent_without_model_for_persona_selection(
-    tenant_service: TenantService,
-) -> None:
-    """An Activity agent may rely on its Persona linked-service selection."""
-
-    selection_repository = FakePersonaLinkedServiceSelectionRepository()
-    reference_repository = FakeReferenceRepository()
-    reference_repository.seed(
-        workspace_id='workspace-1',
-        resource_type='persona',
-        resource_id='persona-1',
-        value={'id': 'persona-1'},
-    )
-    await selection_repository.replace_for_persona(
-        workspace_id='workspace-1',
-        persona_id='persona-1',
-        selection=PersonaLinkedServiceSelection(
-            linked_service_id='linked-service-1',
-            model_id='model-1',
-        ),
-    )
-    client = build_client(
-        tenant_service=tenant_service,
-        persona_selection_repository=selection_repository,
-        reference_repository=reference_repository,
-    )
-    payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_id')
+    payload['config']['agents'][0].pop('model_target')
 
     response = client.post('/api/v1/activities', json=payload)
 
     assert response.status_code == 201
-    assert response.json()['config']['agents'][0]['model_id'] is None
 
 
-@pytest.mark.asyncio
-async def test_activity_rejects_selection_for_persona_outside_workspace(
+def test_activity_validates_and_returns_explicit_model_targets(
     tenant_service: TenantService,
 ) -> None:
-    """Selection-only agents cannot reference Personas outside their workspace."""
+    """Activity and loop-agent targets validate against the selected workspace."""
 
-    selection_repository = FakePersonaLinkedServiceSelectionRepository()
-    await selection_repository.replace_for_persona(
-        workspace_id='workspace-1',
-        persona_id='persona-1',
-        selection=PersonaLinkedServiceSelection(
-            linked_service_id='linked-service-1',
-            model_id='model-1',
-        ),
-    )
-    reference_repository = FakeReferenceRepository()
-    reference_repository.seed(
-        workspace_id='workspace-other',
-        resource_type='persona',
-        resource_id='persona-1',
-        value={'id': 'persona-1'},
-    )
+    linked_services = RecordingLinkedServiceService()
     client = build_client(
         tenant_service=tenant_service,
-        persona_selection_repository=selection_repository,
-        reference_repository=reference_repository,
+        linked_service_service=linked_services,
     )
     payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_id')
+    payload['model_target'] = {
+        'linked_service_id': 'service-activity',
+        'model_id': 'model-activity',
+    }
+    payload['config']['agents'][0]['model_target'] = {
+        'linked_service_id': 'service-agent',
+        'model_id': 'model-agent',
+    }
 
     response = client.post('/api/v1/activities', json=payload)
 
-    assert response.status_code == 404
-    assert response.json()['error']['code'] == 'referenced_resource_not_found'
+    assert response.status_code == 201
+    assert response.json()['model_target'] == payload['model_target']
+    assert response.json()['config']['agents'][0]['model_target'] == (
+        payload['config']['agents'][0]['model_target']
+    )
+    assert linked_services.calls == [
+        ('workspace-1', 'service-activity', 'model-activity'),
+        ('workspace-1', 'service-agent', 'model-agent'),
+    ]
+
+
+def test_activity_allows_unavailable_persona_without_selection_check(
+    tenant_service: TenantService,
+) -> None:
+    """Activity validation no longer resolves Persona routing selections."""
+
+    client = build_client(tenant_service=tenant_service)
+    payload = direct_loop_payload()
+    payload['config']['agents'][0].pop('model_target')
+
+    response = client.post('/api/v1/activities', json=payload)
+
+    assert response.status_code == 201
 
 
 def test_direct_loop_requires_a_generator_agent(

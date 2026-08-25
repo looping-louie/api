@@ -11,6 +11,8 @@ from pathlib import Path
 import aiosqlite
 
 from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
+from src.app.models.execution import ModelTarget
+from src.app.models.pipeline import PipelineHarness
 
 
 class SqliteActivityRepository:
@@ -66,7 +68,8 @@ class SqliteActivityRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 cursor = await connection.execute(
                     'UPDATE activities SET name = ?, description = ?, status = ?, '
-                    'activity_type = ?, config_json = ?, updated_at = ?, updated_by = ? '
+                    'activity_type = ?, config_json = ?, model_target_json = ?, '
+                    'harness_json = ?, updated_at = ?, updated_by = ? '
                     'WHERE workspace_id = ? AND id = ?',
                     self._update_values(document),
                 )
@@ -139,6 +142,8 @@ class SqliteActivityRepository:
             config=json.loads(row['config_json']), created_at=datetime.fromisoformat(row['created_at']),
             created_by=row['created_by'], updated_at=datetime.fromisoformat(row['updated_at']),
             updated_by=row['updated_by'],
+            model_target=_model_target(row['model_target_json']),
+            harness=_harness(row['harness_json']),
         )
 
     @staticmethod
@@ -182,10 +187,13 @@ class SqliteActivityRepository:
         """Insert one activity document."""
 
         await connection.execute(
-            'INSERT INTO activities VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO activities (id, workspace_id, name, description, status, '
+            'activity_type, config_json, model_target_json, harness_json, created_at, '
+            'created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (
                 document.id, document.workspace_id, document.name, document.description,
                 document.status, document.type, json.dumps(document.config),
+                _model_target_json(document.model_target), _harness_json(document.harness),
                 document.created_at.isoformat(), document.created_by, document.updated_at.isoformat(),
                 document.updated_by,
             ),
@@ -206,12 +214,13 @@ class SqliteActivityRepository:
         )
 
     @staticmethod
-    def _update_values(document: ActivityDocument) -> tuple[str, ...]:
+    def _update_values(document: ActivityDocument) -> tuple[object, ...]:
         """Return values for the activity update statement."""
 
         return (
             document.name, document.description, document.status, document.type,
-            json.dumps(document.config), document.updated_at.isoformat(), document.updated_by,
+            json.dumps(document.config), _model_target_json(document.model_target),
+            _harness_json(document.harness), document.updated_at.isoformat(), document.updated_by,
             document.workspace_id, document.id,
         )
 
@@ -226,3 +235,51 @@ class SqliteActivityRepository:
             yield connection
         finally:
             await connection.close()
+
+
+def _model_target(value: str | None) -> ModelTarget | None:
+    """Deserialize one optional activity model target."""
+
+    if value is None:
+        return None
+    parsed = json.loads(value)
+    return ModelTarget(
+        linked_service_id=parsed['linked_service_id'],
+        model_id=parsed['model_id'],
+    )
+
+
+def _harness(value: str | None) -> PipelineHarness | None:
+    """Deserialize one optional activity Harness."""
+
+    if value is None:
+        return None
+    parsed = json.loads(value)
+    return PipelineHarness(
+        kind=parsed['kind'],
+        version=parsed['version'],
+        config=parsed['config'],
+    )
+
+
+def _model_target_json(model_target: ModelTarget | None) -> str | None:
+    """Serialize an optional activity model target."""
+
+    if model_target is None:
+        return None
+    return json.dumps({
+        'linked_service_id': model_target.linked_service_id,
+        'model_id': model_target.model_id,
+    })
+
+
+def _harness_json(harness: PipelineHarness | None) -> str | None:
+    """Serialize an optional activity Harness."""
+
+    if harness is None:
+        return None
+    return json.dumps({
+        'kind': harness.kind,
+        'version': harness.version,
+        'config': dict(harness.config),
+    })

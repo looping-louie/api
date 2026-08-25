@@ -83,7 +83,6 @@ def activity_payload(
             'stop_conditions': {'max_iterations': 1},
             'agents': [
                 {
-                    'model_id': 'model-1',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 }
@@ -219,10 +218,10 @@ def test_pipeline_creation_persists_inline_activity_definitions(
     assert len(response.json()['steps']) == 2
 
 
-def test_pipeline_defaults_and_validates_supported_harnesses(
+def test_pipeline_persists_nullable_and_supported_harness_overrides(
     tenant_service: TenantService,
 ) -> None:
-    """Pipelines persist Louie by default and accept an empty Codex selection."""
+    """Pipelines inherit an unset Harness and accept an empty Codex override."""
 
     client = build_client(tenant_service=tenant_service)
     created = client.post('/api/v1/pipelines', json=pipeline_payload())
@@ -246,11 +245,7 @@ def test_pipeline_defaults_and_validates_supported_harnesses(
     )
 
     assert created.status_code == 201
-    assert created.json()['harness'] == {
-        'kind': 'louie',
-        'version': 'v1',
-        'config': {},
-    }
+    assert created.json()['harness'] is None
     assert codex.status_code == 201
     assert codex.json()['harness'] == {
         'kind': 'codex_cli',
@@ -258,6 +253,31 @@ def test_pipeline_defaults_and_validates_supported_harnesses(
         'config': {},
     }
     assert invalid_config.status_code == 422
+
+
+def test_pipeline_returns_an_explicit_model_target(
+    tenant_service: TenantService,
+) -> None:
+    """A persisted Pipeline model target serializes in its HTTP response."""
+
+    client = build_client(tenant_service=tenant_service)
+
+    response = client.post(
+        '/api/v1/pipelines',
+        json={
+            **pipeline_payload(),
+            'model_target': {
+                'linked_service_id': 'linked-service-1',
+                'model_id': 'gpt-5',
+            },
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()['model_target'] == {
+        'linked_service_id': 'linked-service-1',
+        'model_id': 'gpt-5',
+    }
 
 
 def test_pipeline_returns_named_step_dependencies(
@@ -570,8 +590,8 @@ def test_pipeline_rejects_invalid_direct_loop_roles(
     invalid_agents = (
         [],
         [
-            {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
-            {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+            {'persona_id': 'persona-1', 'role': 'generator'},
+            {'persona_id': 'persona-2', 'role': 'reviewer'},
         ],
     )
     for agents in invalid_agents:

@@ -9,9 +9,11 @@ operations.
 
 ## Endpoint reference
 
-- [Catalog](catalog.md) exposes static provider and model definitions.
+- [Catalog](catalog.md) exposes static provider, model, built-in Persona, and
+  built-in Skill definitions.
 - [Linked Services](linked-services.md) manages workspace-owned provider
   connections.
+- [Workspaces](workspaces.md) manages workspace-owned execution defaults.
 - [Models](models.md) exposes the curated model catalog.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
@@ -22,8 +24,8 @@ operations.
 
 ## Versioned API conventions
 
-All catalog, linked-service, model, persona, skill, activity, and
-pipeline routes use the `/api/v1` prefix.
+All catalog, linked-service, workspace, model, persona, skill,
+activity, and pipeline routes use the `/api/v1` prefix.
 
 These routes require an authenticated user. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` as that user. A request may
@@ -31,14 +33,14 @@ select one of the user's workspaces with the optional `X-Workspace-ID` header.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 
-Persona, skill, activity, Pipeline, and model lists return an object with
-`items` and `total`. Catalog, provider, and linked-service lists return JSON
-arrays. The optional `search` query parameter accepted by resource lists is
-case-insensitive and must contain between 1 and 200 characters. Activity and
-activity-changelog lists accept a
-non-negative `offset` and always return at most ten items. Pipeline lists also
-use fixed ten-item pages, support `status` and `search`, and exclude archived
-pipelines unless `status=archived` is requested.
+Persona, Skill, Activity, Pipeline, workspace Model, and catalog Model lists
+return an object with `items` and `total`. Catalog provider, built-in Persona,
+and built-in Skill lists, plus linked-service lists, return JSON arrays. The
+optional `search` query parameter accepted by resource lists is case-insensitive
+and must contain between 1 and 200 characters. Activity and activity-changelog
+lists accept a non-negative `offset` and always return at most ten items.
+Pipeline lists also use fixed ten-item pages, support `status` and `search`, and
+exclude archived pipelines unless `status=archived` is requested.
 
 Create operations return `201 Created`. Persona and skill content updates use
 optimistic concurrency and require the current positive integer

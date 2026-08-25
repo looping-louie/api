@@ -11,6 +11,13 @@ from src.app.catalogs.models import (
     ModelCapability,
     ModelStatus,
 )
+from src.app.catalogs.persona_skills import (
+    AgentRole,
+    CatalogInstructionCategory,
+    SkillArtifact,
+    SkillOutput,
+    SkillPhase,
+)
 from src.app.catalogs.providers import ProviderId
 
 from .shared import ListResponse, NonNegativeInteger, ResponseSchema
@@ -54,3 +61,48 @@ class CatalogProviderResponse(ResponseSchema):
     requires_api_key: bool
     default_base_url: str | None
     model_catalog_note: str | None = None
+
+
+class CatalogInstructionMetadataResponse(ResponseSchema):
+    """Static applicability metadata for one built-in instruction."""
+
+    applies_when: list[str]
+    applies_to: set[AgentRole]
+
+
+class CatalogInstructionResponse(ResponseSchema):
+    """Fields shared by built-in Persona and Skill catalog definitions."""
+
+    id: str
+    name: str
+    description: str
+    instructions: str
+    metadata: CatalogInstructionMetadataResponse
+    enabled_by_default: bool
+    catalog_version: NonNegativeInteger
+    deprecated: bool
+    category: CatalogInstructionCategory | None
+
+
+class CatalogPersonaResponse(CatalogInstructionResponse):
+    """Static built-in Persona definition."""
+
+    skill_ids: list[str]
+    default_for: set[AgentRole]
+
+
+class CatalogSkillStrictnessResponse(ResponseSchema):
+    """Default review strictness for one built-in Skill."""
+
+    prototype: NonNegativeInteger
+    mvp: NonNegativeInteger
+    production: NonNegativeInteger
+
+
+class CatalogSkillResponse(CatalogInstructionResponse):
+    """Static built-in Skill definition."""
+
+    reviewer_default_strictness: CatalogSkillStrictnessResponse | None
+    phase: SkillPhase | None
+    artifacts: list[SkillArtifact]
+    output: SkillOutput | None

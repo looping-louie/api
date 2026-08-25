@@ -45,11 +45,6 @@ def test_list_personas_filters_sorts_and_paginates(
                 "name": f"Persona_{index:02d}",
                 "description": "Catalog query fixture.",
                 "instructions": "Act as this persona.",
-                "linked_service": {
-                    "type": "LinkedServiceReference",
-                    "reference_id": "linked-service-1",
-                },
-                "config": {"model": "service-model"},
                 "metadata": {
                     "category": categories[index % 2],
                 },

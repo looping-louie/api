@@ -10,6 +10,7 @@ from .skills import router as skills_router
 from .models import router as models_router
 from .linked_services import router as linked_services_router
 from .workers import router as workers_router
+from .workspaces import router as workspaces_router
 
 
 router = APIRouter(
@@ -24,3 +25,4 @@ router.include_router(catalog_router)
 router.include_router(models_router)
 router.include_router(linked_services_router)
 router.include_router(workers_router)
+router.include_router(workspaces_router)

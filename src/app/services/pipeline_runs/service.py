@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
@@ -9,7 +10,8 @@ from typing import Callable, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline import PipelineDetails
+from src.app.models.execution import ModelTarget
+from src.app.models.pipeline import PipelineDetails, PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
     PipelineRunDocument,
@@ -27,6 +29,7 @@ from src.app.services.pipeline_runs.types import (
 )
 from src.app.services.shared.tenant import TenantService
 from src.app.services.workers import WorkerService
+from src.app.services.workspaces import WorkspaceService
 
 
 class PipelineRunService:
@@ -40,6 +43,7 @@ class PipelineRunService:
         pipeline_service: PipelineService,
         tenant_service: TenantService,
         worker_service: WorkerService | None = None,
+        workspace_service: WorkspaceService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -51,6 +55,7 @@ class PipelineRunService:
         self._pipeline_service = pipeline_service
         self._tenant_service = tenant_service
         self._worker_service = worker_service
+        self._workspace_service = workspace_service
         self._id_factory = id_factory
         self._clock = clock
         self._token_factory = token_factory
@@ -76,6 +81,27 @@ class PipelineRunService:
                 pipeline_id=pipeline_id,
                 reason=f'status is {details.document.status}',
             )
+        workspace_defaults = await self._workspace_defaults(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+        inherited_model_target = (
+            details.document.model_target
+            or (
+                workspace_defaults.model_target
+                if workspace_defaults is not None
+                else None
+            )
+        )
+        inherited_harness = (
+            details.document.harness
+            or (
+                workspace_defaults.harness
+                if workspace_defaults is not None
+                else None
+            )
+            or PipelineHarness()
+        )
         now = self._clock()
         run_id = self._id_factory()
         document = PipelineRunDocument(
@@ -84,11 +110,19 @@ class PipelineRunService:
             commit_mode=commit_mode,
             status='prepared', worker_id=None, lease_token=None,
             lease_expires_at=None, attempt=0, current_activity_run_id=None,
-            pipeline_snapshot=self._pipeline_snapshot(details),
+            pipeline_snapshot=self._pipeline_snapshot(
+                details,
+                harness=inherited_harness,
+            ),
             steps=tuple(
                 PipelineRunStepDocument(
                     position=position, activity_id=activity.id, status='pending',
-                    activity_run_id=None, activity_snapshot=self._activity_snapshot(activity),
+                    activity_run_id=None,
+                    activity_snapshot=self._activity_snapshot(
+                        activity,
+                        inherited_model_target=inherited_model_target,
+                        inherited_harness=inherited_harness,
+                    ),
                     updated_at=now,
                 )
                 for position, activity in enumerate(details.activities)
@@ -322,6 +356,21 @@ class PipelineRunService:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         return document
 
+    async def _workspace_defaults(
+        self,
+        *,
+        user_id: str,
+        requested_workspace_id: str | None,
+    ) -> object | None:
+        """Return configured workspace candidates when the service is available."""
+
+        if self._workspace_service is None:
+            return None
+        return await self._workspace_service.get_defaults(
+            user_id=user_id,
+            requested_workspace_id=requested_workspace_id,
+        )
+
     @staticmethod
     def _is_claimable(document: PipelineRunDocument, now: datetime) -> bool:
         """Return whether a queued or expired claim may be claimed now."""
@@ -498,7 +547,7 @@ class PipelineRunService:
             activity_snapshot={
                 **ready.activity_snapshot,
                 'commit_mode': document.commit_mode,
-                'harness': self._harness_snapshot(document.pipeline_snapshot),
+                'harness': self._harness_snapshot(ready.activity_snapshot),
             },
             execution_context={}, created_at=now, created_by=user_id, updated_at=now,
         )
@@ -637,15 +686,19 @@ class PipelineRunService:
         )
 
     @staticmethod
-    def _pipeline_snapshot(details: PipelineDetails) -> dict[str, object]:
+    def _pipeline_snapshot(
+        details: PipelineDetails,
+        *,
+        harness: PipelineHarness,
+    ) -> dict[str, object]:
         """Capture graph dependencies by immutable activity IDs for scheduling."""
 
         return {
             'pipeline_id': details.document.id,
             'harness': {
-                'kind': details.document.harness.kind,
-                'version': details.document.harness.version,
-                'config': dict(details.document.harness.config),
+                'kind': harness.kind,
+                'version': harness.version,
+                'config': dict(harness.config),
             },
             'steps': [
                 {
@@ -660,9 +713,33 @@ class PipelineRunService:
         }
 
     @staticmethod
-    def _activity_snapshot(activity: ActivityDocument) -> dict[str, object]:
+    def _activity_snapshot(
+        activity: ActivityDocument,
+        *,
+        inherited_model_target: ModelTarget | None,
+        inherited_harness: PipelineHarness,
+    ) -> dict[str, object]:
         """Freeze an executable activity in the format used by activity runs."""
 
+        model_target = activity.model_target or inherited_model_target
+        harness = activity.harness or inherited_harness
+        config = deepcopy(activity.config)
+        agents = config.get('agents')
+        if isinstance(agents, list):
+            config['agents'] = [
+                PipelineRunService._agent_snapshot(
+                    agent=agent,
+                    inherited_model_target=model_target,
+                )
+                if isinstance(agent, dict)
+                else agent
+                for agent in agents
+            ]
+        execution_harness = {
+            'kind': harness.kind,
+            'version': harness.version,
+            'config': dict(harness.config),
+        }
         if activity.type in ('approval', 'quiz'):
             return {
                 'id': activity.id,
@@ -670,7 +747,8 @@ class PipelineRunService:
                 'description': activity.description,
                 'type': activity.type,
                 'executor': 'human',
-                **activity.config,
+                'harness': execution_harness,
+                **config,
             }
         flows = {
             'direct_loop': 'direct',
@@ -684,8 +762,30 @@ class PipelineRunService:
             )
         return {
             'id': activity.id, 'title': activity.name,
-            'description': activity.description, **activity.config, 'flow': flow,
+            'description': activity.description,
+            'harness': execution_harness,
+            **config,
+            'flow': flow,
         }
+
+    @staticmethod
+    def _agent_snapshot(
+        *,
+        agent: dict[str, object],
+        inherited_model_target: ModelTarget | None,
+    ) -> dict[str, object]:
+        """Freeze an agent target or preserve legacy Persona routing when absent."""
+
+        snapshot = dict(agent)
+        target = snapshot.get('model_target')
+        if isinstance(target, dict):
+            return snapshot
+        if inherited_model_target is not None:
+            snapshot['model_target'] = {
+                'linked_service_id': inherited_model_target.linked_service_id,
+                'model_id': inherited_model_target.model_id,
+            }
+        return snapshot
 
     @staticmethod
     def _harness_snapshot(snapshot: Mapping[str, object]) -> dict[str, object]:

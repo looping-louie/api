@@ -16,6 +16,7 @@ from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
+from src.app.controllers.workspace import WorkspaceController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -191,6 +192,18 @@ def get_linked_service_controller(
         request,
         attribute_name='linked_service_controller',
         expected_type=LinkedServiceController,
+    )
+
+
+def get_workspace_controller(
+    request: Request,
+) -> WorkspaceController:
+    """Return the configured workspace controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='workspace_controller',
+        expected_type=WorkspaceController,
     )
 
 
