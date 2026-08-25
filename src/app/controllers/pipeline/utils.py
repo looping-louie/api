@@ -8,6 +8,7 @@ from src.app.schemas.pipeline import (
     PipelineStepDependencyResponse,
     PipelineResponse,
 )
+from src.app.schemas.execution import ModelTargetResponse
 from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineDetails
 from src.app.services.pipelines.types import PipelineActivityInput, PipelineHarnessInput
@@ -28,6 +29,15 @@ def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
         description=value.description,
         type=value.type,
         config=value.config.model_dump(by_alias=True),
+        model_target=(
+            ModelTarget(
+                linked_service_id=value.model_target.linked_service_id,
+                model_id=value.model_target.model_id,
+            )
+            if value.model_target is not None
+            else None
+        ),
+        harness=pipeline_harness(value.harness),
         depends_on=tuple(
             PipelineActivityDependencyInput(
                 activity=dependency.activity,

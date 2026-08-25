@@ -9,9 +9,10 @@ and commit decisions.
 
 ## Harness Selection
 
-A Pipeline selects one Harness for its runtime-executable Activities. The
-selection is frozen in the Pipeline-run snapshot and copied to each child
-Activity-run. Existing Pipelines use `louie` v1 as the compatibility default.
+PipelineRun creation resolves Harnesses from Activity, Pipeline, then Workspace
+scope. It freezes the Pipeline-level effective Harness and each child
+Activity-run's effective Harness independently. Existing configurations use
+`louie` v1 when no Harness candidate exists.
 
 A Harness has a stable `kind`, a `version`, and a kind-specific `config`
 object. The API accepts `louie` v1 and `codex_cli` v1, each with an empty

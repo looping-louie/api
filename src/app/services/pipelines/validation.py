@@ -131,6 +131,8 @@ def normalize_steps(
                 description=normalize_description(value.description),
                 type=require_text(value.type, f"steps.{position}.type"),
                 config=config,
+                model_target=value.model_target,
+                harness=value.harness,
                 depends_on=_normalize_dependencies(value.depends_on, position),
             )
         )

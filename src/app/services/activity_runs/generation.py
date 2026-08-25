@@ -351,25 +351,37 @@ class ActivityRunGenerationService:
 
         role = str(agent['role'])
         model_id = str(agent['model_id'])
-        linked_service_selection = (
-            instruction_library.persona_linked_service_selection(
-                str(agent['persona_id']),
+        target = agent.get('model_target')
+        if isinstance(target, Mapping):
+            linked_service_id = target.get('linked_service_id')
+            target_model_id = target.get('model_id')
+            if not isinstance(linked_service_id, str) or not isinstance(target_model_id, str):
+                raise ActivityRunValidationError(
+                    field_name='agents',
+                    message='model_target must contain a linked service and model ID.',
+                )
+        else:
+            linked_service_selection = (
+                instruction_library.persona_linked_service_selection(
+                    str(agent['persona_id']),
+                )
+                if instruction_library is not None
+                else None
             )
-            if instruction_library is not None
-            else None
-        )
-        if linked_service_selection is None:
-            raise ActivityRunValidationError(
-                field_name='agents',
-                message='Persona requires a linked-service selection.',
-            )
+            if linked_service_selection is None:
+                raise ActivityRunValidationError(
+                    field_name='agents',
+                    message='Persona requires a linked-service selection.',
+                )
+            linked_service_id = linked_service_selection.linked_service_id
+            target_model_id = linked_service_selection.model_id
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
                 result = await self._model_execution_service.execute(
                     workspace_id=workspace_id,
-                    linked_service_id=linked_service_selection.linked_service_id,
-                    model_id=linked_service_selection.model_id,
+                    linked_service_id=linked_service_id,
+                    model_id=target_model_id,
                     prompt=retry_prompt,
                     json_mode=True,
                 )

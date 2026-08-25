@@ -217,6 +217,14 @@ class PipelineService:
             workspace_id=workspace_id,
             model_targets=(
                 [target for target in (document.model_target,) if target is not None]
+                + [
+                    target
+                    for target in (
+                        activity.model_target
+                        for activity in inputs
+                    )
+                    if target is not None
+                ]
                 + self._agent_model_targets(inputs)
             ),
         )
@@ -282,7 +290,17 @@ class PipelineService:
             )
             await self._require_model_targets(
                 workspace_id=workspace_id,
-                model_targets=self._agent_model_targets(inputs),
+                model_targets=(
+                    [
+                        target
+                        for target in (
+                            activity.model_target
+                            for activity in inputs
+                        )
+                        if target is not None
+                    ]
+                    + self._agent_model_targets(inputs)
+                ),
             )
         if 'model_target' in payload.provided_fields and payload.model_target is not None:
             await self._require_model_targets(
@@ -518,6 +536,8 @@ class PipelineService:
                 created_by=actor_id,
                 updated_at=now,
                 updated_by=actor_id,
+                model_target=value.model_target,
+                harness=normalize_harness(value.harness),
             )
             documents.append(document)
             entries.append(
@@ -535,6 +555,23 @@ class PipelineService:
                         "status": document.status,
                         "type": document.type,
                         "config": document.config,
+                        "model_target": (
+                            {
+                                "linked_service_id": document.model_target.linked_service_id,
+                                "model_id": document.model_target.model_id,
+                            }
+                            if document.model_target is not None
+                            else None
+                        ),
+                        "harness": (
+                            {
+                                "kind": document.harness.kind,
+                                "version": document.harness.version,
+                                "config": dict(document.harness.config),
+                            }
+                            if document.harness is not None
+                            else None
+                        ),
                     },
                 )
             )

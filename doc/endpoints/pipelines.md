@@ -31,9 +31,11 @@ Pipelines persist nullable `model_target` and `harness` overrides. PATCH accepts
 `name`, `description`, `enabled`, `steps`, `model_target`, and `harness`;
 supplying `steps` replaces the complete ordered array. A non-null model target
 is validated against the selected workspace Linked Service, and `null` clears
-either override. PipelineRun resolution and snapshotting do not yet consume
-these configuration candidates by hierarchy. An unset Pipeline Harness retains
-the legacy `louie` v1 compatibility behavior for PipelineRun snapshots.
+either override. PipelineRun creation resolves
+model targets at agent, Activity, Pipeline, then Workspace scope, and Harnesses
+at Activity, Pipeline, then Workspace scope. It freezes the effective values
+in its Pipeline and Activity snapshots. An unset effective Harness retains the
+legacy `louie` v1 compatibility behavior.
 Archived pipelines are immutable and omitted from unfiltered listings.
 
 Every Pipeline response includes top-level `model_target` and `harness` keys,

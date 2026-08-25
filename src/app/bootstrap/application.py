@@ -322,6 +322,7 @@ async def configure_application(
         activity_run_repository=activity_run_repository,
         worker_service=worker_service,
         linked_service_service=linked_service_service,
+        workspace_service=workspace_service,
     )
     app.state.model_controller = ModelController(
         model_catalog_service=model_catalog_service,

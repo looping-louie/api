@@ -35,9 +35,11 @@ loop-agent scopes. Pipeline and Activity store first-class nullable
 their typed loop configuration and keep legacy `model_id` for compatibility.
 It is intentionally separate from Personas, which are reusable instructions
 rather than model-routing or provider-connection resources. PipelineRun
-snapshot resolution and effective-value selection remain intentionally
-unimplemented, except that an unset Pipeline Harness retains the existing
-`louie` v1 compatibility snapshot.
+creation resolves and freezes effective values: agent, Activity, Pipeline, then
+Workspace for model targets; and Activity, Pipeline, then Workspace for
+Harnesses. An agent without a resolved target retains the legacy Persona
+linked-service selection. An unset effective Harness becomes the `louie` v1
+compatibility default.
 
 ## Harnesses
 
@@ -53,10 +55,10 @@ is the compatibility default for existing Pipelines.
 
 A Pipeline may select one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
-not use the selected Harness. Until hierarchy resolution is implemented, a
-Pipeline-run snapshot freezes either the explicit Pipeline Harness or the
-`louie` v1 compatibility default; each child Activity-run receives that frozen
-selection. A Pipeline edit must not change the Harness used by an existing run.
+not use the selected Harness. PipelineRun creation freezes the effective
+Harness for each Activity, preferring its own override before Pipeline and
+Workspace candidates, then using the `louie` v1 compatibility default. A
+Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
 object. The implemented `louie` v1 configuration must be empty. The API stores

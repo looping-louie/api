@@ -256,6 +256,31 @@ def test_pipeline_persists_nullable_and_supported_harness_overrides(
     assert invalid_config.status_code == 422
 
 
+def test_pipeline_returns_an_explicit_model_target(
+    tenant_service: TenantService,
+) -> None:
+    """A persisted Pipeline model target serializes in its HTTP response."""
+
+    client = build_client(tenant_service=tenant_service)
+
+    response = client.post(
+        '/api/v1/pipelines',
+        json={
+            **pipeline_payload(),
+            'model_target': {
+                'linked_service_id': 'linked-service-1',
+                'model_id': 'gpt-5',
+            },
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()['model_target'] == {
+        'linked_service_id': 'linked-service-1',
+        'model_id': 'gpt-5',
+    }
+
+
 def test_pipeline_returns_named_step_dependencies(
     tenant_service: TenantService,
 ) -> None:

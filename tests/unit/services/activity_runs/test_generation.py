@@ -146,6 +146,44 @@ class LinkedServiceModelExecutionService:
         )
 
 
+@pytest.mark.asyncio
+async def test_generation_prefers_a_frozen_agent_model_target() -> None:
+    """An explicit snapshot target does not require Persona routing."""
+
+    model_execution_service = LinkedServiceModelExecutionService()
+    service = ActivityRunGenerationService(
+        model_execution_service=model_execution_service,
+        instruction_library_service=None,
+    )
+
+    await service.generate_context(
+        loop_snapshot={
+            'flow': 'direct',
+            'agents': [
+                {
+                    'model_id': 'legacy-model',
+                    'model_target': {
+                        'linked_service_id': 'service-frozen',
+                        'model_id': 'model-frozen',
+                    },
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+            'output_contract': {},
+        },
+        workspace_id='workspace-1',
+        user_id='user-1',
+        requested_workspace_id=None,
+        input_text='Create an output file.',
+        context={'repo_context': 'Repository context.'},
+    )
+
+    assert model_execution_service.requests == [
+        ('service-frozen', 'model-frozen'),
+    ]
+
+
 class StaticInstructionLibraryService:
     """Return one prebuilt execution instruction library."""
 

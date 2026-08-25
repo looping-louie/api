@@ -33,6 +33,8 @@ class PipelineActivityInput:
     description: str
     type: str
     config: dict[str, object]
+    model_target: ModelTarget | None = None
+    harness: PipelineHarnessInput | None = None
     depends_on: tuple[PipelineActivityDependencyInput, ...] = ()
 
 

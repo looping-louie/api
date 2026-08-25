@@ -32,10 +32,12 @@ Workspace, Pipeline, and Activity definitions persist nullable `model_target`
 and `harness` overrides. Loop agents can persist a nullable `model_target` in
 their typed configuration while retaining legacy `model_id`. Every non-null
 model target is validated against an enabled, configured linked service and an
-active model deployment in the selected workspace. These are configuration
-scopes only: PipelineRun does not yet resolve them by hierarchy. It continues
-to snapshot an explicit Pipeline Harness, or the legacy `louie` v1 compatibility
-default when the Pipeline Harness override is unset.
+active model deployment in the selected workspace. PipelineRun creation
+resolves and freezes model targets at agent, Activity, Pipeline, then Workspace
+scope, and Harnesses at Activity, Pipeline, then Workspace scope. A missing
+resolved model target retains legacy Persona linked-service routing. When no
+Harness candidate exists, the frozen Harness is the `louie` v1 compatibility
+default.
 
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for
@@ -43,6 +45,5 @@ the frozen Pipeline Harness selection.
 
 Workspace defaults use explicit nullable values: an absent `model_target` or
 `harness` means the workspace inherits that value from a higher-level or
-system-level source. Workspace default candidates are persisted now; Pipeline
-and Activity resolution will consume them when the execution-default hierarchy
-is completed.
+system-level source. PipelineRun creation consumes Workspace candidates only
+after all narrower Pipeline, Activity, and agent candidates are considered.

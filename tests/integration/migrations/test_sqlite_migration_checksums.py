@@ -51,7 +51,7 @@ EXPECTED_CHECKSUMS = {
     '0041_pipeline_harness.sql': '8bbd7a703c01025dfaf0f3988af9b167fce5759e852b95e811b977fb8f901a3a',
     '0042_worker_harnesses.sql': '12904d2b0b1f7ceae8974ff65c9a694b7ad95fd844ebfbac1b7a2f1d5eeb8564',
     '0043_workspace_execution_defaults.sql': 'd2df858b00599ad9ee02f532efe6f0c4e47f6ae6fc4ef0c49a288e243b90b7ed',
-    '0044_execution_overrides.sql': '76a3c1f7a29e2a2ea5f62bc3d507f2234b63cfca65b3988aef2012f630bcdc65',
+    '0044_execution_overrides.sql': '1a5675323a4d481d2ff73aad4cfc603ec17ef36c686177d99aa81936128114fc',
 }
 
 

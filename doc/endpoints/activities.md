@@ -31,7 +31,12 @@ overrides. Loop agents accept nullable `model_target` values in addition to
 their retained legacy `model_id`. A model target always contains both
 `linked_service_id` and `model_id`; the API validates it against the selected
 workspace's available Linked Service. `null` clears an Activity override.
-PipelineRun resolution does not yet consume these stored candidates.
+PipelineRun creation resolves an Activity model target before Pipeline and
+Workspace candidates, and resolves an Activity Harness before Pipeline and
+Workspace candidates. The resolved values are frozen into the child
+ActivityRun snapshot. An agent target takes precedence over the resolved
+Activity target; an agent with no resolved target retains legacy Persona
+routing.
 
 Every Activity response includes top-level `model_target` and `harness` keys,
 with `null` for an unset override. The type-specific response examples below
