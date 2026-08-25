@@ -14,17 +14,17 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines` | Lists ten filtered pipelines after an offset. |
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
+| `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
+| `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a prepared pipeline run. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` | Starts a prepared pipeline run. |
-| `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
-| `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
-| `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 
 Creation requires a non-empty `name`, a `description`, and at least one step.
 Pipelines persist nullable `model_target` and `harness` overrides. PATCH accepts
@@ -100,9 +100,9 @@ Example response (`200 OK`):
               "max_iterations": 2
             },
             "agents": [
-              {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
-              {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
-              {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+              {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+              {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+              {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
             ],
             "output_contract": {
               "type": "text",
@@ -192,9 +192,9 @@ Example response (`200 OK`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
         ],
         "output_contract": {
           "type": "text",
@@ -288,9 +288,9 @@ Content-Type: application/json
           "max_iterations": 2
         },
         "agents": [
-          {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
         ],
         "output_contract": {
           "type": "text",
@@ -347,9 +347,9 @@ Example response (`201 Created`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
         ],
         "output_contract": {
           "type": "text",
@@ -460,9 +460,9 @@ Example response (`200 OK`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
-          {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
         ],
         "output_contract": {
           "type": "text",

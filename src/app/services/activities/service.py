@@ -17,13 +17,9 @@ from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineHarness
 from src.app.repositories.activities.repository import ActivityRepository
 from src.app.schemas.activity import validate_activity_config
-from src.app.services.personas.types import (
-    PersonaLinkedServiceSelectionRepository,
-)
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.reference_resolver import (
     ReferenceResolver,
-    ResourceReference,
 )
 from src.app.services.shared.tenant import TenantService
 from src.app.services.linked_services import LinkedServiceService
@@ -52,13 +48,12 @@ class ActivityValidationError(Exception):
 class ActivityService:
     """Coordinate validated activity operations for one resolved workspace."""
 
-    def __init__(self, *, repository: ActivityRepository, tenant_service: TenantService, reference_resolver: ReferenceResolver, persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository, id_factory: Callable[[], str], clock: Callable[[], datetime], linked_service_service: LinkedServiceService | None = None) -> None:
+    def __init__(self, *, repository: ActivityRepository, tenant_service: TenantService, reference_resolver: ReferenceResolver, id_factory: Callable[[], str], clock: Callable[[], datetime], linked_service_service: LinkedServiceService | None = None) -> None:
         """Store persistence, tenancy, identifier, and time dependencies."""
 
         self._repository = repository
         self._tenant_service = tenant_service
         self._reference_resolver = reference_resolver
-        self._persona_linked_service_selection_repository = persona_linked_service_selection_repository
         self._linked_service_service = linked_service_service
         self._id_factory = id_factory
         self._clock = clock
@@ -182,12 +177,12 @@ class ActivityService:
         workspace_id: str,
         config: dict[str, object],
     ) -> None:
-        """Require a Persona selection when an Activity agent lacks a model."""
+        """Validate explicit model targets declared by Activity agents."""
 
         agents = config.get('agents')
         if not isinstance(agents, list):
             return
-        for position, agent in enumerate(agents):
+        for agent in agents:
             if not isinstance(agent, dict):
                 continue
             target = agent.get('model_target')
@@ -200,29 +195,6 @@ class ActivityService:
                     ),
                 )
                 continue
-            if agent.get('model_id') is not None:
-                continue
-            persona_id = agent.get('persona_id')
-            if not isinstance(persona_id, str):
-                continue
-            await self._reference_resolver.require_many(
-                workspace_id=workspace_id,
-                references=[ResourceReference('persona', persona_id)],
-            )
-            selection = (
-                await self._persona_linked_service_selection_repository.get_for_persona(
-                    workspace_id=workspace_id,
-                    persona_id=persona_id,
-                )
-            )
-            if selection is None:
-                raise ActivityValidationError(
-                    field_name='config',
-                    message=(
-                        f'agents.{position}.persona_id requires a '
-                        'linked-service selection in this workspace'
-                    ),
-                )
 
     async def _require_model_target(
         self,

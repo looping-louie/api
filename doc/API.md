@@ -30,12 +30,12 @@ configuration. The CLI submits and manages API resources.
 
 Workspace, Pipeline, and Activity definitions persist nullable `model_target`
 and `harness` overrides. Loop agents can persist a nullable `model_target` in
-their typed configuration while retaining legacy `model_id`. Every non-null
+their typed configuration. Every non-null
 model target is validated against an enabled, configured linked service and an
 active model deployment in the selected workspace. PipelineRun creation
 resolves and freezes model targets at agent, Activity, Pipeline, then Workspace
 scope, and Harnesses at Activity, Pipeline, then Workspace scope. A missing
-resolved model target retains legacy Persona linked-service routing. When no
+agent target fails generation; Personas contribute instructions only. When no
 Harness candidate exists, the frozen Harness is the `louie` v1 compatibility
 default.
 

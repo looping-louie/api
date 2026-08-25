@@ -16,7 +16,6 @@ from src.app.services.activity_runs.generation import (
 )
 from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.model_execution import ModelExecutionResult
-from src.app.services.personas import PersonaLinkedServiceSelection
 
 
 class InvalidThenValidModelExecutionService:
@@ -161,7 +160,6 @@ async def test_generation_prefers_a_frozen_agent_model_target() -> None:
             'flow': 'direct',
             'agents': [
                 {
-                    'model_id': 'legacy-model',
                     'model_target': {
                         'linked_service_id': 'service-frozen',
                         'model_id': 'model-frozen',
@@ -199,9 +197,9 @@ class StaticInstructionLibraryService:
 
 
 def selected_persona_library(
-    selections: dict[str, str],
+    personas_by_model_id: dict[str, str],
 ) -> StaticInstructionLibraryService:
-    """Build a library with explicit Linked Service selections by Persona."""
+    """Build a library containing instruction-only Personas."""
 
     personas = {
         persona_id: ExecutionInstruction(
@@ -215,12 +213,8 @@ def selected_persona_library(
             description='Selected Persona.',
             content='Persona instructions.',
             metadata={},
-            linked_service_selection=PersonaLinkedServiceSelection(
-                linked_service_id='linked-service-1',
-                model_id=model_id,
-            ),
         )
-        for persona_id, model_id in selections.items()
+        for persona_id in personas_by_model_id
     }
     return StaticInstructionLibraryService(
         ExecutionInstructionLibrary(
@@ -284,8 +278,8 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     snapshot = {
         'flow': 'refinement',
         'agents': [
-            {'model_id': 'generator-model', 'persona_id': 'persona-1', 'role': 'generator'},
-            {'model_id': 'reviewer-model', 'persona_id': 'persona-2', 'role': 'reviewer'},
+            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'generator-model'}, 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'reviewer-model'}, 'persona_id': 'persona-2', 'role': 'reviewer'},
         ],
         'output_contract': {},
     }
@@ -307,8 +301,6 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     review = await service.generate_review_context(
         loop_snapshot=snapshot,
         workspace_id='workspace-1',
-        user_id='user-1',
-        requested_workspace_id=None,
         input_text='Create an output file.',
         context=context,
         final_diff='diff --git a/output.txt b/output.txt',
@@ -348,10 +340,10 @@ async def test_roundtable_generation_does_not_execute_reviewers() -> None:
     snapshot = {
         'flow': 'roundtable',
         'agents': [
-            {'model_id': 'generator-1', 'persona_id': 'persona-1', 'role': 'generator'},
-            {'model_id': 'generator-2', 'persona_id': 'persona-2', 'role': 'generator'},
-            {'model_id': 'reviewer-model', 'persona_id': 'persona-3', 'role': 'reviewer'},
-            {'model_id': 'aggregator-model', 'persona_id': 'persona-4', 'role': 'aggregator'},
+            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'generator-1'}, 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'generator-2'}, 'persona_id': 'persona-2', 'role': 'generator'},
+            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'reviewer-model'}, 'persona_id': 'persona-3', 'role': 'reviewer'},
+            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'aggregator-model'}, 'persona_id': 'persona-4', 'role': 'aggregator'},
         ],
         'output_contract': {},
     }
@@ -391,7 +383,7 @@ async def test_generation_retries_one_invalid_json_response() -> None:
             'agents': [
                 {
                     'id': 'agent-1',
-                    'model_id': 'model-1',
+                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -417,61 +409,35 @@ async def test_generation_retries_one_invalid_json_response() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generation_prefers_persona_linked_service_selection() -> None:
-    """Persona selection overrides the legacy model stored on a loop agent."""
+async def test_generation_rejects_agent_without_model_target() -> None:
+    """Generation cannot derive an agent target from Persona instructions."""
 
     model_execution_service = LinkedServiceModelExecutionService()
-    library = ExecutionInstructionLibrary(
-        workspace_id='workspace-1',
-        skills={},
-        personas={
-            'persona-1': ExecutionInstruction(
-                id='persona-1',
-                source_id='persona-1',
-                instruction_type='persona',
-                origin=InstructionOrigin.CUSTOM,
-                version=1,
-                catalog_version=None,
-                name='Persona',
-                description='Selected Persona.',
-                content='Persona instructions.',
-                metadata={},
-                linked_service_selection=PersonaLinkedServiceSelection(
-                    linked_service_id='linked-service-1',
-                    model_id='selected-model',
-                ),
-            ),
-        },
-        skill_aliases={},
-        persona_aliases={'persona-1': 'persona-1'},
-    )
     service = ActivityRunGenerationService(
         model_execution_service=model_execution_service,
-        instruction_library_service=StaticInstructionLibraryService(library),
+        instruction_library_service=selected_persona_library({'persona-1': 'legacy-model'}),
     )
 
-    await service.generate_context(
-        loop_snapshot={
-            'flow': 'direct',
-            'agents': [
-                {
-                    'model_id': 'legacy-model',
-                    'persona_id': 'persona-1',
-                    'role': 'generator',
-                },
-            ],
-            'output_contract': {},
-        },
-        workspace_id='workspace-1',
-        user_id='user-1',
-        requested_workspace_id=None,
-        input_text='Create an output file.',
-        context={'repo_context': 'Repository context.'},
-    )
+    with pytest.raises(ActivityRunValidationError, match='requires a model_target'):
+        await service.generate_context(
+            loop_snapshot={
+                'flow': 'direct',
+                'agents': [
+                    {
+                        'persona_id': 'persona-1',
+                        'role': 'generator',
+                    },
+                ],
+                'output_contract': {},
+            },
+            workspace_id='workspace-1',
+            user_id='user-1',
+            requested_workspace_id=None,
+            input_text='Create an output file.',
+            context={'repo_context': 'Repository context.'},
+        )
 
-    assert model_execution_service.requests == [
-        ('linked-service-1', 'selected-model'),
-    ]
+    assert model_execution_service.requests == []
 
 
 class FencedJsonModelExecutionService:
@@ -522,7 +488,7 @@ async def test_generation_accepts_a_markdown_fenced_json_response() -> None:
             'agents': [
                 {
                     'id': 'agent-1',
-                    'model_id': 'model-1',
+                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -570,6 +536,7 @@ async def test_forbidden_commit_generation_accepts_a_plan_without_commit_message
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
+                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -675,6 +642,7 @@ async def test_generation_retries_an_api_example_response() -> None:
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
+                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -712,6 +680,7 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
+                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -781,6 +750,7 @@ async def test_generation_retries_one_plan_without_commit_message() -> None:
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
+                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },

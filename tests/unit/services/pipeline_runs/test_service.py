@@ -310,7 +310,6 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
             **activity('activity-1').config,
             'agents': [
                 {
-                    'model_id': 'legacy-agent-model',
                     'model_target': {
                         'linked_service_id': agent_target.linked_service_id,
                         'model_id': agent_target.model_id,
@@ -327,7 +326,6 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
             **activity('activity-2').config,
             'agents': [
                 {
-                    'model_id': 'legacy-agent-model',
                     'persona_id': 'persona-2',
                     'role': 'generator',
                 },
@@ -396,7 +394,6 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
             **activity('activity-1').config,
             'agents': [
                 {
-                    'model_id': 'legacy-agent-model',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },

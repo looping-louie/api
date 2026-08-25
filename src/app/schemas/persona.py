@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import ConfigDict, Field, StrictBool, model_validator
 
@@ -31,27 +31,12 @@ class PersonaMetadata(RequestSchema):
     category: CatalogInstructionCategory | None = None
 
 
-class LinkedServiceReference(RequestSchema):
-    """Immutable linked-service identifier used by a persona."""
-
-    type: Literal['LinkedServiceReference']
-    reference_id: NonEmptyString
-
-
-class PersonaLinkedServiceConfig(RequestSchema):
-    """Model selected through a linked service."""
-
-    model: NonEmptyString
-
-
 class PersonaCreateRequest(RequestSchema):
     """Request body for creating a persona."""
 
     name: ResourceName
     description: str = ""
     instructions: NonEmptyString
-    linked_service: LinkedServiceReference
-    config: PersonaLinkedServiceConfig
     skill_ids: list[NonEmptyString] = Field(default_factory=list)
     metadata: PersonaMetadata = Field(default_factory=PersonaMetadata)
 
@@ -60,7 +45,6 @@ class PersonaCreateRequest(RequestSchema):
         """Reject ambiguous duplicate persona-skill associations."""
 
         self._require_unique_skill_ids()
-        self._require_linked_service_selection()
         return self
 
     def _require_unique_skill_ids(self) -> None:
@@ -69,10 +53,6 @@ class PersonaCreateRequest(RequestSchema):
         if len(self.skill_ids) != len(set(self.skill_ids)):
             raise ValueError("Skill ids must be unique.")
 
-    def _require_linked_service_selection(self) -> None:
-        """Keep the executable connection fields explicit in the contract."""
-
-
 class PersonaPatchRequest(RequestSchema):
     """Fields that may change for an available persona."""
 
@@ -80,8 +60,6 @@ class PersonaPatchRequest(RequestSchema):
     name: ResourceName | None = None
     description: str | None = None
     instructions: NonEmptyString | None = None
-    linked_service: LinkedServiceReference | None = None
-    config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[NonEmptyString] | None = None
     metadata: PersonaMetadata | None = None
     enabled: StrictBool | None = None
@@ -94,8 +72,6 @@ class PersonaPatchRequest(RequestSchema):
             self.name,
             self.description,
             self.instructions,
-            self.linked_service,
-            self.config,
             self.skill_ids,
             self.metadata,
         )
@@ -118,14 +94,6 @@ class PersonaPatchRequest(RequestSchema):
             and len(self.skill_ids) != len(set(self.skill_ids))
         ):
             raise ValueError("Skill ids must be unique.")
-        linked_service_supplied = 'linked_service' in self.model_fields_set
-        config_supplied = 'config' in self.model_fields_set
-        if linked_service_supplied != config_supplied:
-            raise ValueError('Linked service and config must be supplied together.')
-        if linked_service_supplied and (
-            self.linked_service is None or self.config is None
-        ):
-            raise ValueError('Linked service and config must be non-null.')
         return self
 
     def has_content_changes(self) -> bool:
@@ -137,8 +105,6 @@ class PersonaPatchRequest(RequestSchema):
                 self.name,
                 self.description,
                 self.instructions,
-                self.linked_service,
-                self.config,
                 self.skill_ids,
                 self.metadata,
             )
@@ -151,8 +117,6 @@ class PersonaSummaryResponse(
 ):
     """Lightweight persona returned by list operations."""
 
-    linked_service: LinkedServiceReference | None = None
-    config: PersonaLinkedServiceConfig | None = None
     category: CatalogInstructionCategory | None = None
 
 
@@ -163,8 +127,6 @@ class PersonaResponse(InstructionCapabilitiesResponse):
     name: str
     description: str
     instructions: str
-    linked_service: LinkedServiceReference | None = None
-    config: PersonaLinkedServiceConfig | None = None
     skill_ids: list[str]
     metadata: PersonaMetadata
     version: PositiveInteger

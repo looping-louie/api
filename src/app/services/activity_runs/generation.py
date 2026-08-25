@@ -103,7 +103,6 @@ class ActivityRunGenerationService:
                 instruction_library=instruction_library,
             ),
             context=context,
-            instruction_library=instruction_library,
             require_commit_message=require_commit_message,
         )
     async def _generate_roundtable_context(
@@ -138,7 +137,6 @@ class ActivityRunGenerationService:
                     prompt=proposal_prompt,
                     instruction_library=instruction_library,
                 ),
-                instruction_library,
             )
             for agent in generators
         ]
@@ -161,7 +159,6 @@ class ActivityRunGenerationService:
                 instruction_library=instruction_library,
             ),
             context=context,
-            instruction_library=instruction_library,
             require_commit_message=require_commit_message,
         )
 
@@ -172,7 +169,6 @@ class ActivityRunGenerationService:
         agent: Mapping[str, object],
         prompt: str,
         context: dict[str, object],
-        instruction_library: ExecutionInstructionLibrary | None = None,
         require_commit_message: bool = True,
     ) -> dict[str, object]:
         """Generate one non-empty CLI operation plan with one corrective retry."""
@@ -183,7 +179,6 @@ class ActivityRunGenerationService:
                 workspace_id,
                 agent,
                 retry_prompt,
-                instruction_library,
             )
             try:
                 return self._with_runtime_artifacts(
@@ -212,8 +207,6 @@ class ActivityRunGenerationService:
         *,
         loop_snapshot: Mapping[str, object],
         workspace_id: str,
-        user_id: str,
-        requested_workspace_id: str | None,
         input_text: str,
         context: Mapping[str, object],
         final_diff: str,
@@ -228,11 +221,6 @@ class ActivityRunGenerationService:
         ]
         if not reviewers:
             return {'approved': True, 'reviewers': []}
-
-        instruction_library = await self._load_instruction_library(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
 
         review_prompt = (
             'Return only a JSON object with an approved boolean and feedback '
@@ -250,7 +238,6 @@ class ActivityRunGenerationService:
                 workspace_id,
                 reviewer,
                 review_prompt,
-                instruction_library,
             )
             approved = review.get('approved')
             feedback = review.get('feedback')
@@ -345,12 +332,10 @@ class ActivityRunGenerationService:
         workspace_id: str,
         agent: Mapping[str, object],
         prompt: str,
-        instruction_library: ExecutionInstructionLibrary | None = None,
     ) -> dict[str, object]:
         """Execute one configured agent and require a JSON object response."""
 
         role = str(agent['role'])
-        model_id = str(agent['model_id'])
         target = agent.get('model_target')
         if isinstance(target, Mapping):
             linked_service_id = target.get('linked_service_id')
@@ -361,20 +346,10 @@ class ActivityRunGenerationService:
                     message='model_target must contain a linked service and model ID.',
                 )
         else:
-            linked_service_selection = (
-                instruction_library.persona_linked_service_selection(
-                    str(agent['persona_id']),
-                )
-                if instruction_library is not None
-                else None
+            raise ActivityRunValidationError(
+                field_name='agents',
+                message='Each agent requires a model_target.',
             )
-            if linked_service_selection is None:
-                raise ActivityRunValidationError(
-                    field_name='agents',
-                    message='Persona requires a linked-service selection.',
-                )
-            linked_service_id = linked_service_selection.linked_service_id
-            target_model_id = linked_service_selection.model_id
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
@@ -389,7 +364,7 @@ class ActivityRunGenerationService:
                 LOGGER.warning(
                     'Loop agent execution failed: role=%s model_id=%s error=%s',
                     role,
-                    model_id,
+                    target_model_id,
                     error,
                 )
                 raise ModelExecutionError(
@@ -402,7 +377,7 @@ class ActivityRunGenerationService:
                     LOGGER.warning(
                         'Loop agent returned invalid JSON: role=%s model_id=%s',
                         role,
-                        model_id,
+                        target_model_id,
                     )
                     raise ModelOutputValidationError(
                         f'Loop {role} agent returned invalid JSON.'
@@ -418,7 +393,7 @@ class ActivityRunGenerationService:
                 'Loop agent returned a non-object JSON response: '
                 'role=%s model_id=%s',
                 role,
-                model_id,
+                target_model_id,
             )
             raise ModelOutputValidationError(
                 f'Loop {role} agent response must be a JSON object.'

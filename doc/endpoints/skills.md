@@ -8,8 +8,8 @@ immutable; they can be enabled or disabled.
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/skills` | Lists skill metadata without full instructions. |
-| `GET` | `/api/v1/skills/{skill_id}` | Describes a skill including its complete instructions. |
 | `POST` | `/api/v1/skills` | Creates a custom skill. |
+| `GET` | `/api/v1/skills/{skill_id}` | Describes a skill including its complete instructions. |
 | `PATCH` | `/api/v1/skills/{skill_id}` | Modifies content or workspace enablement. |
 | `DELETE` | `/api/v1/skills/{skill_id}` | Deletes a skill when it has no blocking dependencies. |
 

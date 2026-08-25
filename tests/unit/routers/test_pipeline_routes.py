@@ -83,7 +83,6 @@ def activity_payload(
             'stop_conditions': {'max_iterations': 1},
             'agents': [
                 {
-                    'model_id': 'model-1',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 }
@@ -591,8 +590,8 @@ def test_pipeline_rejects_invalid_direct_loop_roles(
     invalid_agents = (
         [],
         [
-            {'model_id': 'model-1', 'persona_id': 'persona-1', 'role': 'generator'},
-            {'model_id': 'model-2', 'persona_id': 'persona-2', 'role': 'reviewer'},
+            {'persona_id': 'persona-1', 'role': 'generator'},
+            {'persona_id': 'persona-2', 'role': 'reviewer'},
         ],
     )
     for agents in invalid_agents:

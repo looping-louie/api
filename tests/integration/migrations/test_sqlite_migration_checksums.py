@@ -52,6 +52,7 @@ EXPECTED_CHECKSUMS = {
     '0042_worker_harnesses.sql': '12904d2b0b1f7ceae8974ff65c9a694b7ad95fd844ebfbac1b7a2f1d5eeb8564',
     '0043_workspace_execution_defaults.sql': 'd2df858b00599ad9ee02f532efe6f0c4e47f6ae6fc4ef0c49a288e243b90b7ed',
     '0044_execution_overrides.sql': '1a5675323a4d481d2ff73aad4cfc603ec17ef36c686177d99aa81936128114fc',
+    '0045_remove_persona_linked_service_selections.sql': 'cadc2fe790d4caaaac9c928fd0129e268a17b1da7ac3d2ba57043ebbffaca261',
 }
 
 

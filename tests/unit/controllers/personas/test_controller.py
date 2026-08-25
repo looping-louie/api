@@ -42,11 +42,6 @@ async def test_persona_controller_patches_and_creates(
         payload=PersonaCreateRequest(
             name='Workspace_Lead',
             instructions='Lead workspace reviews.',
-            linked_service={
-                'type': 'LinkedServiceReference',
-                'reference_id': 'linked-service-1',
-            },
-            config={'model': 'service-model'},
         ),
     )
 

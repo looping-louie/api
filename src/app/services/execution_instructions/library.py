@@ -16,8 +16,6 @@ from ..persona_skills import (
 )
 from ..shared.tenant import TenantService
 from ..personas.types import (
-    PersonaLinkedServiceSelection,
-    PersonaLinkedServiceSelectionRepository,
     PersonaSkillRepository,
 )
 
@@ -54,7 +52,6 @@ class ExecutionInstruction:
     content: str
     metadata: Mapping[str, object]
     skill_ids: tuple[str, ...] = ()
-    linked_service_selection: PersonaLinkedServiceSelection | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,15 +111,6 @@ class ExecutionInstructionLibrary:
         runtime_id = self.normalize_persona_id(instruction_id)
         return self.personas[runtime_id].content
 
-    def persona_linked_service_selection(
-        self,
-        instruction_id: str,
-    ) -> PersonaLinkedServiceSelection | None:
-        """Return the selected linked service for one loaded persona."""
-
-        runtime_id = self.normalize_persona_id(instruction_id)
-        return self.personas[runtime_id].linked_service_selection
-
     def skill_contents(
         self,
         instruction_ids: Sequence[str],
@@ -181,14 +169,10 @@ class ExecutionInstructionLibraryService:
         repository: DefinitionRepository,
         persona_skill_repository: PersonaSkillRepository,
         tenant_service: TenantService,
-        persona_linked_service_selection_repository: PersonaLinkedServiceSelectionRepository | None = None,
     ) -> None:
         self._repository = repository
         self._persona_skill_repository = persona_skill_repository
         self._tenant_service = tenant_service
-        self._persona_linked_service_selection_repository = (
-            persona_linked_service_selection_repository
-        )
 
     async def load(
         self,
@@ -269,17 +253,6 @@ class ExecutionInstructionLibraryService:
                 if instruction_type == "persona"
                 else ()
             )
-            linked_service_selection = (
-                await self._persona_linked_service_selection_repository.get_for_persona(
-                    workspace_id=workspace_id,
-                    persona_id=document.id,
-                )
-                if (
-                    instruction_type == "persona"
-                    and self._persona_linked_service_selection_repository is not None
-                )
-                else None
-            )
             instructions.append(
                 ExecutionInstruction(
                     id=self._runtime_id(document),
@@ -295,7 +268,6 @@ class ExecutionInstructionLibraryService:
                         deepcopy(dict(document.metadata))
                     ),
                     skill_ids=skill_ids,
-                    linked_service_selection=linked_service_selection,
                 )
             )
 

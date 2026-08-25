@@ -57,7 +57,6 @@ def activity_step(
             'stop_conditions': {'max_iterations': 1},
             'agents': [
                 {
-                    'model_id': 'model-1',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 }

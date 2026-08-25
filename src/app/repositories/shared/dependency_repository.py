@@ -37,48 +37,11 @@ class SqliteDependencyRepository:
             activity_id=target.resource_id,
             )
         if target.resource_type == 'linked_service':
-            return await self._find_persona_usages(
+            return await self._find_linked_service_usages(
                 workspace_id=workspace_id,
                 linked_service_id=target.resource_id,
             )
         return []
-
-    async def _find_persona_usages(
-        self,
-        *,
-        workspace_id: str,
-        linked_service_id: str,
-    ) -> list[DependencyUsage]:
-        """Return personas selecting one linked service."""
-
-        async with self._connect() as connection:
-            cursor = await connection.execute(
-                '''
-                SELECT selections.persona_id
-                FROM persona_linked_service_selections AS selections
-                JOIN instructions
-                    ON instructions.id = selections.persona_id
-                WHERE instructions.owner_workspace_id = ?
-                    AND selections.linked_service_id = ?
-                ORDER BY selections.persona_id ASC
-                ''',
-                (workspace_id, linked_service_id),
-            )
-            try:
-                rows = await cursor.fetchall()
-            finally:
-                await cursor.close()
-
-        return [
-            DependencyUsage(
-                source=ResourceReference(
-                    resource_type='persona',
-                    resource_id=str(row['persona_id']),
-                ),
-                relation='linked_service',
-            )
-            for row in rows
-        ]
 
     async def _find_pipeline_usages(
         self,
@@ -110,6 +73,72 @@ class SqliteDependencyRepository:
                     resource_id=str(row["pipeline_id"]),
                 ),
                 relation="activity",
+            )
+            for row in rows
+        ]
+
+    async def _find_linked_service_usages(
+        self,
+        *,
+        workspace_id: str,
+        linked_service_id: str,
+    ) -> list[DependencyUsage]:
+        """Return persisted model targets that reference one linked service."""
+
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                """
+                SELECT 'workspace' AS resource_type, workspace_id AS resource_id,
+                    'model_target' AS relation
+                FROM workspace_execution_defaults
+                WHERE workspace_id = ?
+                    AND json_extract(model_target_json, '$.linked_service_id') = ?
+                UNION ALL
+                SELECT 'pipeline' AS resource_type, id AS resource_id,
+                    'model_target' AS relation
+                FROM pipelines
+                WHERE workspace_id = ?
+                    AND json_extract(model_target_json, '$.linked_service_id') = ?
+                UNION ALL
+                SELECT 'activity' AS resource_type, id AS resource_id,
+                    'model_target' AS relation
+                FROM activities
+                WHERE workspace_id = ?
+                    AND json_extract(model_target_json, '$.linked_service_id') = ?
+                UNION ALL
+                SELECT 'activity' AS resource_type, activity.id AS resource_id,
+                    'agent_model_target' AS relation
+                FROM activities AS activity
+                JOIN json_each(activity.config_json, '$.agents') AS agent
+                WHERE activity.workspace_id = ?
+                    AND json_extract(
+                        agent.value, '$.model_target.linked_service_id'
+                    ) = ?
+                ORDER BY resource_type ASC, resource_id ASC, relation ASC
+                """,
+                (
+                    workspace_id,
+                    linked_service_id,
+                    workspace_id,
+                    linked_service_id,
+                    workspace_id,
+                    linked_service_id,
+                    workspace_id,
+                    linked_service_id,
+                ),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+
+        return [
+            DependencyUsage(
+                source=ResourceReference(
+                    resource_type=str(row['resource_type']),
+                    resource_id=str(row['resource_id']),
+                ),
+                relation=str(row['relation']),
             )
             for row in rows
         ]

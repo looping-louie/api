@@ -36,9 +36,6 @@ from src.app.repositories.instructions.repository import (
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.repositories.instructions.persona_linked_service_selection_repository import (
-    SqlitePersonaLinkedServiceSelectionRepository,
-)
 from src.app.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -165,11 +162,6 @@ async def configure_application(
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
-    persona_linked_service_selection_repository = (
-        SqlitePersonaLinkedServiceSelectionRepository(
-            resolved_settings.database_path,
-        )
-    )
     activity_repository = SqliteActivityRepository(
         resolved_settings.database_path,
     )
@@ -195,9 +187,6 @@ async def configure_application(
             repository=instruction_repository,
             persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
-            persona_linked_service_selection_repository=(
-                persona_linked_service_selection_repository
-            ),
         )
     )
     validation_service = ValidationService(
@@ -262,11 +251,6 @@ async def configure_application(
         persona_definition_service=persona_definition_service,
         skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
-        persona_linked_service_selection_repository=(
-            persona_linked_service_selection_repository
-        ),
-        linked_service_service=linked_service_service,
-        reference_resolver=reference_resolver,
     )
     skill_service = SkillService(
         tenant_service=tenant_service,
@@ -276,9 +260,6 @@ async def configure_application(
         repository=activity_repository,
         tenant_service=tenant_service,
         reference_resolver=reference_resolver,
-        persona_linked_service_selection_repository=(
-            persona_linked_service_selection_repository
-        ),
         id_factory=create_identifier,
         clock=utc_now,
         linked_service_service=linked_service_service,

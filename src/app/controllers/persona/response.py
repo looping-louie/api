@@ -26,7 +26,7 @@ def persona_summary_response(
 def _response_values(
     document: PersonaResultDocument | AvailablePersonaSummary,
 ) -> dict[str, object]:
-    """Build response data, including the optional linked-service selection."""
+    """Build response data from a persona document."""
 
     values = {
         field.name: getattr(document, field.name)
@@ -34,11 +34,4 @@ def _response_values(
     }
     values['editable'] = document.editable
     values['duplicable'] = document.duplicable
-    selection = document.linked_service_selection
-    if selection is not None:
-        values['linked_service'] = {
-            'type': 'LinkedServiceReference',
-            'reference_id': selection.linked_service_id,
-        }
-        values['config'] = {'model': selection.model_id}
     return values

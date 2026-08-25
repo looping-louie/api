@@ -38,10 +38,9 @@ class ActivityLoopStopConditionsSchema(RequestSchema):
 
 
 class ActivityLoopAgentSchema(RequestSchema):
-    """One model and persona assignment for a loop Activity."""
+    """One Persona role and optional explicit model target for a loop Activity."""
 
     id: NonEmptyString | None = None
-    model_id: NonEmptyString | None = None
     model_target: ModelTargetRequest | None = None
     persona_id: NonEmptyString
     role: ActivityLoopRoleValue

@@ -2,21 +2,20 @@
 
 import sqlite3
 
-import pytest
-
 from tests.integration.migrations.test_instruction_catalog_migration import (
+    SQLITE_MIGRATIONS,
     apply_migrations,
     insert_instruction,
     insert_workspace,
 )
 
 
-def test_linked_service_selection_cascades_with_persona_and_blocks_service_delete() -> None:
-    """Selections retain personas while preventing linked-service deletion."""
+def test_forward_migration_drops_persona_linked_service_selections() -> None:
+    """The forward migration removes the retired Persona routing table."""
 
     connection = sqlite3.connect(':memory:')
     connection.execute('PRAGMA foreign_keys = ON')
-    apply_migrations(connection)
+    apply_migrations(connection, through='0044_execution_overrides')
     insert_workspace(connection, 'workspace-1')
     insert_instruction(
         connection,
@@ -39,11 +38,36 @@ def test_linked_service_selection_cascades_with_persona_and_blocks_service_delet
         ) VALUES ('workspace-1', 'persona-1', 'linked-service-1', 'model-1')
         '''
     )
+    connection.execute(
+        '''
+        INSERT INTO activities (
+            id, workspace_id, name, description, status, activity_type, config_json,
+            created_at, created_by, updated_at, updated_by
+        ) VALUES (
+            'activity-1', 'workspace-1', 'Implementation', '', 'active',
+            'direct_loop',
+            '{"agents":[{"model_id":"legacy-model","persona_id":"persona-1","role":"generator"}]}',
+            'now', 'user-1', 'now', 'user-1'
+        )
+        '''
+    )
 
-    with pytest.raises(sqlite3.IntegrityError):
-        connection.execute("DELETE FROM linked_services WHERE id = 'linked-service-1'")
+    connection.executescript(
+        (
+            SQLITE_MIGRATIONS
+            / '0045_remove_persona_linked_service_selections.sql'
+        ).read_text(encoding='utf-8')
+    )
 
-    connection.execute("DELETE FROM instructions WHERE id = 'persona-1'")
     assert connection.execute(
-        'SELECT COUNT(*) FROM persona_linked_service_selections'
-    ).fetchone() == (0,)
+        "SELECT name FROM sqlite_master WHERE type = 'table' "
+        "AND name = 'persona_linked_service_selections'"
+    ).fetchone() is None
+    config_json = connection.execute(
+        "SELECT config_json FROM activities WHERE id = 'activity-1'"
+    ).fetchone()[0]
+    assert config_json == (
+        '{"agents":[{"persona_id":"persona-1","role":"generator",'
+        '"model_target":{"linked_service_id":"linked-service-1",'
+        '"model_id":"model-1"}}]}'
+    )

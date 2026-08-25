@@ -306,8 +306,6 @@ class ActivityRunService:
             review = await self._generation_service.generate_review_context(
                 loop_snapshot=document.activity_snapshot,
                 workspace_id=workspace.workspace_id,
-                user_id=user_id,
-                requested_workspace_id=requested_workspace_id,
                 input_text=document.input,
                 context=context,
                 final_diff=str(result.get('final_diff', '')),

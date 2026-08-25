@@ -32,13 +32,13 @@ select a provider connection. A missing value explicitly means inheritance.
 The hierarchy persists candidates at workspace, Pipeline, Activity, and
 loop-agent scopes. Pipeline and Activity store first-class nullable
 `model_target` and `harness` fields; agents store nullable `model_target` in
-their typed loop configuration and keep legacy `model_id` for compatibility.
+their typed loop configuration.
 It is intentionally separate from Personas, which are reusable instructions
 rather than model-routing or provider-connection resources. PipelineRun
 creation resolves and freezes effective values: agent, Activity, Pipeline, then
 Workspace for model targets; and Activity, Pipeline, then Workspace for
-Harnesses. An agent without a resolved target retains the legacy Persona
-linked-service selection. An unset effective Harness becomes the `louie` v1
+Harnesses. An agent without an explicit target fails generation; Personas are
+instruction-only resources. An unset effective Harness becomes the `louie` v1
 compatibility default.
 
 ## Harnesses
@@ -369,7 +369,6 @@ repositories/
 |   |-- availability.py            Persists workspace availability settings
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
-|   |-- persona_linked_service_selection_repository.py Persists persona service selections
 |   |-- repository.py              Persists resource definitions
 |   |-- settings.py                Persists workspace enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
@@ -447,10 +446,7 @@ models/
 - [Providers](components/providers.md) records the static provider and model
   catalog boundary. Linked Services persist independent workspace-owned provider
   connections and derive their available deployment models from that catalog.
-  Persona linked-service selections are workspace-scoped and require an enabled,
-  configured service with an active compatible deployment. During execution, a
-  selection routes its model request through that exact service. Legacy provider
-  credentials and Persona model associations are retired.
+  Legacy provider credentials and Persona model associations are retired.
 - [Philosophy](components/philosophy.md) contains the project principles and
   long-term direction.
 - [Current limitations](components/limitations.md) records known MVP

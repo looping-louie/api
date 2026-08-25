@@ -27,16 +27,16 @@ The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
 
 Activities also accept nullable top-level `model_target` and `harness`
-overrides. Loop agents accept nullable `model_target` values in addition to
-their retained legacy `model_id`. A model target always contains both
+overrides. Loop agents accept nullable `model_target` values. A model target
+always contains both
 `linked_service_id` and `model_id`; the API validates it against the selected
 workspace's available Linked Service. `null` clears an Activity override.
 PipelineRun creation resolves an Activity model target before Pipeline and
 Workspace candidates, and resolves an Activity Harness before Pipeline and
 Workspace candidates. The resolved values are frozen into the child
 ActivityRun snapshot. An agent target takes precedence over the resolved
-Activity target; an agent with no resolved target retains legacy Persona
-routing.
+Activity target; an agent without a target fails generation. Personas provide
+instructions only.
 
 Every Activity response includes top-level `model_target` and `harness` keys,
 with `null` for an unset override. The type-specific response examples below
@@ -69,9 +69,9 @@ type.
 | `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
 
 Every loop agent requires a `persona_id` and `role`. An explicit agent
-`model_target` is validated as a linked-service/model pair. Without one, the
-legacy Persona selection behavior remains available; `model_id` is retained for
-compatibility until Persona routing is removed.
+`model_target` is validated as a linked-service/model pair. Activity definition
+validation permits an absent target, but generation rejects that agent until a
+`model_target` is supplied.
 
 ## Activity runs
 
@@ -110,7 +110,10 @@ Example response (`200 OK`):
         },
         "agents": [
           {
-            "model_id": "gpt-5",
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
             "persona_id": "software-engineer",
             "role": "generator"
           }
@@ -157,7 +160,10 @@ Example response (`200 OK`):
     },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -205,7 +211,10 @@ Content-Type: application/json
     },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -235,7 +244,10 @@ Example response (`201 Created`):
     },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -269,17 +281,26 @@ Roundtable loops do not allow `reviewer` agents.
     },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "release-manager",
         "role": "generator"
       },
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "quality-engineer",
         "role": "generator"
       },
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "technical-lead",
         "role": "aggregator"
       }
@@ -318,17 +339,26 @@ Example response (`201 Created`):
     "stop_conditions": {"max_iterations": 2},
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "release-manager",
         "role": "generator"
       },
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "quality-engineer",
         "role": "generator"
       },
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "technical-lead",
         "role": "aggregator"
       }
@@ -375,12 +405,18 @@ within the configured `max_iterations` limit.
     },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "technical-writer",
         "role": "generator"
       },
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "documentation-reviewer",
         "role": "reviewer"
       }
@@ -405,15 +441,23 @@ Example response (`201 Created`):
   "status": "active",
   "type": "refinement_loop",
   "config": {
-    "stop_conditions": {"timeout_seconds": 900},
+    "stop_conditions": {
+      "timeout_seconds": 900
+    },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "technical-writer",
         "role": "generator"
       },
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "documentation-reviewer",
         "role": "reviewer"
       }
@@ -552,7 +596,10 @@ Example response (`200 OK`):
     },
     "agents": [
       {
-        "model_id": "gpt-5",
+        "model_target": {
+          "linked_service_id": "linked-service-openai-primary",
+          "model_id": "gpt-5"
+        },
         "persona_id": "software-engineer",
         "role": "generator"
       }
