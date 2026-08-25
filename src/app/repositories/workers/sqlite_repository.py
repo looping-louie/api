@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
 
@@ -25,14 +26,16 @@ class SqliteWorkerRepository:
                 await connection.execute(
                     '''
                     INSERT INTO workers (
-                        id, workspace_id, registered_at, last_heartbeat_at
-                    ) VALUES (?, ?, ?, ?)
+                        id, workspace_id, registered_at, last_heartbeat_at,
+                        harnesses_json
+                    ) VALUES (?, ?, ?, ?, ?)
                     ''',
                     (
                         document.id,
                         document.workspace_id,
                         document.registered_at.isoformat(),
                         document.last_heartbeat_at.isoformat(),
+                        _serialize_harnesses(document.harnesses),
                     ),
                 )
                 await connection.commit()
@@ -40,6 +43,30 @@ class SqliteWorkerRepository:
                 await connection.rollback()
                 raise
         return document
+
+    async def get(
+        self,
+        *,
+        workspace_id: str,
+        worker_id: str,
+    ) -> WorkerDocument | None:
+        """Return one Worker registration and its reported capabilities."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, workspace_id, registered_at, last_heartbeat_at,
+                    harnesses_json
+                FROM workers
+                WHERE workspace_id = ? AND id = ?
+                ''',
+                (workspace_id, worker_id),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return _to_document(row) if row is not None else None
 
     async def heartbeat(
         self,
@@ -58,7 +85,8 @@ class SqliteWorkerRepository:
                     UPDATE workers
                     SET last_heartbeat_at = ?
                     WHERE workspace_id = ? AND id = ?
-                    RETURNING id, workspace_id, registered_at, last_heartbeat_at
+                    RETURNING id, workspace_id, registered_at, last_heartbeat_at,
+                        harnesses_json
                     ''',
                     (occurred_at.isoformat(), workspace_id, worker_id),
                 )
@@ -105,4 +133,44 @@ def _to_document(row: object) -> WorkerDocument:
         workspace_id=row['workspace_id'],
         registered_at=parse_datetime(row['registered_at']),
         last_heartbeat_at=parse_datetime(row['last_heartbeat_at']),
+        harnesses=_deserialize_harnesses(row['harnesses_json']),
     )
+
+
+def _serialize_harnesses(
+    harnesses: tuple[WorkerHarnessCapability, ...],
+) -> str:
+    """Serialize Worker capabilities in the durable API representation."""
+
+    return json.dumps([
+        {
+            'kind': harness.kind,
+            'version': harness.version,
+            'config': dict(harness.config),
+        }
+        for harness in harnesses
+    ])
+
+
+def _deserialize_harnesses(value: str) -> tuple[WorkerHarnessCapability, ...]:
+    """Decode the supported Worker Harness capability representation."""
+
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError('Worker Harness capabilities are invalid.') from error
+    if not isinstance(parsed, list):
+        raise RuntimeError('Worker Harness capabilities are invalid.')
+    capabilities: list[WorkerHarnessCapability] = []
+    for capability in parsed:
+        config = capability.get('config') if isinstance(capability, dict) else None
+        if (
+            not isinstance(capability, dict)
+            or capability.get('kind') not in ('louie', 'codex_cli')
+            or capability.get('version') != 'v1'
+            or not isinstance(config, dict)
+            or config
+        ):
+            raise RuntimeError('Worker Harness capabilities are invalid.')
+        capabilities.append(WorkerHarnessCapability(kind=capability['kind']))
+    return tuple(capabilities)

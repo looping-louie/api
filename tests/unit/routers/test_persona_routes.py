@@ -10,7 +10,10 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.persona import PersonaController
 from src.app.routers.personas import router as personas_router
-from src.app.services.instructions import InstructionService
+from src.app.services.persona_skills import (
+    PersonaDefinitionService,
+    SkillDefinitionService,
+)
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
@@ -40,12 +43,16 @@ def build_app(*, controller: PersonaController) -> FastAPI:
 
 @pytest.fixture
 def persona_controller(
-    instruction_service: InstructionService,
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
 ) -> PersonaController:
     """Build a controller backed by deterministic in-memory fakes."""
 
     return PersonaController(
-        persona_service=build_persona_service(instruction_service),
+        persona_service=build_persona_service(
+            persona_definition_service,
+            skill_definition_service,
+        ),
     )
 
 
@@ -61,11 +68,6 @@ def test_persona_rest_crud_routes(
             "name": "API_Reviewer",
             "description": "Reviews API contracts.",
             "instructions": "Review every public API contract.",
-            "linked_service": {
-                "type": "LinkedServiceReference",
-                "reference_id": "linked-service-1",
-            },
-            "config": {"model": "service-model"},
             "metadata": {"team": "platform"},
         },
     )
@@ -88,7 +90,8 @@ def test_persona_rest_crud_routes(
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
     assert described.status_code == 200
-    assert described.json()['linked_service']['reference_id'] == 'linked-service-1'
+    assert 'linked_service' not in described.json()
+    assert 'config' not in described.json()
     assert described.json()["instructions"] == (
         "Review every public API contract."
     )
@@ -142,11 +145,6 @@ def test_persona_routes_create_and_replace_skill_associations(
             "name": "Platform_reviewer",
             "instructions": "Review platform changes.",
             "skill_ids": [first_skill.id, second_skill.id],
-            "linked_service": {
-                "type": "LinkedServiceReference",
-                "reference_id": "linked-service-1",
-            },
-            "config": {"model": "service-model"},
         },
     )
     persona_id = created.json()["id"]
@@ -167,10 +165,10 @@ def test_persona_routes_create_and_replace_skill_associations(
     assert patched.json()["skill_ids"] == [second_skill.id]
 
 
-def test_persona_routes_accept_linked_service_selection(
+def test_persona_routes_reject_linked_service_selection(
     persona_controller: PersonaController,
 ) -> None:
-    """POST returns the required linked-service selection."""
+    """POST no longer accepts execution routing fields on Personas."""
 
     client = TestClient(build_app(controller=persona_controller))
     response = client.post(
@@ -186,12 +184,7 @@ def test_persona_routes_accept_linked_service_selection(
         },
     )
 
-    assert response.status_code == 201
-    assert response.json()['linked_service'] == {
-        'type': 'LinkedServiceReference',
-        'reference_id': 'linked-service-1',
-    }
-    assert response.json()['config'] == {'model': 'service-model'}
+    assert response.status_code == 422
 
 
 def test_patch_changes_builtin_enabled_state_without_version(

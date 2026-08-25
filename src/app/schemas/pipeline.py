@@ -9,6 +9,12 @@ from pydantic import Field, model_validator
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
 from src.app.schemas.activity_run import ActivityRunResponse
+from src.app.schemas.execution import (
+    HarnessRequest,
+    HarnessResponse,
+    ModelTargetRequest,
+    ModelTargetResponse,
+)
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
@@ -26,6 +32,30 @@ PipelineChangeTypeValue = Literal[
     "disabled",
     "archived",
 ]
+
+
+class PipelineHarnessRequest(RequestSchema):
+    """One supported Pipeline Harness selection."""
+
+    kind: Literal['louie', 'codex_cli'] = 'louie'
+    version: Literal['v1'] = 'v1'
+    config: dict[str, object] = Field(default_factory=dict)
+
+    @model_validator(mode='after')
+    def require_empty_harness_config(self) -> 'PipelineHarnessRequest':
+        """Reject settings not supported by the initial Harness contract."""
+
+        if self.config:
+            raise ValueError(f'{self.kind} harness config must be empty.')
+        return self
+
+
+class PipelineHarnessResponse(ResponseSchema):
+    """The persisted Harness selection for a Pipeline."""
+
+    kind: Literal['louie', 'codex_cli']
+    version: Literal['v1']
+    config: dict[str, object]
 
 
 class PipelineStepDependencyRequest(RequestSchema):
@@ -58,6 +88,8 @@ class PipelineCreateRequest(RequestSchema):
     name: ResourceName
     description: str
     steps: list[PipelineActivityStepRequest]
+    model_target: ModelTargetRequest | None = None
+    harness: PipelineHarnessRequest | None = None
 
 
 class PipelinePatchRequest(RequestSchema):
@@ -67,6 +99,8 @@ class PipelinePatchRequest(RequestSchema):
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
+    model_target: ModelTargetRequest | None = None
+    harness: PipelineHarnessRequest | None = None
 
     @model_validator(mode="after")
     def require_supplied_non_null_change(self) -> Self:
@@ -74,7 +108,7 @@ class PipelinePatchRequest(RequestSchema):
 
         if not self.model_fields_set:
             raise ValueError("At least one pipeline field must be supplied.")
-        for field_name in self.model_fields_set:
+        for field_name in self.model_fields_set - {'model_target', 'harness'}:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} must not be null.")
         return self
@@ -96,6 +130,8 @@ class PipelineResponse(ResponseSchema):
     name: str
     description: str
     enabled: bool
+    model_target: ModelTargetResponse | None
+    harness: PipelineHarnessResponse | None
     steps: list[PipelineActivityStepResponse]
     created_at: datetime
     updated_at: datetime

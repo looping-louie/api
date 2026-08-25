@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from src.app.schemas.skill import SkillCreateRequest, SkillResponse
-from src.app.services.instructions import InstructionCreate
-from src.app.services.skills import SkillService
+from src.app.services.skills import SkillCreate, SkillService
 
 
 class SkillCreateController:
@@ -25,7 +24,7 @@ class SkillCreateController:
         document = await self._skill_service.create(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
-            payload=InstructionCreate(
+            payload=SkillCreate(
                 name=payload.name,
                 description=payload.description,
                 instructions=payload.instructions,

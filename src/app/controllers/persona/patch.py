@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from src.app.schemas.persona import PersonaPatchRequest, PersonaResponse
 from src.app.services.personas import (
-    PersonaLinkedServiceSelection,
     PersonaService,
     PersonaUpdate,
 )
@@ -44,17 +43,6 @@ class PersonaPatchController:
                     name=payload.name,
                     description=payload.description,
                     instructions=payload.instructions,
-                    linked_service_selection=(
-                        PersonaLinkedServiceSelection(
-                            linked_service_id=payload.linked_service.reference_id,
-                            model_id=payload.config.model,
-                        )
-                        if payload.linked_service is not None and payload.config is not None
-                        else None
-                    ),
-                    linked_service_selection_supplied=(
-                        'linked_service' in payload.model_fields_set
-                    ),
                     metadata=metadata,
                     skill_ids=(
                         tuple(payload.skill_ids)

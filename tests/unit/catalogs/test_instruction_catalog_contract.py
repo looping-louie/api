@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from src.app.catalogs.instructions import (
+from src.app.catalogs.persona_skills import (
     AgentRole,
     CatalogInstructionType,
     InstructionCatalogMetadata,

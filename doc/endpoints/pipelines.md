@@ -14,22 +14,34 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `GET` | `/api/v1/pipelines` | Lists ten filtered pipelines after an offset. |
 | `POST` | `/api/v1/pipelines` | Creates an enabled pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}` | Describes one complete ordered definition. |
+| `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
+| `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a prepared pipeline run. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` | Starts a prepared pipeline run. |
-| `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
-| `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
-| `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
-| `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
 
 Creation requires a non-empty `name`, a `description`, and at least one step.
-New pipelines are enabled. PATCH accepts `name`, `description`, `enabled`, and
-`steps`; supplying `steps` replaces the complete ordered array. Archived
-pipelines are immutable and omitted from unfiltered listings.
+Pipelines persist nullable `model_target` and `harness` overrides. PATCH accepts
+`name`, `description`, `enabled`, `steps`, `model_target`, and `harness`;
+supplying `steps` replaces the complete ordered array. A non-null model target
+is validated against the selected workspace Linked Service, and `null` clears
+either override. PipelineRun creation resolves
+model targets at agent, Activity, Pipeline, then Workspace scope, and Harnesses
+at Activity, Pipeline, then Workspace scope. It freezes the effective values
+in its Pipeline and Activity snapshots. An unset effective Harness retains the
+legacy `louie` v1 compatibility behavior.
+Archived pipelines are immutable and omitted from unfiltered listings.
+
+Every Pipeline response includes top-level `model_target` and `harness` keys,
+and every returned step includes its own Activity-level keys. Unset overrides
+serialize as `null`; the repeated `null` fields are omitted from examples where
+they are not relevant to the example.
 
 ## Pipeline Step Schema
 
@@ -43,6 +55,8 @@ the same name restrictions as the Pipeline name. Each item can also contain a
 | `description` | String | Yes | May be empty. |
 | `type` | String | Yes | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. |
 | `config` | Object | Yes | Matches the selected Activity type. |
+| `model_target` | Object or null | No | A linked service and model pair. `null` means inherit. |
+| `harness` | Object or null | No | An empty `louie` v1 or `codex_cli` v1 configuration. `null` means inherit. |
 | `dependsOn` | Array | No | Defaults to `[]`. Every item names another unique step and uses a `success` or `failure` condition. The resulting graph must be acyclic. |
 
 Each step has a `dependsOn` array. Every item contains an `activity` name from
@@ -85,7 +99,30 @@ Example response (`200 OK`):
             "stop_conditions": {
               "max_iterations": 2
             },
-            "agents": [],
+            "agents": [
+              {
+                "model_target": {
+                  "linked_service_id": "linked-service-openai-primary",
+                  "model_id": "gpt-5"
+                },
+                "persona_id": "release-manager",
+                "role": "generator"},
+              {
+                "model_target": {
+                  "linked_service_id": "linked-service-openai-primary",
+                  "model_id": "gpt-5"
+                },
+                "persona_id": "quality-engineer",
+                "role": "generator"},
+              {
+                "model_target": {
+                  "linked_service_id": "linked-service-openai-primary",
+                  "model_id": "gpt-5"
+                },
+                "persona_id": "technical-lead",
+                "role": "aggregator"
+              }
+            ],
             "output_contract": {
               "type": "text",
               "description": "Release decision."
@@ -101,7 +138,10 @@ Example response (`200 OK`):
           "workspace_id": "workspace-acme",
           "name": "DeploymentReadinessQuiz",
           "dependsOn": [
-            {"activity": "ReviewReleasePlan", "condition": "success"}
+            {
+              "activity": "ReviewReleasePlan",
+              "condition": "success"
+            }
           ],
           "description": "Confirm operational readiness before deployment.",
           "status": "active",
@@ -121,8 +161,14 @@ Example response (`200 OK`):
           "workspace_id": "workspace-acme",
           "name": "ApproveProductionRelease",
           "dependsOn": [
-            {"activity": "DeploymentReadinessQuiz", "condition": "success"},
-            {"activity": "ReviewReleasePlan", "condition": "failure"}
+            {
+              "activity": "DeploymentReadinessQuiz",
+              "condition": "success"
+            },
+            {
+              "activity": "ReviewReleasePlan",
+              "condition": "failure"
+            }
           ],
           "description": "A release manager approves deployment.",
           "status": "active",
@@ -173,7 +219,11 @@ Example response (`200 OK`):
         "stop_conditions": {
           "max_iterations": 2
         },
-        "agents": [],
+        "agents": [
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+        ],
         "output_contract": {
           "type": "text",
           "description": "Release decision."
@@ -189,7 +239,10 @@ Example response (`200 OK`):
       "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "success"}
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "success"
+        }
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
@@ -242,6 +295,8 @@ each stored step to its full persisted Activity.
 | `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Yes | May be empty. |
 | `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
+| `model_target` | Object or null | No | A linked service and model pair. `null` means inherit. |
+| `harness` | Object or null | No | Empty `louie` v1 and `codex_cli` v1 configurations are accepted. `null` means inherit. |
 
 ```http
 POST /api/v1/pipelines
@@ -263,7 +318,32 @@ Content-Type: application/json
         "stop_conditions": {
           "max_iterations": 2
         },
-        "agents": [],
+        "agents": [
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "release-manager",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "quality-engineer",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "technical-lead",
+            "role": "aggregator"
+          }
+        ],
         "output_contract": {
           "type": "text",
           "description": "Release decision."
@@ -318,7 +398,32 @@ Example response (`201 Created`):
         "stop_conditions": {
           "max_iterations": 2
         },
-        "agents": [],
+        "agents": [
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "release-manager",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "quality-engineer",
+            "role": "generator"
+          },
+          {
+            "model_target": {
+              "linked_service_id": "linked-service-openai-primary",
+              "model_id": "gpt-5"
+            },
+            "persona_id": "technical-lead",
+            "role": "aggregator"
+          }
+        ],
         "output_contract": {
           "type": "text",
           "description": "Release decision."
@@ -375,10 +480,11 @@ Example response (`201 Created`):
 ## Update a pipeline
 
 `PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `name`,
-`description`, `enabled`, and `steps`. Supplying `steps` replaces the complete
-ordered array and creates new independent Activity records from the supplied
-inline definitions. The response resolves every stored step to its full
-persisted Activity.
+`description`, `enabled`, `steps`, `model_target`, and `harness`. Supplying
+`steps` replaces the complete ordered array and creates new independent Activity
+records from the supplied inline definitions. Setting `model_target` or
+`harness` to `null` clears that override. The response resolves every stored
+step to its full persisted Activity.
 
 ### Update Request Properties
 
@@ -390,6 +496,8 @@ At least one property is required.
 | `description` | String | May be empty. |
 | `enabled` | Boolean | Enables or disables the Pipeline. |
 | `steps` | Array of Activity definitions | Contains at least one step, uses the [Pipeline Step Schema](#pipeline-step-schema), and replaces the complete ordered step collection. |
+| `model_target` | Object or null | A linked service and model pair. `null` clears the override. |
+| `harness` | Object or null | An empty `louie` v1 or `codex_cli` v1 configuration. `null` clears the override. |
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review
@@ -424,7 +532,11 @@ Example response (`200 OK`):
         "stop_conditions": {
           "max_iterations": 2
         },
-        "agents": [],
+        "agents": [
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
+          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+        ],
         "output_contract": {
           "type": "text",
           "description": "Release decision."
@@ -556,7 +668,7 @@ execution of its frozen graph. Each scheduled step creates an ActivityRun owned
 by that PipelineRun; an ActivityRun is not an independently runnable workflow.
 
 | Resource | Responsibility |
-| --- | --- |
+| -------- | -------------- |
 | Pipeline | Reusable graph definition. An active Pipeline may create runs. |
 | PipelineRun | One execution request, including frozen input, dependency graph, and commit mode. |
 | ActivityRun | One child execution selected by its owning PipelineRun. |

@@ -253,6 +253,8 @@ log "Checking static catalogs"
 
 request GET "/catalog/providers" >/dev/null
 request GET "/catalog/models" >/dev/null
+request GET "/catalog/personas" >/dev/null
+request GET "/catalog/skills" >/dev/null
 
 log "Checking linked services"
 
@@ -276,6 +278,11 @@ LINKED_SERVICE_ID="$(printf '%s' "${linked_service_response}" | json_field id)"
 request GET "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
 request PATCH "/linked-services/${LINKED_SERVICE_ID}" '{"enabled":false}' >/dev/null
 request GET "/linked-services" >/dev/null
+
+log "Checking workspace defaults"
+
+request GET "/workspaces/defaults" >/dev/null
+request PUT "/workspaces/defaults" '{"model_target":null,"harness":null}' >/dev/null
 
 log "Checking model catalog"
 

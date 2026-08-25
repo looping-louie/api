@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
+from src.app.models.execution import ModelTarget
 
 
 PipelineStatus = Literal["active", "disabled", "archived"]
@@ -19,6 +20,16 @@ PipelineChangeType = Literal[
     "archived",
 ]
 PipelineDependencyCondition = Literal['success', 'failure']
+PipelineHarnessKind = Literal['louie', 'codex_cli']
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineHarness:
+    """Frozen local execution mechanism selected by a Pipeline."""
+
+    kind: PipelineHarnessKind = 'louie'
+    version: Literal['v1'] = 'v1'
+    config: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +65,8 @@ class PipelineDocument:
     created_by: str
     updated_at: datetime
     updated_by: str
+    model_target: ModelTarget | None = None
+    harness: PipelineHarness | None = None
 
     @property
     def enabled(self) -> bool:

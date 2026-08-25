@@ -1,10 +1,10 @@
-"""Convenient access to the combined instruction catalog."""
+"""Convenient access to the combined Persona and Skill catalog."""
 
-from .instructions import InstructionOrigin
-from .instructions.loader import load_instruction_catalog
+from .persona_skills import InstructionOrigin
+from .persona_skills.loader import load_persona_skill_catalog
 
 
 __all__ = [
     "InstructionOrigin",
-    "load_instruction_catalog",
+    "load_persona_skill_catalog",
 ]

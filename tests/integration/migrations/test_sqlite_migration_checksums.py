@@ -47,7 +47,12 @@ EXPECTED_CHECKSUMS = {
     '0037_unify_human_activity_runs.sql': '07bd99705142318f3e18e9e1ad399e0de7d1e174e82f0a813b8078300e99c0f9',
     '0038_prepared_pipeline_runs.sql': 'a829c560010eab5a7c88969acb380b2c819d6cd9a0d04fac031c39b0ce2dab0d',
     '0039_workers.sql': '8c8fd031d67e718903a9e77af0bbefde9427b855882a21514eb297554710f1db',
-    '0040_retire_legacy_provider_credentials.sql': '4c065fa61ad7f25530e84e7b07dfb5fb43e0398407bb2d3412220ec2e7005b17',
+    '0040_retire_legacy_provider_credentials.sql': 'd278ba81730874bfa717f3152aff0b21410cea26d767fa610808f5f43ca8926f',
+    '0041_pipeline_harness.sql': '8bbd7a703c01025dfaf0f3988af9b167fce5759e852b95e811b977fb8f901a3a',
+    '0042_worker_harnesses.sql': '12904d2b0b1f7ceae8974ff65c9a694b7ad95fd844ebfbac1b7a2f1d5eeb8564',
+    '0043_workspace_execution_defaults.sql': 'd2df858b00599ad9ee02f532efe6f0c4e47f6ae6fc4ef0c49a288e243b90b7ed',
+    '0044_execution_overrides.sql': '1a5675323a4d481d2ff73aad4cfc603ec17ef36c686177d99aa81936128114fc',
+    '0045_remove_persona_linked_service_selections.sql': 'cadc2fe790d4caaaac9c928fd0129e268a17b1da7ac3d2ba57043ebbffaca261',
 }
 
 

@@ -12,7 +12,7 @@ are `active`, `disabled`, and `archived`.
 ## Activity Categories
 
 | Category | Activity type | Purpose | Activity runs |
-| --- | --- | --- | --- |
+| -------- | ------------- | ------- | ------------- |
 | Loop | `direct_loop` | Produce one model-generated operation plan. | Supported |
 | Loop | `refinement_loop` | Run an iterative generator and reviewer flow. | Supported |
 | Loop | `roundtable_loop` | Synthesize proposals from multiple generators. | Supported |
@@ -23,8 +23,8 @@ are `active`, `disabled`, and `archived`.
 
 Loop Activities configure one or more model agents, stop conditions, and an
 output contract. An agent combines a Persona and one role. The Persona's
-workspace-scoped Linked Service selection supplies both the exact connection and
-model used for execution.
+instructions are combined with the agent's explicit `model_target` during
+generation.
 
 - `generator`: produces a candidate solution or proposed output;
 - `reviewer`: evaluates a candidate and provides feedback for refinement;
@@ -33,7 +33,7 @@ model used for execution.
 The role cardinality is part of every loop Activity's configuration contract.
 
 | Type of loop | Number of generators | Number of reviewers | Number of aggregators |
-| --- | --- | --- | --- |
+| ------------ | -------------------- | ------------------- | --------------------- |
 | Direct | Exactly 1 | 0 | 0 |
 | Refinement | Exactly 1 | At least 1 | 0 |
 | Roundtable | At least 2 | 0 | Exactly 1 |
@@ -78,9 +78,20 @@ A `quiz` Activity collects a human quiz response. Its configuration requires a
 ## Activity Runs
 
 Activities expose persisted runs. Each run identifies its owning Activity by
-`activity_id`; it does not expose a legacy loop identifier. Runtime executors
-resolve configured agent personas from the instruction library before invoking
-their models, while human executors submit a terminal decision checkpoint.
+`activity_id`; it does not expose a legacy loop identifier. A Pipeline-run
+freezes an effective Harness for every runtime-executable child Activity-run,
+preferring Activity, Pipeline, then Workspace scope. The `louie` Harness is
+the compatibility default. PipelineRun creation also freezes agent model
+targets, preferring agent, Activity, Pipeline, then Workspace scope. Only an
+agent with an explicit `model_target` can generate a model request; Personas
+provide instructions only. Human Activities use the built-in `human`
+execution mode and submit a terminal decision checkpoint; they do not execute
+through a Harness.
+
+An Activity defines logical work rather than a machine-specific executor. A
+Pipeline selects the Harness so the same reusable Activity runs through the
+API-directed `louie` Harness. Future compatible local coding-agent Harnesses,
+such as `codex_cli`, use the same Pipeline-level selection boundary.
 
 ## Related Files
 

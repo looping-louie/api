@@ -3,11 +3,15 @@
 from src.app.schemas.pipeline import (
     PipelineActivityStepRequest,
     PipelineActivityStepResponse,
+    PipelineHarnessRequest,
+    PipelineHarnessResponse,
     PipelineStepDependencyResponse,
     PipelineResponse,
 )
+from src.app.schemas.execution import ModelTargetResponse
+from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineDetails
-from src.app.services.pipelines.types import PipelineActivityInput
+from src.app.services.pipelines.types import PipelineActivityInput, PipelineHarnessInput
 from src.app.services.pipelines.types import PipelineActivityDependencyInput
 
 
@@ -25,6 +29,15 @@ def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
         description=value.description,
         type=value.type,
         config=value.config.model_dump(by_alias=True),
+        model_target=(
+            ModelTarget(
+                linked_service_id=value.model_target.linked_service_id,
+                model_id=value.model_target.model_id,
+            )
+            if value.model_target is not None
+            else None
+        ),
+        harness=pipeline_harness(value.harness),
         depends_on=tuple(
             PipelineActivityDependencyInput(
                 activity=dependency.activity,
@@ -32,6 +45,20 @@ def pipeline_step(value: PipelineActivityStepRequest) -> PipelineActivityInput:
             )
             for dependency in value.depends_on
         ),
+    )
+
+
+def pipeline_harness(
+    value: PipelineHarnessRequest | None,
+) -> PipelineHarnessInput | None:
+    """Translate one Pipeline Harness request without business validation."""
+
+    if value is None:
+        return None
+    return PipelineHarnessInput(
+        kind=value.kind,
+        version=value.version,
+        config=dict(value.config),
     )
 
 
@@ -44,6 +71,23 @@ def pipeline_details_response(details: PipelineDetails) -> PipelineResponse:
         name=document.name,
         description=document.description,
         enabled=document.enabled,
+        model_target=(
+            ModelTargetResponse(
+                linked_service_id=document.model_target.linked_service_id,
+                model_id=document.model_target.model_id,
+            )
+            if document.model_target is not None
+            else None
+        ),
+        harness=(
+            PipelineHarnessResponse(
+                kind=document.harness.kind,
+                version=document.harness.version,
+                config=dict(document.harness.config),
+            )
+            if document.harness is not None
+            else None
+        ),
         steps=_step_responses(details),
         created_at=document.created_at,
         updated_at=document.updated_at,

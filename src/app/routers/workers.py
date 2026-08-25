@@ -2,10 +2,10 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Body, Depends, Path, status
 
 from src.app.controllers.worker import WorkerController
-from src.app.schemas.worker import WorkerResponse
+from src.app.schemas.worker import WorkerCreateRequest, WorkerResponse
 
 from .dependencies import RequestContext, get_request_context, get_worker_controller
 
@@ -25,11 +25,13 @@ WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker ide
 async def create_worker(
     context: ContextDependency,
     controller: ControllerDependency,
+    payload: Annotated[WorkerCreateRequest | None, Body()] = None,
 ) -> WorkerResponse:
     """Create one API-owned runtime worker identity."""
 
     return await controller.create(
         user_id=context.user_id,
+        payload=payload,
         requested_workspace_id=context.requested_workspace_id,
     )
 

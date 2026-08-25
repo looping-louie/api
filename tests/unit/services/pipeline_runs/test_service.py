@@ -10,13 +10,16 @@ import pytest
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
+from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
     PipelineDocument,
+    PipelineHarness,
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.models.workspace import WorkspaceDefaults
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
 from src.app.services.pipeline_runs.types import (
@@ -24,7 +27,10 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
-from src.app.services.workers import WorkerUnavailableError
+from src.app.services.workers import (
+    WorkerHarnessUnavailableError,
+    WorkerUnavailableError,
+)
 from tests.conftest import IncrementingClock
 
 
@@ -195,11 +201,13 @@ class InMemoryPipelineRunRepository:
 class InMemoryWorkerService:
     """Control worker claim admission for PipelineRun scheduler tests."""
 
-    def __init__(self, *, active: bool) -> None:
+    def __init__(self, *, active: bool, supports_harness: bool = True) -> None:
         """Store whether registration liveness should admit claims."""
 
         self.active = active
+        self.supports_harness = supports_harness
         self.calls: list[tuple[str, str]] = []
+        self.harness_calls: list[tuple[str, str, dict[str, object]]] = []
 
     async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
         """Record one admission check and reject inactive worker identities."""
@@ -207,6 +215,19 @@ class InMemoryWorkerService:
         self.calls.append((workspace_id, worker_id))
         if not self.active:
             raise WorkerUnavailableError(worker_id)
+
+    async def require_harness(
+        self,
+        *,
+        workspace_id: str,
+        worker_id: str,
+        harness: dict[str, object],
+    ) -> None:
+        """Record one capability admission check and reject mismatches."""
+
+        self.harness_calls.append((workspace_id, worker_id, harness))
+        if not self.supports_harness:
+            raise WorkerHarnessUnavailableError(worker_id)
 
 
 class InMemoryActivityRunRepository:
@@ -242,6 +263,20 @@ class PipelineDetailsService:
         return self._details
 
 
+class StaticWorkspaceService:
+    """Return fixed workspace execution defaults for scheduler tests."""
+
+    def __init__(self, defaults: WorkspaceDefaults) -> None:
+        """Store the defaults returned during PipelineRun creation."""
+
+        self._defaults = defaults
+
+    async def get_defaults(self, **_: object) -> WorkspaceDefaults:
+        """Return the static workspace-level execution candidates."""
+
+        return self._defaults
+
+
 def activity(
     activity_id: str,
     activity_type: str = 'direct_loop',
@@ -255,6 +290,152 @@ def activity(
         config={'stop_conditions': {'max_iterations': 1}, 'agents': [], 'output_contract': {'type': 'text', 'description': 'Result.'}},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )
+
+
+@pytest.mark.asyncio
+async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
+    tenant_service: TenantService,
+) -> None:
+    """Narrower agent and Activity values override Pipeline candidates."""
+
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    agent_target = ModelTarget('service-agent', 'model-agent')
+    activity_target = ModelTarget('service-activity', 'model-activity')
+    pipeline_target = ModelTarget('service-pipeline', 'model-pipeline')
+    first = replace(
+        activity('activity-1'),
+        model_target=activity_target,
+        harness=PipelineHarness(kind='codex_cli'),
+        config={
+            **activity('activity-1').config,
+            'agents': [
+                {
+                    'model_target': {
+                        'linked_service_id': agent_target.linked_service_id,
+                        'model_id': agent_target.model_id,
+                    },
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+        },
+    )
+    second = replace(
+        activity('activity-2'),
+        config={
+            **activity('activity-2').config,
+            'agents': [
+                {
+                    'persona_id': 'persona-2',
+                    'role': 'generator',
+                },
+            ],
+        },
+    )
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run configured steps.', status='active',
+            steps=(
+                PipelineActivityStep(activity_id=first.id),
+                PipelineActivityStep(activity_id=second.id),
+            ),
+            model_target=pipeline_target,
+            harness=PipelineHarness(kind='louie'),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first, second),
+    )
+    defaults = WorkspaceDefaults(
+        workspace_id='workspace-1',
+        model_target=ModelTarget('service-workspace', 'model-workspace'),
+        harness=PipelineHarness(kind='codex_cli'),
+        updated_at=now,
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs,
+        activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details),
+        tenant_service=tenant_service,
+        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        id_factory=lambda: 'run-1',
+        clock=IncrementingClock(),
+    )
+
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+
+    first_agent = created.steps[0].activity_snapshot['agents'][0]
+    second_agent = created.steps[1].activity_snapshot['agents'][0]
+    assert created.pipeline_snapshot['harness']['kind'] == 'louie'
+    assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
+    assert first_agent['model_target'] == {
+        'linked_service_id': 'service-agent',
+        'model_id': 'model-agent',
+    }
+    assert second_agent['model_target'] == {
+        'linked_service_id': 'service-pipeline',
+        'model_id': 'model-pipeline',
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_freezes_workspace_execution_defaults_when_unset(
+    tenant_service: TenantService,
+) -> None:
+    """Workspace candidates supply otherwise unset Pipeline and Activity values."""
+
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    configured_activity = replace(
+        activity('activity-1'),
+        config={
+            **activity('activity-1').config,
+            'agents': [
+                {
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+            ],
+        },
+    )
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run configured steps.', status='active',
+            steps=(PipelineActivityStep(activity_id=configured_activity.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(configured_activity,),
+    )
+    defaults = WorkspaceDefaults(
+        workspace_id='workspace-1',
+        model_target=ModelTarget('service-workspace', 'model-workspace'),
+        harness=PipelineHarness(kind='codex_cli'),
+        updated_at=now,
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs,
+        activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details),
+        tenant_service=tenant_service,
+        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        id_factory=lambda: 'run-1',
+        clock=IncrementingClock(),
+    )
+
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+
+    assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
+    assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
+    assert created.steps[0].activity_snapshot['agents'][0]['model_target'] == {
+        'linked_service_id': 'service-workspace',
+        'model_id': 'model-workspace',
+    }
 
 
 @pytest.mark.asyncio
@@ -292,6 +473,11 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert created.status == 'prepared'
     assert created.commit_mode == 'forbid'
     assert created.current_activity_run_id is None
+    assert created.pipeline_snapshot['harness'] == {
+        'kind': 'louie',
+        'version': 'v1',
+        'config': {},
+    }
     assert [step.status for step in created.steps] == ['pending']
     assert child is None
     assert runs.children == {}
@@ -326,8 +512,18 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert claimed.attempt == 1
     assert claimed_child.activity_id == first.id
     assert claimed_child.activity_snapshot['commit_mode'] == 'forbid'
+    assert claimed_child.activity_snapshot['harness'] == {
+        'kind': 'louie',
+        'version': 'v1',
+        'config': {},
+    }
     assert lease_token == 'token'
     assert workers.calls == [('workspace-1', 'worker-1')]
+    assert workers.harness_calls == [(
+        'workspace-1',
+        'worker-1',
+        {'kind': 'louie', 'version': 'v1', 'config': {}},
+    )]
 
     runs.document = replace(
         claimed,
@@ -359,6 +555,46 @@ async def test_prepared_run_starts_before_runtime_claim(
         await service.claim(
             user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
             worker_id='worker-3', if_match=pipeline_run_etag(created),
+            lease_duration=timedelta(minutes=1),
+        )
+
+
+@pytest.mark.asyncio
+async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
+    tenant_service: TenantService,
+) -> None:
+    """Worker liveness does not authorize an incompatible Harness claim."""
+
+    first = activity('activity-1')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run one step.', status='active',
+            steps=(PipelineActivityStep(activity_id=first.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    workers = InMemoryWorkerService(active=True, supports_harness=False)
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        worker_service=workers, id_factory=lambda: 'run-1',
+        clock=IncrementingClock(), token_factory=lambda: 'token',
+    )
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+    started, _ = await service.start(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+    )
+
+    with pytest.raises(WorkerHarnessUnavailableError):
+        await service.claim(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+            worker_id='worker-1', if_match=pipeline_run_etag(started),
             lease_duration=timedelta(minutes=1),
         )
 

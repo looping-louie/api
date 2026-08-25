@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Mapping
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import (
+    WorkerDocument,
+    WorkerHarnessCapability,
+    default_worker_harnesses,
+)
 from src.app.repositories.workers import WorkerRepository
 from src.app.services.shared.tenant import TenantService
 
@@ -33,6 +38,16 @@ class WorkerUnavailableError(Exception):
         self.worker_id = worker_id
 
 
+class WorkerHarnessUnavailableError(Exception):
+    """Raised when an active Worker lacks a Pipeline's Harness capability."""
+
+    def __init__(self, worker_id: str) -> None:
+        """Store the incompatible Worker identifier."""
+
+        super().__init__(f"Worker '{worker_id}' lacks the required Harness.")
+        self.worker_id = worker_id
+
+
 class WorkerService:
     """Coordinate durable worker registration and heartbeat liveness."""
 
@@ -55,6 +70,7 @@ class WorkerService:
         self,
         *,
         user_id: str,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
         requested_workspace_id: str | None = None,
     ) -> WorkerDocument:
         """Provision one API-owned worker identity in the selected workspace."""
@@ -69,6 +85,11 @@ class WorkerService:
             workspace_id=workspace.workspace_id,
             registered_at=now,
             last_heartbeat_at=now,
+            harnesses=(
+                harnesses
+                if harnesses is not None
+                else default_worker_harnesses()
+            ),
         ))
 
     async def heartbeat(
@@ -102,6 +123,28 @@ class WorkerService:
             active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
         ):
             raise WorkerUnavailableError(worker_id)
+
+    async def require_harness(
+        self,
+        *,
+        workspace_id: str,
+        worker_id: str,
+        harness: Mapping[str, object],
+    ) -> None:
+        """Reject active Workers that do not advertise an exact Harness match."""
+
+        normalized_worker_id = _require_text(worker_id)
+        worker = await self._repository.get(
+            workspace_id=workspace_id,
+            worker_id=normalized_worker_id,
+        )
+        if worker is None or not any(
+            candidate.kind == harness.get('kind')
+            and candidate.version == harness.get('version')
+            and dict(candidate.config) == harness.get('config')
+            for candidate in worker.harnesses
+        ):
+            raise WorkerHarnessUnavailableError(normalized_worker_id)
 
 
 def _require_text(value: str) -> str:

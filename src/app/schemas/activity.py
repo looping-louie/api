@@ -3,16 +3,23 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import model_validator
-
-from .activity_loop import (
-    ActivityLoopAgentSchema,
-    ActivityLoopOutputContractSchema,
-    ActivityLoopStopConditionsSchema,
+from pydantic import Field, model_validator
+from .execution import (
+    HarnessRequest,
+    HarnessResponse,
+    ModelTargetRequest,
+    ModelTargetResponse,
 )
-from .shared import ListResponse, RequestSchema, ResourceName, ResponseSchema
+from .shared import (
+    ListResponse,
+    NonEmptyString,
+    PositiveInteger,
+    RequestSchema,
+    ResourceName,
+    ResponseSchema,
+)
 
 
 ActivityStatusValue = Literal['active', 'disabled', 'archived']
@@ -27,13 +34,71 @@ ActivityTypeValue = Literal[
     'roundtable_loop',
 ]
 
+LoopActivityRoleValue = Literal['generator', 'reviewer', 'aggregator']
+LoopActivityOutputTypeValue = Literal['text', 'json', 'files']
+
+
+class LoopActivityStopConditionsSchema(RequestSchema):
+    """Positive loop execution limits with at least one configured value."""
+
+    max_iterations: PositiveInteger | None = None
+    max_tokens: PositiveInteger | None = None
+    timeout_seconds: PositiveInteger | None = None
+
+    @model_validator(mode='after')
+    def require_one_condition(self) -> Self:
+        """Reject configurations with no stopping limit."""
+
+        if all(
+            value is None
+            for value in (
+                self.max_iterations,
+                self.max_tokens,
+                self.timeout_seconds,
+            )
+        ):
+            raise ValueError('At least one stop condition is required.')
+        return self
+
+
+class LoopActivityAgentSchema(RequestSchema):
+    """One Persona role and optional explicit model target for a loop Activity."""
+
+    id: NonEmptyString | None = None
+    model_target: ModelTargetRequest | None = None
+    persona_id: NonEmptyString
+    role: LoopActivityRoleValue
+
+
+class LoopActivityOutputContractSchema(RequestSchema):
+    """Expected artifact format for a loop Activity."""
+
+    type: LoopActivityOutputTypeValue
+    description: NonEmptyString
+    files: list[NonEmptyString] = Field(default_factory=list)
+    schema_: dict[str, Any] | None = Field(
+        default=None,
+        alias='schema',
+        serialization_alias='schema',
+    )
+
+    @model_validator(mode='after')
+    def validate_type_requirements(self) -> Self:
+        """Require data specific to files and JSON outputs."""
+
+        if self.type == 'files' and not self.files:
+            raise ValueError('Files output requires at least one path.')
+        if self.type == 'json' and self.schema_ is None:
+            raise ValueError('JSON output requires a schema.')
+        return self
+
 
 class DirectLoopActivityConfig(RequestSchema):
     """Configuration for a direct loop activity."""
 
-    stop_conditions: ActivityLoopStopConditionsSchema
-    agents: list[ActivityLoopAgentSchema]
-    output_contract: ActivityLoopOutputContractSchema
+    stop_conditions: LoopActivityStopConditionsSchema
+    agents: list[LoopActivityAgentSchema]
+    output_contract: LoopActivityOutputContractSchema
 
     @model_validator(mode='after')
     def validate_roles(self) -> 'DirectLoopActivityConfig':
@@ -48,9 +113,9 @@ class DirectLoopActivityConfig(RequestSchema):
 class RefinementLoopActivityConfig(RequestSchema):
     """Configuration for a refinement loop activity."""
 
-    stop_conditions: ActivityLoopStopConditionsSchema
-    agents: list[ActivityLoopAgentSchema]
-    output_contract: ActivityLoopOutputContractSchema
+    stop_conditions: LoopActivityStopConditionsSchema
+    agents: list[LoopActivityAgentSchema]
+    output_contract: LoopActivityOutputContractSchema
 
     @model_validator(mode='after')
     def validate_roles(self) -> 'RefinementLoopActivityConfig':
@@ -65,9 +130,9 @@ class RefinementLoopActivityConfig(RequestSchema):
 class RoundtableLoopActivityConfig(RequestSchema):
     """Configuration for a roundtable loop activity."""
 
-    stop_conditions: ActivityLoopStopConditionsSchema
-    agents: list[ActivityLoopAgentSchema]
-    output_contract: ActivityLoopOutputContractSchema
+    stop_conditions: LoopActivityStopConditionsSchema
+    agents: list[LoopActivityAgentSchema]
+    output_contract: LoopActivityOutputContractSchema
 
     @model_validator(mode='after')
     def validate_roles(self) -> 'RoundtableLoopActivityConfig':
@@ -79,7 +144,7 @@ class RoundtableLoopActivityConfig(RequestSchema):
         return self
 
 
-def _role_counts(agents: list[ActivityLoopAgentSchema]) -> dict[str, int]:
+def _role_counts(agents: list[LoopActivityAgentSchema]) -> dict[str, int]:
     """Count each supported agent role for loop-cardinality validation."""
 
     return {
@@ -132,6 +197,8 @@ class ActivityCreateRequest(RequestSchema):
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
+    model_target: ModelTargetRequest | None = None
+    harness: HarnessRequest | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -158,6 +225,8 @@ class ActivityPatchRequest(RequestSchema):
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None
+    model_target: ModelTargetRequest | None = None
+    harness: HarnessRequest | None = None
 
     @model_validator(mode='after')
     def require_supplied_non_null_change(self) -> 'ActivityPatchRequest':
@@ -165,7 +234,7 @@ class ActivityPatchRequest(RequestSchema):
 
         if not self.model_fields_set:
             raise ValueError('At least one activity field must be supplied.')
-        for field_name in self.model_fields_set:
+        for field_name in self.model_fields_set - {'model_target', 'harness'}:
             if getattr(self, field_name) is None:
                 raise ValueError(f'{field_name} must not be null.')
         return self
@@ -181,6 +250,8 @@ class ActivityResponse(ResponseSchema):
     status: ActivityStatusValue
     type: ActivityTypeValue
     config: ActivityConfig
+    model_target: ModelTargetResponse | None
+    harness: HarnessResponse | None
     created_at: datetime
     created_by: str
     updated_at: datetime

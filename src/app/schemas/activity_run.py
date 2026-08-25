@@ -23,6 +23,7 @@ ActivityRunStateValue = Literal[
     'awaiting_snapshot',
     'awaiting_generation',
     'awaiting_apply',
+    'awaiting_harness',
     'awaiting_review_input',
     'awaiting_commit',
     'awaiting_human_decision',
@@ -32,6 +33,7 @@ ActivityRunStateValue = Literal[
 ActivityRunActionValue = Literal[
     'collect_snapshot',
     'apply_operations',
+    'run_harness',
     'submit_review_input',
     'commit_if_allowed',
     'submit_human_decision',
@@ -63,6 +65,20 @@ class ActivityRunApplyOperationsResult(RequestSchema):
     applied: bool
     final_diff: str = ''
     changed_files: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
+class ActivityRunHarnessResult(RequestSchema):
+    """Result of one Worker-owned Harness execution turn."""
+
+    action: Literal['run_harness']
+    completed: bool
+    final_response: str = ''
+    final_diff: str = ''
+    changed_files: list[str] = Field(default_factory=list)
+    usage: dict[str, int] = Field(default_factory=dict)
+    diagnostics: list[str] = Field(default_factory=list)
+    session_reference: str | None = None
     error: str | None = None
 
 

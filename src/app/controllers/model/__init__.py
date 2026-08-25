@@ -1,6 +1,6 @@
 """Controllers for curated model HTTP operations."""
 
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 
 from .describe import ModelDescribeController
 from .list import ModelListController

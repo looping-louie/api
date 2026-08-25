@@ -22,7 +22,7 @@ from src.app.services.execution_instructions import ExecutionInstructionLibraryS
 from src.app.services.activity_runs.generation import (
     ActivityRunGenerationService,
 )
-from src.app.services.model_execution import ModelExecutionService
+from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
@@ -225,6 +225,15 @@ class ActivityRunService:
             context.pop('action', None)
             if isinstance(previous_review, Mapping):
                 context['review_result'] = dict(previous_review)
+            if self._uses_codex_cli(document.activity_snapshot):
+                return await self._transition(
+                    document=document, workspace_id=workspace.workspace_id,
+                    pipeline_run_id=pipeline_run_id, lease_token=lease_token,
+                    continuation_token=continuation_token, idempotency_key=idempotency_key,
+                    action=action, status='in_progress', state='awaiting_harness',
+                    next_action='run_harness', next_token=self._token_factory(),
+                    context=context,
+                )
             if self._generation_service is None:
                 return await self._transition(
                     document=document, workspace_id=workspace.workspace_id,
@@ -262,9 +271,9 @@ class ActivityRunService:
                 next_action='apply_operations', next_token=self._token_factory(),
                 context=generated,
             )
-        if action == 'apply_operations':
-            context['apply_result'] = dict(result)
-            applied = result.get('applied') is True
+        if action in ('apply_operations', 'run_harness'):
+            context['apply_result' if action == 'apply_operations' else 'harness_result'] = dict(result)
+            applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
                 document=document, workspace_id=workspace.workspace_id,
@@ -297,8 +306,6 @@ class ActivityRunService:
             review = await self._generation_service.generate_review_context(
                 loop_snapshot=document.activity_snapshot,
                 workspace_id=workspace.workspace_id,
-                user_id=user_id,
-                requested_workspace_id=requested_workspace_id,
                 input_text=document.input,
                 context=context,
                 final_diff=str(result.get('final_diff', '')),
@@ -471,6 +478,19 @@ class ActivityRunService:
         return isinstance(agents, (list, tuple)) and any(
             isinstance(agent, Mapping) and agent.get('role') == 'reviewer'
             for agent in agents
+        )
+
+    @staticmethod
+    def _uses_codex_cli(snapshot: Mapping[str, object]) -> bool:
+        """Return whether this direct-loop snapshot must run through Codex CLI."""
+
+        harness = snapshot.get('harness')
+        return (
+            snapshot.get('flow') == 'direct'
+            and isinstance(harness, Mapping)
+            and harness.get('kind') == 'codex_cli'
+            and harness.get('version') == 'v1'
+            and harness.get('config') == {}
         )
 
     @staticmethod

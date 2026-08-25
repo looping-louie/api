@@ -18,6 +18,7 @@ from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineStepDependency,
 )
+from src.app.models.execution import ModelTarget
 from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
@@ -43,6 +44,7 @@ from src.app.services.pipelines.types import (
 from src.app.services.pipelines.validation import (
     document_content,
     normalize_description,
+    normalize_harness,
     normalize_status,
     normalize_steps,
     require_text,
@@ -50,6 +52,7 @@ from src.app.services.pipelines.validation import (
 from src.app.services.shared.changelog import changed_field_diff
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
+from src.app.services.linked_services import LinkedServiceService
 
 
 class PipelineService:
@@ -60,6 +63,7 @@ class PipelineService:
         *,
         repository: PipelineRepository,
         tenant_service: TenantService,
+        linked_service_service: LinkedServiceService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
     ) -> None:
@@ -67,6 +71,7 @@ class PipelineService:
 
         self._repository = repository
         self._tenant_service = tenant_service
+        self._linked_service_service = linked_service_service
         self._id_factory = id_factory
         self._clock = clock
 
@@ -200,12 +205,29 @@ class PipelineService:
             description=normalize_description(payload.description),
             status="active",
             steps=(),
+            model_target=payload.model_target,
+            harness=normalize_harness(payload.harness),
             created_at=now,
             created_by=actor_id,
             updated_at=now,
             updated_by=actor_id,
         )
         inputs = normalize_steps(payload.steps)
+        await self._require_model_targets(
+            workspace_id=workspace_id,
+            model_targets=(
+                [target for target in (document.model_target,) if target is not None]
+                + [
+                    target
+                    for target in (
+                        activity.model_target
+                        for activity in inputs
+                    )
+                    if target is not None
+                ]
+                + self._agent_model_targets(inputs)
+            ),
+        )
         activities, activity_entries = self._build_activities(
             workspace_id=workspace_id,
             actor_id=actor_id,
@@ -266,9 +288,35 @@ class PipelineService:
                 activities,
                 inputs,
             )
+            await self._require_model_targets(
+                workspace_id=workspace_id,
+                model_targets=(
+                    [
+                        target
+                        for target in (
+                            activity.model_target
+                            for activity in inputs
+                        )
+                        if target is not None
+                    ]
+                    + self._agent_model_targets(inputs)
+                ),
+            )
+        if 'model_target' in payload.provided_fields and payload.model_target is not None:
+            await self._require_model_targets(
+                workspace_id=workspace_id,
+                model_targets=[payload.model_target],
+            )
         updated = apply_patch(
             current,
-            payload,
+            replace(
+                payload,
+                harness=(
+                    normalize_harness(payload.harness)
+                    if payload.harness is not None
+                    else None
+                ),
+            ),
             actor_id=actor_id,
             changed_at=self._clock(),
             steps=generated_steps,
@@ -303,6 +351,45 @@ class PipelineService:
         if not updated_persisted:
             raise PipelineNotFoundError(pipeline_id=pipeline_id)
         return updated
+
+    async def _require_model_targets(
+        self,
+        *,
+        workspace_id: str,
+        model_targets: list[ModelTarget],
+    ) -> None:
+        """Require every explicitly configured model target to be available."""
+
+        if self._linked_service_service is None:
+            return
+        for model_target in model_targets:
+            await self._linked_service_service.require_available_selection(
+                workspace_id=workspace_id,
+                service_id=model_target.linked_service_id,
+                model_id=model_target.model_id,
+            )
+
+    @staticmethod
+    def _agent_model_targets(
+        inputs: tuple[PipelineActivityInput, ...],
+    ) -> list[ModelTarget]:
+        """Collect explicit loop-agent model targets from inline activities."""
+
+        return [
+            ModelTarget(
+                linked_service_id=target['linked_service_id'],
+                model_id=target['model_id'],
+            )
+            for activity in inputs
+            for agent in activity.config.get('agents', [])
+            if isinstance(agent, dict)
+            for target in [agent.get('model_target')]
+            if (
+                isinstance(target, dict)
+                and isinstance(target.get('linked_service_id'), str)
+                and isinstance(target.get('model_id'), str)
+            )
+        ]
 
     @staticmethod
     def _steps(
@@ -449,6 +536,8 @@ class PipelineService:
                 created_by=actor_id,
                 updated_at=now,
                 updated_by=actor_id,
+                model_target=value.model_target,
+                harness=normalize_harness(value.harness),
             )
             documents.append(document)
             entries.append(
@@ -466,6 +555,23 @@ class PipelineService:
                         "status": document.status,
                         "type": document.type,
                         "config": document.config,
+                        "model_target": (
+                            {
+                                "linked_service_id": document.model_target.linked_service_id,
+                                "model_id": document.model_target.model_id,
+                            }
+                            if document.model_target is not None
+                            else None
+                        ),
+                        "harness": (
+                            {
+                                "kind": document.harness.kind,
+                                "version": document.harness.version,
+                                "config": dict(document.harness.config),
+                            }
+                            if document.harness is not None
+                            else None
+                        ),
                     },
                 )
             )

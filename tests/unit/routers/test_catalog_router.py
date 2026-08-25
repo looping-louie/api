@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.catalog import CatalogController
 from src.app.routers.catalog import router as catalog_router
-from src.app.services.catalog import CatalogService
+from src.app.services.catalogs import StaticCatalogService
 from src.app.utils.http import register_exception_handlers
 
 
@@ -17,7 +17,7 @@ def build_app(*, authenticated: bool = True) -> FastAPI:
 
     app = FastAPI()
     app.state.catalog_controller = CatalogController(
-        catalog_service=CatalogService(),
+        static_catalog_service=StaticCatalogService(),
     )
 
     if authenticated:
@@ -44,6 +44,8 @@ def test_catalog_routes_return_only_static_metadata() -> None:
 
     providers_response = client.get('/api/v1/catalog/providers')
     models_response = client.get('/api/v1/catalog/models')
+    personas_response = client.get('/api/v1/catalog/personas')
+    skills_response = client.get('/api/v1/catalog/skills')
 
     assert providers_response.status_code == 200
     provider = providers_response.json()[0]
@@ -53,10 +55,30 @@ def test_catalog_routes_return_only_static_metadata() -> None:
     assert 'key_trimmed' not in provider
 
     assert models_response.status_code == 200
-    model = models_response.json()['items'][0]
+    models = models_response.json()
+    assert models['total'] == len(models['items'])
+    model = models['items'][0]
     assert model['provider_ids']
     assert 'available' not in model
     assert 'availability' not in model
+
+    assert personas_response.status_code == 200
+    personas = personas_response.json()
+    assert all(persona['id'].startswith('builtin:persona:') for persona in personas)
+    persona = personas[0]
+    assert persona['id'].startswith('builtin:persona:')
+    assert persona['instructions']
+    assert 'enabled' not in persona
+    assert 'editable' not in persona
+
+    assert skills_response.status_code == 200
+    skills = skills_response.json()
+    assert all(skill['id'].startswith('builtin:skill:') for skill in skills)
+    skill = skills[0]
+    assert skill['id'].startswith('builtin:skill:')
+    assert skill['instructions']
+    assert 'enabled' not in skill
+    assert 'editable' not in skill
 
 
 def test_catalog_routes_require_authentication() -> None:

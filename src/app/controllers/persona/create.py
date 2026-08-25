@@ -5,7 +5,6 @@ from __future__ import annotations
 from src.app.schemas.persona import PersonaCreateRequest, PersonaResponse
 from src.app.services.personas import (
     PersonaCreate,
-    PersonaLinkedServiceSelection,
     PersonaService,
 )
 
@@ -34,10 +33,6 @@ class PersonaCreateController:
                 name=payload.name,
                 description=payload.description,
                 instructions=payload.instructions,
-                linked_service_selection=PersonaLinkedServiceSelection(
-                    linked_service_id=payload.linked_service.reference_id,
-                    model_id=payload.config.model,
-                ),
                 metadata=payload.metadata.model_dump(exclude_none=True),
                 skill_ids=tuple(payload.skill_ids),
             ),

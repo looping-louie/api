@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from src.app.services.instructions import (
-    InstructionRepository,
+from src.app.services.persona_skills import (
+    DefinitionRepository,
 )
-from src.app.services.models.service import ModelCatalogService
+from src.app.services.models.catalog import ModelCatalogService
 
 
 _INSTRUCTION_TYPES = frozenset(
@@ -30,7 +30,7 @@ class CompositeReferenceRepository:
     def __init__(
         self,
         *,
-        instruction_repository: InstructionRepository,
+        instruction_repository: DefinitionRepository,
         model_catalog_service: ModelCatalogService,
     ) -> None:
         """Store the instruction and model lookup dependencies."""

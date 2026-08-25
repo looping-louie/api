@@ -1,0 +1,417 @@
+"""Together-hosted curated model items."""
+
+from datetime import date
+
+from ...providers import ProviderId
+from .helpers import GENERAL_REASONING, TEXT, _pricing
+from ..types import (
+    ModelCapability,
+    ModelCatalogEntry,
+    ModelDeployment,
+    ModelEndpoint,
+    ModelLab,
+    ModelStatus,
+)
+
+
+TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
+    ModelCatalogEntry(
+        id="qwen3.7-max",
+        name="Qwen3.7 Max",
+        vendor="Qwen",
+        lab=ModelLab.QWEN,
+        family="Qwen3.7",
+        description="High-capability Qwen model.",
+        released_at=date(2026, 5, 20),
+        capabilities=TEXT,
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="Qwen/Qwen3.7-Max",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                pricing=_pricing("1.25", "3.75"),
+            ),
+        ),
+        tags=("open-model", "general-purpose"),
+    ),
+    ModelCatalogEntry(
+        id="nemotron-3-ultra",
+        name="NVIDIA Nemotron 3 Ultra",
+        vendor="NVIDIA",
+        lab=ModelLab.NVIDIA,
+        family="Nemotron",
+        description="Large NVIDIA reasoning model with tool support.",
+        released_at=date(2026, 6, 4),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="nvidia/nemotron-3-ultra-550b-a55b",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=512_300,
+                pricing=_pricing("0.60", "3.60", "0.20"),
+            ),
+        ),
+        tags=("open-model", "reasoning", "large"),
+    ),
+    ModelCatalogEntry(
+        id="qwen3.5-397b-a17b",
+        name="Qwen3.5 397B A17B",
+        vendor="Qwen",
+        lab=ModelLab.QWEN,
+        family="Qwen3.5",
+        description="Large multimodal mixture-of-experts Qwen model.",
+        released_at=date(2026, 2, 16),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.VISION,
+                ModelCapability.REASONING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="Qwen/Qwen3.5-397B-A17B",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                pricing=_pricing("0.60", "3.60", "0.35"),
+                status=ModelStatus.DEPRECATED,
+                deprecated_at=date(2026, 6, 29),
+            ),
+        ),
+        status=ModelStatus.DEPRECATED,
+        tags=("open-model", "deprecated"),
+    ),
+    ModelCatalogEntry(
+        id="deepseek-v4-pro",
+        name="DeepSeek V4 Pro",
+        vendor="DeepSeek",
+        lab=ModelLab.DEEPSEEK,
+        family="DeepSeek V4",
+        description="Long-context reasoning and coding model.",
+        released_at=date(2026, 4, 24),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+                ModelCapability.CODING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="deepseek-ai/DeepSeek-V4-Pro",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=512_000,
+                max_output_tokens=4096,
+                pricing=_pricing("1.74", "3.48", "0.20"),
+            ),
+            ModelDeployment(
+                provider_id=ProviderId.NVIDIA,
+                provider_model_id="deepseek-ai/deepseek-v4-pro",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                max_output_tokens=16_384,
+            ),
+        ),
+        tags=("open-model", "coding", "reasoning"),
+    ),
+    ModelCatalogEntry(
+        id="qwen3.6-plus",
+        name="Qwen3.6 Plus",
+        vendor="Qwen",
+        lab=ModelLab.QWEN,
+        family="Qwen3.6",
+        description="Long-context hybrid reasoning model.",
+        released_at=date(2026, 4, 2),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="Qwen/Qwen3.6-Plus",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=1_000_000,
+                pricing=_pricing("0.50", "3.00"),
+            ),
+        ),
+        tags=("open-model", "long-context", "reasoning"),
+    ),
+    ModelCatalogEntry(
+        id="qwen3.7-plus",
+        name="Qwen3.7 Plus",
+        vendor="Qwen",
+        lab=ModelLab.QWEN,
+        family="Qwen3.7",
+        description="Cost-efficient long-context Qwen model.",
+        released_at=date(2026, 6, 1),
+        capabilities=TEXT,
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="Qwen/Qwen3.7-Plus",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=1_000_000,
+                pricing=_pricing("0.32", "1.28"),
+            ),
+        ),
+        tags=("open-model", "long-context", "cost-efficient"),
+    ),
+    ModelCatalogEntry(
+        id="cogito-v2.1-671b",
+        name="Cogito v2.1 671B",
+        vendor="Deep Cogito",
+        lab=ModelLab.DEEP_COGITO,
+        family="Cogito",
+        description="Large hybrid reasoning model.",
+        released_at=date(2025, 11, 19),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="deepcogito/cogito-v2-1-671b",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=163_840,
+                pricing=_pricing("1.25", "1.25"),
+            ),
+        ),
+        tags=("open-model", "reasoning", "large"),
+    ),
+    ModelCatalogEntry(
+        id="minimax-m3",
+        name="MiniMax M3",
+        vendor="MiniMax",
+        lab=ModelLab.MINIMAX,
+        family="MiniMax M",
+        description="General-purpose multimodal model with tool support.",
+        released_at=date(2026, 6, 1),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.VISION,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="MiniMaxAI/MiniMax-M3",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=524_288,
+                pricing=_pricing("0.30", "1.20", "0.06"),
+            ),
+            ModelDeployment(
+                provider_id=ProviderId.NVIDIA,
+                provider_model_id="minimaxai/minimax-m3",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                max_output_tokens=8_192,
+            ),
+        ),
+        tags=("open-model", "vision", "cost-efficient"),
+    ),
+    ModelCatalogEntry(
+        id="minimax-m2.7",
+        name="MiniMax M2.7",
+        vendor="MiniMax",
+        lab=ModelLab.MINIMAX,
+        family="MiniMax M",
+        description="Cost-efficient reasoning model.",
+        released_at=date(2026, 3, 18),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="MiniMaxAI/MiniMax-M2.7",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=202_752,
+                pricing=_pricing("0.30", "1.20", "0.06"),
+            ),
+        ),
+        tags=("open-model", "reasoning", "cost-efficient"),
+    ),
+    ModelCatalogEntry(
+        id="llama-3.3-70b",
+        name="Llama 3.3 70B",
+        vendor="Meta",
+        lab=ModelLab.META,
+        family="Llama 3",
+        description="General-purpose Llama instruction model.",
+        released_at=date(2024, 12, 6),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=131_072,
+                pricing=_pricing("1.04", "1.04"),
+            ),
+        ),
+        tags=("open-model", "general-purpose"),
+    ),
+    ModelCatalogEntry(
+        id="gemma-4-31b",
+        name="Gemma 4 31B",
+        vendor="Google",
+        lab=ModelLab.GOOGLE,
+        family="Gemma 4",
+        description="Compact multimodal Google model.",
+        released_at=date(2026, 3, 31),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.VISION,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="google/gemma-4-31B-it",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                pricing=_pricing("0.39", "0.97"),
+            ),
+            ModelDeployment(
+                provider_id=ProviderId.NVIDIA,
+                provider_model_id="google/gemma-4-31b-it",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                max_output_tokens=16_384,
+            ),
+        ),
+        tags=("open-model", "vision", "small"),
+    ),
+    ModelCatalogEntry(
+        id="kimi-k2.6",
+        name="Kimi K2.6",
+        vendor="Moonshot AI",
+        lab=ModelLab.MOONSHOT,
+        family="Kimi",
+        description="Multimodal reasoning model for agents and tool use.",
+        released_at=date(2026, 4, 20),
+        capabilities=GENERAL_REASONING,
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="moonshotai/Kimi-K2.6",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                pricing=_pricing("1.20", "4.50", "0.20"),
+            ),
+        ),
+        tags=("open-model", "vision", "agents"),
+    ),
+    ModelCatalogEntry(
+        id="glm-5.2",
+        name="GLM-5.2",
+        vendor="Z.ai",
+        lab=ModelLab.Z,
+        family="GLM",
+        description="Reasoning and coding model for long-horizon agents.",
+        released_at=date(2026, 6, 16),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.STRUCTURED_OUTPUT,
+                ModelCapability.CODING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="zai-org/GLM-5.2",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                max_output_tokens=128_000,
+                pricing=_pricing("1.40", "4.40", "0.26"),
+            ),
+        ),
+        tags=("open-model", "coding", "agents"),
+    ),
+    ModelCatalogEntry(
+        id="glm-5.1",
+        name="GLM-5.1",
+        vendor="Z.ai",
+        lab=ModelLab.Z,
+        family="GLM",
+        description="Previous GLM reasoning and function-calling model.",
+        released_at=date(2026, 4, 7),
+        capabilities=frozenset(
+            {
+                ModelCapability.TEXT,
+                ModelCapability.REASONING,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.CODING,
+            }
+        ),
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="zai-org/GLM-5.1",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=202_752,
+                pricing=_pricing("1.40", "4.40", "0.26"),
+                status=ModelStatus.DEPRECATED,
+                deprecated_at=date(2026, 6, 26),
+            ),
+        ),
+        status=ModelStatus.DEPRECATED,
+        replacement_model_id="glm-5.2",
+        tags=("open-model", "deprecated"),
+    ),
+    ModelCatalogEntry(
+        id="kimi-k2.7-code",
+        name="Kimi K2.7 Code",
+        vendor="Moonshot AI",
+        lab=ModelLab.MOONSHOT,
+        family="Kimi",
+        description="Kimi model specialised in coding agents.",
+        released_at=date(2026, 6, 12),
+        capabilities=GENERAL_REASONING,
+        deployments=(
+            ModelDeployment(
+                provider_id=ProviderId.TOGETHER,
+                provider_model_id="moonshotai/Kimi-K2.7-Code",
+                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+                context_window=262_144,
+                pricing=_pricing("0.95", "4.00", "0.19"),
+            ),
+        ),
+        tags=("open-model", "coding", "agents"),
+    ),
+)

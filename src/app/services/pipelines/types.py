@@ -5,6 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from src.app.models.execution import ModelTarget
+
+
+@dataclass(frozen=True, slots=True)
+class PipelineHarnessInput:
+    """Harness selection supplied with a Pipeline mutation."""
+
+    kind: str
+    version: str
+    config: dict[str, object]
+
 
 @dataclass(frozen=True, slots=True)
 class PipelineActivityDependencyInput:
@@ -22,6 +33,8 @@ class PipelineActivityInput:
     description: str
     type: str
     config: dict[str, object]
+    model_target: ModelTarget | None = None
+    harness: PipelineHarnessInput | None = None
     depends_on: tuple[PipelineActivityDependencyInput, ...] = ()
 
 
@@ -32,6 +45,8 @@ class PipelineCreate:
     name: str
     description: str
     steps: tuple[PipelineActivityInput, ...]
+    model_target: ModelTarget | None = None
+    harness: PipelineHarnessInput | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +58,8 @@ class PipelinePatch:
     description: str | None = None
     enabled: bool | None = None
     steps: tuple[PipelineActivityInput, ...] | None = None
+    model_target: ModelTarget | None = None
+    harness: PipelineHarnessInput | None = None
 
 
 class PipelineServiceError(Exception):
