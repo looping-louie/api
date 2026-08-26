@@ -1,6 +1,5 @@
 """Application service for workspace execution defaults."""
-
-from __future__ import annotations
+    )
 
 from collections.abc import Callable
 from datetime import datetime
@@ -67,13 +66,13 @@ class WorkspaceService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
     ) -> WorkspaceDefaults:
         """Return configured or fully inherited defaults for one workspace."""
 
-        workspace_id = await self._workspace_id(
+        await self._tenant_service.require_access(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         defaults = await self._repository.get(workspace_id=workspace_id)
         if defaults is not None:
@@ -91,13 +90,13 @@ class WorkspaceService:
         user_id: str,
         model_target: ModelTarget | None,
         harness: PipelineHarness | None,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
     ) -> WorkspaceDefaults:
         """Replace all workspace overrides after validating model routing."""
 
-        workspace_id = await self._workspace_id(
+        await self._tenant_service.require_access(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         if model_target is not None:
             await self._linked_service_service.require_available_selection(
@@ -113,17 +112,3 @@ class WorkspaceService:
                 updated_at=self._clock(),
             ),
         )
-
-    async def _workspace_id(
-        self,
-        *,
-        user_id: str,
-        requested_workspace_id: str | None,
-    ) -> str:
-        """Resolve the workspace selected for this configuration operation."""
-
-        tenant = await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return tenant.workspace_id

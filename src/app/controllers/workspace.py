@@ -48,13 +48,13 @@ class WorkspaceController:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
     ) -> WorkspaceDefaultsResponse:
         """Return workspace overrides and inherited values."""
 
         defaults = await self._service.get_defaults(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         return self._response(defaults)
 
@@ -62,8 +62,8 @@ class WorkspaceController:
         self,
         *,
         user_id: str,
+        workspace_id: str,
         payload: WorkspaceDefaultsReplaceRequest,
-        requested_workspace_id: str | None = None,
     ) -> WorkspaceDefaultsResponse:
         """Replace the workspace's optional model and Harness overrides."""
 
@@ -86,7 +86,7 @@ class WorkspaceController:
                 if payload.harness is not None
                 else None
             ),
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         return self._response(defaults)
 

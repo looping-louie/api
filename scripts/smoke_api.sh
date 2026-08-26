@@ -263,13 +263,16 @@ request GET "/users/me" >/dev/null
 
 log "Checking workspaces"
 
-request POST "/workspaces" "$(
+workspace_response="$(
+    request POST "/workspaces" "$(
     cat <<JSON
 {
     "name": "Smoke Workspace ${SMOKE_RUN_ID}"
 }
 JSON
-)" >/dev/null
+)"
+)"
+WORKSPACE_DEFAULTS_ID="$(printf '%s' "${workspace_response}" | json_field id)"
 request GET "/workspaces" >/dev/null
 
 log "Checking linked services"
@@ -297,8 +300,8 @@ request GET "/linked-services" >/dev/null
 
 log "Checking workspace defaults"
 
-request GET "/workspaces/defaults" >/dev/null
-request PUT "/workspaces/defaults" '{"model_target":null,"harness":null}' >/dev/null
+request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" >/dev/null
+request PUT "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" '{"model_target":null,"harness":null}' >/dev/null
 
 log "Checking model catalog"
 

@@ -12,6 +12,7 @@ from src.app.models.user import UserDocument
 from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
 from src.app.routers.workspaces import router
 from src.app.services.shared.tenant import TenantService
+from src.app.services.shared.tenant import WorkspaceMembership
 from src.app.services.users import UserService
 from src.app.services.workspaces import WorkspaceService
 from src.app.utils.http import register_exception_handlers
@@ -104,7 +105,15 @@ def build_client() -> TestClient:
     app.state.workspace_controller = WorkspaceController(
         service=WorkspaceService(
             repository=InMemoryWorkspaceRepository(),
-            tenant_service=TenantService(repository=FakeTenantRepository()),
+            tenant_service=TenantService(
+                repository=FakeTenantRepository([
+                    WorkspaceMembership(
+                        user_id='user-1',
+                        workspace_id='workspace-1',
+                        is_default=True,
+                    ),
+                ]),
+            ),
             linked_service_service=FakeLinkedServiceService(),  # type: ignore[arg-type]
             user_service=user_service,
             id_factory=lambda: 'workspace-1',
@@ -142,3 +151,34 @@ def test_create_requires_a_registered_user() -> None:
 
     assert response.status_code == 404
     assert response.json()['error']['code'] == 'user_not_found'
+
+
+def test_defaults_use_the_workspace_resource_path() -> None:
+    """Defaults are addressed through the workspace they configure."""
+
+    client = build_client()
+    headers = {'X-User-ID': 'user-1'}
+
+    current = client.get('/api/v1/workspaces/workspace-1/defaults', headers=headers)
+    replaced = client.put(
+        '/api/v1/workspaces/workspace-1/defaults',
+        headers=headers,
+        json={'model_target': None, 'harness': None},
+    )
+
+    assert current.status_code == 200
+    assert replaced.status_code == 200
+    assert current.json()['model_target'] is None
+    assert replaced.json()['harness'] is None
+
+
+def test_defaults_require_access_to_the_path_workspace() -> None:
+    """Defaults reject a workspace not accessible to the requesting User."""
+
+    response = build_client().get(
+        '/api/v1/workspaces/workspace-2/defaults',
+        headers={'X-User-ID': 'user-1'},
+    )
+
+    assert response.status_code == 403
+    assert response.json()['error']['code'] == 'workspace_access_denied'

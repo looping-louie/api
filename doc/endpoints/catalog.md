@@ -48,6 +48,64 @@ Example response (`200 OK`):
 ]
 ```
 
+## List model catalog
+
+`GET /api/v1/catalog/models` returns active logical models. `provider_ids`
+describes catalog deployments only; it does not identify configured providers
+or available workspace connections.
+
+```http
+GET /api/v1/catalog/models
+```
+
+The response is an object with the following properties:
+
+| Property | JSON type | Description |
+| -------- | --------- | ----------- |
+| `items` | Array | Active logical model definitions. |
+| `total` | Integer | Total number of active logical model definitions. |
+
+Each `items` entry has the following properties:
+
+| Property | JSON type | Description |
+| -------- | --------- | ----------- |
+| `id` | String | Immutable logical model identifier. |
+| `name` | String | Human-readable model name. |
+| `vendor` | String | Model vendor. |
+| `family` | String | Model family. |
+| `description` | String | Static model description. |
+| `released_at` | String | ISO 8601 model release date. |
+| `capabilities` | Array of strings | Catalog capability identifiers. |
+| `status` | String | Static lifecycle status. |
+| `provider_ids` | Array of strings | Provider types with an active catalog deployment. |
+| `deployment_count` | Integer | Number of catalog deployments for this logical model. |
+| `starting_price` | Object or `null` | Lowest active deployment price, when catalog pricing exists. |
+| `tags` | Array of strings | Search and grouping tags. |
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "gpt-5",
+      "name": "GPT-5",
+      "vendor": "OpenAI",
+      "family": "GPT",
+      "description": "A general-purpose model.",
+      "released_at": "2026-08-07",
+      "capabilities": ["coding", "text"],
+      "status": "active",
+      "provider_ids": ["openai"],
+      "deployment_count": 1,
+      "starting_price": null,
+      "tags": ["general-purpose"]
+    }
+  ],
+  "total": 1
+}
+```
+
 ## List built-in Persona catalog
 
 `GET /api/v1/catalog/personas` returns packaged built-in Persona definitions.
@@ -127,62 +185,4 @@ Example response (`200 OK`):
     "output": "json"
   }
 ]
-```
-
-## List model catalog
-
-`GET /api/v1/catalog/models` returns active logical models. `provider_ids`
-describes catalog deployments only; it does not identify configured providers
-or available workspace connections.
-
-```http
-GET /api/v1/catalog/models
-```
-
-The response is an object with the following properties:
-
-| Property | JSON type | Description |
-| -------- | --------- | ----------- |
-| `items` | Array | Active logical model definitions. |
-| `total` | Integer | Total number of active logical model definitions. |
-
-Each `items` entry has the following properties:
-
-| Property | JSON type | Description |
-| -------- | --------- | ----------- |
-| `id` | String | Immutable logical model identifier. |
-| `name` | String | Human-readable model name. |
-| `vendor` | String | Model vendor. |
-| `family` | String | Model family. |
-| `description` | String | Static model description. |
-| `released_at` | String | ISO 8601 model release date. |
-| `capabilities` | Array of strings | Catalog capability identifiers. |
-| `status` | String | Static lifecycle status. |
-| `provider_ids` | Array of strings | Provider types with an active catalog deployment. |
-| `deployment_count` | Integer | Number of catalog deployments for this logical model. |
-| `starting_price` | Object or `null` | Lowest active deployment price, when catalog pricing exists. |
-| `tags` | Array of strings | Search and grouping tags. |
-
-Example response (`200 OK`):
-
-```json
-{
-  "items": [
-    {
-      "id": "gpt-5",
-      "name": "GPT-5",
-      "vendor": "OpenAI",
-      "family": "GPT",
-      "description": "A general-purpose model.",
-      "released_at": "2026-08-07",
-      "capabilities": ["coding", "text"],
-      "status": "active",
-      "provider_ids": ["openai"],
-      "deployment_count": 1,
-      "starting_price": null,
-      "tags": ["general-purpose"]
-    }
-  ],
-  "total": 1
-}
 ```

@@ -139,7 +139,10 @@ async def test_get_returns_inherited_defaults_for_unconfigured_workspace() -> No
         user_service=FakeUserService(),
     )
 
-    defaults = await service.get_defaults(user_id='user-1')
+    defaults = await service.get_defaults(
+        user_id='user-1',
+        workspace_id='workspace-1',
+    )
 
     assert defaults.workspace_id == 'workspace-1'
     assert defaults.model_target is None
@@ -160,6 +163,7 @@ async def test_replace_validates_and_persists_model_target_and_harness() -> None
 
     defaults = await service.replace_defaults(
         user_id='user-1',
+        workspace_id='workspace-1',
         model_target=ModelTarget(
             linked_service_id='service-primary',
             model_id='gpt-5',

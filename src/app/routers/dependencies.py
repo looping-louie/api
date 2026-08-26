@@ -43,7 +43,7 @@ async def get_request_context(
             description='Identity acting on the request.',
         ),
     ] = None,
-    workspace_id: Annotated[
+    requested_workspace_id_header: Annotated[
         str | None,
         Header(
             alias="X-Workspace-ID",
@@ -72,8 +72,8 @@ async def get_request_context(
 
     normalized_workspace_id = None
 
-    if workspace_id is not None:
-        normalized_workspace_id = workspace_id.strip() or None
+    if requested_workspace_id_header is not None:
+        normalized_workspace_id = requested_workspace_id_header.strip() or None
 
     return RequestContext(
         user_id=user_id.strip(),

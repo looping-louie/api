@@ -17,8 +17,8 @@ execution dimension, then freezes the effective value in its run snapshots.
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/workspaces` | List Workspaces accessible to the current User. |
 | `POST` | `/api/v1/workspaces` | Create a Workspace owned by the current User. |
-| `GET` | `/api/v1/workspaces/defaults` | Describes workspace default overrides. |
-| `PUT` | `/api/v1/workspaces/defaults` | Replaces all workspace default overrides. |
+| `GET` | `/api/v1/workspaces/{workspace_id}/defaults` | Describes workspace default overrides. |
+| `PUT` | `/api/v1/workspaces/{workspace_id}/defaults` | Replaces all workspace default overrides. |
 
 ## List workspaces
 
@@ -79,12 +79,13 @@ means inherit rather than choose a workspace override.
 
 ## Describe workspace defaults
 
-`GET /api/v1/workspaces/defaults` returns the selected workspace's stored
-overrides. A workspace with no configured record returns both values as `null`.
+`GET /api/v1/workspaces/{workspace_id}/defaults` returns the specified
+accessible workspace's stored overrides. A workspace with no configured record
+returns both values as `null`.
 
 ```http
-GET /api/v1/workspaces/defaults
-X-Workspace-ID: workspace-acme
+GET /api/v1/workspaces/workspace-acme/defaults
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -106,13 +107,13 @@ Example response (`200 OK`):
 
 ## Replace workspace defaults
 
-`PUT /api/v1/workspaces/defaults` replaces the complete workspace override
-record. Omitting either field and explicitly setting it to `null` have the same
-meaning: inherit that dimension.
+`PUT /api/v1/workspaces/{workspace_id}/defaults` replaces the complete
+workspace override record. Omitting either field and explicitly setting it to
+`null` have the same meaning: inherit that dimension.
 
 ```http
-PUT /api/v1/workspaces/defaults
-X-Workspace-ID: workspace-acme
+PUT /api/v1/workspaces/workspace-acme/defaults
+X-User-ID: user-123
 Content-Type: application/json
 ```
 

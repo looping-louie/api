@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Path, status
 
 from src.app.controllers.workspace import WorkspaceController
 from src.app.schemas.workspace import (
@@ -25,6 +25,7 @@ ControllerDependency = Annotated[
     WorkspaceController,
     Depends(get_workspace_controller),
 ]
+WorkspaceIdPath = Annotated[str, Path(min_length=1, description='Workspace identifier.')]
 
 
 @router.get('', response_model=list[WorkspaceResponse], summary='List workspaces')
@@ -53,29 +54,39 @@ async def create_workspace(
     return await controller.create(user_id=context.user_id, payload=payload)
 
 
-@router.get('/defaults', response_model=WorkspaceDefaultsResponse, summary='Get workspace defaults')
+@router.get(
+    '/{workspace_id}/defaults',
+    response_model=WorkspaceDefaultsResponse,
+    summary='Get workspace defaults',
+)
 async def get_workspace_defaults(
+    workspace_id: WorkspaceIdPath,
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> WorkspaceDefaultsResponse:
-    """Return optional execution defaults for the selected workspace."""
+    """Return optional execution defaults for one accessible workspace."""
 
     return await controller.get_defaults(
         user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
+        workspace_id=workspace_id,
     )
 
 
-@router.put('/defaults', response_model=WorkspaceDefaultsResponse, summary='Replace workspace defaults')
+@router.put(
+    '/{workspace_id}/defaults',
+    response_model=WorkspaceDefaultsResponse,
+    summary='Replace workspace defaults',
+)
 async def replace_workspace_defaults(
+    workspace_id: WorkspaceIdPath,
     payload: WorkspaceDefaultsReplaceRequest,
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> WorkspaceDefaultsResponse:
-    """Replace optional execution defaults for the selected workspace."""
+    """Replace optional execution defaults for one accessible workspace."""
 
     return await controller.replace_defaults(
         user_id=context.user_id,
+        workspace_id=workspace_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
     )

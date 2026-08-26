@@ -83,7 +83,7 @@ class PipelineRunService:
             )
         workspace_defaults = await self._workspace_defaults(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=details.document.workspace_id,
         )
         inherited_model_target = (
             details.document.model_target
@@ -360,7 +360,7 @@ class PipelineRunService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None,
+        workspace_id: str,
     ) -> object | None:
         """Return configured workspace candidates when the service is available."""
 
@@ -368,7 +368,7 @@ class PipelineRunService:
             return None
         return await self._workspace_service.get_defaults(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
 
     @staticmethod
