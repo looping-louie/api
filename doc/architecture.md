@@ -452,7 +452,7 @@ models/
 - [Persona and Skill catalog](components/persona-skill-catalog.md) describes
   builtin Persona and Skill ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records the static provider and model
-  catalog boundary. Linked Services persist independent workspace-owned provider
+  catalog boundary. Linked Services persist independent User-owned provider
   connections and derive their available deployment models from that catalog.
   Legacy provider credentials and Persona model associations are retired.
 - [Philosophy](components/philosophy.md) contains the project principles and

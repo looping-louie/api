@@ -10,7 +10,7 @@ The endpoint reference is organized by top-level router:
 - [Catalog](endpoints/catalog.md) exposes static provider, model, built-in
   Persona, and built-in Skill definitions.
 - [Users](endpoints/users.md) registers and retrieves the current API user.
-- [Linked Services](endpoints/linked-services.md) manages workspace-owned
+- [Linked Services](endpoints/linked-services.md) manages User-owned
   provider connections.
 - [Workspaces](endpoints/workspaces.md) manages User-owned Workspaces and
   their execution defaults.

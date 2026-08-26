@@ -1,4 +1,4 @@
-"""Domain model for workspace-owned linked services."""
+"""Domain model for user-owned linked services."""
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -6,10 +6,10 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class LinkedService:
-    """Encrypted provider connection owned by one workspace."""
+    """Encrypted provider connection owned by one user."""
 
     id: str
-    workspace_id: str
+    user_id: str
     name: str
     provider_type: str
     enabled: bool

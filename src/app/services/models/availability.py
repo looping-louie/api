@@ -207,7 +207,7 @@ class ModelAvailabilityService:
 
         requested_provider_ids = set(provider_ids)
         states: dict[ProviderId, ProviderConnectionState] = {}
-        for linked_service in await self._linked_service_repository.list_for_workspace(
+        for linked_service in await self._linked_service_repository.list_for_workspace_owner(
             workspace_id
         ):
             try:

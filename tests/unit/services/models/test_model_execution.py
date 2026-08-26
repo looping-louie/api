@@ -40,22 +40,22 @@ class FakeModelCatalogService:
 
 
 class FakeLinkedServiceRepository:
-    """Store workspace linked services in memory."""
+    """Store legacy workspace-owner linked services in memory."""
 
     def __init__(self, linked_services: list[LinkedService]) -> None:
-        """Index linked services by workspace and immutable identifier."""
+        """Index linked services by the legacy workspace and identifier."""
 
         self._linked_services = {
-            (linked_service.workspace_id, linked_service.id): linked_service
+            ('workspace-1', linked_service.id): linked_service
             for linked_service in linked_services
         }
 
-    async def get(
+    async def get_for_workspace_owner(
         self,
         workspace_id: str,
         service_id: str,
     ) -> LinkedService | None:
-        """Return one linked service owned by the workspace."""
+        """Return one linked service through the workspace owner."""
 
         return self._linked_services.get((workspace_id, service_id))
 
@@ -92,7 +92,7 @@ def linked_service(provider: ProviderId) -> LinkedService:
     now = datetime(2026, 8, 3, tzinfo=UTC)
     return LinkedService(
         id='linked-service-1',
-        workspace_id='workspace-1',
+        user_id='user-1',
         name='Selected provider',
         provider_type=provider.value,
         enabled=True,

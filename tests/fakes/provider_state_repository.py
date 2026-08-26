@@ -28,7 +28,7 @@ class FakeProviderStateRepository:
 
         self._services[(workspace_id, provider_id)] = LinkedService(
             id=f'{provider_id.value}-service',
-            workspace_id=workspace_id,
+            user_id=f'user-{workspace_id}',
             name=provider_id.value,
             provider_type=provider_id.value,
             enabled=enabled,
@@ -51,8 +51,11 @@ class FakeProviderStateRepository:
 
         self._services.pop((workspace_id, provider_id), None)
 
-    async def list_for_workspace(self, workspace_id: str) -> list[LinkedService]:
-        """Return all test services for the requested workspace."""
+    async def list_for_workspace_owner(
+        self,
+        workspace_id: str,
+    ) -> list[LinkedService]:
+        """Return test services through the requested workspace owner."""
 
         self.calls.append(workspace_id)
         return [

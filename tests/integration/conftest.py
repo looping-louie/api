@@ -87,6 +87,16 @@ def create_workspace(
 
             if memberships:
                 await connection.executemany(
+                    '''
+                    INSERT OR IGNORE INTO users (id, created_at, updated_at)
+                    VALUES (?, ?, ?)
+                    ''',
+                    [
+                        (user_id, timestamp, timestamp)
+                        for user_id, _, _ in memberships
+                    ],
+                )
+                await connection.executemany(
                     """
                     INSERT INTO workspace_memberships (
                         workspace_id,

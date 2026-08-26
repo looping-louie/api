@@ -1,4 +1,4 @@
-"""REST routes for workspace-owned linked services."""
+"""REST routes for user-owned linked services."""
 
 from typing import Annotated
 
@@ -23,30 +23,30 @@ ServiceIdPath = Annotated[str, Path(min_length=1, description='Linked service id
 
 @router.get('', response_model=list[LinkedServiceResponse], summary='List linked services')
 async def list_linked_services(context: ContextDependency, controller: ControllerDependency) -> list[LinkedServiceResponse]:
-    """List linked services in the selected workspace."""
-    return await controller.list(user_id=context.user_id, requested_workspace_id=context.requested_workspace_id)
+    """List linked services owned by the current user."""
+    return await controller.list(user_id=context.user_id)
 
 
 @router.post('', response_model=LinkedServiceResponse, status_code=status.HTTP_201_CREATED, summary='Create linked service')
 async def create_linked_service(payload: LinkedServiceCreateRequest, context: ContextDependency, controller: ControllerDependency) -> LinkedServiceResponse:
     """Create a linked service after validating its candidate configuration."""
-    return await controller.create(user_id=context.user_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
+    return await controller.create(user_id=context.user_id, payload=payload)
 
 
 @router.get('/{service_id}', response_model=LinkedServiceResponse, summary='Get linked service')
 async def get_linked_service(service_id: ServiceIdPath, context: ContextDependency, controller: ControllerDependency) -> LinkedServiceResponse:
-    """Return one linked service from the selected workspace."""
-    return await controller.get(user_id=context.user_id, service_id=service_id, requested_workspace_id=context.requested_workspace_id)
+    """Return one linked service owned by the current user."""
+    return await controller.get(user_id=context.user_id, service_id=service_id)
 
 
 @router.patch('/{service_id}', response_model=LinkedServiceResponse, summary='Update linked service')
 async def patch_linked_service(service_id: ServiceIdPath, payload: LinkedServicePatchRequest, context: ContextDependency, controller: ControllerDependency) -> LinkedServiceResponse:
     """Update mutable linked-service fields."""
-    return await controller.patch(user_id=context.user_id, service_id=service_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
+    return await controller.patch(user_id=context.user_id, service_id=service_id, payload=payload)
 
 
 @router.delete('/{service_id}', response_model=DeleteResponse, summary='Delete linked service')
 async def delete_linked_service(service_id: ServiceIdPath, context: ContextDependency, controller: ControllerDependency) -> DeleteResponse:
-    """Delete one linked service from the selected workspace."""
-    await controller.delete(user_id=context.user_id, service_id=service_id, requested_workspace_id=context.requested_workspace_id)
+    """Delete one linked service owned by the current user."""
+    await controller.delete(user_id=context.user_id, service_id=service_id)
     return DeleteResponse()

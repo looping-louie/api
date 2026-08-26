@@ -117,7 +117,7 @@ class ModelExecutionService:
     ) -> LinkedService:
         """Return an enabled configured linked service in the workspace."""
 
-        linked_service = await self._linked_service_repository.get(
+        linked_service = await self._linked_service_repository.get_for_workspace_owner(
             workspace_id,
             linked_service_id,
         )

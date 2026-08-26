@@ -183,6 +183,10 @@ async def configure_application(
     worker_repository = SqliteWorkerRepository(database)
     workspace_repository = SqliteWorkspaceRepository(database)
     user_repository = SqliteUserRepository(database)
+    user_service = UserService(
+        repository=user_repository,
+        clock=utc_now,
+    )
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -245,16 +249,13 @@ async def configure_application(
     secret_service = FernetSecretService(encryption_key)
     linked_service_service = LinkedServiceService(
         repository=linked_service_repository,
+        user_service=user_service,
         tenant_service=tenant_service,
         secret_service=secret_service,
         connection_service=HttpProviderConnectionService(),
         catalog=PROVIDER_CATALOG,
         dependency_checker=dependency_checker,
         id_factory=create_identifier,
-        clock=utc_now,
-    )
-    user_service = UserService(
-        repository=user_repository,
         clock=utc_now,
     )
     workspace_service = WorkspaceService(

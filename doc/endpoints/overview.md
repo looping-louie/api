@@ -12,7 +12,7 @@ operations.
 - [Catalog](catalog.md) exposes static provider, model, built-in Persona, and
   built-in Skill definitions.
 - [Users](users.md) registers and retrieves the current API user.
-- [Linked Services](linked-services.md) manages workspace-owned provider
+- [Linked Services](linked-services.md) manages User-owned provider
   connections.
 - [Workspaces](workspaces.md) manages User-owned Workspaces and their
   execution defaults.
@@ -38,8 +38,9 @@ resource.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 
-Persona and Skill routes are user-scoped: their custom definitions and built-in
-enablement settings belong to `X-User-ID`, and they ignore `X-Workspace-ID`.
+Persona, Skill, and Linked Service routes are user-scoped: their custom
+definitions, enablement settings, and provider connections belong to
+`X-User-ID`, and they ignore `X-Workspace-ID`.
 
 Persona, Skill, Activity, Pipeline, workspace Model, and catalog Model lists
 return an object with `items` and `total`. Catalog provider, built-in Persona,
