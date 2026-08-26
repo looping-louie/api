@@ -25,6 +25,8 @@ from src.app.services.models.availability import (
     ModelValidationError,
 )
 from src.app.services.shared.tenant import TenantService
+from src.app.models.user import UserSettings
+from src.app.services.users import UserService
 
 
 class ModelCatalogService:
@@ -34,6 +36,7 @@ class ModelCatalogService:
         self,
         *,
         tenant_service: TenantService,
+        user_service: UserService | None = None,
         availability_service: ModelAvailabilityService,
         catalog: Sequence[ModelCatalogEntry] = MODEL_CATALOG,
         catalog_index: CatalogIndex = CATALOG_INDEX,
@@ -41,6 +44,7 @@ class ModelCatalogService:
         """Store model catalog dependencies."""
 
         self._tenant_service = tenant_service
+        self._user_service = user_service
         self._availability_service = availability_service
         self._catalog = tuple(catalog)
         self._catalog_index = catalog_index
@@ -69,6 +73,7 @@ class ModelCatalogService:
             user_id=user_id,
             workspace_id=workspace_id,
         )
+        settings = await self._user_settings(user_id=user_id)
         normalized_search = self._normalize_search(search)
         selected_labs = frozenset(labs)
 
@@ -91,6 +96,10 @@ class ModelCatalogService:
             models=models,
             offerings_by_model={
                 model.id: self.offerings_for_model(model)
+                for model in models
+            },
+            model_enabled_by_id={
+                model.id: self._model_enabled(model.id, settings)
                 for model in models
             },
         )
@@ -128,12 +137,14 @@ class ModelCatalogService:
             user_id=user_id,
             workspace_id=workspace_id,
         )
+        settings = await self._user_settings(user_id=user_id)
         model = self.require_model(model_id)
 
         availability = await self._availability_service.describe(
             workspace_id=workspace_id,
             model=model,
             offerings=self.offerings_for_model(model),
+            model_enabled=self._model_enabled(model.id, settings),
         )
 
         return self._to_document(
@@ -156,6 +167,22 @@ class ModelCatalogService:
             )
 
         return model
+
+    @staticmethod
+    def _model_enabled(model_id: str, settings: object) -> bool:
+        """Return the configured model state or the User default policy."""
+
+        for configured_model in getattr(settings, 'configured_models'):
+            if configured_model.id == model_id:
+                return configured_model.status == 'enabled'
+        return getattr(settings, 'default_model_availability') == 'enabled'
+
+    async def _user_settings(self, *, user_id: str) -> UserSettings:
+        """Return the User policy or the enabled default for catalog-only callers."""
+
+        if self._user_service is None:
+            return UserSettings()
+        return (await self._user_service.get(user_id=user_id)).settings
 
     def get_many(
         self,

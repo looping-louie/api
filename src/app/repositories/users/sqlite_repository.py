@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 
 from src.app.models.pipeline import PipelineHarness
-from src.app.models.user import UserSettings
+from src.app.models.user import (
+    ConfiguredModelAvailability,
+    UserSettings,
+)
 from src.app.models.user import UserDocument
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 from src.app.repositories.shared.datetime import parse_datetime
@@ -128,6 +131,14 @@ def _settings_json(settings: UserSettings) -> str:
             if harness is not None
             else None
         ),
+        'default_model_availability': settings.default_model_availability,
+        'configured_models': [
+            {
+                'id': model.id,
+                'status': model.status,
+            }
+            for model in settings.configured_models
+        ],
     })
 
 
@@ -138,10 +149,32 @@ def _settings_from_json(value: str | None) -> UserSettings:
         return UserSettings()
     payload = json.loads(value)
     harness = payload.get('default_harness')
-    if not isinstance(harness, dict):
-        return UserSettings()
-    return UserSettings(default_harness=PipelineHarness(
-        kind=harness['kind'],
-        version=harness['version'],
-        config=harness.get('config', {}),
-    ))
+    default_harness = (
+        PipelineHarness(
+            kind=harness['kind'],
+            version=harness['version'],
+            config=harness.get('config', {}),
+        )
+        if isinstance(harness, dict)
+        else None
+    )
+    default_model_availability = payload.get('default_model_availability')
+    configured_models = payload.get('configured_models')
+    return UserSettings(
+        default_harness=default_harness,
+        default_model_availability=(
+            default_model_availability
+            if default_model_availability in ('enabled', 'disabled')
+            else 'enabled'
+        ),
+        configured_models=tuple(
+            ConfiguredModelAvailability(
+                id=model['id'],
+                status=model['status'],
+            )
+            for model in configured_models
+            if isinstance(model, dict)
+            and isinstance(model.get('id'), str)
+            and model.get('status') in ('enabled', 'disabled')
+        ) if isinstance(configured_models, list) else (),
+    )

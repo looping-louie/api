@@ -513,6 +513,7 @@ class ActivityRunService:
                         agent=agent,
                         activity_id=str(getattr(activity, 'id')),
                         workspace_id=workspace_id,
+                        user_id=user_id,
                         inherited_model_id=inherited_model_id,
                     )
                     if isinstance(agent, dict)
@@ -558,6 +559,7 @@ class ActivityRunService:
         agent: dict[str, object],
         activity_id: str,
         workspace_id: str,
+        user_id: str,
         inherited_model_id: str | None,
     ) -> dict[str, object]:
         """Freeze an available linked service for one Louie agent model."""
@@ -576,6 +578,7 @@ class ActivityRunService:
         linked_service = await self._model_execution_service.select_linked_service(
             workspace_id=workspace_id,
             model_id=model_id,
+            user_id=user_id,
         )
         snapshot['model_target'] = {
             'linked_service_id': linked_service.id,

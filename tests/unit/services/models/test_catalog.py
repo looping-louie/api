@@ -1,6 +1,6 @@
 """Tests for filtering and describing the curated model catalog."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -12,6 +12,11 @@ from src.app.catalogs.models import (
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
+from src.app.models.user import (
+    ConfiguredModelAvailability,
+    UserDocument,
+    UserSettings,
+)
 from src.app.services.models.availability import (
     ModelAvailabilityService,
     ModelNotFoundError,
@@ -29,10 +34,31 @@ from tests.fakes.provider_state_repository import (
 )
 
 
+class _UserService:
+    """Return one User profile with a configured model availability policy."""
+
+    def __init__(self, settings: UserSettings) -> None:
+        """Store the settings returned for catalog queries."""
+
+        self._settings = settings
+
+    async def get(self, *, user_id: str) -> UserDocument:
+        """Return the configured User profile."""
+
+        now = datetime(2026, 8, 26, tzinfo=UTC)
+        return UserDocument(
+            id=user_id,
+            created_at=now,
+            updated_at=now,
+            settings=self._settings,
+        )
+
+
 def build_service(
     *,
     tenant_service: TenantService,
     repository: FakeProviderStateRepository,
+    user_service: _UserService | None = None,
 ) -> ModelCatalogService:
     """Build a catalog service with models that distinguish every filter."""
 
@@ -87,12 +113,90 @@ def build_service(
 
     return ModelCatalogService(
         tenant_service=tenant_service,
+        user_service=user_service,  # type: ignore[arg-type]
         availability_service=ModelAvailabilityService(
                 linked_service_repository=repository,
         ),
         catalog=catalog,
         catalog_index=catalog_index,
     )
+
+
+@pytest.mark.asyncio
+async def test_list_applies_default_and_configured_model_availability(
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    """A configured model can override the User's disabled default policy."""
+
+    provider_state_repository.seed(
+        workspace_id='workspace-1',
+        state=ProviderConnectionState(
+            provider_id=ProviderId.TOGETHER,
+            configured=True,
+            enabled=True,
+        ),
+    )
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+        user_service=_UserService(UserSettings(
+            default_model_availability='disabled',
+            configured_models=(
+                ConfiguredModelAvailability(
+                    id='coding-model',
+                    status='enabled',
+                ),
+            ),
+        )),
+    )
+
+    models = await service.list(
+        user_id='user-1',
+        workspace_id='workspace-1',
+    )
+
+    availability = {model.id: model.available for model in models}
+    assert availability['coding-model'] is True
+    assert availability['openai-model'] is False
+
+
+@pytest.mark.asyncio
+async def test_describe_marks_configured_disabled_model_unavailable(
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    """A disabled configured model remains unavailable despite a ready provider."""
+
+    provider_state_repository.seed(
+        workspace_id='workspace-1',
+        state=ProviderConnectionState(
+            provider_id=ProviderId.TOGETHER,
+            configured=True,
+            enabled=True,
+        ),
+    )
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+        user_service=_UserService(UserSettings(
+            configured_models=(
+                ConfiguredModelAvailability(
+                    id='coding-model',
+                    status='disabled',
+                ),
+            ),
+        )),
+    )
+
+    model = await service.describe(
+        user_id='user-1',
+        workspace_id='workspace-1',
+        model_id='coding-model',
+    )
+
+    assert model.available is False
+    assert model.offerings[0].reason == 'model_disabled'
 
 
 @pytest.mark.asyncio

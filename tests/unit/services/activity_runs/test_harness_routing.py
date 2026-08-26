@@ -105,17 +105,18 @@ class _ModelExecutionService:
     def __init__(self) -> None:
         """Initialize the deterministic linked-service selection fixture."""
 
-        self.calls: list[tuple[str, str]] = []
+        self.calls: list[tuple[str, str, str]] = []
 
     async def select_linked_service(
         self,
         *,
         workspace_id: str,
         model_id: str,
+        user_id: str,
     ) -> SimpleNamespace:
         """Record and return the linked service selected for a logical model."""
 
-        self.calls.append((workspace_id, model_id))
+        self.calls.append((workspace_id, model_id, user_id))
         return SimpleNamespace(id='linked-service-selected')
 
 
@@ -193,7 +194,7 @@ async def test_create_louie_freezes_selected_service_for_effective_model(
         user_id='user-1', activity_id=activity.id, input_text='Implement.',
     )
 
-    assert selector.calls == [('workspace-1', 'gpt-5')]
+    assert selector.calls == [('workspace-1', 'gpt-5', 'user-1')]
     assert created.activity_snapshot['agents'][0]['model_target'] == {
         'linked_service_id': 'linked-service-selected',
         'model_id': 'gpt-5',

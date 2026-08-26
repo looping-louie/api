@@ -20,6 +20,7 @@ from src.app.catalogs.models import (
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
+from src.app.models.user import UserDocument, UserSettings
 from src.app.services.models import (
     ModelDeploymentUnavailableError,
     ModelExecutionService,
@@ -99,6 +100,26 @@ class FakeSecretService:
         return 'test-key'
 
 
+class FakeUserService:
+    """Return one User profile with model availability settings."""
+
+    def __init__(self, settings: UserSettings) -> None:
+        """Store the settings returned for model selection."""
+
+        self._settings = settings
+
+    async def get(self, *, user_id: str) -> UserDocument:
+        """Return a profile for the requested User identity."""
+
+        now = datetime(2026, 8, 26, tzinfo=UTC)
+        return UserDocument(
+            id=user_id,
+            created_at=now,
+            updated_at=now,
+            settings=self._settings,
+        )
+
+
 def model() -> ModelCatalogEntry:
     """Build one provider-neutral logical model."""
 
@@ -140,6 +161,7 @@ def service(
     provider_id: ProviderId = ProviderId.TOGETHER,
     linked_services: list[LinkedService],
     handler: Any,
+    user_service: FakeUserService | None = None,
 ) -> ModelExecutionService:
     """Build the executor with a transport that captures no real network calls."""
 
@@ -159,6 +181,7 @@ def service(
         ),
         secret_service=FakeSecretService(),
         linked_service_repository=FakeLinkedServiceRepository(linked_services),
+        user_service=user_service,  # type: ignore[arg-type]
         client=client,
     )
 
@@ -186,6 +209,27 @@ async def test_select_linked_service_skips_unusable_candidates() -> None:
     )
 
     assert selected.id == 'linked-service-usable'
+
+
+@pytest.mark.asyncio
+async def test_select_linked_service_rejects_user_disabled_model() -> None:
+    """Louie selection cannot bypass a User's disabled model policy."""
+
+    executor = service(
+        offerings=(build_offering(),),
+        linked_services=[linked_service(ProviderId.TOGETHER)],
+        handler=lambda _: httpx.Response(500),
+        user_service=FakeUserService(UserSettings(
+            default_model_availability='disabled',
+        )),
+    )
+
+    with pytest.raises(ModelDeploymentUnavailableError, match='disabled by User settings'):
+        await executor.select_linked_service(
+            workspace_id='workspace-1',
+            user_id='user-1',
+            model_id='model-1',
+        )
 
 
 @pytest.mark.asyncio

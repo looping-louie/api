@@ -119,6 +119,7 @@ class PipelineRunService:
                 activity_snapshot=await self._activity_snapshot(
                     activity,
                     workspace_id=details.document.workspace_id,
+                    user_id=user_id,
                     inherited_model_id=inherited_model_id,
                     inherited_harness=inherited_harness,
                 ),
@@ -732,6 +733,7 @@ class PipelineRunService:
         activity: ActivityDocument,
         *,
         workspace_id: str,
+        user_id: str,
         inherited_model_id: str | None,
         inherited_harness: PipelineHarness,
     ) -> dict[str, object]:
@@ -746,6 +748,7 @@ class PipelineRunService:
                 await self._agent_snapshot(
                     agent=agent,
                     workspace_id=workspace_id,
+                    user_id=user_id,
                     inherited_model_id=model_id,
                     harness=harness,
                 )
@@ -791,6 +794,7 @@ class PipelineRunService:
         *,
         agent: dict[str, object],
         workspace_id: str,
+        user_id: str,
         inherited_model_id: str | None,
         harness: PipelineHarness,
     ) -> dict[str, object]:
@@ -812,6 +816,7 @@ class PipelineRunService:
         linked_service = await self._model_execution_service.select_linked_service(
             workspace_id=workspace_id,
             model_id=model_id,
+            user_id=user_id,
         )
         snapshot['model_target'] = {
             'linked_service_id': linked_service.id,

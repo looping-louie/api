@@ -218,6 +218,7 @@ async def configure_application(
     )
     model_catalog_service = ModelCatalogService(
         tenant_service=tenant_service,
+        user_service=user_service,
         availability_service=model_availability_service,
     )
     catalog_controller = CatalogController(
@@ -288,6 +289,7 @@ async def configure_application(
         model_catalog_service=model_catalog_service,
         secret_service=secret_service,
         linked_service_repository=linked_service_repository,
+        user_service=user_service,
     )
     activity_run_service = ActivityRunService(
         repository=activity_run_repository,

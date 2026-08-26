@@ -41,6 +41,12 @@ User scope. A missing Louie agent model fails run creation; Personas contribute
 instructions only. When no Harness candidate exists, the frozen Harness is the
 `louie` v1 compatibility default.
 
+User settings also gate logical model availability. Unconfigured models inherit
+`settings.default_model_availability`, which defaults to `enabled`;
+`settings.configured_models` overrides that status per model ID. A disabled
+model is unavailable in Workspace catalog responses and cannot be resolved by
+the `louie` Harness, even when a compatible Linked Service is ready.
+
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for
 the frozen Pipeline Harness selection.

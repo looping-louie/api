@@ -18,6 +18,7 @@ from src.app.models.linked_service import LinkedService
 from src.app.repositories.linked_services import LinkedServiceRepository
 from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.providers.secret import SecretService
+from src.app.services.users import UserService
 
 
 class ModelExecutionError(RuntimeError):
@@ -57,6 +58,7 @@ class ModelExecutionService:
         model_catalog_service: ModelCatalogService,
         secret_service: SecretService,
         linked_service_repository: LinkedServiceRepository,
+        user_service: UserService | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         """Store catalog, linked-service, secret, and HTTP dependencies."""
@@ -64,6 +66,7 @@ class ModelExecutionService:
         self._model_catalog_service = model_catalog_service
         self._secret_service = secret_service
         self._linked_service_repository = linked_service_repository
+        self._user_service = user_service
         self._client = client
 
     async def execute(
@@ -114,9 +117,14 @@ class ModelExecutionService:
         *,
         workspace_id: str,
         model_id: str,
+        user_id: str | None = None,
     ) -> LinkedService:
         """Select the first usable workspace-owner service for a logical model."""
 
+        if not await self._model_enabled(user_id=user_id, model_id=model_id):
+            raise ModelDeploymentUnavailableError(
+                f"Model '{model_id}' is disabled by User settings."
+            )
         model = self._model_catalog_service.require_model(model_id)
         provider_ids = {
             offering.provider_id.value
@@ -136,6 +144,17 @@ class ModelExecutionService:
         raise ModelDeploymentUnavailableError(
             f"Model '{model_id}' has no usable linked service."
         )
+
+    async def _model_enabled(self, *, user_id: str | None, model_id: str) -> bool:
+        """Return whether User policy permits a logical model selection."""
+
+        if self._user_service is None or user_id is None:
+            return True
+        settings = (await self._user_service.get(user_id=user_id)).settings
+        for configured_model in settings.configured_models:
+            if configured_model.id == model_id:
+                return configured_model.status == 'enabled'
+        return settings.default_model_availability == 'enabled'
 
     async def _require_linked_service(
         self,

@@ -24,6 +24,7 @@ class ModelUnavailableReason(StrEnum):
 
     MODEL_DEPRECATED = "model_deprecated"
     DEPLOYMENT_DEPRECATED = "deployment_deprecated"
+    MODEL_DISABLED = "model_disabled"
     PROVIDER_NOT_CONFIGURED = "provider_not_configured"
     PROVIDER_DISABLED = "provider_disabled"
 
@@ -146,6 +147,7 @@ class ModelAvailabilityService:
         workspace_id: str,
         model: ModelCatalogEntry,
         offerings: Sequence[ModelOffering],
+        model_enabled: bool = True,
     ) -> ModelAvailability:
         """Return availability for every provider offering of a model."""
 
@@ -165,6 +167,7 @@ class ModelAvailabilityService:
                 model=model,
                 offering=offering,
                 provider_state=states.get(offering.provider_id),
+                model_enabled=model_enabled,
             )
             for offering in offerings
         )
@@ -180,6 +183,7 @@ class ModelAvailabilityService:
         workspace_id: str,
         models: Sequence[ModelCatalogEntry],
         offerings_by_model: dict[str, Sequence[ModelOffering]],
+        model_enabled_by_id: dict[str, bool] | None = None,
     ) -> dict[str, ModelAvailability]:
         """Return availability for several models using one provider lookup."""
 
@@ -206,6 +210,11 @@ class ModelAvailabilityService:
                     model=model,
                     offering=offering,
                     provider_state=states.get(offering.provider_id),
+                    model_enabled=(
+                        model_enabled_by_id.get(model.id, True)
+                        if model_enabled_by_id is not None
+                        else True
+                    ),
                 )
                 for offering in offerings_by_model[model.id]
             )
@@ -252,6 +261,7 @@ class ModelAvailabilityService:
         model: ModelCatalogEntry,
         offering: ModelOffering,
         provider_state: ProviderConnectionState | None,
+        model_enabled: bool,
     ) -> ModelOfferingAvailability:
         """Evaluate one provider offering against its workspace state."""
 
@@ -268,6 +278,7 @@ class ModelAvailabilityService:
         reason = self._get_unavailable_reason(
             model=model,
             offering=offering,
+            model_enabled=model_enabled,
             configured=configured,
             enabled=enabled,
         )
@@ -292,6 +303,7 @@ class ModelAvailabilityService:
         *,
         model: ModelCatalogEntry,
         offering: ModelOffering,
+        model_enabled: bool,
         configured: bool,
         enabled: bool,
     ) -> ModelUnavailableReason | None:
@@ -302,6 +314,9 @@ class ModelAvailabilityService:
 
         if offering.status == ModelStatus.DEPRECATED:
             return ModelUnavailableReason.DEPLOYMENT_DEPRECATED
+
+        if not model_enabled:
+            return ModelUnavailableReason.MODEL_DISABLED
 
         if not configured:
             return ModelUnavailableReason.PROVIDER_NOT_CONFIGURED

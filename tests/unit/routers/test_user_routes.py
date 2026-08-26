@@ -67,7 +67,11 @@ def test_register_then_get_returns_the_identified_user() -> None:
     assert retrieved.status_code == 200
     assert retrieved.json() == registered.json()
     assert registered.json()['id'] == 'user-1'
-    assert registered.json()['settings'] == {'default_harness': None}
+    assert registered.json()['settings'] == {
+        'default_harness': None,
+        'default_model_availability': 'enabled',
+        'configured_models': [],
+    }
 
 
 def test_update_settings_persists_default_harness() -> None:
@@ -91,9 +95,41 @@ def test_update_settings_persists_default_harness() -> None:
     assert updated.status_code == 200
     assert updated.json()['settings'] == {
         'default_harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        'default_model_availability': 'enabled',
+        'configured_models': [],
     }
     assert cleared.status_code == 200
-    assert cleared.json()['settings'] == {'default_harness': None}
+    assert cleared.json()['settings'] == {
+        'default_harness': None,
+        'default_model_availability': 'enabled',
+        'configured_models': [],
+    }
+
+
+def test_update_settings_persists_model_availability_policy() -> None:
+    """Configured models override the default User availability policy."""
+
+    client = build_client()
+    headers = {'X-User-ID': 'user-1'}
+    client.post('/api/v1/users', headers=headers)
+
+    updated = client.patch(
+        '/api/v1/users/me',
+        headers=headers,
+        json={
+            'default_model_availability': 'disabled',
+            'configured_models': [
+                {'id': 'gpt-5', 'status': 'enabled'},
+            ],
+        },
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()['settings'] == {
+        'default_harness': None,
+        'default_model_availability': 'disabled',
+        'configured_models': [{'id': 'gpt-5', 'status': 'enabled'}],
+    }
 
 
 def test_get_requires_registered_user() -> None:

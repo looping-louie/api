@@ -29,6 +29,12 @@ User settings persist an optional default Harness, while Workspace defaults
 persist optional `model_id` and Harness overrides. A missing value explicitly
 means inheritance.
 
+User settings also persist model availability policy. Unconfigured logical
+models inherit `default_model_availability`, which defaults to `enabled`, and
+`configured_models` overrides the status per model ID. This policy gates both
+Workspace catalog availability and `louie` Linked Service selection; provider
+readiness remains required for an enabled model.
+
 The hierarchy persists candidates at workspace, Pipeline, Activity, and
 loop-agent scopes. Pipeline and Activity store first-class nullable
 `model_id` and `harness` fields; agents store nullable `model_id` in their

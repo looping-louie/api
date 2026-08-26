@@ -6,8 +6,12 @@ from collections.abc import Callable
 from datetime import datetime
 
 from src.app.models.pipeline import PipelineHarness
-from src.app.models.user import UserDocument
-from src.app.models.user import UserSettings
+from src.app.models.user import (
+    ConfiguredModelAvailability,
+    ModelAvailabilityStatus,
+    UserDocument,
+    UserSettings,
+)
 from src.app.repositories.users import UserRepository
 
 
@@ -60,15 +64,21 @@ class UserService:
         *,
         user_id: str,
         default_harness: PipelineHarness | None,
+        default_model_availability: ModelAvailabilityStatus,
+        configured_models: tuple[ConfiguredModelAvailability, ...],
     ) -> UserDocument:
-        """Replace user-level defaults inherited by execution resources."""
+        """Replace User execution and logical model availability defaults."""
 
         current = await self.get(user_id=user_id)
         return await self._repository.update(UserDocument(
             id=current.id,
             created_at=current.created_at,
             updated_at=self._clock(),
-            settings=UserSettings(default_harness=default_harness),
+            settings=UserSettings(
+                default_harness=default_harness,
+                default_model_availability=default_model_availability,
+                configured_models=configured_models,
+            ),
         ))
 
 

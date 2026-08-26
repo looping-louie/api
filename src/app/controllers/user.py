@@ -1,6 +1,6 @@
 """HTTP controller for current API user profiles."""
 
-from src.app.models.user import UserDocument
+from src.app.models.user import ConfiguredModelAvailability, UserDocument
 from src.app.models.pipeline import PipelineHarness
 from src.app.schemas.user import UserResponse, UserSettingsRequest, UserSettingsResponse
 from src.app.services.users import UserService
@@ -44,6 +44,11 @@ class UserController:
                 if harness is not None
                 else None
             ),
+            default_model_availability=settings.default_model_availability,
+            configured_models=tuple(
+                ConfiguredModelAvailability(id=model.id, status=model.status)
+                for model in settings.configured_models
+            ),
         ))
 
     @staticmethod
@@ -64,5 +69,13 @@ class UserController:
                     if document.settings.default_harness is not None
                     else None
                 ),
+                default_model_availability=document.settings.default_model_availability,
+                configured_models=[
+                    {
+                        'id': model.id,
+                        'status': model.status,
+                    }
+                    for model in document.settings.configured_models
+                ],
             ),
         )
