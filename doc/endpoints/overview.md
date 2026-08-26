@@ -14,9 +14,8 @@ operations.
 - [Users](users.md) registers and retrieves the current API user.
 - [Linked Services](linked-services.md) manages User-owned provider
   connections.
-- [Workspaces](workspaces.md) manages User-owned Workspaces and their
-  execution defaults.
-- [Models](models.md) exposes the curated model catalog.
+- [Workspaces](workspaces.md) manages User-owned Workspaces, their execution
+  defaults, and model availability.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
 - [Activities](activities.md) manages reusable concrete Activity definitions

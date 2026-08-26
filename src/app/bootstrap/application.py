@@ -15,7 +15,7 @@ from src.app.catalogs.persona_skills.loader import (
     load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.model import ModelController
+from src.app.controllers.workspace import WorkspaceModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.workspace import WorkspaceController
@@ -325,7 +325,7 @@ async def configure_application(
         linked_service_service=linked_service_service,
         workspace_service=workspace_service,
     )
-    app.state.model_controller = ModelController(
+    app.state.workspace_model_controller = WorkspaceModelController(
         model_catalog_service=model_catalog_service,
     )
     app.state.catalog_controller = catalog_controller

@@ -6,7 +6,7 @@ from typing import Callable
 
 import pytest
 
-from src.app.controllers.model import ModelController
+from src.app.controllers.workspace import WorkspaceModelController
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.persona_skills import (
@@ -187,7 +187,7 @@ def model_catalog_service(
 @pytest.fixture
 def model_controller(
     model_catalog_service: ModelCatalogService,
-) -> ModelController:
-    return ModelController(
+) -> WorkspaceModelController:
+    return WorkspaceModelController(
         model_catalog_service=model_catalog_service,
     )

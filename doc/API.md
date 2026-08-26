@@ -12,9 +12,8 @@ The endpoint reference is organized by top-level router:
 - [Users](endpoints/users.md) registers and retrieves the current API user.
 - [Linked Services](endpoints/linked-services.md) manages User-owned
   provider connections.
-- [Workspaces](endpoints/workspaces.md) manages User-owned Workspaces and
-  their execution defaults.
-- [Models](endpoints/models.md) exposes the curated model catalog.
+- [Workspaces](endpoints/workspaces.md) manages User-owned Workspaces,
+  their execution defaults, and model availability.
 - [Personas](endpoints/personas.md) manages persona instructions.
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Activities](endpoints/activities.md) manages reusable concrete Activity

@@ -11,8 +11,8 @@ from src.app.catalogs.models import (
     ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.model import ModelController
-from src.app.routers.models import router as models_router
+from src.app.controllers.workspace import WorkspaceModelController
+from src.app.routers.workspaces import router as workspaces_router
 from src.app.services.models.availability import ProviderConnectionState
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.provider_state_repository import (
@@ -22,13 +22,13 @@ from tests.fakes.provider_state_repository import (
 
 def build_app(
     *,
-    controller: ModelController,
+    controller: WorkspaceModelController,
     authenticated: bool = True,
 ) -> FastAPI:
     """Build a minimal FastAPI application for router tests."""
 
     app = FastAPI()
-    app.state.model_controller = controller
+    app.state.workspace_model_controller = controller
 
     if authenticated:
 
@@ -44,7 +44,7 @@ def build_app(
 
     register_exception_handlers(app)
     app.include_router(
-        models_router,
+        workspaces_router,
         prefix="/api/v1",
     )
 
@@ -52,7 +52,7 @@ def build_app(
 
 
 def test_list_models_route(
-    model_controller: ModelController,
+    model_controller: WorkspaceModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     """List responses honor provider and effective availability filters."""
@@ -100,7 +100,7 @@ def test_list_models_route(
 
 
 def test_list_models_filters_sorts_and_paginates(
-    model_controller: ModelController,
+    model_controller: WorkspaceModelController,
 ) -> None:
     """The route composes repeated labs, date sorting, and fixed pages."""
 
@@ -154,7 +154,7 @@ def test_list_models_filters_sorts_and_paginates(
 
 
 def test_describe_model_route(
-    model_controller: ModelController,
+    model_controller: WorkspaceModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     """Describe exposes the selected model and workspace availability."""
@@ -189,7 +189,7 @@ def test_describe_model_route(
 
 
 def test_describe_missing_model_returns_404(
-    model_controller: ModelController,
+    model_controller: WorkspaceModelController,
 ) -> None:
     """Unknown model identifiers produce the public not-found error."""
 
@@ -208,7 +208,7 @@ def test_describe_missing_model_returns_404(
 
 
 def test_models_routes_require_authentication(
-    model_controller: ModelController,
+    model_controller: WorkspaceModelController,
 ) -> None:
     """Every model route rejects requests without an authenticated user."""
 
@@ -230,7 +230,7 @@ def test_models_routes_require_authentication(
 
 
 def test_list_models_validates_query_values(
-    model_controller: ModelController,
+    model_controller: WorkspaceModelController,
 ) -> None:
     """Invalid enum, range, and text filters are rejected before dispatch."""
 

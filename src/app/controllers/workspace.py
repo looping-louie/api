@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+from src.app.catalogs.models import (
+    ModelCapability,
+    ModelLab,
+    ModelSort,
+    ModelStatus,
+)
+from src.app.catalogs.providers import ProviderId
 from src.app.models.execution import ModelTarget
-from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.workspace import WorkspaceDocument
+from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.pipeline import PipelineHarness
+from src.app.schemas.model import ModelListResponse, ModelResponse, ModelSummaryResponse
 from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,
     WorkspaceDefaultsResponse,
@@ -13,6 +23,7 @@ from src.app.schemas.workspace import (
     WorkspacePatchRequest,
     WorkspaceResponse,
 )
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.workspaces import WorkspaceService
 
 
@@ -158,3 +169,61 @@ class WorkspaceController:
             created_at=workspace.created_at,
             updated_at=workspace.updated_at,
         )
+
+
+class WorkspaceModelController:
+    """Translate Workspace model availability HTTP contracts to application operations."""
+
+    def __init__(self, *, model_catalog_service: ModelCatalogService) -> None:
+        """Store the Workspace-aware model catalog service."""
+
+        self._model_catalog_service = model_catalog_service
+
+    async def list(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+        provider_id: ProviderId | None = None,
+        capability: ModelCapability | None = None,
+        model_status: ModelStatus | None = None,
+        labs: Sequence[ModelLab] = (),
+        sort: ModelSort | None = None,
+        offset: int = 0,
+        available: bool | None = None,
+        search: str | None = None,
+        include_deprecated: bool = False,
+    ) -> ModelListResponse:
+        """List curated models and availability for one Workspace."""
+
+        models = await self._model_catalog_service.list(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            provider_id=provider_id,
+            capability=capability,
+            model_status=model_status,
+            labs=labs,
+            sort=sort,
+            available=available,
+            search=search,
+            include_deprecated=include_deprecated,
+        )
+        page = models[offset : offset + 24]
+        items = [ModelSummaryResponse.model_validate(model) for model in page]
+        return ModelListResponse(items=items, total=len(models))
+
+    async def describe(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+        model_id: str,
+    ) -> ModelResponse:
+        """Describe one curated model and availability for one Workspace."""
+
+        model = await self._model_catalog_service.describe(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            model_id=model_id,
+        )
+        return ModelResponse.model_validate(model)
