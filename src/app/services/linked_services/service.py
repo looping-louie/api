@@ -223,9 +223,9 @@ class LinkedServiceService:
             for model in MODEL_CATALOG
             if model.status != ModelStatus.DEPRECATED
             and any(
-                deployment.provider_id.value == provider_type
-                and deployment.status != ModelStatus.DEPRECATED
-                for deployment in CATALOG_INDEX.deployments_for_model(model.id)
+                offering.provider_id.value == provider_type
+                and offering.status != ModelStatus.DEPRECATED
+                for offering in CATALOG_INDEX.offerings_for_model(model.id)
             )
         ]
 

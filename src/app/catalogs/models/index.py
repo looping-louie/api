@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 
 from ..providers import ProviderCatalogEntry, ProviderId
-from .types import ModelCatalogEntry, ModelDeployment, ProviderModelOffering
+from .types import ModelCatalogEntry, ModelOffering
 
 
 class CatalogIndex:
@@ -15,22 +15,17 @@ class CatalogIndex:
         models: Sequence[ModelCatalogEntry],
         providers: Sequence[ProviderCatalogEntry],
     ) -> None:
-        """Build immutable deployment lookups from catalog declarations."""
+        """Build immutable offering lookups from catalog declarations."""
 
-        deployments_by_model: dict[str, list[ModelDeployment]] = {
-            model.id: []
-            for model in models
-        }
-        offerings_by_model: dict[str, list[ProviderModelOffering]] = {
+        offerings_by_model: dict[str, list[ModelOffering]] = {
             model.id: []
             for model in models
         }
 
         for provider in providers:
             for offering in provider.offerings:
-                offerings_by_model[offering.model_id].append(offering)
-                deployments_by_model[offering.model_id].append(
-                    ModelDeployment(
+                offerings_by_model[offering.model_id].append(
+                    ModelOffering(
                         provider_id=provider.id,
                         provider_model_id=offering.provider_model_id,
                         endpoint=offering.endpoint,
@@ -42,32 +37,23 @@ class CatalogIndex:
                     )
                 )
 
-        self._deployments_by_model = {
-            model_id: tuple(deployments)
-            for model_id, deployments in deployments_by_model.items()
-        }
         self._offerings_by_model = {
             model_id: tuple(offerings)
             for model_id, offerings in offerings_by_model.items()
         }
 
-    def deployments_for_model(self, model_id: str) -> tuple[ModelDeployment, ...]:
-        """Return deployments for one logical model in provider order."""
-
-        return self._deployments_by_model.get(model_id, ())
-
     def providers_for_model(self, model_id: str) -> tuple[ProviderId, ...]:
         """Return unique provider IDs for one logical model."""
 
         return tuple(dict.fromkeys(
-            deployment.provider_id
-            for deployment in self.deployments_for_model(model_id)
+            offering.provider_id
+            for offering in self.offerings_for_model(model_id)
         ))
 
     def offerings_for_model(
         self,
         model_id: str,
-    ) -> tuple[ProviderModelOffering, ...]:
+    ) -> tuple[ModelOffering, ...]:
         """Return provider-owned offerings for one logical model."""
 
         return self._offerings_by_model.get(model_id, ())

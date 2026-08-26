@@ -1,12 +1,10 @@
 """Controller for static catalog list operations."""
 
-from src.app.catalogs.models import CATALOG_INDEX
-
 from src.app.schemas.catalog import (
     CatalogInstructionMetadataResponse,
     CatalogModelListResponse,
-    CatalogModelPricingResponse,
     CatalogModelSummaryResponse,
+    CatalogProviderOfferingResponse,
     CatalogPersonaResponse,
     CatalogProviderResponse,
     CatalogSkillResponse,
@@ -42,17 +40,6 @@ class CatalogController:
                 released_at=model.released_at,
                 capabilities=set(model.capabilities),
                 status=model.status,
-                provider_ids=self._static_catalog_service.provider_ids(model),
-                deployment_count=len(
-                    CATALOG_INDEX.deployments_for_model(model.id)
-                ),
-                starting_price=(
-                    CatalogModelPricingResponse.model_validate(price)
-                    if (
-                        price := self._static_catalog_service.starting_price(model)
-                    )
-                    else None
-                ),
                 tags=list(model.tags),
             )
             for model in models
@@ -63,7 +50,19 @@ class CatalogController:
         """Return provider types without workspace configuration state."""
 
         return [
-            CatalogProviderResponse.model_validate(provider)
+            CatalogProviderResponse(
+                id=provider.id,
+                name=provider.name,
+                description=provider.description,
+                logo_url=provider.logo_url,
+                requires_api_key=provider.requires_api_key,
+                default_base_url=provider.default_base_url,
+                model_catalog_note=provider.model_catalog_note,
+                offerings=[
+                    CatalogProviderOfferingResponse.model_validate(offering)
+                    for offering in provider.offerings
+                ],
+            )
             for provider in self._static_catalog_service.list_providers()
         ]
 

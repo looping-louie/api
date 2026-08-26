@@ -33,8 +33,8 @@ class ModelPricingResponse(ResponseSchema):
     note: str | None = None
 
 
-class ModelDeploymentResponse(ResponseSchema):
-    """Provider route configured for a logical model."""
+class ModelOfferingResponse(ResponseSchema):
+    """Provider route and its workspace availability for a logical model."""
 
     provider_id: ProviderId
     provider_model_id: NonEmptyString
@@ -44,12 +44,6 @@ class ModelDeploymentResponse(ResponseSchema):
     pricing: ModelPricingResponse | None = None
     status: ModelStatus
     deprecated_at: date | None = None
-
-
-class ModelProviderAvailabilityResponse(ResponseSchema):
-    """Availability of one provider route for the current workspace."""
-
-    provider_id: ProviderId
     configured: bool
     enabled: bool
     available: bool
@@ -67,9 +61,8 @@ class ModelSummaryResponse(ResponseSchema):
     released_at: date
     capabilities: set[ModelCapability]
     status: ModelStatus
-    providers: list[ProviderId]
     available: bool
-    starting_price: ModelPricingResponse | None = None
+    offerings: list[ModelOfferingResponse]
     tags: list[str]
 
 
@@ -86,8 +79,7 @@ class ModelResponse(ResponseSchema):
     status: ModelStatus
     replacement_model_id: str | None = None
     tags: list[str]
-    deployments: list[ModelDeploymentResponse]
-    availability: list[ModelProviderAvailabilityResponse]
+    offerings: list[ModelOfferingResponse]
     available: bool
 
 

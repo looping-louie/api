@@ -1,6 +1,12 @@
 import pytest
 
-from src.app.catalogs.models import ModelStatus
+from src.app.catalogs.models import (
+    CatalogIndex,
+    ModelCatalogEntry,
+    ModelOffering,
+    ModelStatus,
+    ProviderModelOffering,
+)
 from src.app.catalogs.providers import ProviderId
 from src.app.services.models.availability import (
     ModelAvailabilityService,
@@ -8,12 +14,27 @@ from src.app.services.models.availability import (
     ProviderConnectionState,
 )
 from tests.factories.models import (
-    build_deployment,
+    build_offering,
     build_model,
+    build_provider,
 )
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )
+
+
+def offerings_for_model(
+    model: ModelCatalogEntry,
+    *offerings: ProviderModelOffering,
+) -> tuple[ModelOffering, ...]:
+    """Derive runtime offerings from test provider-owned declarations."""
+
+    return CatalogIndex(
+        models=(model,),
+        providers=(build_provider(
+            *(offerings or (build_offering(model_id=model.id),)),
+        ),),
+    ).offerings_for_model(model.id)
 
 
 @pytest.mark.asyncio
@@ -32,14 +53,16 @@ async def test_model_is_available_when_provider_is_enabled(
         linked_service_repository=provider_state_repository,
     )
 
+    model = build_model()
     availability = await service.describe(
         workspace_id="workspace-1",
-        model=build_model(),
+        model=model,
+        offerings=offerings_for_model(model),
     )
 
     assert availability.available is True
-    assert availability.providers[0].available is True
-    assert availability.providers[0].reason is None
+    assert availability.offerings[0].available is True
+    assert availability.offerings[0].reason is None
 
 
 @pytest.mark.asyncio
@@ -50,12 +73,14 @@ async def test_model_is_unavailable_when_provider_is_not_configured(
         linked_service_repository=provider_state_repository,
     )
 
+    model = build_model()
     availability = await service.describe(
         workspace_id="workspace-1",
-        model=build_model(),
+        model=model,
+        offerings=offerings_for_model(model),
     )
 
-    provider = availability.providers[0]
+    provider = availability.offerings[0]
 
     assert availability.available is False
     assert provider.configured is False
@@ -81,12 +106,14 @@ async def test_model_is_unavailable_when_provider_is_disabled(
         linked_service_repository=provider_state_repository,
     )
 
+    model = build_model()
     availability = await service.describe(
         workspace_id="workspace-1",
-        model=build_model(),
+        model=model,
+        offerings=offerings_for_model(model),
     )
 
-    provider = availability.providers[0]
+    provider = availability.offerings[0]
 
     assert availability.available is False
     assert provider.configured is True
@@ -110,21 +137,23 @@ async def test_deprecated_model_is_never_available(
         linked_service_repository=provider_state_repository,
     )
 
+    model = build_model(
+        status=ModelStatus.DEPRECATED,
+    )
     availability = await service.describe(
         workspace_id="workspace-1",
-        model=build_model(
-            status=ModelStatus.DEPRECATED,
-        ),
+        model=model,
+        offerings=offerings_for_model(model),
     )
 
     assert availability.available is False
-    assert availability.providers[0].reason == (
+    assert availability.offerings[0].reason == (
         ModelUnavailableReason.MODEL_DEPRECATED
     )
 
 
 @pytest.mark.asyncio
-async def test_deprecated_deployment_is_not_available(
+async def test_deprecated_offering_is_not_available(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
@@ -139,20 +168,19 @@ async def test_deprecated_deployment_is_not_available(
         linked_service_repository=provider_state_repository,
     )
     model = build_model(
-        deployments=(
-            build_deployment(
-                status=ModelStatus.DEPRECATED,
-            ),
-        ),
     )
 
     availability = await service.describe(
         workspace_id="workspace-1",
         model=model,
+        offerings=offerings_for_model(
+            model,
+            build_offering(status=ModelStatus.DEPRECATED),
+        ),
     )
 
     assert availability.available is False
-    assert availability.providers[0].reason == (
+    assert availability.offerings[0].reason == (
         ModelUnavailableReason.DEPLOYMENT_DEPRECATED
     )
 
@@ -181,16 +209,19 @@ async def test_describe_many_loads_provider_states_once(
         linked_service_repository=provider_state_repository,
     )
     models = (
-        build_model(
-            model_id="together-model",
-        ),
-        build_model(
-            model_id="openai-model",
-            deployments=(
-                build_deployment(
-                    provider_id=ProviderId.OPENAI,
+        build_model(model_id="together-model"),
+        build_model(model_id="openai-model"),
+    )
+    catalog_index = CatalogIndex(
+        models=models,
+        providers=(
+            build_provider(build_offering(model_id="together-model")),
+            build_provider(
+                build_offering(
+                    model_id="openai-model",
                     provider_model_id="openai/model",
                 ),
+                provider_id=ProviderId.OPENAI,
             ),
         ),
     )
@@ -198,6 +229,10 @@ async def test_describe_many_loads_provider_states_once(
     availability = await service.describe_many(
         workspace_id="workspace-1",
         models=models,
+        offerings_by_model={
+            model.id: catalog_index.offerings_for_model(model.id)
+            for model in models
+        },
     )
 
     assert availability["together-model"].available is True

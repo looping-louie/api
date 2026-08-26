@@ -82,8 +82,8 @@ class ModelPricing:
 
 
 @dataclass(frozen=True, slots=True)
-class ModelDeployment:
-    """Provider-specific route through which a logical model is invoked."""
+class ModelOffering:
+    """Provider-specific route derived from a provider-owned offering."""
 
     provider_id: ProviderId
     provider_model_id: str
@@ -121,7 +121,6 @@ class ModelCatalogEntry:
     description: str
     released_at: date
     capabilities: frozenset[ModelCapability]
-    deployments: tuple[ModelDeployment, ...] = field(default_factory=tuple)
     status: ModelStatus = ModelStatus.ACTIVE
     replacement_model_id: str | None = None
     tags: tuple[str, ...] = field(default_factory=tuple)

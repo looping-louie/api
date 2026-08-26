@@ -6,9 +6,9 @@ from .types import (
     ModelCapability,
     ModelCatalogEntry,
     ModelCatalogValidationError,
-    ModelDeployment,
     ModelEndpoint,
     ModelLab,
+    ModelOffering,
     ModelPricing,
     ProviderModelOffering,
     ModelSort,
@@ -28,13 +28,6 @@ CATALOG_INDEX = CatalogIndex(
 )
 
 
-def catalog_deployments(
-    model: ModelCatalogEntry,
-) -> tuple[ModelDeployment, ...]:
-    """Return derived deployments, preserving explicit test fixture routes."""
-
-    return model.deployments or CATALOG_INDEX.deployments_for_model(model.id)
-
 MODEL_CATALOG_BY_ID: dict[str, ModelCatalogEntry] = {
     model.id: model
     for model in MODEL_CATALOG
@@ -45,14 +38,13 @@ __all__ = [
     "MODEL_CATALOG",
     "MODEL_CATALOG_BY_ID",
     "CATALOG_INDEX",
-    "catalog_deployments",
     "CatalogIndex",
     "ModelCapability",
     "ModelCatalogEntry",
     "ModelCatalogValidationError",
-    "ModelDeployment",
     "ModelEndpoint",
     "ModelLab",
+    "ModelOffering",
     "ModelPricing",
     "ProviderModelOffering",
     "ModelSort",

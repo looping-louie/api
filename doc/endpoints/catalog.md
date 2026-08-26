@@ -31,6 +31,12 @@ GET /api/v1/catalog/providers
 | `requires_api_key` | Boolean | Whether this provider type requires an API key. |
 | `default_base_url` | String or `null` | Default endpoint for this provider type. |
 | `model_catalog_note` | String or `null` | Static note about catalog support. |
+| `offerings` | Array | Authoritative provider-owned model offerings. |
+
+Each offering includes `model_id`, `provider_model_id`, `endpoint`, optional
+`context_window` and `max_output_tokens`, optional `pricing`, `status`, and
+optional `deprecated_at`. Pricing includes input, output, cached-input, valid
+until, and note fields when known.
 
 Example response (`200 OK`):
 
@@ -43,16 +49,34 @@ Example response (`200 OK`):
     "logo_url": "/providers/openai.svg",
     "requires_api_key": true,
     "default_base_url": "https://api.openai.com/v1",
-    "model_catalog_note": null
+    "model_catalog_note": null,
+    "offerings": [
+      {
+        "model_id": "gpt-5.6-sol",
+        "provider_model_id": "gpt-5.6-sol",
+        "endpoint": "responses",
+        "context_window": 1050000,
+        "max_output_tokens": 128000,
+        "pricing": {
+          "input_per_million_usd": "5.00",
+          "output_per_million_usd": "30.00",
+          "cached_input_per_million_usd": "0.50",
+          "valid_until": null,
+          "note": null
+        },
+        "status": "active",
+        "deprecated_at": null
+      }
+    ]
   }
 ]
 ```
 
 ## List model catalog
 
-`GET /api/v1/catalog/models` returns active logical models. Provider-owned
-catalog offerings are derived into `provider_ids` and deployment summaries; they
-do not identify configured providers or available workspace connections.
+`GET /api/v1/catalog/models` returns active logical model metadata only. It
+does not identify provider routes, configured providers, or available workspace
+connections.
 
 ```http
 GET /api/v1/catalog/models
@@ -77,9 +101,6 @@ Each `items` entry has the following properties:
 | `released_at` | String | ISO 8601 model release date. |
 | `capabilities` | Array of strings | Catalog capability identifiers. |
 | `status` | String | Static lifecycle status. |
-| `provider_ids` | Array of strings | Provider types with an active catalog deployment. |
-| `deployment_count` | Integer | Number of catalog deployments for this logical model. |
-| `starting_price` | Object or `null` | Lowest active deployment price, when catalog pricing exists. |
 | `tags` | Array of strings | Search and grouping tags. |
 
 Example response (`200 OK`):
@@ -96,9 +117,6 @@ Example response (`200 OK`):
       "released_at": "2026-08-07",
       "capabilities": ["coding", "text"],
       "status": "active",
-      "provider_ids": ["openai"],
-      "deployment_count": 1,
-      "starting_price": null,
       "tags": ["general-purpose"]
     }
   ],

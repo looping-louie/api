@@ -90,9 +90,12 @@ def test_list_models_route(
         item["available"] is True
         for item in body["items"]
     )
+    assert all(item['offerings'] for item in body['items'])
+    assert all('providers' not in item for item in body['items'])
+    assert all('starting_price' not in item for item in body['items'])
     assert all(
-        "together" in item["providers"]
-        for item in body["items"]
+        any(offering['provider_id'] == 'together' for offering in item['offerings'])
+        for item in body['items']
     )
 
 
@@ -180,7 +183,9 @@ def test_describe_model_route(
 
     assert body["id"] == "kimi-k2.6"
     assert body["available"] is True
-    assert body["availability"][0]["provider_id"] == "together"
+    assert body['offerings'][0]['provider_id'] == 'together'
+    assert 'deployments' not in body
+    assert 'availability' not in body
 
 
 def test_describe_missing_model_returns_404(

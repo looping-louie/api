@@ -1,15 +1,15 @@
 # Models
 
-Model routes expose the curated, provider-independent model catalog. Provider-
-owned offerings are derived into deployments, and availability is computed from
-enabled, configured Linked Services in the selected workspace.
+Model routes expose the curated, provider-independent model catalog. Each
+provider-owned offering is joined with availability from enabled, configured
+Linked Services in the selected workspace.
 
 ## Model calls
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/models` | Lists models, catalog metadata, pricing, and availability. |
-| `GET` | `/api/v1/models/{model_id}` | Describes deployments, capabilities, and availability details. |
+| `GET` | `/api/v1/models/{model_id}` | Describes offerings, capabilities, and availability details. |
 
 ## List models
 
@@ -53,15 +53,29 @@ Example response (`200 OK`):
       "description": "A coding-capable reasoning model.",
       "capabilities": ["coding", "reasoning", "text"],
       "status": "active",
-      "providers": ["together"],
       "available": true,
-      "starting_price": {
-        "input_per_million_usd": "0.6",
-        "output_per_million_usd": "2.5",
-        "cached_input_per_million_usd": null,
-        "valid_until": null,
-        "note": null
-      },
+      "offerings": [
+        {
+          "provider_id": "together",
+          "provider_model_id": "moonshotai/Kimi-K2.6",
+          "endpoint": "chat_completions",
+          "context_window": 262144,
+          "max_output_tokens": 32768,
+          "pricing": {
+            "input_per_million_usd": "0.6",
+            "output_per_million_usd": "2.5",
+            "cached_input_per_million_usd": null,
+            "valid_until": null,
+            "note": null
+          },
+          "status": "active",
+          "deprecated_at": null,
+          "configured": true,
+          "enabled": true,
+          "available": true,
+          "reason": null
+        }
+      ],
       "tags": ["coding", "reasoning"]
     }
   ],
@@ -70,13 +84,13 @@ Example response (`200 OK`):
 ```
 
 List items include summary metadata, the model version's `released_at` date,
-capabilities, provider IDs, availability, starting price, and tags. A describe
-response additionally includes every provider deployment, its endpoint and
-limits, pricing, replacement model, and workspace-specific availability reason.
+capabilities, offerings, availability, and tags. Each offering contains its
+provider route and workspace-specific availability state. A describe response
+uses the same offering shape with replacement-model metadata.
 
 ## Describe a model
 
-`GET /api/v1/models/{model_id}` returns every configured deployment and its
+`GET /api/v1/models/{model_id}` returns every catalog offering joined with its
 workspace availability.
 
 ```http
@@ -97,7 +111,7 @@ Example response (`200 OK`):
   "status": "active",
   "replacement_model_id": null,
   "tags": ["coding", "reasoning"],
-  "deployments": [
+  "offerings": [
     {
       "provider_id": "together",
       "provider_model_id": "moonshotai/Kimi-K2.6",
@@ -112,12 +126,7 @@ Example response (`200 OK`):
         "note": null
       },
       "status": "active",
-      "deprecated_at": null
-    }
-  ],
-  "availability": [
-    {
-      "provider_id": "together",
+      "deprecated_at": null,
       "configured": true,
       "enabled": true,
       "available": true,

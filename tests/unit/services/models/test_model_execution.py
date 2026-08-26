@@ -10,11 +10,13 @@ import httpx
 import pytest
 
 from src.app.catalogs.models import (
+    CatalogIndex,
     ModelCapability,
     ModelCatalogEntry,
-    ModelDeployment,
     ModelEndpoint,
     ModelLab,
+    ModelOffering,
+    ProviderModelOffering,
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
@@ -22,21 +24,36 @@ from src.app.services.models import (
     ModelDeploymentUnavailableError,
     ModelExecutionService,
 )
+from tests.factories.models import build_offering, build_provider
 
 
 class FakeModelCatalogService:
     """Return one catalog model for execution-service tests."""
 
-    def __init__(self, model_entry: ModelCatalogEntry) -> None:
+    def __init__(
+        self,
+        model_entry: ModelCatalogEntry,
+        offerings: tuple[ModelOffering, ...],
+    ) -> None:
         """Store the test model returned by require_model."""
 
         self._model_entry = model_entry
+        self._offerings = offerings
 
     def require_model(self, model_id: str) -> ModelCatalogEntry:
         """Return the configured model when its ID matches."""
 
         assert model_id == self._model_entry.id
         return self._model_entry
+
+    def offerings_for_model(
+        self,
+        model_entry: ModelCatalogEntry,
+    ) -> tuple[ModelOffering, ...]:
+        """Return provider-owned offerings for the configured test model."""
+
+        assert model_entry == self._model_entry
+        return self._offerings
 
 
 class FakeLinkedServiceRepository:
@@ -70,8 +87,8 @@ class FakeSecretService:
         return 'test-key'
 
 
-def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
-    """Build one logical model with the supplied deployment order."""
+def model() -> ModelCatalogEntry:
+    """Build one provider-neutral logical model."""
 
     return ModelCatalogEntry(
         id='model-1',
@@ -82,7 +99,6 @@ def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
         description='Test model.',
         released_at=date(2026, 1, 1),
         capabilities=frozenset({ModelCapability.TEXT}),
-        deployments=deployments,
     )
 
 
@@ -108,15 +124,27 @@ def linked_service(provider: ProviderId) -> LinkedService:
 
 def service(
     *,
-    model_entry: ModelCatalogEntry,
+    offerings: tuple[ProviderModelOffering, ...],
+    provider_id: ProviderId = ProviderId.TOGETHER,
     linked_services: list[LinkedService],
     handler: Any,
 ) -> ModelExecutionService:
     """Build the executor with a transport that captures no real network calls."""
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    model_entry = model()
+    catalog_index = CatalogIndex(
+        models=(model_entry,),
+        providers=(build_provider(
+            *offerings,
+            provider_id=provider_id,
+        ),),
+    )
     return ModelExecutionService(
-        model_catalog_service=FakeModelCatalogService(model_entry),
+        model_catalog_service=FakeModelCatalogService(
+            model_entry,
+            catalog_index.offerings_for_model(model_entry.id),
+        ),
         secret_service=FakeSecretService(),
         linked_service_repository=FakeLinkedServiceRepository(linked_services),
         client=client,
@@ -127,11 +155,7 @@ def service(
 async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None:
     """Configured Together deployment uses its catalog model and bearer key."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-    )
+    offering = build_offering()
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert the outgoing OpenAI-compatible chat request."""
@@ -155,7 +179,7 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
         )
 
     result = await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
@@ -176,10 +200,7 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
 async def test_executes_chat_completion_with_deployment_output_limit() -> None:
     """A catalog deployment overrides the chat completion output default."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+    offering = build_offering(
         max_output_tokens=8192,
     )
 
@@ -193,7 +214,7 @@ async def test_executes_chat_completion_with_deployment_output_limit() -> None:
         )
 
     await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
@@ -208,11 +229,7 @@ async def test_executes_chat_completion_with_deployment_output_limit() -> None:
 async def test_executes_chat_completion_in_json_mode() -> None:
     """JSON mode requests an OpenAI-compatible structured response."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-    )
+    offering = build_offering()
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert the structured-output request option."""
@@ -226,7 +243,7 @@ async def test_executes_chat_completion_in_json_mode() -> None:
         )
 
     result = await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
@@ -244,11 +261,7 @@ async def test_executes_chat_completion_in_json_mode() -> None:
 async def test_executes_model_through_selected_linked_service() -> None:
     """Selected linked services define the execution route."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-    )
+    offering = build_offering()
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert execution uses the selected service URL and credential."""
@@ -265,7 +278,7 @@ async def test_executes_model_through_selected_linked_service() -> None:
         )
 
     executor = service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     )
@@ -285,8 +298,7 @@ async def test_executes_model_through_selected_linked_service() -> None:
 async def test_executes_anthropic_messages_deployment() -> None:
     """Configured Anthropic deployment uses the native messages protocol."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.ANTHROPIC,
+    offering = build_offering(
         provider_model_id='claude-test',
         endpoint=ModelEndpoint.MESSAGES,
     )
@@ -306,7 +318,8 @@ async def test_executes_anthropic_messages_deployment() -> None:
         )
 
     result = await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
+        provider_id=ProviderId.ANTHROPIC,
         linked_services=[linked_service(ProviderId.ANTHROPIC)],
         handler=handler,
     ).execute(
@@ -325,15 +338,15 @@ async def test_executes_anthropic_messages_deployment() -> None:
 async def test_rejects_model_without_enabled_configured_deployment() -> None:
     """A logical model cannot execute without its selected linked service."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.OPENAI,
+    offering = build_offering(
         provider_model_id='gpt-test',
         endpoint=ModelEndpoint.RESPONSES,
     )
 
     with pytest.raises(ModelDeploymentUnavailableError):
         await service(
-            model_entry=model(deployment),
+            offerings=(offering,),
+            provider_id=ProviderId.OPENAI,
             linked_services=[],
             handler=lambda request: httpx.Response(500),
         ).execute(

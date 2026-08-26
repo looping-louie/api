@@ -9,10 +9,9 @@ from typing import Mapping, Sequence
 import httpx
 
 from src.app.catalogs.models import (
-    catalog_deployments,
     ModelCatalogEntry,
-    ModelDeployment,
     ModelEndpoint,
+    ModelOffering,
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
@@ -132,17 +131,17 @@ class ModelExecutionService:
             )
         return linked_service
 
-    @staticmethod
     def _deployment_for_linked_service(
+        self,
         *,
         model: ModelCatalogEntry,
         linked_service: LinkedService,
-    ) -> ModelDeployment:
-        """Return the selected service provider's deployment for a model."""
+    ) -> ModelOffering:
+        """Return the selected service provider's offering for a model."""
 
-        for deployment in catalog_deployments(model):
-            if deployment.provider_id.value == linked_service.provider_type:
-                return deployment
+        for offering in self._model_catalog_service.offerings_for_model(model):
+            if offering.provider_id.value == linked_service.provider_type:
+                return offering
         raise ModelDeploymentUnavailableError(
             f"Model '{model.id}' is unavailable through linked service "
             f"'{linked_service.id}'."
@@ -158,7 +157,7 @@ class ModelExecutionService:
     async def _post_completion(
         self,
         *,
-        deployment: ModelDeployment,
+        deployment: ModelOffering,
         linked_service: LinkedService,
         api_key: str | None,
         prompt: str,
@@ -185,7 +184,7 @@ class ModelExecutionService:
     def _request_parts(
         self,
         *,
-        deployment: ModelDeployment,
+        deployment: ModelOffering,
         linked_service: LinkedService,
         api_key: str | None,
         prompt: str,
@@ -294,7 +293,7 @@ class ModelExecutionService:
     def _to_result(
         *,
         response: Mapping[str, object],
-        deployment: ModelDeployment,
+        deployment: ModelOffering,
         model_id: str,
         duration_ms: int,
     ) -> ModelExecutionResult:

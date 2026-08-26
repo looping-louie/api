@@ -5,6 +5,7 @@ from datetime import date
 import pytest
 
 from src.app.catalogs.models import (
+    CatalogIndex,
     ModelCapability,
     ModelLab,
     ModelSort,
@@ -19,8 +20,9 @@ from src.app.services.models.availability import (
 from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.shared.tenant import TenantService
 from tests.factories.models import (
-    build_deployment,
     build_model,
+    build_offering,
+    build_provider,
 )
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
@@ -55,12 +57,6 @@ def build_service(
             vendor="OpenAI",
             lab=ModelLab.OPENAI,
             released_at=date(2026, 3, 1),
-            deployments=(
-                build_deployment(
-                    provider_id=ProviderId.OPENAI,
-                    provider_model_id="openai/model",
-                ),
-            ),
             tags=("reasoning",),
         ),
         build_model(
@@ -72,6 +68,22 @@ def build_service(
             status=ModelStatus.DEPRECATED,
         ),
     )
+    catalog_index = CatalogIndex(
+        models=catalog,
+        providers=(
+            build_provider(
+                build_offering(model_id="coding-model"),
+                build_offering(model_id="deprecated-model"),
+            ),
+            build_provider(
+                build_offering(
+                    model_id="openai-model",
+                    provider_model_id="openai/model",
+                ),
+                provider_id=ProviderId.OPENAI,
+            ),
+        ),
+    )
 
     return ModelCatalogService(
         tenant_service=tenant_service,
@@ -79,6 +91,7 @@ def build_service(
                 linked_service_repository=repository,
         ),
         catalog=catalog,
+        catalog_index=catalog_index,
     )
 
 
@@ -309,7 +322,7 @@ async def test_describe_returns_complete_model(
 
     assert model.id == "coding-model"
     assert model.available is True
-    assert model.deployments[0].provider_id == ProviderId.TOGETHER
+    assert model.offerings[0].provider_id == ProviderId.TOGETHER
 
 
 @pytest.mark.asyncio

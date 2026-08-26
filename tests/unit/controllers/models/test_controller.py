@@ -36,7 +36,10 @@ async def test_controller_lists_models(
         for model in response.items
     )
     assert all(
-        ProviderId.TOGETHER in model.providers
+        any(
+            offering.provider_id == ProviderId.TOGETHER
+            for offering in model.offerings
+        )
         for model in response.items
     )
 
@@ -62,4 +65,4 @@ async def test_controller_describes_model(
 
     assert response.id == "kimi-k2.6"
     assert response.available is True
-    assert response.deployments[0].provider_id == ProviderId.TOGETHER
+    assert response.offerings[0].provider_id == ProviderId.TOGETHER

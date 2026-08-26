@@ -5,12 +5,13 @@ from __future__ import annotations
 from typing import Sequence
 
 from src.app.catalogs.models import (
-    catalog_deployments,
+    CATALOG_INDEX,
+    CatalogIndex,
     MODEL_CATALOG,
     ModelCapability,
     ModelCatalogEntry,
     ModelLab,
-    ModelPricing,
+    ModelOffering,
     ModelSort,
     ModelStatus,
 )
@@ -35,12 +36,14 @@ class ModelCatalogService:
         tenant_service: TenantService,
         availability_service: ModelAvailabilityService,
         catalog: Sequence[ModelCatalogEntry] = MODEL_CATALOG,
+        catalog_index: CatalogIndex = CATALOG_INDEX,
     ) -> None:
         """Store model catalog dependencies."""
 
         self._tenant_service = tenant_service
         self._availability_service = availability_service
         self._catalog = tuple(catalog)
+        self._catalog_index = catalog_index
         self._catalog_by_id = {
             model.id: model
             for model in self._catalog
@@ -86,6 +89,10 @@ class ModelCatalogService:
         availability_by_model = await self._availability_service.describe_many(
             workspace_id=workspace_id,
             models=models,
+            offerings_by_model={
+                model.id: self.offerings_for_model(model)
+                for model in models
+            },
         )
 
         summaries = [
@@ -126,6 +133,7 @@ class ModelCatalogService:
         availability = await self._availability_service.describe(
             workspace_id=workspace_id,
             model=model,
+            offerings=self.offerings_for_model(model),
         )
 
         return self._to_document(
@@ -218,16 +226,16 @@ class ModelCatalogService:
 
         return True
 
-    @staticmethod
     def _has_provider(
+        self,
         model: ModelCatalogEntry,
         provider_id: ProviderId,
     ) -> bool:
         """Return whether the model has a deployment for a provider."""
 
         return any(
-            deployment.provider_id == provider_id
-            for deployment in catalog_deployments(model)
+            offering.provider_id == provider_id
+            for offering in self.offerings_for_model(model)
         )
 
     @staticmethod
@@ -268,14 +276,13 @@ class ModelCatalogService:
             released_at=model.released_at,
             capabilities=model.capabilities,
             status=model.status,
-            providers=self._get_model_providers(model),
             available=availability.available,
-            starting_price=self._get_starting_price(model),
+            offerings=availability.offerings,
             tags=model.tags,
         )
 
-    @staticmethod
     def _to_document(
+        self,
         *,
         model: ModelCatalogEntry,
         availability: ModelAvailability,
@@ -293,52 +300,17 @@ class ModelCatalogService:
             status=model.status,
             replacement_model_id=model.replacement_model_id,
             tags=model.tags,
-            deployments=catalog_deployments(model),
-            availability=availability.providers,
+            offerings=availability.offerings,
             available=availability.available,
         )
 
-    @staticmethod
-    def _get_model_providers(
+    def offerings_for_model(
+        self,
         model: ModelCatalogEntry,
-    ) -> tuple[ProviderId, ...]:
-        """Return deployment provider IDs in first-seen order."""
+    ) -> tuple[ModelOffering, ...]:
+        """Return provider-owned offerings for one logical model."""
 
-        providers: list[ProviderId] = []
-        seen: set[ProviderId] = set()
-
-        for deployment in catalog_deployments(model):
-            if deployment.provider_id in seen:
-                continue
-
-            seen.add(deployment.provider_id)
-            providers.append(deployment.provider_id)
-
-        return tuple(providers)
-
-    @staticmethod
-    def _get_starting_price(
-        model: ModelCatalogEntry,
-    ) -> ModelPricing | None:
-        """Return the lowest combined non-deprecated deployment price."""
-
-        prices = [
-            deployment.pricing
-            for deployment in catalog_deployments(model)
-            if deployment.status != ModelStatus.DEPRECATED
-            and deployment.pricing is not None
-        ]
-
-        if not prices:
-            return None
-
-        return min(
-            prices,
-            key=lambda price: (
-                price.input_per_million_usd
-                + price.output_per_million_usd
-            ),
-        )
+        return self._catalog_index.offerings_for_model(model.id)
 
     async def _resolve_workspace_id(
         self,
