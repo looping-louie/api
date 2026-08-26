@@ -10,7 +10,7 @@ immutable; they can be enabled or disabled.
 | `GET` | `/api/v1/personas` | Lists persona metadata without full instructions. |
 | `POST` | `/api/v1/personas` | Creates a custom persona. |
 | `GET` | `/api/v1/personas/{persona_id}` | Describes a persona including its complete instructions. |
-| `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or workspace enablement. |
+| `PATCH` | `/api/v1/personas/{persona_id}` | Modifies content or user enablement. |
 | `DELETE` | `/api/v1/personas/{persona_id}` | Deletes a persona when it has no blocking dependencies. |
 
 ## List personas
@@ -22,13 +22,13 @@ The endpoint returns 12 personas per page and accepts `offset`, `search`,
 `status` (`enabled` or `disabled`), repeatable `category`, and `sort`
 (`alphabetical-asc`, `alphabetical-desc`, `newest`, or `oldest`). Repeated
 categories use OR semantics. `newest` and `oldest` order by `created_at`, with
-name and ID providing stable tie-breakers. Status refers to effective workspace
-enablement, including workspace overrides of a built-in default. List items
+name and ID providing stable tie-breakers. Status refers to effective user
+enablement, including user overrides of a built-in default. List items
 include the top-level category.
 
 ```http
 GET /api/v1/personas?search=api
-X-Workspace-ID: workspace-acme
+X-User-ID: user-acme
 ```
 
 Example response (`200 OK`):
@@ -63,7 +63,7 @@ instructions, associated skill IDs, and metadata.
 
 ```http
 GET /api/v1/personas/persona-api-reviewer
-X-Workspace-ID: workspace-acme
+X-User-ID: user-acme
 ```
 
 Example response (`200 OK`):
@@ -95,8 +95,8 @@ Example response (`200 OK`):
 
 ## Create a persona
 
-`POST /api/v1/personas` creates a custom persona in the workspace supplied by
-`X-Workspace-ID`.
+`POST /api/v1/personas` creates a custom Persona owned by the registered user
+identified by `X-User-ID`. Persona routes do not use `X-Workspace-ID`.
 
 | Field | JSON type | Create | Update | Restrictions |
 | ----- | --------- | ------ | ------ | ------------ |
@@ -106,11 +106,11 @@ Example response (`200 OK`):
 | `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to `[]` on create. |
 | `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to `{}` on create. |
 | `expected_version` | Integer | Not allowed | Required for content changes | Positive current Persona version. Not required for an enablement-only update. |
-| `enabled` | Boolean | Not allowed | Optional | Enables or disables the Persona in the selected workspace. |
+| `enabled` | Boolean | Not allowed | Optional | Enables or disables the Persona for the current user. |
 
 ```http
 POST /api/v1/personas
-X-Workspace-ID: workspace-acme
+X-User-ID: user-acme
 Content-Type: application/json
 ```
 
@@ -166,7 +166,7 @@ can be patched.
 
 ```http
 PATCH /api/v1/personas/persona-api-reviewer
-X-Workspace-ID: workspace-acme
+X-User-ID: user-acme
 Content-Type: application/json
 ```
 
@@ -212,13 +212,13 @@ include their top-level category.
 
 ## Delete a persona
 
-`DELETE /api/v1/personas/{persona_id}` removes a custom Persona from the
-selected workspace when no resource depends on it. Built-in Persona content is
+`DELETE /api/v1/personas/{persona_id}` removes the current user's custom Persona
+when no resource depends on it. Built-in Persona content is
 immutable and cannot be deleted.
 
 ```http
 DELETE /api/v1/personas/persona-api-reviewer
-X-Workspace-ID: workspace-acme
+X-User-ID: user-acme
 ```
 
 Example response (`200 OK`):
@@ -231,5 +231,5 @@ Example response (`200 OK`):
 
 The endpoint returns `409 resource_in_use` when another resource depends on
 the Persona, `409 builtin_instruction_immutable` for built-in Personas, and
-`404 instruction_not_found` when the Persona is not visible in the selected
-workspace.
+`404 instruction_not_found` when the Persona is not visible to the current
+user.

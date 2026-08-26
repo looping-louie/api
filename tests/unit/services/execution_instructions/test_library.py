@@ -44,13 +44,14 @@ async def test_workspace_persona_is_available_to_execution(
         skill_definition_service=skill_definition_service,
     )
     persona_service = PersonaService(
-        tenant_service=tenant_service,
+        user_service=RegisteredUserService(),
         persona_definition_service=persona_definition_service,
         skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
     )
     runtime_service = ExecutionInstructionLibraryService(
         repository=instruction_repository,
+        persona_repository=instruction_repository,
         persona_skill_repository=persona_skill_repository,
         tenant_service=tenant_service,
     )

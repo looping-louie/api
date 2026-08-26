@@ -9,7 +9,7 @@ from .response import persona_response
 
 
 class PersonaDescribeController:
-    """Return one complete persona visible in a workspace."""
+    """Return one complete persona visible to a user."""
 
     def __init__(self, *, persona_service: PersonaService) -> None:
         """Store the persona application service."""
@@ -20,12 +20,10 @@ class PersonaDescribeController:
         *,
         user_id: str,
         persona_id: str,
-        requested_workspace_id: str | None = None,
     ) -> PersonaResponse:
-        """Return one complete persona visible in a workspace."""
+        """Return one complete persona visible to a user."""
         document = await self._persona_service.describe(
             user_id=user_id,
             persona_id=persona_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return persona_response(document)

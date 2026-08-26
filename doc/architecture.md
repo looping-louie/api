@@ -198,7 +198,7 @@ services/
 |                                  an explicit Linked Service
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- service.py                 Manages workspace resources and skill links
+|   |-- service.py                 Manages user-owned resources and skill links
 |   `-- types.py                   Defines contracts and associations
 |-- pipelines/
 |   |-- __init__.py                Defines the package's public imports
@@ -369,11 +369,11 @@ repositories/
 |   `-- sqlite_database.py          Manages asynchronous SQLite connections
 |-- instructions/
 |   |-- __init__.py                Declares persona and skill persistence
-|   |-- availability.py            Persists workspace availability settings
+|   |-- availability.py            Resolves scope-specific instruction availability
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
 |   |-- repository.py              Persists resource definitions
-|   |-- settings.py                Persists workspace enablement settings
+|   |-- settings.py                Persists scope-specific enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- linked_services/
 |   |-- __init__.py                Declares persistence contracts

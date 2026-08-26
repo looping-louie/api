@@ -23,12 +23,10 @@ class PersonaCreateController:
         *,
         user_id: str,
         payload: PersonaCreateRequest,
-        requested_workspace_id: str | None = None,
     ) -> PersonaResponse:
         """Create a new persona from the supplied content."""
         document = await self._persona_service.create(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
             payload=PersonaCreate(
                 name=payload.name,
                 description=payload.description,
@@ -40,6 +38,5 @@ class PersonaCreateController:
         document = await self._persona_service.describe(
             user_id=user_id,
             persona_id=document.id,
-            requested_workspace_id=requested_workspace_id,
         )
         return persona_response(document)

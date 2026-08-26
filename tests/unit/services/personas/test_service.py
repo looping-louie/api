@@ -1,4 +1,4 @@
-"""Tests for workspace-aware persona operations."""
+"""Tests for user-owned persona operations."""
 
 import pytest
 
@@ -9,22 +9,18 @@ from src.app.services.personas import (
     PersonaUpdate,
 )
 from src.app.services.persona_skills import (
+    DefinitionCreate,
     DefinitionNotFoundError,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.services.shared.tenant import (
-    TenantService,
-    WorkspaceMembership,
-)
-from tests.fakes.tenant_repository import FakeTenantRepository
+from src.app.services.users import UserNotFoundError
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
 )
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,
 )
-from tests.fakes.reference_repository import FakeReferenceRepository
 from tests.unit.services.instructions.test_service import seed_builtin
 
 
@@ -33,20 +29,10 @@ def build_persona_service(
     skill_definition_service: SkillDefinitionService,
     persona_skill_repository: FakePersonaSkillRepository | None = None,
 ) -> PersonaService:
-    """Build a persona service with one default workspace membership."""
-
-    repository = FakeTenantRepository(
-        [
-            WorkspaceMembership(
-                user_id="user-1",
-                workspace_id="workspace-1",
-                is_default=True,
-            ),
-        ]
-    )
+    """Build a Persona service with registered test identities."""
 
     return PersonaService(
-        tenant_service=TenantService(repository=repository),
+        user_service=RegisteredUserService(),
         persona_definition_service=persona_definition_service,
         skill_definition_service=skill_definition_service,
         persona_skill_repository=(
@@ -54,6 +40,25 @@ def build_persona_service(
             or FakePersonaSkillRepository()
         ),
     )
+
+
+class RegisteredUserService:
+    """Minimal user-profile boundary for user-owned Persona tests."""
+
+    def __init__(self, registered_user_ids: set[str] | None = None) -> None:
+        """Store identities that are allowed to own Personas."""
+
+        self._registered_user_ids = registered_user_ids or {
+            'user-1',
+            'user-2',
+        }
+
+    async def get(self, *, user_id: str) -> object:
+        """Return a placeholder profile or reject an unregistered user."""
+
+        if user_id not in self._registered_user_ids:
+            raise UserNotFoundError(user_id)
+        return object()
 
 
 @pytest.mark.asyncio
@@ -78,7 +83,7 @@ async def test_persona_crud_flow(
     )
 
     assert created.instruction_type == "persona"
-    assert created.workspace_id == "workspace-1"
+    assert created.workspace_id == "user-1"
 
     summaries = await service.list(user_id="user-1")
 
@@ -206,6 +211,103 @@ async def test_persona_service_manages_skill_associations(
     )
     assert created.skill_ids == (skill.id,)
     assert updated.skill_ids == ()
+
+
+@pytest.mark.asyncio
+async def test_personas_are_isolated_between_users(
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
+) -> None:
+    """Custom Personas are visible only to their owning user."""
+
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
+    created = await service.create(
+        user_id='user-1',
+        payload=PersonaCreate(
+            name='Private_reviewer',
+            description='Private user Persona.',
+            instructions='Review private work.',
+        ),
+    )
+
+    assert (await service.list(user_id='user-2')).total == 0
+    with pytest.raises(DefinitionNotFoundError):
+        await service.describe(user_id='user-2', persona_id=created.id)
+
+
+@pytest.mark.asyncio
+async def test_builtin_persona_enablement_is_independent_per_user(
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
+    instruction_repository: FakeInstructionRepository,
+) -> None:
+    """A built-in Persona setting for one user does not affect another user."""
+
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
+    builtin = seed_builtin(instruction_repository, instruction_type='persona')
+
+    await service.set_enabled(
+        user_id='user-1',
+        persona_id=builtin.id,
+        enabled=False,
+    )
+
+    assert (await service.describe(user_id='user-1', persona_id=builtin.id)).enabled is False
+    assert (await service.describe(user_id='user-2', persona_id=builtin.id)).enabled is True
+
+
+@pytest.mark.asyncio
+async def test_persona_operations_require_registered_user(
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
+) -> None:
+    """Persona operations reject identities without user profiles."""
+
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
+
+    with pytest.raises(UserNotFoundError):
+        await service.list(user_id='missing-user')
+
+
+@pytest.mark.asyncio
+async def test_persona_rejects_skill_owned_by_another_user(
+    persona_definition_service: PersonaDefinitionService,
+    skill_definition_service: SkillDefinitionService,
+) -> None:
+    """Persona-Skill associations cannot cross user ownership boundaries."""
+
+    service = build_persona_service(
+        persona_definition_service,
+        skill_definition_service,
+    )
+    foreign_skill = await skill_definition_service.create(
+        workspace_id='user-2',
+            payload=DefinitionCreate(
+            name='Foreign_skill',
+                description='Foreign user Skill.',
+            instructions='A skill owned by user two.',
+        ),
+    )
+
+    with pytest.raises(DefinitionNotFoundError):
+        await service.create(
+            user_id='user-1',
+            payload=PersonaCreate(
+                name='Cross_user_persona',
+                description='Cross-user association attempt.',
+                instructions='Attempt cross-user association.',
+                skill_ids=(foreign_skill.id,),
+            ),
+        )
 
 
 

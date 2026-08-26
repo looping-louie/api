@@ -42,6 +42,7 @@ EXPECTED_TABLES = {
     "persona_skills",
     "workspace_instruction_settings",
     "user_skill_settings",
+    "user_persona_settings",
     "activities",
     "activity_catalog_installations",
     "activity_changelog_entries",
@@ -236,6 +237,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
             "0046_users",
             "0047_user_owned_instructions",
             "0048_user_skill_settings",
+                "0049_user_persona_settings",
     ]
     assert activity_rows == []
 

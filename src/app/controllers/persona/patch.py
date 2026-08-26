@@ -24,7 +24,6 @@ class PersonaPatchController:
         user_id: str,
         persona_id: str,
         payload: PersonaPatchRequest,
-        requested_workspace_id: str | None = None,
     ) -> PersonaResponse:
         """Apply supplied content and enabled-state changes."""
         if payload.has_content_changes():
@@ -37,7 +36,6 @@ class PersonaPatchController:
             await self._persona_service.update(
                 user_id=user_id,
                 persona_id=persona_id,
-                requested_workspace_id=requested_workspace_id,
                 payload=PersonaUpdate(
                     expected_version=payload.expected_version,
                     name=payload.name,
@@ -56,11 +54,9 @@ class PersonaPatchController:
                 user_id=user_id,
                 persona_id=persona_id,
                 enabled=payload.enabled,
-                requested_workspace_id=requested_workspace_id,
             )
         document = await self._persona_service.describe(
             user_id=user_id,
             persona_id=persona_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return persona_response(document)

@@ -193,3 +193,11 @@ class SqliteUserSkillRepository(SqliteInstructionRepository):
     _owner_column = 'owner_user_id'
     _settings_table = 'user_skill_settings'
     _settings_owner_column = 'user_id'
+
+
+class SqliteUserPersonaRepository(SqliteInstructionRepository):
+    """Persists Personas owned and enabled independently by each user."""
+
+    _owner_column = 'owner_user_id'
+    _settings_table = 'user_persona_settings'
+    _settings_owner_column = 'user_id'

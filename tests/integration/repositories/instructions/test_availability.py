@@ -12,6 +12,7 @@ from src.app.repositories.instructions import repository as repository_module
 from src.app.catalogs import InstructionOrigin, load_persona_skill_catalog
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
+    SqliteUserPersonaRepository,
 )
 from src.app.services.persona_skills.synchronization import (
     PersonaSkillCatalogSynchronizer,
@@ -311,6 +312,51 @@ async def test_explicit_setting_overrides_builtin_default(
         instruction.id
         for instruction in listed
     }
+
+
+@pytest.mark.asyncio
+async def test_persona_setting_is_scoped_to_its_user(
+    library_database: Path,
+) -> None:
+    """A built-in Persona enablement override applies only to its owner."""
+
+    with sqlite3.connect(library_database) as connection:
+        connection.executemany(
+            """
+            INSERT INTO users (id, created_at, updated_at)
+            VALUES (?, ?, ?)
+            """,
+            [
+                ('user-1', TIMESTAMP, TIMESTAMP),
+                ('user-2', TIMESTAMP, TIMESTAMP),
+            ],
+        )
+        connection.commit()
+
+    repository = SqliteUserPersonaRepository(library_database)
+    instruction_id = 'builtin:persona:tech_lead'
+
+    assert await repository.set_enabled(
+        workspace_id='user-1',
+        instruction_id=instruction_id,
+        enabled=False,
+    )
+
+    disabled = await repository.get_available_for_workspace(
+        workspace_id='user-1',
+        instruction_type='persona',
+        instruction_id=instruction_id,
+    )
+    other_user = await repository.get_available_for_workspace(
+        workspace_id='user-2',
+        instruction_type='persona',
+        instruction_id=instruction_id,
+    )
+
+    assert disabled is not None
+    assert disabled.enabled is False
+    assert other_user is not None
+    assert other_user.enabled is True
 
 
 @pytest.mark.asyncio
