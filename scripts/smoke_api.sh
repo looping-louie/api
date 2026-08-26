@@ -308,7 +308,7 @@ request GET "/linked-services" >/dev/null
 log "Checking workspace defaults"
 
 request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" >/dev/null
-request PUT "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" '{"model_target":null,"harness":null}' >/dev/null
+request PUT "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" '{"model_id":null,"harness":null}' >/dev/null
 
 log "Checking model catalog"
 

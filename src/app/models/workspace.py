@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineHarness
 
 
@@ -24,6 +23,6 @@ class WorkspaceDefaults:
     """Optional execution overrides owned by one workspace."""
 
     workspace_id: str
-    model_target: ModelTarget | None
+    model_id: str | None
     harness: PipelineHarness | None
     updated_at: datetime

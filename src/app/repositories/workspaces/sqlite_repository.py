@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from src.app.models.execution import ModelTarget
 from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
 from src.app.models.pipeline import PipelineHarness
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
@@ -155,7 +154,7 @@ class SqliteWorkspaceRepository:
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT workspace_id, model_target_json, harness_json, updated_at
+                SELECT workspace_id, model_id, harness_json, updated_at
                 FROM workspace_execution_defaults
                 WHERE workspace_id = ?
                 ''',
@@ -180,16 +179,16 @@ class SqliteWorkspaceRepository:
             await connection.execute(
                 '''
                 INSERT INTO workspace_execution_defaults (
-                    workspace_id, model_target_json, harness_json, updated_at
+                    workspace_id, model_id, harness_json, updated_at
                 ) VALUES (?, ?, ?, ?)
                 ON CONFLICT (workspace_id) DO UPDATE SET
-                    model_target_json = excluded.model_target_json,
+                    model_id = excluded.model_id,
                     harness_json = excluded.harness_json,
                     updated_at = excluded.updated_at
                 ''',
                 (
                     defaults.workspace_id,
-                    self._model_target_json(defaults.model_target),
+                    defaults.model_id,
                     self._harness_json(defaults.harness),
                     defaults.updated_at.isoformat(),
                 ),
@@ -202,13 +201,8 @@ class SqliteWorkspaceRepository:
         """Deserialize one SQLite row to its typed domain model."""
 
         values = dict(row)  # type: ignore[arg-type]
-        model_target_value = values['model_target_json']
+        model_id = values['model_id']
         harness_value = values['harness_json']
-        model_target_data = (
-            json.loads(str(model_target_value))
-            if model_target_value is not None
-            else None
-        )
         harness_data = (
             json.loads(str(harness_value))
             if harness_value is not None
@@ -216,14 +210,7 @@ class SqliteWorkspaceRepository:
         )
         return WorkspaceDefaults(
             workspace_id=str(values['workspace_id']),
-            model_target=(
-                ModelTarget(
-                    linked_service_id=str(model_target_data['linked_service_id']),
-                    model_id=str(model_target_data['model_id']),
-                )
-                if model_target_data is not None
-                else None
-            ),
+            model_id=str(model_id) if model_id is not None else None,
             harness=(
                 PipelineHarness(
                     kind=str(harness_data['kind']),
@@ -248,20 +235,6 @@ class SqliteWorkspaceRepository:
             name=str(values['name']),
             created_at=datetime.fromisoformat(str(values['created_at'])),
             updated_at=datetime.fromisoformat(str(values['updated_at'])),
-        )
-
-    @staticmethod
-    def _model_target_json(model_target: ModelTarget | None) -> str | None:
-        """Serialize a model target without creating an inherited value."""
-
-        if model_target is None:
-            return None
-        return json.dumps(
-            {
-                'linked_service_id': model_target.linked_service_id,
-                'model_id': model_target.model_id,
-            },
-            sort_keys=True,
         )
 
     @staticmethod

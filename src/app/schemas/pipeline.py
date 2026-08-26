@@ -12,8 +12,6 @@ from src.app.schemas.activity_run import ActivityRunResponse
 from src.app.schemas.execution import (
     HarnessRequest,
     HarnessResponse,
-    ModelTargetRequest,
-    ModelTargetResponse,
 )
 from src.app.schemas.shared import (
     ListResponse,
@@ -88,7 +86,7 @@ class PipelineCreateRequest(RequestSchema):
     name: ResourceName
     description: str
     steps: list[PipelineActivityStepRequest]
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: PipelineHarnessRequest | None = None
 
 
@@ -99,7 +97,7 @@ class PipelinePatchRequest(RequestSchema):
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: PipelineHarnessRequest | None = None
 
     @model_validator(mode="after")
@@ -108,7 +106,7 @@ class PipelinePatchRequest(RequestSchema):
 
         if not self.model_fields_set:
             raise ValueError("At least one pipeline field must be supplied.")
-        for field_name in self.model_fields_set - {'model_target', 'harness'}:
+        for field_name in self.model_fields_set - {'model_id', 'harness'}:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} must not be null.")
         return self
@@ -130,7 +128,7 @@ class PipelineResponse(ResponseSchema):
     name: str
     description: str
     enabled: bool
-    model_target: ModelTargetResponse | None
+    model_id: str | None
     harness: PipelineHarnessResponse | None
     steps: list[PipelineActivityStepResponse]
     created_at: datetime

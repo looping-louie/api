@@ -4,7 +4,7 @@ Users own Workspaces. Creating a Workspace creates an `owner` membership for
 the requesting User. The first Workspace owned by a User becomes its default;
 later Workspaces require `X-Workspace-ID` when the User needs to select one.
 
-Workspace defaults store optional model-target and Harness overrides for the
+Workspace defaults store optional `model_id` and Harness overrides for the
 selected workspace. They are configuration candidates for the hierarchical
 execution-default system. Pipeline, Activity, and loop-agent configuration can
 define narrower persisted overrides. PipelineRun creation uses Workspace values
@@ -125,11 +125,13 @@ Example response (`200 OK`):
 }
 ```
 
-`model_target` selects one configured linked service and one logical catalog
-model. The linked service must belong to the selected workspace, be enabled and
-configured, and support an active deployment for `model_id`. `harness` selects
-one supported local execution mechanism. Both fields are nullable; `null`
-means inherit rather than choose a workspace override.
+`model_id` selects one logical catalog model. `harness` selects one supported
+local execution mechanism. Both fields are nullable; `null` means inherit
+rather than choose a workspace override. For `louie`, run creation requires an
+effective model ID, selects the first deterministically ordered compatible,
+enabled, configured Linked Service, and freezes a private internal snapshot.
+`codex_cli` does not select API Linked Services or require API provider
+credentials.
 
 ## Describe workspace defaults
 
@@ -146,10 +148,7 @@ Example response (`200 OK`):
 
 ```json
 {
-  "model_target": {
-    "linked_service_id": "linked-service-openai-primary",
-    "model_id": "gpt-5"
-  },
+  "model_id": "gpt-5",
   "harness": {
     "kind": "codex_cli",
     "version": "v1",
@@ -173,10 +172,7 @@ Content-Type: application/json
 
 ```json
 {
-  "model_target": {
-    "linked_service_id": "linked-service-openai-primary",
-    "model_id": "gpt-5"
-  },
+  "model_id": "gpt-5",
   "harness": {
     "kind": "louie",
     "version": "v1",
@@ -185,9 +181,7 @@ Content-Type: application/json
 }
 ```
 
-The response has the same shape as `GET`. The endpoint returns
-`422 linked_service_selection_unavailable` when the model target cannot be
-served by the selected workspace linked service.
+The response has the same shape as `GET`.
 
 ## Workspace models
 

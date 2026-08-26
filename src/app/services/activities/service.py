@@ -13,7 +13,6 @@ from src.app.models.activity import (
     ActivityDocument,
     ActivityType,
 )
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineHarness
 from src.app.repositories.activities.repository import ActivityRepository
 from src.app.schemas.activity import validate_activity_config
@@ -70,7 +69,7 @@ class ActivityService:
 
         return await self._require(await self._workspace_id(user_id, requested_workspace_id), activity_id)
 
-    async def create(self, *, user_id: str, name: str, description: str, activity_type: str, config: dict[str, object], model_target: ModelTarget | None = None, harness: PipelineHarness | None = None, requested_workspace_id: str | None = None) -> ActivityDocument:
+    async def create(self, *, user_id: str, name: str, description: str, activity_type: str, config: dict[str, object], model_id: str | None = None, harness: PipelineHarness | None = None, requested_workspace_id: str | None = None) -> ActivityDocument:
         """Create a validated active activity and its initial changelog entry."""
 
         workspace_id = await self._workspace_id(user_id, requested_workspace_id)
@@ -78,16 +77,11 @@ class ActivityService:
         now = self._clock()
         normalized_type = self._activity_type(activity_type)
         normalized_config = self._config(config, normalized_type)
-        await self._require_model_target(workspace_id, model_target)
-        await self._require_agent_model_sources(
-            workspace_id=workspace_id,
-            config=normalized_config,
-        )
         document = ActivityDocument(
             id=self._id_factory(), workspace_id=workspace_id, name=self._text(name, 'name'),
             description=description.strip(), status='active', type=normalized_type,
             config=normalized_config, created_at=now, created_by=actor_id, updated_at=now,
-            updated_by=actor_id, model_target=model_target, harness=harness,
+            updated_by=actor_id, model_id=model_id, harness=harness,
         )
         return await self._repository.create(document=document, changelog_entry=self._entry(document, actor_id, 'created', now, content=self._content(document)))
 
@@ -102,29 +96,23 @@ class ActivityService:
             if 'config' in changes
             else current.config
         )
-        if 'config' in changes:
-            await self._require_agent_model_sources(
-                workspace_id=workspace_id,
-                config=config,
-            )
-        model_target = changes.get('model_target', current.model_target)
+        model_id = changes.get('model_id', current.model_id)
         harness = changes.get('harness', current.harness)
-        if not isinstance(model_target, (ModelTarget, type(None))):
+        if not isinstance(model_id, (str, type(None))):
             raise ActivityValidationError(
-                field_name='model_target',
-                message='must be a model target or null',
+            field_name='model_id',
+            message='must be a string or null',
             )
         if not isinstance(harness, (PipelineHarness, type(None))):
             raise ActivityValidationError(
                 field_name='harness',
                 message='must be a Harness or null',
             )
-        await self._require_model_target(workspace_id, model_target)
         updated = replace(
             current, name=self._text(changes['name'], 'name') if 'name' in changes else current.name,
             description=str(changes['description']).strip() if 'description' in changes else current.description,
             status=changes.get('status', current.status), type=current.type, config=config,
-            model_target=model_target, harness=harness,
+            model_id=model_id, harness=harness,
             updated_at=self._clock(), updated_by=actor_id,
         )
         diff = {field: getattr(updated, field) for field in changes if getattr(current, field) != getattr(updated, field)}
@@ -170,45 +158,6 @@ class ActivityService:
         if document is None:
             raise ActivityNotFoundError(activity_id)
         return document
-
-    async def _require_agent_model_sources(
-        self,
-        *,
-        workspace_id: str,
-        config: dict[str, object],
-    ) -> None:
-        """Validate explicit model targets declared by Activity agents."""
-
-        agents = config.get('agents')
-        if not isinstance(agents, list):
-            return
-        for agent in agents:
-            if not isinstance(agent, dict):
-                continue
-            target = agent.get('model_target')
-            if isinstance(target, dict):
-                await self._require_model_target(
-                    workspace_id,
-                    ModelTarget(
-                        linked_service_id=str(target['linked_service_id']),
-                        model_id=str(target['model_id']),
-                    ),
-                )
-                continue
-
-    async def _require_model_target(
-        self,
-        workspace_id: str,
-        model_target: ModelTarget | None,
-    ) -> None:
-        """Require an explicit model target to be available in the workspace."""
-
-        if model_target is not None and self._linked_service_service is not None:
-            await self._linked_service_service.require_available_selection(
-                workspace_id=workspace_id,
-                service_id=model_target.linked_service_id,
-                model_id=model_target.model_id,
-            )
 
     def _entry(self, document: ActivityDocument, actor_id: str, change_type: Literal['created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'], changed_at: datetime, *, diff: dict[str, object] | None = None, content: dict[str, object] | None = None) -> ActivityChangelogEntry:
         """Build one immutable activity history entry."""
@@ -257,14 +206,7 @@ class ActivityService:
             'status': document.status,
             'type': document.type,
             'config': document.config,
-            'model_target': (
-                {
-                    'linked_service_id': document.model_target.linked_service_id,
-                    'model_id': document.model_target.model_id,
-                }
-                if document.model_target is not None
-                else None
-            ),
+            'model_id': document.model_id,
             'harness': (
                 {
                     'kind': document.harness.kind,

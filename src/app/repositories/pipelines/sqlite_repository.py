@@ -325,7 +325,7 @@ class SqlitePipelineRepository:
         cursor = await connection.execute(
             """
             UPDATE pipelines
-            SET name = ?, description = ?, status = ?, model_target_json = ?,
+            SET name = ?, description = ?, status = ?, model_id = ?,
                 harness_json = ?,
                 updated_at = ?, updated_by = ?
             WHERE workspace_id = ? AND id = ?
@@ -334,10 +334,7 @@ class SqlitePipelineRepository:
                 document.name,
                 document.description,
                 document.status,
-                json.dumps({
-                    'linked_service_id': document.model_target.linked_service_id,
-                    'model_id': document.model_target.model_id,
-                }) if document.model_target is not None else None,
+                document.model_id,
                 json.dumps({
                     'kind': document.harness.kind,
                     'version': document.harness.version,
@@ -384,7 +381,7 @@ class SqlitePipelineRepository:
         for document, entry in zip(documents, entries, strict=True):
             await connection.execute(
                 "INSERT INTO activities (id, workspace_id, name, description, "
-                "status, activity_type, config_json, model_target_json, "
+                "status, activity_type, config_json, model_id, "
                 "harness_json, created_at, created_by, updated_at, updated_by) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -395,10 +392,7 @@ class SqlitePipelineRepository:
                     document.status,
                     document.type,
                     json.dumps(document.config),
-                    json.dumps({
-                        'linked_service_id': document.model_target.linked_service_id,
-                        'model_id': document.model_target.model_id,
-                    }) if document.model_target is not None else None,
+                    document.model_id,
                     json.dumps({
                         'kind': document.harness.kind,
                         'version': document.harness.version,

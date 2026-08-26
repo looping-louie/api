@@ -8,7 +8,6 @@ from typing import Literal, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
-from src.app.models.execution import ModelTarget
 
 
 PipelineStatus = Literal["active", "disabled", "archived"]
@@ -65,7 +64,7 @@ class PipelineDocument:
     created_by: str
     updated_at: datetime
     updated_by: str
-    model_target: ModelTarget | None = None
+    model_id: str | None = None
     harness: PipelineHarness | None = None
 
     @property

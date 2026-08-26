@@ -64,6 +64,7 @@ class ActivityRunService:
             and instruction_library_service is not None
             else None
         )
+        self._model_execution_service = model_execution_service
         self._workspace_service = workspace_service
         self._user_service = user_service
 
@@ -104,7 +105,12 @@ class ActivityRunService:
                 iteration=1,
                 token_revision=0,
                 continuation_token=self._token_factory(),
-                activity_snapshot=self._snapshot(activity, harness=harness),
+                activity_snapshot=await self._snapshot(
+                    activity,
+                    workspace_id=workspace.workspace_id,
+                    user_id=user_id,
+                    harness=harness,
+                ),
                 execution_context={},
                 created_at=now,
                 created_by=self._require_text(user_id, 'user_id'),
@@ -478,10 +484,12 @@ class ActivityRunService:
             'config': dict(getattr(harness, 'config')),
         }
 
-    @staticmethod
-    def _snapshot(
+    async def _snapshot(
+        self,
         activity: object,
         *,
+        workspace_id: str,
+        user_id: str,
         harness: Mapping[str, object],
     ) -> dict[str, object]:
         """Shape a frozen configuration for its assigned ActivityRun executor."""
@@ -491,17 +499,89 @@ class ActivityRunService:
             'refinement_loop': 'refinement',
             'roundtable_loop': 'roundtable',
         }
+        config = dict(getattr(activity, 'config'))
+        if harness.get('kind') == 'louie':
+            inherited_model_id = await self._inherited_model_id(
+                activity=activity,
+                user_id=user_id,
+                workspace_id=workspace_id,
+            )
+            agents = config.get('agents')
+            if isinstance(agents, list):
+                config['agents'] = [
+                    await self._louie_agent_snapshot(
+                        agent=agent,
+                        activity_id=str(getattr(activity, 'id')),
+                        workspace_id=workspace_id,
+                        inherited_model_id=inherited_model_id,
+                    )
+                    if isinstance(agent, dict)
+                    else agent
+                    for agent in agents
+                ]
         snapshot = {
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
             'harness': dict(harness),
-            **dict(getattr(activity, 'config')),
+            **config,
         }
         activity_type = getattr(activity, 'type')
         if activity_type in ('approval', 'quiz'):
             return {**snapshot, 'type': activity_type, 'executor': 'human'}
         return {**snapshot, 'flow': flow[activity_type], 'executor': 'runtime'}
+
+    async def _inherited_model_id(
+        self,
+        *,
+        activity: object,
+        user_id: str,
+        workspace_id: str,
+    ) -> str | None:
+        """Resolve the direct Activity model override and Workspace fallback."""
+
+        model_id = getattr(activity, 'model_id')
+        if isinstance(model_id, str):
+            return model_id
+        if self._workspace_service is None:
+            return None
+        return (
+            await self._workspace_service.get_defaults(
+                user_id=user_id,
+                workspace_id=workspace_id,
+            )
+        ).model_id
+
+    async def _louie_agent_snapshot(
+        self,
+        *,
+        agent: dict[str, object],
+        activity_id: str,
+        workspace_id: str,
+        inherited_model_id: str | None,
+    ) -> dict[str, object]:
+        """Freeze an available linked service for one Louie agent model."""
+
+        snapshot = dict(agent)
+        model_id = snapshot.get('model_id')
+        if not isinstance(model_id, str):
+            model_id = inherited_model_id
+        if not isinstance(model_id, str):
+            raise ActivityRunUnavailableError(
+                activity_id=activity_id,
+                reason='louie execution requires a model_id',
+            )
+        if self._model_execution_service is None:
+            raise RuntimeError('Louie model execution is not configured.')
+        linked_service = await self._model_execution_service.select_linked_service(
+            workspace_id=workspace_id,
+            model_id=model_id,
+        )
+        snapshot['model_target'] = {
+            'linked_service_id': linked_service.id,
+            'model_id': model_id,
+        }
+        return snapshot
 
     @staticmethod
     def _initial_state(activity: object) -> str:

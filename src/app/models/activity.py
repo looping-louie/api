@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
 from src.app.models.changelog import JsonObject
-from src.app.models.execution import ModelTarget
 
 if TYPE_CHECKING:
     from src.app.models.pipeline import PipelineHarness
@@ -41,7 +40,7 @@ class ActivityDocument:
     created_by: str
     updated_at: datetime
     updated_by: str
-    model_target: ModelTarget | None = None
+    model_id: str | None = None
     harness: PipelineHarness | None = None
 
 

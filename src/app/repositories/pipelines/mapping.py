@@ -17,7 +17,6 @@ from src.app.models.pipeline import (
     PipelineStepDependency,
     PipelineStatus,
 )
-from src.app.models.execution import ModelTarget
 from src.app.repositories.shared.json_mapping import (
     deserialize_json_object,
     serialize_json,
@@ -33,7 +32,7 @@ async def insert_pipeline(
     await connection.execute(
         """
         INSERT INTO pipelines (
-            id, workspace_id, name, description, status, model_target_json,
+            id, workspace_id, name, description, status, model_id,
             harness_json,
             created_at, created_by, updated_at, updated_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -44,7 +43,7 @@ async def insert_pipeline(
             document.name,
             document.description,
             document.status,
-            serialize_json(_model_target_value(document.model_target)),
+            document.model_id,
             serialize_json(_harness_value(document.harness)),
             document.created_at.isoformat(),
             document.created_by,
@@ -175,7 +174,7 @@ async def to_document(
         name=str(row["name"]),
         description=str(row["description"]),
         status=cast(PipelineStatus, row["status"]),
-        model_target=_to_model_target(row['model_target_json']),
+        model_id=row['model_id'],
         harness=_to_harness(row['harness_json']),
         steps=tuple(
             _to_step(
@@ -219,35 +218,6 @@ def _to_harness(value: str | None) -> PipelineHarness | None:
     ):
         raise RuntimeError('Pipeline harness is invalid.')
     return PipelineHarness(kind=cast(PipelineHarnessKind, parsed['kind']))
-
-
-def _to_model_target(value: str | None) -> ModelTarget | None:
-    """Build an explicit model target when an override is persisted."""
-
-    if value is None:
-        return None
-    parsed = deserialize_json_object(value)
-    if (
-        parsed is None
-        or not isinstance(parsed.get('linked_service_id'), str)
-        or not isinstance(parsed.get('model_id'), str)
-    ):
-        raise RuntimeError('Pipeline model target is invalid.')
-    return ModelTarget(
-        linked_service_id=parsed['linked_service_id'],
-        model_id=parsed['model_id'],
-    )
-
-
-def _model_target_value(model_target: ModelTarget | None) -> dict[str, str] | None:
-    """Serialize an optional model target for a nullable JSON column."""
-
-    if model_target is None:
-        return None
-    return {
-        'linked_service_id': model_target.linked_service_id,
-        'model_id': model_target.model_id,
-    }
 
 
 def _harness_value(harness: PipelineHarness | None) -> dict[str, object] | None:

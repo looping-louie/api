@@ -27,18 +27,18 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 
 Creation requires a non-empty `name`, a `description`, and at least one step.
-Pipelines persist nullable `model_target` and `harness` overrides. PATCH accepts
-`name`, `description`, `enabled`, `steps`, `model_target`, and `harness`;
-supplying `steps` replaces the complete ordered array. A non-null model target
-is validated against the selected workspace Linked Service, and `null` clears
-either override. PipelineRun creation resolves
-model targets at agent, Activity, Pipeline, then Workspace scope, and Harnesses
+Pipelines persist nullable `model_id` and `harness` overrides. PATCH accepts
+`name`, `description`, `enabled`, `steps`, `model_id`, and `harness`;
+supplying `steps` replaces the complete ordered array. `null` clears either
+override. PipelineRun creation resolves model IDs at agent, Activity, Pipeline,
+then Workspace scope. The `louie` Harness selects and freezes the first usable
+Linked Service offering the effective model. Harnesses resolve
 at Activity, Pipeline, Workspace, then User scope. It freezes the effective values
 in its Pipeline and Activity snapshots. An unset effective Harness retains the
 legacy `louie` v1 compatibility behavior.
 Archived pipelines are immutable and omitted from unfiltered listings.
 
-Every Pipeline response includes top-level `model_target` and `harness` keys,
+Every Pipeline response includes top-level `model_id` and `harness` keys,
 and every returned step includes its own Activity-level keys. Unset overrides
 serialize as `null`; the repeated `null` fields are omitted from examples where
 they are not relevant to the example.
@@ -55,7 +55,7 @@ the same name restrictions as the Pipeline name. Each item can also contain a
 | `description` | String | Yes | May be empty. |
 | `type` | String | Yes | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. |
 | `config` | Object | Yes | Matches the selected Activity type. |
-| `model_target` | Object or null | No | A linked service and model pair. `null` means inherit. |
+| `model_id` | String or null | No | A logical catalog model ID. `null` means inherit. |
 | `harness` | Object or null | No | An empty `louie` v1 or `codex_cli` v1 configuration. `null` means inherit. |
 | `dependsOn` | Array | No | Defaults to `[]`. Every item names another unique step and uses a `success` or `failure` condition. The resulting graph must be acyclic. |
 
@@ -101,24 +101,15 @@ Example response (`200 OK`):
             },
             "agents": [
               {
-                "model_target": {
-                  "linked_service_id": "linked-service-openai-primary",
-                  "model_id": "gpt-5"
-                },
+                "model_id": "gpt-5",
                 "persona_id": "release-manager",
                 "role": "generator"},
               {
-                "model_target": {
-                  "linked_service_id": "linked-service-openai-primary",
-                  "model_id": "gpt-5"
-                },
+                "model_id": "gpt-5",
                 "persona_id": "quality-engineer",
                 "role": "generator"},
               {
-                "model_target": {
-                  "linked_service_id": "linked-service-openai-primary",
-                  "model_id": "gpt-5"
-                },
+                "model_id": "gpt-5",
                 "persona_id": "technical-lead",
                 "role": "aggregator"
               }
@@ -220,9 +211,9 @@ Example response (`200 OK`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+          {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
+          {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
+          {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
         ],
         "output_contract": {
           "type": "text",
@@ -295,7 +286,7 @@ each stored step to its full persisted Activity.
 | `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Yes | May be empty. |
 | `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
-| `model_target` | Object or null | No | A linked service and model pair. `null` means inherit. |
+| `model_id` | String or null | No | A logical catalog model ID. `null` means inherit. |
 | `harness` | Object or null | No | Empty `louie` v1 and `codex_cli` v1 configurations are accepted. `null` means inherit. |
 
 ```http
@@ -320,26 +311,17 @@ Content-Type: application/json
         },
         "agents": [
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "release-manager",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "quality-engineer",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "technical-lead",
             "role": "aggregator"
           }
@@ -400,26 +382,17 @@ Example response (`201 Created`):
         },
         "agents": [
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "release-manager",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "quality-engineer",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "technical-lead",
             "role": "aggregator"
           }
@@ -480,9 +453,9 @@ Example response (`201 Created`):
 ## Update a pipeline
 
 `PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `name`,
-`description`, `enabled`, `steps`, `model_target`, and `harness`. Supplying
+`description`, `enabled`, `steps`, `model_id`, and `harness`. Supplying
 `steps` replaces the complete ordered array and creates new independent Activity
-records from the supplied inline definitions. Setting `model_target` or
+records from the supplied inline definitions. Setting `model_id` or
 `harness` to `null` clears that override. The response resolves every stored
 step to its full persisted Activity.
 
@@ -496,7 +469,7 @@ At least one property is required.
 | `description` | String | May be empty. |
 | `enabled` | Boolean | Enables or disables the Pipeline. |
 | `steps` | Array of Activity definitions | Contains at least one step, uses the [Pipeline Step Schema](#pipeline-step-schema), and replaces the complete ordered step collection. |
-| `model_target` | Object or null | A linked service and model pair. `null` clears the override. |
+| `model_id` | String or null | A logical catalog model ID. `null` clears the override. |
 | `harness` | Object or null | An empty `louie` v1 or `codex_cli` v1 configuration. `null` clears the override. |
 
 ```http
@@ -533,9 +506,9 @@ Example response (`200 OK`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+          {"model_id": "gpt-5", "persona_id": "release-manager", "role": "generator"},
+          {"model_id": "gpt-5", "persona_id": "quality-engineer", "role": "generator"},
+          {"model_id": "gpt-5", "persona_id": "technical-lead", "role": "aggregator"}
         ],
         "output_contract": {
           "type": "text",

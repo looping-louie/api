@@ -109,6 +109,34 @@ class ModelExecutionService:
             duration_ms=round((perf_counter() - start) * 1000),
         )
 
+    async def select_linked_service(
+        self,
+        *,
+        workspace_id: str,
+        model_id: str,
+    ) -> LinkedService:
+        """Select the first usable workspace-owner service for a logical model."""
+
+        model = self._model_catalog_service.require_model(model_id)
+        provider_ids = {
+            offering.provider_id.value
+            for offering in self._model_catalog_service.offerings_for_model(model)
+        }
+        for linked_service in (
+            await self._linked_service_repository.list_for_workspace_owner(
+                workspace_id,
+            )
+        ):
+            if (
+                linked_service.enabled
+                and linked_service.base_url is not None
+                and linked_service.provider_type in provider_ids
+            ):
+                return linked_service
+        raise ModelDeploymentUnavailableError(
+            f"Model '{model_id}' has no usable linked service."
+        )
+
     async def _require_linked_service(
         self,
         *,

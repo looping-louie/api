@@ -76,6 +76,18 @@ class FakeLinkedServiceRepository:
 
         return self._linked_services.get((workspace_id, service_id))
 
+    async def list_for_workspace_owner(
+        self,
+        workspace_id: str,
+    ) -> list[LinkedService]:
+        """Return linked services in the configured stable test order."""
+
+        return [
+            linked_service
+            for (stored_workspace_id, _), linked_service in self._linked_services.items()
+            if stored_workspace_id == workspace_id
+        ]
+
 
 class FakeSecretService:
     """Return a deterministic plaintext key for encrypted test credentials."""
@@ -149,6 +161,31 @@ def service(
         linked_service_repository=FakeLinkedServiceRepository(linked_services),
         client=client,
     )
+
+
+@pytest.mark.asyncio
+async def test_select_linked_service_skips_unusable_candidates() -> None:
+    """Selection returns the first enabled configured service offering the model."""
+
+    disabled = linked_service(ProviderId.TOGETHER)
+    usable = linked_service(ProviderId.TOGETHER)
+    disabled = LinkedService(
+        **{**disabled.__dict__, 'id': 'linked-service-disabled', 'enabled': False},
+    )
+    usable = LinkedService(
+        **{**usable.__dict__, 'id': 'linked-service-usable'},
+    )
+
+    selected = await service(
+        offerings=(build_offering(),),
+        linked_services=[disabled, usable],
+        handler=lambda _: httpx.Response(500),
+    ).select_linked_service(
+        workspace_id='workspace-1',
+        model_id='model-1',
+    )
+
+    assert selected.id == 'linked-service-usable'
 
 
 @pytest.mark.asyncio

@@ -284,17 +284,18 @@ async def configure_application(
         clock=utc_now,
         linked_service_service=linked_service_service,
     )
+    model_execution_service = ModelExecutionService(
+        model_catalog_service=model_catalog_service,
+        secret_service=secret_service,
+        linked_service_repository=linked_service_repository,
+    )
     activity_run_service = ActivityRunService(
         repository=activity_run_repository,
         activity_service=activity_service,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
-        model_execution_service=ModelExecutionService(
-            model_catalog_service=model_catalog_service,
-            secret_service=secret_service,
-            linked_service_repository=linked_service_repository,
-        ),
+        model_execution_service=model_execution_service,
         instruction_library_service=execution_instruction_library_service,
         workspace_service=workspace_service,
         user_service=user_service,
@@ -327,6 +328,7 @@ async def configure_application(
         linked_service_service=linked_service_service,
         workspace_service=workspace_service,
         user_service=user_service,
+        model_execution_service=model_execution_service,
     )
     app.state.workspace_model_controller = WorkspaceModelController(
         model_catalog_service=model_catalog_service,

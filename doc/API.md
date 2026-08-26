@@ -29,22 +29,23 @@ durable execution state. The runtime owns local repository execution, including
 filesystem, Git, workspace lifecycle operations, and Worker-local Harness
 configuration. The CLI submits and manages API resources.
 
-Workspace, Pipeline, and Activity definitions persist nullable `model_target`
-and `harness` overrides. Loop agents can persist a nullable `model_target` in
-their typed configuration. Every non-null
-model target is validated against an enabled, configured linked service and an
-active model deployment in the selected workspace. PipelineRun creation
-resolves and freezes model targets at agent, Activity, Pipeline, then Workspace
-scope, and Harnesses at Activity, Pipeline, Workspace, then User scope. A missing
-agent target fails generation; Personas contribute instructions only. When no
-Harness candidate exists, the frozen Harness is the `louie` v1 compatibility
-default.
+Workspace, Pipeline, and Activity definitions persist nullable `model_id`
+and `harness` overrides. Loop agents can persist a nullable `model_id` in
+their typed configuration. PipelineRun creation resolves model IDs at agent,
+Activity, Pipeline, then Workspace scope. For `louie`, run creation requires
+an effective model ID, selects the first deterministically ordered compatible,
+enabled, configured Linked Service, and freezes a private `model_target`
+snapshot. `codex_cli` does not select API Linked Services or require API
+provider credentials. Harnesses resolve at Activity, Pipeline, Workspace, then
+User scope. A missing Louie agent model fails run creation; Personas contribute
+instructions only. When no Harness candidate exists, the frozen Harness is the
+`louie` v1 compatibility default.
 
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for
 the frozen Pipeline Harness selection.
 
-Workspace defaults use explicit nullable values: an absent `model_target` or
+Workspace defaults use explicit nullable values: an absent `model_id` or
 `harness` means the workspace inherits that value from a higher-level or
 system-level source. PipelineRun creation consumes Workspace candidates only
 after all narrower Pipeline and Activity candidates are considered, and before

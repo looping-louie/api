@@ -13,6 +13,7 @@ from src.app.repositories.pipelines.sqlite_repository import (
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.sqlite_repository import SqlitePipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.models import ModelExecutionService
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.shared.tenant import TenantService
@@ -32,6 +33,7 @@ def build_pipeline_controller(
     linked_service_service: LinkedServiceService,
     workspace_service: WorkspaceService,
     user_service: UserService,
+    model_execution_service: ModelExecutionService,
 ) -> PipelineController:
     """Build the pipeline persistence, service, and HTTP layers."""
 
@@ -53,6 +55,7 @@ def build_pipeline_controller(
             worker_service=worker_service,
             workspace_service=workspace_service,
             user_service=user_service,
+            model_execution_service=model_execution_service,
             id_factory=id_factory,
             clock=clock,
         ),

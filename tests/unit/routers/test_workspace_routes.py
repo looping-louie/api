@@ -186,12 +186,12 @@ def test_defaults_use_the_workspace_resource_path() -> None:
     replaced = client.put(
         '/api/v1/workspaces/workspace-1/defaults',
         headers=headers,
-        json={'model_target': None, 'harness': None},
+        json={'model_id': None, 'harness': None},
     )
 
     assert current.status_code == 200
     assert replaced.status_code == 200
-    assert current.json()['model_target'] is None
+    assert current.json()['model_id'] is None
     assert replaced.json()['harness'] is None
 
 

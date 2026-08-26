@@ -83,65 +83,10 @@ class SqliteDependencyRepository:
         workspace_id: str,
         linked_service_id: str,
     ) -> list[DependencyUsage]:
-        """Return persisted model targets that reference one linked service."""
+        """Return no definition dependencies for runtime-selected services."""
 
-        async with self._connect() as connection:
-            cursor = await connection.execute(
-                """
-                SELECT 'workspace' AS resource_type, workspace_id AS resource_id,
-                    'model_target' AS relation
-                FROM workspace_execution_defaults
-                WHERE workspace_id = ?
-                    AND json_extract(model_target_json, '$.linked_service_id') = ?
-                UNION ALL
-                SELECT 'pipeline' AS resource_type, id AS resource_id,
-                    'model_target' AS relation
-                FROM pipelines
-                WHERE workspace_id = ?
-                    AND json_extract(model_target_json, '$.linked_service_id') = ?
-                UNION ALL
-                SELECT 'activity' AS resource_type, id AS resource_id,
-                    'model_target' AS relation
-                FROM activities
-                WHERE workspace_id = ?
-                    AND json_extract(model_target_json, '$.linked_service_id') = ?
-                UNION ALL
-                SELECT 'activity' AS resource_type, activity.id AS resource_id,
-                    'agent_model_target' AS relation
-                FROM activities AS activity
-                JOIN json_each(activity.config_json, '$.agents') AS agent
-                WHERE activity.workspace_id = ?
-                    AND json_extract(
-                        agent.value, '$.model_target.linked_service_id'
-                    ) = ?
-                ORDER BY resource_type ASC, resource_id ASC, relation ASC
-                """,
-                (
-                    workspace_id,
-                    linked_service_id,
-                    workspace_id,
-                    linked_service_id,
-                    workspace_id,
-                    linked_service_id,
-                    workspace_id,
-                    linked_service_id,
-                ),
-            )
-            try:
-                rows = await cursor.fetchall()
-            finally:
-                await cursor.close()
-
-        return [
-            DependencyUsage(
-                source=ResourceReference(
-                    resource_type=str(row['resource_type']),
-                    resource_id=str(row['resource_id']),
-                ),
-                relation=str(row['relation']),
-            )
-            for row in rows
-        ]
+        del workspace_id, linked_service_id
+        return []
 
     @asynccontextmanager
     async def _connect(

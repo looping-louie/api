@@ -26,22 +26,24 @@ operations, and activity execution after it claims a queued pipeline run.
 ## Execution defaults
 
 User settings persist an optional default Harness, while Workspace defaults
-persist optional model-target and Harness overrides. A model
-target always binds a logical catalog `model_id` to a
-workspace-owned `linked_service_id`; a bare model ID cannot deterministically
-select a provider connection. A missing value explicitly means inheritance.
+persist optional `model_id` and Harness overrides. A missing value explicitly
+means inheritance.
 
 The hierarchy persists candidates at workspace, Pipeline, Activity, and
 loop-agent scopes. Pipeline and Activity store first-class nullable
-`model_target` and `harness` fields; agents store nullable `model_target` in
-their typed loop configuration.
+`model_id` and `harness` fields; agents store nullable `model_id` in their
+typed loop configuration.
 It is intentionally separate from Personas, which are reusable instructions
 rather than model-routing or provider-connection resources. PipelineRun
 creation resolves and freezes effective values: agent, Activity, Pipeline, then
-Workspace for model targets; and Activity, Pipeline, then Workspace for
-Harnesses. An agent without an explicit target fails generation; Personas are
-instruction-only resources. An unset effective Harness becomes the `louie` v1
-compatibility default after considering the User default.
+Workspace for model IDs; and Activity, Pipeline, then Workspace for Harnesses.
+For `louie`, creation requires an effective model ID and selects the first
+deterministically ordered compatible, enabled, configured Linked Service before
+freezing a private `model_target` snapshot. `codex_cli` does not select API
+Linked Services or require API provider credentials. An agent without an
+explicit model ID fails generation; Personas are instruction-only resources. An
+unset effective Harness becomes the `louie` v1 compatibility default after
+considering the User default.
 
 ## Harnesses
 
@@ -433,7 +435,7 @@ models/
 |-- activity.py                    Defines definitions and changelog entries
 |-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
-|-- execution.py                   Defines atomic linked-service model targets
+|-- execution.py                   Defines private model-selection snapshots
 |-- linked_service.py              Defines workspace-owned provider connections
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events

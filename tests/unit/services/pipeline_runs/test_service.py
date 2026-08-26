@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from itertools import count
+from types import SimpleNamespace
 
 import pytest
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
@@ -292,6 +292,15 @@ class StaticUserService:
         return self._document
 
 
+class StaticModelExecutionService:
+    """Select one deterministic linked service for frozen Louie snapshots."""
+
+    async def select_linked_service(self, **_: object) -> SimpleNamespace:
+        """Return the service selected by this focused scheduler fixture."""
+
+        return SimpleNamespace(id='linked-service-selected')
+
+
 def activity(
     activity_id: str,
     activity_type: str = 'direct_loop',
@@ -314,21 +323,15 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     """Narrower agent and Activity values override Pipeline candidates."""
 
     now = datetime(2026, 8, 25, tzinfo=UTC)
-    agent_target = ModelTarget('service-agent', 'model-agent')
-    activity_target = ModelTarget('service-activity', 'model-activity')
-    pipeline_target = ModelTarget('service-pipeline', 'model-pipeline')
     first = replace(
         activity('activity-1'),
-        model_target=activity_target,
+        model_id='model-activity',
         harness=PipelineHarness(kind='codex_cli'),
         config={
             **activity('activity-1').config,
             'agents': [
                 {
-                    'model_target': {
-                        'linked_service_id': agent_target.linked_service_id,
-                        'model_id': agent_target.model_id,
-                    },
+                    'model_id': 'model-agent',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -355,7 +358,7 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
                 PipelineActivityStep(activity_id=first.id),
                 PipelineActivityStep(activity_id=second.id),
             ),
-            model_target=pipeline_target,
+            model_id='model-pipeline',
             harness=PipelineHarness(kind='louie'),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
         ),
@@ -363,7 +366,7 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     )
     defaults = WorkspaceDefaults(
         workspace_id='workspace-1',
-        model_target=ModelTarget('service-workspace', 'model-workspace'),
+        model_id='model-workspace',
         harness=PipelineHarness(kind='codex_cli'),
         updated_at=now,
     )
@@ -374,6 +377,7 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
         pipeline_service=PipelineDetailsService(details),
         tenant_service=tenant_service,
         workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        model_execution_service=StaticModelExecutionService(),  # type: ignore[arg-type]
         id_factory=lambda: 'run-1',
         clock=IncrementingClock(),
     )
@@ -386,12 +390,10 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     second_agent = created.steps[1].activity_snapshot['agents'][0]
     assert created.pipeline_snapshot['harness']['kind'] == 'louie'
     assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
-    assert first_agent['model_target'] == {
-        'linked_service_id': 'service-agent',
-        'model_id': 'model-agent',
-    }
+    assert first_agent['model_id'] == 'model-agent'
+    assert 'model_id' not in second_agent
     assert second_agent['model_target'] == {
-        'linked_service_id': 'service-pipeline',
+        'linked_service_id': 'linked-service-selected',
         'model_id': 'model-pipeline',
     }
 
@@ -426,7 +428,7 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
     )
     defaults = WorkspaceDefaults(
         workspace_id='workspace-1',
-        model_target=ModelTarget('service-workspace', 'model-workspace'),
+        model_id='model-workspace',
         harness=PipelineHarness(kind='codex_cli'),
         updated_at=now,
     )
@@ -447,10 +449,7 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
 
     assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
     assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
-    assert created.steps[0].activity_snapshot['agents'][0]['model_target'] == {
-        'linked_service_id': 'service-workspace',
-        'model_id': 'model-workspace',
-    }
+    assert 'model_id' not in created.steps[0].activity_snapshot['agents'][0]
 
 
 @pytest.mark.asyncio
@@ -471,7 +470,7 @@ async def test_create_freezes_user_default_harness_when_higher_scopes_are_unset(
         activities=(configured_activity,),
     )
     defaults = WorkspaceDefaults(
-        workspace_id='workspace-1', model_target=None, harness=None, updated_at=now,
+        workspace_id='workspace-1', model_id=None, harness=None, updated_at=now,
     )
     runs = InMemoryPipelineRunRepository()
     service = PipelineRunService(

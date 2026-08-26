@@ -9,8 +9,6 @@ from pydantic import model_validator
 from src.app.schemas.execution import (
     HarnessRequest,
     HarnessResponse,
-    ModelTargetRequest,
-    ModelTargetResponse,
 )
 from src.app.schemas.shared import NonEmptyString, RequestSchema, ResponseSchema
 
@@ -47,13 +45,13 @@ class WorkspacePatchRequest(RequestSchema):
 class WorkspaceDefaultsReplaceRequest(RequestSchema):
     """Complete optional workspace execution-default configuration."""
 
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: HarnessRequest | None = None
 
 
 class WorkspaceDefaultsResponse(ResponseSchema):
     """Workspace execution defaults, with null fields inheriting elsewhere."""
 
-    model_target: ModelTargetResponse | None
+    model_id: str | None
     harness: HarnessResponse | None
     updated_at: datetime

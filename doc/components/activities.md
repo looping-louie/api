@@ -23,7 +23,7 @@ are `active`, `disabled`, and `archived`.
 
 Loop Activities configure one or more model agents, stop conditions, and an
 output contract. An agent combines a Persona and one role. The Persona's
-instructions are combined with the agent's explicit `model_target` during
+instructions are combined with the agent's explicit `model_id` during
 generation.
 
 - `generator`: produces a candidate solution or proposed output;
@@ -82,8 +82,8 @@ Activities expose persisted runs. Each run identifies its owning Activity by
 freezes an effective Harness for every runtime-executable child Activity-run,
 preferring Activity, Pipeline, then Workspace scope. The `louie` Harness is
 the compatibility default. PipelineRun creation also freezes agent model
-targets, preferring agent, Activity, Pipeline, then Workspace scope. Only an
-agent with an explicit `model_target` can generate a model request; Personas
+selections, preferring agent, Activity, Pipeline, then Workspace scope. Only
+an agent with an explicit `model_id` can generate a model request; Personas
 provide instructions only. Human Activities use the built-in `human`
 execution mode and submit a terminal decision checkpoint; they do not execute
 through a Harness.

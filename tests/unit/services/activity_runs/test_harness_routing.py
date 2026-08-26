@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -98,6 +99,26 @@ class _UserService:
         return self._document
 
 
+class _ModelExecutionService:
+    """Record model-selection requests and return one linked service."""
+
+    def __init__(self) -> None:
+        """Initialize the deterministic linked-service selection fixture."""
+
+        self.calls: list[tuple[str, str]] = []
+
+    async def select_linked_service(
+        self,
+        *,
+        workspace_id: str,
+        model_id: str,
+    ) -> SimpleNamespace:
+        """Record and return the linked service selected for a logical model."""
+
+        self.calls.append((workspace_id, model_id))
+        return SimpleNamespace(id='linked-service-selected')
+
+
 @pytest.mark.asyncio
 async def test_create_inherits_user_default_harness(
     tenant_service: TenantService,
@@ -121,7 +142,7 @@ async def test_create_inherits_user_default_harness(
         repository=repository, activity_service=_ActivityService(activity),
         tenant_service=tenant_service, id_factory=lambda: 'run-1', clock=lambda: now,
         workspace_service=_WorkspaceService(WorkspaceDefaults(
-            workspace_id='workspace-1', model_target=None, harness=None, updated_at=now,
+            workspace_id='workspace-1', model_id=None, harness=None, updated_at=now,
         )),  # type: ignore[arg-type]
         user_service=_UserService(UserDocument(  # type: ignore[arg-type]
             id='user-1', created_at=now, updated_at=now,
@@ -136,6 +157,122 @@ async def test_create_inherits_user_default_harness(
     assert created.activity_snapshot['harness'] == {
         'kind': 'codex_cli', 'version': 'v1', 'config': {},
     }
+
+
+@pytest.mark.asyncio
+async def test_create_louie_freezes_selected_service_for_effective_model(
+    tenant_service: TenantService,
+) -> None:
+    """A Louie direct Activity resolves and freezes the Workspace model route."""
+
+    now = datetime(2026, 8, 24, tzinfo=UTC)
+    activity = ActivityDocument(
+        id='activity-1', workspace_id='workspace-1', name='Implement',
+        description='Implement the requested change.', status='active', type='direct_loop',
+        config={'agents': [{'persona_id': 'persona-1', 'role': 'generator'}]},
+        created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+    )
+    selector = _ModelExecutionService()
+    service = ActivityRunService(
+        repository=_ActivityRunRepository(ActivityRunDocument(
+            id='existing', workspace_id='workspace-1', activity_id=activity.id,
+            input='Ignored.', status='in_progress', state='awaiting_snapshot',
+            next_action='collect_snapshot', iteration=1, token_revision=0,
+            continuation_token='token', activity_snapshot={}, execution_context={},
+            created_at=now, created_by='user-1', updated_at=now,
+        )),
+        activity_service=_ActivityService(activity), tenant_service=tenant_service,
+        id_factory=lambda: 'run-1', clock=lambda: now,
+        model_execution_service=selector,  # type: ignore[arg-type]
+        workspace_service=_WorkspaceService(WorkspaceDefaults(
+            workspace_id='workspace-1', model_id='gpt-5', harness=None, updated_at=now,
+        )),  # type: ignore[arg-type]
+    )
+
+    created = await service.create(
+        user_id='user-1', activity_id=activity.id, input_text='Implement.',
+    )
+
+    assert selector.calls == [('workspace-1', 'gpt-5')]
+    assert created.activity_snapshot['agents'][0]['model_target'] == {
+        'linked_service_id': 'linked-service-selected',
+        'model_id': 'gpt-5',
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_louie_activity_without_effective_model(
+    tenant_service: TenantService,
+) -> None:
+    """Louie cannot create a direct run when no agent or inherited model exists."""
+
+    now = datetime(2026, 8, 24, tzinfo=UTC)
+    activity = ActivityDocument(
+        id='activity-1', workspace_id='workspace-1', name='Implement',
+        description='Implement the requested change.', status='active', type='direct_loop',
+        config={'agents': [{'persona_id': 'persona-1', 'role': 'generator'}]},
+        created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+    )
+    service = ActivityRunService(
+        repository=_ActivityRunRepository(ActivityRunDocument(
+            id='existing', workspace_id='workspace-1', activity_id=activity.id,
+            input='Ignored.', status='in_progress', state='awaiting_snapshot',
+            next_action='collect_snapshot', iteration=1, token_revision=0,
+            continuation_token='token', activity_snapshot={}, execution_context={},
+            created_at=now, created_by='user-1', updated_at=now,
+        )),
+        activity_service=_ActivityService(activity), tenant_service=tenant_service,
+        id_factory=lambda: 'run-1', clock=lambda: now,
+        model_execution_service=_ModelExecutionService(),  # type: ignore[arg-type]
+        workspace_service=_WorkspaceService(WorkspaceDefaults(
+            workspace_id='workspace-1', model_id=None, harness=None, updated_at=now,
+        )),  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(
+        Exception,
+        match='louie execution requires a model_id',
+    ):
+        await service.create(
+            user_id='user-1', activity_id=activity.id, input_text='Implement.',
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_codex_activity_does_not_select_api_managed_model(
+    tenant_service: TenantService,
+) -> None:
+    """Codex keeps model selection external even when an agent declares a model."""
+
+    now = datetime(2026, 8, 24, tzinfo=UTC)
+    activity = ActivityDocument(
+        id='activity-1', workspace_id='workspace-1', name='Implement',
+        description='Implement the requested change.', status='active', type='direct_loop',
+        config={'agents': [{'model_id': 'gpt-5', 'persona_id': 'persona-1', 'role': 'generator'}]},
+        harness=PipelineHarness(kind='codex_cli'),
+        created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+    )
+    selector = _ModelExecutionService()
+    service = ActivityRunService(
+        repository=_ActivityRunRepository(ActivityRunDocument(
+            id='existing', workspace_id='workspace-1', activity_id=activity.id,
+            input='Ignored.', status='in_progress', state='awaiting_snapshot',
+            next_action='collect_snapshot', iteration=1, token_revision=0,
+            continuation_token='token', activity_snapshot={}, execution_context={},
+            created_at=now, created_by='user-1', updated_at=now,
+        )),
+        activity_service=_ActivityService(activity), tenant_service=tenant_service,
+        id_factory=lambda: 'run-1', clock=lambda: now,
+        model_execution_service=selector,  # type: ignore[arg-type]
+    )
+
+    created = await service.create(
+        user_id='user-1', activity_id=activity.id, input_text='Implement.',
+    )
+
+    assert selector.calls == []
+    assert created.activity_snapshot['agents'][0]['model_id'] == 'gpt-5'
+    assert 'model_target' not in created.activity_snapshot['agents'][0]
 
 
 @pytest.mark.asyncio

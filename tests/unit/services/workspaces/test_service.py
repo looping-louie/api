@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.app.models.execution import ModelTarget
 from src.app.models.user import UserDocument
 from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
 from src.app.models.pipeline import PipelineHarness
@@ -160,13 +159,13 @@ async def test_get_returns_inherited_defaults_for_unconfigured_workspace() -> No
     )
 
     assert defaults.workspace_id == 'workspace-1'
-    assert defaults.model_target is None
+    assert defaults.model_id is None
     assert defaults.harness is None
 
 
 @pytest.mark.asyncio
-async def test_replace_validates_and_persists_model_target_and_harness() -> None:
-    """Workspace overrides validate their route and preserve both dimensions."""
+async def test_replace_persists_model_id_and_harness() -> None:
+    """Workspace overrides preserve logical model and Harness dimensions."""
 
     repository = FakeWorkspaceRepository()
     linked_service_service = FakeLinkedServiceService()
@@ -179,21 +178,12 @@ async def test_replace_validates_and_persists_model_target_and_harness() -> None
     defaults = await service.replace_defaults(
         user_id='user-1',
         workspace_id='workspace-1',
-        model_target=ModelTarget(
-            linked_service_id='service-primary',
-            model_id='gpt-5',
-        ),
+        model_id='gpt-5',
         harness=PipelineHarness(kind='codex_cli'),
     )
 
-    assert linked_service_service.calls == [
-        ('workspace-1', 'service-primary', 'gpt-5'),
-    ]
     assert defaults == repository.defaults_by_workspace_id['workspace-1']
-    assert defaults.model_target == ModelTarget(
-        linked_service_id='service-primary',
-        model_id='gpt-5',
-    )
+    assert defaults.model_id == 'gpt-5'
     assert defaults.harness == PipelineHarness(kind='codex_cli')
 
 

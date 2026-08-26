@@ -6,7 +6,6 @@ from src.app.schemas.pipeline import (
     PipelineCreateRequest,
     PipelineResponse,
 )
-from src.app.models.execution import ModelTarget
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import PipelineCreate
 
@@ -35,14 +34,7 @@ class PipelineCreateController:
                 name=payload.name,
                 description=payload.description,
                 steps=pipeline_steps(payload.steps),
-                model_target=(
-                    ModelTarget(
-                        linked_service_id=payload.model_target.linked_service_id,
-                        model_id=payload.model_target.model_id,
-                    )
-                    if payload.model_target is not None
-                    else None
-                ),
+                model_id=payload.model_id,
                 harness=pipeline_harness(payload.harness),
             ),
         )

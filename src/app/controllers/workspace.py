@@ -11,7 +11,6 @@ from src.app.catalogs.models import (
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.models.execution import ModelTarget
 from src.app.models.workspace import WorkspaceDocument
 from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.pipeline import PipelineHarness
@@ -109,14 +108,7 @@ class WorkspaceController:
 
         defaults = await self._service.replace_defaults(
             user_id=user_id,
-            model_target=(
-                ModelTarget(
-                    linked_service_id=payload.model_target.linked_service_id,
-                    model_id=payload.model_target.model_id,
-                )
-                if payload.model_target is not None
-                else None
-            ),
+            model_id=payload.model_id,
             harness=(
                 PipelineHarness(
                     kind=payload.harness.kind,
@@ -138,14 +130,7 @@ class WorkspaceController:
 
         return WorkspaceDefaultsResponse.model_validate(
             {
-                'model_target': (
-                    {
-                        'linked_service_id': defaults.model_target.linked_service_id,
-                        'model_id': defaults.model_target.model_id,
-                    }
-                    if defaults.model_target is not None
-                    else None
-                ),
+                'model_id': defaults.model_id,
                 'harness': (
                     {
                         'kind': defaults.harness.kind,

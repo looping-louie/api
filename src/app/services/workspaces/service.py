@@ -4,7 +4,6 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 
-from src.app.models.execution import ModelTarget
 from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.workspace import WorkspaceDocument
 from src.app.models.pipeline import PipelineHarness
@@ -114,7 +113,7 @@ class WorkspaceService:
             return defaults
         return WorkspaceDefaults(
             workspace_id=workspace_id,
-            model_target=None,
+            model_id=None,
             harness=None,
             updated_at=self._clock(),
         )
@@ -123,26 +122,20 @@ class WorkspaceService:
         self,
         *,
         user_id: str,
-        model_target: ModelTarget | None,
+        model_id: str | None,
         harness: PipelineHarness | None,
         workspace_id: str,
     ) -> WorkspaceDefaults:
-        """Replace all workspace overrides after validating model routing."""
+        """Replace all workspace execution overrides."""
 
         await self._tenant_service.require_access(
             user_id=user_id,
             workspace_id=workspace_id,
         )
-        if model_target is not None:
-            await self._linked_service_service.require_available_selection(
-                workspace_id=workspace_id,
-                service_id=model_target.linked_service_id,
-                model_id=model_target.model_id,
-            )
         return await self._repository.replace_defaults(
             defaults=WorkspaceDefaults(
                 workspace_id=workspace_id,
-                model_target=model_target,
+                model_id=model_id,
                 harness=harness,
                 updated_at=self._clock(),
             ),

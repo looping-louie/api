@@ -10,7 +10,6 @@ from typing import Callable, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineDetails, PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
@@ -21,6 +20,7 @@ from src.app.models.pipeline_run import (
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.models import ModelExecutionService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.types import (
     PipelineRunNotFoundError,
@@ -46,6 +46,7 @@ class PipelineRunService:
         worker_service: WorkerService | None = None,
         workspace_service: WorkspaceService | None = None,
         user_service: UserService | None = None,
+        model_execution_service: ModelExecutionService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -59,6 +60,7 @@ class PipelineRunService:
         self._worker_service = worker_service
         self._workspace_service = workspace_service
         self._user_service = user_service
+        self._model_execution_service = model_execution_service
         self._id_factory = id_factory
         self._clock = clock
         self._token_factory = token_factory
@@ -89,10 +91,10 @@ class PipelineRunService:
             workspace_id=details.document.workspace_id,
         )
         user_default_harness = await self._user_default_harness(user_id=user_id)
-        inherited_model_target = (
-            details.document.model_target
+        inherited_model_id = (
+            details.document.model_id
             or (
-                workspace_defaults.model_target
+                workspace_defaults.model_id
                 if workspace_defaults is not None
                 else None
             )
@@ -109,6 +111,19 @@ class PipelineRunService:
         )
         now = self._clock()
         run_id = self._id_factory()
+        steps = []
+        for position, activity in enumerate(details.activities):
+            steps.append(PipelineRunStepDocument(
+                position=position, activity_id=activity.id, status='pending',
+                activity_run_id=None,
+                activity_snapshot=await self._activity_snapshot(
+                    activity,
+                    workspace_id=details.document.workspace_id,
+                    inherited_model_id=inherited_model_id,
+                    inherited_harness=inherited_harness,
+                ),
+                updated_at=now,
+            ))
         document = PipelineRunDocument(
             id=run_id, workspace_id=details.document.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
@@ -119,19 +134,7 @@ class PipelineRunService:
                 details,
                 harness=inherited_harness,
             ),
-            steps=tuple(
-                PipelineRunStepDocument(
-                    position=position, activity_id=activity.id, status='pending',
-                    activity_run_id=None,
-                    activity_snapshot=self._activity_snapshot(
-                        activity,
-                        inherited_model_target=inherited_model_target,
-                        inherited_harness=inherited_harness,
-                    ),
-                    updated_at=now,
-                )
-                for position, activity in enumerate(details.activities)
-            ),
+            steps=tuple(steps),
             events=(
                 self._event(
                     workspace_id=details.document.workspace_id,
@@ -724,24 +727,27 @@ class PipelineRunService:
             ],
         }
 
-    @staticmethod
-    def _activity_snapshot(
+    async def _activity_snapshot(
+        self,
         activity: ActivityDocument,
         *,
-        inherited_model_target: ModelTarget | None,
+        workspace_id: str,
+        inherited_model_id: str | None,
         inherited_harness: PipelineHarness,
     ) -> dict[str, object]:
         """Freeze an executable activity in the format used by activity runs."""
 
-        model_target = activity.model_target or inherited_model_target
+        model_id = activity.model_id or inherited_model_id
         harness = activity.harness or inherited_harness
         config = deepcopy(activity.config)
         agents = config.get('agents')
         if isinstance(agents, list):
             config['agents'] = [
-                PipelineRunService._agent_snapshot(
+                await self._agent_snapshot(
                     agent=agent,
-                    inherited_model_target=model_target,
+                    workspace_id=workspace_id,
+                    inherited_model_id=model_id,
+                    harness=harness,
                 )
                 if isinstance(agent, dict)
                 else agent
@@ -780,23 +786,37 @@ class PipelineRunService:
             'flow': flow,
         }
 
-    @staticmethod
-    def _agent_snapshot(
+    async def _agent_snapshot(
+        self,
         *,
         agent: dict[str, object],
-        inherited_model_target: ModelTarget | None,
+        workspace_id: str,
+        inherited_model_id: str | None,
+        harness: PipelineHarness,
     ) -> dict[str, object]:
-        """Freeze an agent target or preserve legacy Persona routing when absent."""
+        """Freeze Louie provider routing for an effective logical model ID."""
 
         snapshot = dict(agent)
-        target = snapshot.get('model_target')
-        if isinstance(target, dict):
+        if harness.kind != 'louie':
             return snapshot
-        if inherited_model_target is not None:
-            snapshot['model_target'] = {
-                'linked_service_id': inherited_model_target.linked_service_id,
-                'model_id': inherited_model_target.model_id,
-            }
+        model_id = snapshot.get('model_id')
+        if not isinstance(model_id, str):
+            model_id = inherited_model_id
+        if not isinstance(model_id, str):
+            raise PipelineRunUnavailableError(
+                pipeline_id='unknown',
+                reason='louie execution requires a model_id',
+            )
+        if self._model_execution_service is None:
+            raise RuntimeError('Louie model execution is not configured.')
+        linked_service = await self._model_execution_service.select_linked_service(
+            workspace_id=workspace_id,
+            model_id=model_id,
+        )
+        snapshot['model_target'] = {
+            'linked_service_id': linked_service.id,
+            'model_id': model_id,
+        }
         return snapshot
 
     @staticmethod

@@ -213,13 +213,10 @@ def roundtable_loop_payload() -> dict[str, object]:
 
 
 def agent(persona_id: str, role: str) -> dict[str, object]:
-    """Build one loop agent with an explicit executable model target."""
+    """Build one loop agent with an explicit logical model override."""
 
     return {
-        'model_target': {
-            'linked_service_id': 'linked-service-1',
-            'model_id': 'model-1',
-        },
+        'model_id': 'model-1',
         'persona_id': persona_id,
         'role': role,
     }
@@ -291,7 +288,7 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     assert 'error' in legacy_config_type.json()
 
 
-def test_activity_allows_agent_without_model_target_or_persona_selection(
+def test_activity_allows_agent_without_model_id_or_persona_selection(
     tenant_service: TenantService,
 ) -> None:
     """Activity validation leaves target enforcement to execution."""
@@ -308,44 +305,30 @@ def test_activity_allows_agent_without_model_target_or_persona_selection(
         reference_repository=reference_repository,
     )
     payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_target')
+    payload['config']['agents'][0].pop('model_id')
 
     response = client.post('/api/v1/activities', json=payload)
 
     assert response.status_code == 201
 
 
-def test_activity_validates_and_returns_explicit_model_targets(
+def test_activity_returns_explicit_logical_model_ids(
     tenant_service: TenantService,
 ) -> None:
     """Activity and loop-agent targets validate against the selected workspace."""
 
-    linked_services = RecordingLinkedServiceService()
     client = build_client(
         tenant_service=tenant_service,
-        linked_service_service=linked_services,
     )
     payload = direct_loop_payload()
-    payload['model_target'] = {
-        'linked_service_id': 'service-activity',
-        'model_id': 'model-activity',
-    }
-    payload['config']['agents'][0]['model_target'] = {
-        'linked_service_id': 'service-agent',
-        'model_id': 'model-agent',
-    }
+    payload['model_id'] = 'model-activity'
+    payload['config']['agents'][0]['model_id'] = 'model-agent'
 
     response = client.post('/api/v1/activities', json=payload)
 
     assert response.status_code == 201
-    assert response.json()['model_target'] == payload['model_target']
-    assert response.json()['config']['agents'][0]['model_target'] == (
-        payload['config']['agents'][0]['model_target']
-    )
-    assert linked_services.calls == [
-        ('workspace-1', 'service-activity', 'model-activity'),
-        ('workspace-1', 'service-agent', 'model-agent'),
-    ]
+    assert response.json()['model_id'] == payload['model_id']
+    assert response.json()['config']['agents'][0]['model_id'] == 'model-agent'
 
 
 def test_activity_allows_unavailable_persona_without_selection_check(
@@ -355,7 +338,7 @@ def test_activity_allows_unavailable_persona_without_selection_check(
 
     client = build_client(tenant_service=tenant_service)
     payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_target')
+    payload['config']['agents'][0].pop('model_id')
 
     response = client.post('/api/v1/activities', json=payload)
 
