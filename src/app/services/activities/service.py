@@ -45,7 +45,7 @@ class ActivityValidationError(Exception):
 
 
 class ActivityService:
-    """Coordinate validated activity operations for one resolved workspace."""
+    """Coordinate validated User-owned Activity operations."""
 
     def __init__(self, *, repository: ActivityRepository, tenant_service: TenantService, reference_resolver: ReferenceResolver, id_factory: Callable[[], str], clock: Callable[[], datetime], linked_service_service: LinkedServiceService | None = None) -> None:
         """Store persistence, tenancy, identifier, and time dependencies."""
@@ -57,39 +57,36 @@ class ActivityService:
         self._id_factory = id_factory
         self._clock = clock
 
-    async def list(self, *, user_id: str, offset: int, requested_workspace_id: str | None = None) -> tuple[list[ActivityDocument], int]:
+    async def list(self, *, user_id: str, offset: int) -> tuple[list[ActivityDocument], int]:
         """Return one fixed-size page of activities."""
 
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        documents, total = await self._repository.list(workspace_id=workspace_id, offset=self._offset(offset), limit=PAGE_SIZE)
+        documents, total = await self._repository.list(user_id=user_id, offset=self._offset(offset), limit=PAGE_SIZE)
         return list(documents), total
 
-    async def get(self, *, user_id: str, activity_id: str, requested_workspace_id: str | None = None) -> ActivityDocument:
+    async def get(self, *, user_id: str, activity_id: str) -> ActivityDocument:
         """Return one activity or raise the standard not-found error."""
 
-        return await self._require(await self._workspace_id(user_id, requested_workspace_id), activity_id)
+        return await self._require(user_id, activity_id)
 
-    async def create(self, *, user_id: str, name: str, description: str, activity_type: str, config: dict[str, object], model_id: str | None = None, harness: PipelineHarness | None = None, requested_workspace_id: str | None = None) -> ActivityDocument:
+    async def create(self, *, user_id: str, name: str, description: str, activity_type: str, config: dict[str, object], model_id: str | None = None, harness: PipelineHarness | None = None) -> ActivityDocument:
         """Create a validated active activity and its initial changelog entry."""
 
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
         actor_id = self._text(user_id, 'user_id')
         now = self._clock()
         normalized_type = self._activity_type(activity_type)
         normalized_config = self._config(config, normalized_type)
         document = ActivityDocument(
-            id=self._id_factory(), workspace_id=workspace_id, name=self._text(name, 'name'),
+            id=self._id_factory(), user_id=actor_id, workspace_id=None, name=self._text(name, 'name'),
             description=description.strip(), status='active', type=normalized_type,
             config=normalized_config, created_at=now, created_by=actor_id, updated_at=now,
             updated_by=actor_id, model_id=model_id, harness=harness,
         )
         return await self._repository.create(document=document, changelog_entry=self._entry(document, actor_id, 'created', now, content=self._content(document)))
 
-    async def patch(self, *, user_id: str, activity_id: str, changes: dict[str, object], requested_workspace_id: str | None = None) -> ActivityDocument:
+    async def patch(self, *, user_id: str, activity_id: str, changes: dict[str, object]) -> ActivityDocument:
         """Apply mutable fields and append an activity changelog entry."""
 
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        current = await self._require(workspace_id, activity_id)
+        current = await self._require(user_id, activity_id)
         actor_id = self._text(user_id, 'user_id')
         config = (
             self._config(changes['config'], current.type)
@@ -126,20 +123,18 @@ class ActivityService:
             raise ActivityNotFoundError(activity_id)
         return updated
 
-    async def delete(self, *, user_id: str, activity_id: str, requested_workspace_id: str | None = None) -> None:
+    async def delete(self, *, user_id: str, activity_id: str) -> None:
         """Delete an activity while retaining its terminal changelog entry."""
 
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        document = await self._require(workspace_id, activity_id)
+        document = await self._require(user_id, activity_id)
         actor_id = self._text(user_id, 'user_id')
-        if not await self._repository.delete(workspace_id=workspace_id, activity_id=activity_id, changelog_entry=self._entry(document, actor_id, 'deleted', self._clock(), content=self._content(document))):
+        if not await self._repository.delete(user_id=user_id, activity_id=activity_id, changelog_entry=self._entry(document, actor_id, 'deleted', self._clock(), content=self._content(document))):
             raise ActivityNotFoundError(activity_id)
 
-    async def list_changelog(self, *, user_id: str, activity_id: str, offset: int, requested_workspace_id: str | None = None) -> tuple[list[ActivityChangelogEntry], int]:
+    async def list_changelog(self, *, user_id: str, activity_id: str, offset: int) -> tuple[list[ActivityChangelogEntry], int]:
         """Return one fixed-size activity changelog page."""
 
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        entries, total = await self._repository.list_changelog(workspace_id=workspace_id, activity_id=activity_id, offset=self._offset(offset), limit=PAGE_SIZE)
+        entries, total = await self._repository.list_changelog(user_id=user_id, activity_id=activity_id, offset=self._offset(offset), limit=PAGE_SIZE)
         return list(entries), total
 
     async def _workspace_id(self, user_id: str, requested_workspace_id: str | None) -> str:
@@ -151,10 +146,10 @@ class ActivityService:
         )
         return context.workspace_id
 
-    async def _require(self, workspace_id: str, activity_id: str) -> ActivityDocument:
+    async def _require(self, user_id: str, activity_id: str) -> ActivityDocument:
         """Return an existing activity or raise a resource-specific error."""
 
-        document = await self._repository.get(workspace_id=workspace_id, activity_id=activity_id)
+        document = await self._repository.get(user_id=user_id, activity_id=activity_id)
         if document is None:
             raise ActivityNotFoundError(activity_id)
         return document
@@ -162,7 +157,7 @@ class ActivityService:
     def _entry(self, document: ActivityDocument, actor_id: str, change_type: Literal['created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'], changed_at: datetime, *, diff: dict[str, object] | None = None, content: dict[str, object] | None = None) -> ActivityChangelogEntry:
         """Build one immutable activity history entry."""
 
-        return ActivityChangelogEntry(id=self._id_factory(), activity_id=document.id, workspace_id=document.workspace_id, change_type=change_type, actor_id=actor_id, changed_at=changed_at, diff=diff, content=content)
+        return ActivityChangelogEntry(id=self._id_factory(), activity_id=document.id, user_id=document.user_id, workspace_id=document.workspace_id, change_type=change_type, actor_id=actor_id, changed_at=changed_at, diff=diff, content=content)
 
     @staticmethod
     def _config(value: object, activity_type: ActivityType) -> dict[str, object]:

@@ -1,9 +1,11 @@
 # Activities
 
-Activities are workspace-scoped, reusable definitions of work. An Activity has
-a name, description, status, type-specific configuration, audit history, and an
-immutable type. Activities can be created directly or supplied inline when a
-Pipeline is created or updated.
+Standalone Activities are User-owned, reusable definitions of work. An
+Activity has a name, description, status, type-specific configuration, audit
+history, and an immutable type. Activities can be created directly or supplied
+inline when a Pipeline is created or updated. Pipeline-created Activities keep
+their Pipeline Workspace as provenance for internal step resolution, while
+standalone Activities have no Workspace association.
 
 The API selects the configuration shape from the top-level `type` field. The
 `config` object does not include its own type discriminator. Activity statuses

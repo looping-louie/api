@@ -60,6 +60,7 @@ EXPECTED_CHECKSUMS = {
     '0050_user_owned_linked_services.sql': '947e746d91aa4286e9ae7f86173640cfe8adc56904f1e46b0380f3806f43ac85',
     '0051_user_execution_settings.sql': 'adc88f0b9c8b86972a5486481b8b24dd38daa33fb6b62137695c52042c81745b',
     '0052_logical_model_overrides.sql': '537b670ad3847eb05a563ac4199c17564e344ba45aebd506e753997710c47ef8',
+    '0053_user_owned_activities.sql': '24d04abb45376976d809a9ec0ece5d180c8118eb5c35a592d74782a8e8da39f4',
 }
 
 

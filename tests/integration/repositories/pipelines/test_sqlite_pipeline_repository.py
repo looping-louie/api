@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 
+import aiosqlite
 import pytest
 
 from src.app.models.activity import (
@@ -57,10 +58,20 @@ async def seed_activities(
 ) -> None:
     """Insert active activities referenced by repository fixtures."""
 
+    async with aiosqlite.connect(database_path) as connection:
+        await connection.execute(
+            '''
+            INSERT OR IGNORE INTO users (id, created_at, updated_at)
+            VALUES ('user-1', ?, ?)
+            ''',
+            (BASE_TIME.isoformat(), BASE_TIME.isoformat()),
+        )
+        await connection.commit()
     repository = SqliteActivityRepository(database_path)
     for activity_id in activity_ids:
         document = ActivityDocument(
             id=activity_id,
+            user_id='user-1',
             workspace_id='workspace-1',
             name=f'Activity {activity_id}',
             description='Complete one stage.',
@@ -77,6 +88,7 @@ async def seed_activities(
             changelog_entry=ActivityChangelogEntry(
                 id=f'{activity_id}-entry',
                 activity_id=activity_id,
+                user_id='user-1',
                 workspace_id='workspace-1',
                 change_type='created',
                 actor_id='user-1',
@@ -95,6 +107,7 @@ def generated_activity(
 
     document = ActivityDocument(
         id=activity_id,
+        user_id='user-1',
         workspace_id='workspace-1',
         name=f'Generated {activity_id}',
         description='Created with a pipeline.',
@@ -109,6 +122,7 @@ def generated_activity(
     return document, ActivityChangelogEntry(
         id=f'{activity_id}-entry',
         activity_id=activity_id,
+        user_id='user-1',
         workspace_id='workspace-1',
         change_type='created',
         actor_id='user-1',
@@ -125,7 +139,10 @@ async def test_creates_generated_activities_with_pipeline_atomically(
 ) -> None:
     """Generated Activities persist independently with their Pipeline steps."""
 
-    await create_workspace(workspace_id='workspace-1')
+    await create_workspace(
+        workspace_id='workspace-1',
+        memberships=(('user-1', 'owner', True),),
+    )
     repository = SqlitePipelineRepository(sqlite_database_path)
     activity_repository = SqliteActivityRepository(sqlite_database_path)
     first, first_entry = generated_activity(activity_id='generated-1')
@@ -146,7 +163,7 @@ async def test_creates_generated_activities_with_pipeline_atomically(
     )
 
     assert await activity_repository.get(
-        workspace_id='workspace-1',
+        user_id='user-1',
         activity_id=first.id,
     ) == first
     assert await repository.get(

@@ -452,6 +452,7 @@ class PipelineService:
                 )
             document = ActivityDocument(
                 id=self._id_factory(),
+                user_id=actor_id,
                 workspace_id=workspace_id,
                 name=value.name,
                 description=value.description,
@@ -470,6 +471,7 @@ class PipelineService:
                 ActivityChangelogEntry(
                     id=self._id_factory(),
                     activity_id=document.id,
+                    user_id=actor_id,
                     workspace_id=workspace_id,
                     change_type="created",
                     actor_id=actor_id,

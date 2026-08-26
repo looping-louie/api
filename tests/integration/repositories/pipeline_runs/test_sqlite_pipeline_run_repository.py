@@ -24,7 +24,10 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     """A started run claim atomically creates and selects its first Activity child."""
 
     timestamp = datetime(2026, 8, 19, tzinfo=UTC)
-    await create_workspace(workspace_id='workspace-1')
+    await create_workspace(
+        workspace_id='workspace-1',
+        memberships=(('user-1', 'owner', True),),
+    )
     activity = ActivityDocument(
         id='activity-1', workspace_id='workspace-1', name='Activity',
         description='Complete one stage.', status='active', type='direct_loop',

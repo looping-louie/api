@@ -437,7 +437,6 @@ class ActivityRunService:
 
         activity = await self._activity_service.get(
             user_id=user_id, activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if activity.type not in ('approval', 'quiz', 'direct_loop', 'refinement_loop', 'roundtable_loop'):
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not executable')

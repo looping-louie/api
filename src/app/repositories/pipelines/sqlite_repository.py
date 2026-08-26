@@ -121,8 +121,7 @@ class SqlitePipelineRepository:
                 SELECT activities.*
                 FROM pipeline_steps
                 JOIN activities
-                    ON activities.workspace_id = pipeline_steps.workspace_id
-                    AND activities.id = pipeline_steps.activity_id
+                    ON activities.id = pipeline_steps.activity_id
                 WHERE pipeline_steps.workspace_id = ?
                     AND pipeline_steps.pipeline_id = ?
                 ORDER BY pipeline_steps.position ASC
@@ -380,12 +379,13 @@ class SqlitePipelineRepository:
             raise ValueError("Activity documents and changelog entries must align.")
         for document, entry in zip(documents, entries, strict=True):
             await connection.execute(
-                "INSERT INTO activities (id, workspace_id, name, description, "
+                "INSERT INTO activities (id, user_id, workspace_id, name, description, "
                 "status, activity_type, config_json, model_id, "
                 "harness_json, created_at, created_by, updated_at, updated_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     document.id,
+                    document.user_id,
                     document.workspace_id,
                     document.name,
                     document.description,
@@ -405,10 +405,11 @@ class SqlitePipelineRepository:
                 ),
             )
             await connection.execute(
-                "INSERT INTO activity_changelog_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO activity_changelog_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     entry.id,
                     entry.activity_id,
+                    entry.user_id,
                     entry.workspace_id,
                     entry.change_type,
                     entry.actor_id,
@@ -424,6 +425,7 @@ class SqlitePipelineRepository:
 
         return ActivityDocument(
             id=str(row['id']),
+            user_id=str(row['user_id']),
             workspace_id=str(row['workspace_id']),
             name=str(row['name']),
             description=str(row['description']),

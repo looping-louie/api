@@ -12,13 +12,11 @@ class ActivityDescribeController:
         *,
         user_id: str,
         activity_id: str,
-        requested_workspace_id: str | None = None,
     ) -> ActivityResponse:
         """Return one activity."""
         document = await self._activity_service.get(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return ActivityResponse.model_validate(document)
 

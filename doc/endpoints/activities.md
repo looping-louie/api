@@ -1,14 +1,18 @@
 # Activities
 
-Activities are workspace-scoped, possibly reusable units of work. They can be
-created directly or generated when an inline definition is supplied while
-creating or updating a Pipeline. The current supported types are `approval`,
+Standalone Activities are User-owned, possibly reusable units of work. They
+can be created directly or generated when an inline definition is supplied
+while creating or updating a Pipeline. The current supported types are `approval`,
 `quiz`, `direct_loop`, `refinement_loop`, and `roundtable_loop`. Approval
 activities represent human approval, and quiz activities collect human quiz
 responses. Direct, refinement, and roundtable loop activities can create
 persisted runs. Refinement runs add reviewer approval and retry checkpoints
 after local application. Approval and quiz execution are reserved for future
-pipeline orchestration.
+pipeline orchestration. Standalone Activity routes use `X-User-ID` and ignore
+`X-Workspace-ID`; their `workspace_id` response field is `null`. Pipeline
+creation creates internal Activity definitions with the owning User and the
+Pipeline Workspace as provenance. Nested Activity-run routes remain
+Workspace-selected because execution occurs in a concrete Workspace.
 
 ## Resource endpoints
 
@@ -85,7 +89,6 @@ non-negative `offset`.
 
 ```http
 GET /api/v1/activities?offset=0
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -95,7 +98,7 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "activity-implementation",
-      "workspace_id": "workspace-acme",
+      "workspace_id": null,
       "name": "ImplementRequestedChange",
       "description": "Make and validate a focused code change.",
       "status": "active",
@@ -134,7 +137,6 @@ including its type-specific configuration.
 
 ```http
 GET /api/v1/activities/activity-implementation
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -142,7 +144,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
@@ -173,9 +175,9 @@ Example response (`200 OK`):
 
 ## Create an activity
 
-`POST /api/v1/activities` creates an active Activity in the workspace supplied
-by `X-Workspace-ID`. Every request needs a non-empty `name`, a `description`,
-a supported `type`, and a configuration matching that type.
+`POST /api/v1/activities` creates an active Activity for `X-User-ID`. Every
+request needs a non-empty `name`, a `description`, a supported `type`, and a
+configuration matching that type.
 
 ### Direct loop
 
@@ -186,7 +188,6 @@ not allow `reviewer` or `aggregator` agents.
 
 ```http
 POST /api/v1/activities
-X-Workspace-ID: workspace-acme
 Content-Type: application/json
 ```
 
@@ -220,7 +221,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
@@ -306,7 +307,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-release-review",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "ReviewReleasePlan",
   "description": "Reach a shared decision about release readiness.",
   "status": "active",
@@ -396,7 +397,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-documentation-refinement",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "RefineDocumentationDraft",
   "description": "Improve a draft through review iterations.",
   "status": "active",
@@ -449,7 +450,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-production-approval",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "status": "active",
@@ -491,7 +492,7 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-deployment-quiz",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "DeploymentReadinessQuiz",
   "description": "Confirm operational readiness before deployment.",
   "status": "active",
@@ -524,7 +525,6 @@ persisted immutable Activity type and must not include `type`. Setting
 
 ```http
 PATCH /api/v1/activities/activity-implementation
-X-Workspace-ID: workspace-acme
 Content-Type: application/json
 ```
 
@@ -539,7 +539,7 @@ Example response (`200 OK`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": "workspace-acme",
+  "workspace_id": null,
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "disabled",
@@ -575,7 +575,6 @@ preserving its changelog entries.
 
 ```http
 DELETE /api/v1/activities/activity-implementation
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -587,7 +586,7 @@ Example response (`200 OK`):
 ```
 
 The endpoint returns `404 activity_not_found` when the Activity does not exist
-in the selected workspace.
+for the current User.
 
 ## Loop activity runs
 
@@ -758,7 +757,6 @@ after the optional non-negative `offset`.
 
 ```http
 GET /api/v1/activities/activity-implementation/changelog?offset=0
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):

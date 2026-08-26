@@ -13,7 +13,6 @@ class ActivityCreateController:
         *,
         user_id: str,
         payload: ActivityCreateRequest,
-        requested_workspace_id: str | None = None,
     ) -> ActivityResponse:
         """Create one activity."""
         document = await self._activity_service.create(
@@ -32,7 +31,6 @@ class ActivityCreateController:
                 if payload.harness is not None
                 else None
             ),
-            requested_workspace_id=requested_workspace_id,
         )
         return ActivityResponse.model_validate(document)
 

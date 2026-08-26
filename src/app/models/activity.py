@@ -27,10 +27,10 @@ ActivityChangeType = Literal[
 
 @dataclass(frozen=True, slots=True)
 class ActivityDocument:
-    """Complete workspace-scoped activity definition."""
+    """Complete User-owned Activity definition."""
 
     id: str
-    workspace_id: str
+    workspace_id: str | None
     name: str
     description: str
     status: ActivityStatus
@@ -42,6 +42,13 @@ class ActivityDocument:
     updated_by: str
     model_id: str | None = None
     harness: PipelineHarness | None = None
+    user_id: str = ''
+
+    def __post_init__(self) -> None:
+        """Use the creator as owner for legacy in-memory construction."""
+
+        if not self.user_id:
+            object.__setattr__(self, 'user_id', self.created_by)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,9 +57,16 @@ class ActivityChangelogEntry:
 
     id: str
     activity_id: str
-    workspace_id: str
+    workspace_id: str | None
     change_type: ActivityChangeType
     actor_id: str
     changed_at: datetime
     diff: JsonObject | None
     content: JsonObject | None
+    user_id: str = ''
+
+    def __post_init__(self) -> None:
+        """Use the mutation actor as owner for legacy in-memory construction."""
+
+        if not self.user_id:
+            object.__setattr__(self, 'user_id', self.actor_id)
