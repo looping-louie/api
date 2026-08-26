@@ -295,10 +295,18 @@ class StaticUserService:
 class StaticModelExecutionService:
     """Select one deterministic linked service for frozen Louie snapshots."""
 
-    async def select_linked_service(self, **_: object) -> SimpleNamespace:
+    async def select_linked_service(
+        self,
+        *,
+        user_id: str,
+        **_: object,
+    ) -> SimpleNamespace:
         """Return the service selected by this focused scheduler fixture."""
 
-        return SimpleNamespace(id='linked-service-selected')
+        return SimpleNamespace(
+            id='linked-service-selected',
+            user_id=user_id,
+        )
 
 
 def activity(
@@ -394,6 +402,7 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     assert 'model_id' not in second_agent
     assert second_agent['model_target'] == {
         'linked_service_id': 'linked-service-selected',
+        'linked_service_user_id': 'user-1',
         'model_id': 'model-pipeline',
     }
 

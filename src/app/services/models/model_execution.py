@@ -50,7 +50,7 @@ class ModelExecutionResult:
 
 
 class ModelExecutionService:
-    """Execute logical model IDs through enabled workspace deployments."""
+    """Execute logical model IDs through enabled User-owned deployments."""
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class ModelExecutionService:
     async def execute(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         linked_service_id: str,
         model_id: str,
         prompt: str,
@@ -82,7 +82,7 @@ class ModelExecutionService:
         """Invoke one logical model through its selected linked service."""
 
         linked_service = await self._require_linked_service(
-            workspace_id=workspace_id,
+            user_id=user_id,
             linked_service_id=linked_service_id,
         )
         model = self._model_catalog_service.require_model(model_id)
@@ -115,11 +115,10 @@ class ModelExecutionService:
     async def select_linked_service(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         model_id: str,
-        user_id: str | None = None,
     ) -> LinkedService:
-        """Select the first usable workspace-owner service for a logical model."""
+        """Select the first usable User-owned service for a logical model."""
 
         if not await self._model_enabled(user_id=user_id, model_id=model_id):
             raise ModelDeploymentUnavailableError(
@@ -131,9 +130,7 @@ class ModelExecutionService:
             for offering in self._model_catalog_service.offerings_for_model(model)
         }
         for linked_service in (
-            await self._linked_service_repository.list_for_workspace_owner(
-                workspace_id,
-            )
+            await self._linked_service_repository.list_for_user(user_id)
         ):
             if (
                 linked_service.enabled
@@ -145,10 +142,10 @@ class ModelExecutionService:
             f"Model '{model_id}' has no usable linked service."
         )
 
-    async def _model_enabled(self, *, user_id: str | None, model_id: str) -> bool:
+    async def _model_enabled(self, *, user_id: str, model_id: str) -> bool:
         """Return whether User policy permits a logical model selection."""
 
-        if self._user_service is None or user_id is None:
+        if self._user_service is None:
             return True
         settings = (await self._user_service.get(user_id=user_id)).settings
         for configured_model in settings.configured_models:
@@ -159,13 +156,13 @@ class ModelExecutionService:
     async def _require_linked_service(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         linked_service_id: str,
     ) -> LinkedService:
-        """Return an enabled configured linked service in the workspace."""
+        """Return an enabled configured linked service owned by the User."""
 
-        linked_service = await self._linked_service_repository.get_for_workspace_owner(
-            workspace_id,
+        linked_service = await self._linked_service_repository.get_for_user(
+            user_id,
             linked_service_id,
         )
         if (

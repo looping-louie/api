@@ -58,35 +58,35 @@ class FakeModelCatalogService:
 
 
 class FakeLinkedServiceRepository:
-    """Store legacy workspace-owner linked services in memory."""
+    """Store User-owned linked services in memory."""
 
     def __init__(self, linked_services: list[LinkedService]) -> None:
-        """Index linked services by the legacy workspace and identifier."""
+        """Index linked services by owner and identifier."""
 
         self._linked_services = {
-            ('workspace-1', linked_service.id): linked_service
+            (linked_service.user_id, linked_service.id): linked_service
             for linked_service in linked_services
         }
 
-    async def get_for_workspace_owner(
+    async def get_for_user(
         self,
-        workspace_id: str,
+        user_id: str,
         service_id: str,
     ) -> LinkedService | None:
-        """Return one linked service through the workspace owner."""
+        """Return one linked service owned by the User."""
 
-        return self._linked_services.get((workspace_id, service_id))
+        return self._linked_services.get((user_id, service_id))
 
-    async def list_for_workspace_owner(
+    async def list_for_user(
         self,
-        workspace_id: str,
+        user_id: str,
     ) -> list[LinkedService]:
         """Return linked services in the configured stable test order."""
 
         return [
             linked_service
-            for (stored_workspace_id, _), linked_service in self._linked_services.items()
-            if stored_workspace_id == workspace_id
+            for (owner_id, _), linked_service in self._linked_services.items()
+            if owner_id == user_id
         ]
 
 
@@ -204,7 +204,7 @@ async def test_select_linked_service_skips_unusable_candidates() -> None:
         linked_services=[disabled, usable],
         handler=lambda _: httpx.Response(500),
     ).select_linked_service(
-        workspace_id='workspace-1',
+        user_id='user-1',
         model_id='model-1',
     )
 
@@ -226,7 +226,6 @@ async def test_select_linked_service_rejects_user_disabled_model() -> None:
 
     with pytest.raises(ModelDeploymentUnavailableError, match='disabled by User settings'):
         await executor.select_linked_service(
-            workspace_id='workspace-1',
             user_id='user-1',
             model_id='model-1',
         )
@@ -264,7 +263,7 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -299,7 +298,7 @@ async def test_executes_chat_completion_with_deployment_output_limit() -> None:
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -328,7 +327,7 @@ async def test_executes_chat_completion_in_json_mode() -> None:
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='Return JSON.',
@@ -365,7 +364,7 @@ async def test_executes_model_through_selected_linked_service() -> None:
     )
 
     result = await executor.execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -404,7 +403,7 @@ async def test_executes_anthropic_messages_deployment() -> None:
         linked_services=[linked_service(ProviderId.ANTHROPIC)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -431,7 +430,7 @@ async def test_rejects_model_without_enabled_configured_deployment() -> None:
             linked_services=[],
             handler=lambda request: httpx.Response(500),
         ).execute(
-            workspace_id='workspace-1',
+            user_id='user-1',
             linked_service_id='linked-service-1',
             model_id='model-1',
             prompt='User prompt.',

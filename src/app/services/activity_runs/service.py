@@ -262,7 +262,6 @@ class ActivityRunService:
             try:
                 generated = await self._generation_service.generate_context(
                     loop_snapshot=document.activity_snapshot,
-                    workspace_id=workspace.workspace_id,
                     user_id=user_id,
                     requested_workspace_id=requested_workspace_id,
                     input_text=document.input,
@@ -322,7 +321,6 @@ class ActivityRunService:
                 raise RuntimeError('Activity generation is not configured.')
             review = await self._generation_service.generate_review_context(
                 loop_snapshot=document.activity_snapshot,
-                workspace_id=workspace.workspace_id,
                 input_text=document.input,
                 context=context,
                 final_diff=str(result.get('final_diff', '')),
@@ -582,6 +580,7 @@ class ActivityRunService:
         )
         snapshot['model_target'] = {
             'linked_service_id': linked_service.id,
+            'linked_service_user_id': linked_service.user_id,
             'model_id': model_id,
         }
         return snapshot

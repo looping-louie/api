@@ -117,7 +117,10 @@ class _ModelExecutionService:
         """Record and return the linked service selected for a logical model."""
 
         self.calls.append((workspace_id, model_id, user_id))
-        return SimpleNamespace(id='linked-service-selected')
+        return SimpleNamespace(
+            id='linked-service-selected',
+            user_id=user_id,
+        )
 
 
 @pytest.mark.asyncio
@@ -197,6 +200,7 @@ async def test_create_louie_freezes_selected_service_for_effective_model(
     assert selector.calls == [('workspace-1', 'gpt-5', 'user-1')]
     assert created.activity_snapshot['agents'][0]['model_target'] == {
         'linked_service_id': 'linked-service-selected',
+        'linked_service_user_id': 'user-1',
         'model_id': 'gpt-5',
     }
 

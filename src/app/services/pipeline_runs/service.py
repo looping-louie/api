@@ -820,6 +820,7 @@ class PipelineRunService:
         )
         snapshot['model_target'] = {
             'linked_service_id': linked_service.id,
+            'linked_service_user_id': linked_service.user_id,
             'model_id': model_id,
         }
         return snapshot

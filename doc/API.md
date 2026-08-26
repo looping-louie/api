@@ -35,12 +35,12 @@ and `harness` overrides. Loop agents can persist a nullable `model_id` in
 their typed configuration. PipelineRun creation resolves model IDs at agent,
 Activity, Pipeline, then Workspace scope. For `louie`, run creation requires
 an effective model ID, selects the first deterministically ordered compatible,
-enabled, configured Linked Service, and freezes a private `model_target`
-snapshot. `codex_cli` does not select API Linked Services or require API
-provider credentials. Harnesses resolve at Activity, Pipeline, Workspace, then
-User scope. A missing Louie agent model fails run creation; Personas contribute
-instructions only. When no Harness candidate exists, the frozen Harness is the
-`louie` v1 compatibility default.
+enabled, configured User-owned Linked Service, and freezes its identity and
+owner in a private `model_target` snapshot. `codex_cli` does not select API
+Linked Services or require API provider credentials. Harnesses resolve at
+Activity, Pipeline, Workspace, then User scope. A missing Louie agent model
+fails run creation; Personas contribute instructions only. When no Harness
+candidate exists, the frozen Harness is the `louie` v1 compatibility default.
 
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;

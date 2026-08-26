@@ -32,8 +32,8 @@ means inheritance.
 User settings also persist model availability policy. Unconfigured logical
 models inherit `default_model_availability`, which defaults to `enabled`, and
 `configured_models` overrides the status per model ID. This policy gates both
-Workspace catalog availability and `louie` Linked Service selection; provider
-readiness remains required for an enabled model.
+current-User catalog availability and `louie` User-owned Linked Service
+selection; provider readiness remains required for an enabled model.
 
 The hierarchy persists candidates at workspace, Pipeline, Activity, and
 loop-agent scopes. Pipeline and Activity store first-class nullable
@@ -44,12 +44,12 @@ rather than model-routing or provider-connection resources. PipelineRun
 creation resolves and freezes effective values: agent, Activity, Pipeline, then
 Workspace for model IDs; and Activity, Pipeline, then Workspace for Harnesses.
 For `louie`, creation requires an effective model ID and selects the first
-deterministically ordered compatible, enabled, configured Linked Service before
-freezing a private `model_target` snapshot. `codex_cli` does not select API
-Linked Services or require API provider credentials. An agent without an
-explicit model ID fails generation; Personas are instruction-only resources. An
-unset effective Harness becomes the `louie` v1 compatibility default after
-considering the User default.
+deterministically ordered compatible, enabled, configured User-owned Linked
+Service before freezing its identity and owner in a private `model_target`
+snapshot. `codex_cli` does not select API Linked Services or require API
+provider credentials. An agent without an explicit model ID fails generation;
+Personas are instruction-only resources. An unset effective Harness becomes the
+`louie` v1 compatibility default after considering the User default.
 
 ## Harnesses
 
