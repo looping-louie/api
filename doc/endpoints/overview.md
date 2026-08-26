@@ -33,8 +33,9 @@ These routes require a user identity. Until authentication is implemented,
 clients provide it through `X-User-ID`. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` when the request does not
 already have an identity. A request may select one of the user's workspaces
-with the optional `X-Workspace-ID` header when it targets a workspace-scoped
-resource.
+with the optional `X-Workspace-ID` header when it targets a header-selected
+Workspace resource. Workspace-addressed resources, including Model routes,
+instead include the Workspace identifier in their URL and ignore that header.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 

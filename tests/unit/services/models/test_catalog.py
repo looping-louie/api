@@ -109,6 +109,7 @@ async def test_list_excludes_deprecated_models_by_default(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
     )
 
     assert [
@@ -134,6 +135,7 @@ async def test_list_can_include_deprecated_models(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         include_deprecated=True,
     )
 
@@ -161,6 +163,7 @@ async def test_list_can_select_deprecated_status_directly(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         model_status=ModelStatus.DEPRECATED,
     )
 
@@ -181,6 +184,7 @@ async def test_list_filters_by_multiple_labs(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         labs=(ModelLab.OPENAI, ModelLab.DEEPSEEK),
         include_deprecated=True,
     )
@@ -228,6 +232,7 @@ async def test_list_sorts_models(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         include_deprecated=True,
         sort=sort,
     )
@@ -249,6 +254,7 @@ async def test_list_filters_by_provider_capability_and_search(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         provider_id=ProviderId.TOGETHER,
         capability=ModelCapability.CODING,
         search="fast",
@@ -284,6 +290,7 @@ async def test_list_filters_by_workspace_availability(
 
     models = await service.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         available=True,
     )
 
@@ -317,6 +324,7 @@ async def test_describe_returns_complete_model(
 
     model = await service.describe(
         user_id="user-1",
+        workspace_id="workspace-1",
         model_id="coding-model",
     )
 
@@ -340,6 +348,7 @@ async def test_describe_rejects_unknown_model(
     with pytest.raises(ModelNotFoundError):
         await service.describe(
             user_id="user-1",
+            workspace_id="workspace-1",
             model_id="missing-model",
         )
 

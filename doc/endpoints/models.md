@@ -8,8 +8,8 @@ Linked Services in the selected workspace.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `GET` | `/api/v1/models` | Lists models, catalog metadata, pricing, and availability. |
-| `GET` | `/api/v1/models/{model_id}` | Describes offerings, capabilities, and availability details. |
+| `GET` | `/api/v1/workspaces/{workspace_id}/models` | Lists models, catalog metadata, pricing, and availability. |
+| `GET` | `/api/v1/workspaces/{workspace_id}/models/{model_id}` | Describes offerings, capabilities, and availability details. |
 
 ## List models
 
@@ -33,11 +33,13 @@ Without `status`, deprecated models are excluded unless
 `include_deprecated=true`. An explicit `status=deprecated` selects deprecated
 models directly and does not require `include_deprecated=true`.
 
-`GET /api/v1/models` lists catalog entries and their workspace availability.
+`GET /api/v1/workspaces/{workspace_id}/models` lists catalog entries and their
+availability in the addressed Workspace. The User identified by `X-User-ID`
+must have access to `workspace_id`; this route ignores `X-Workspace-ID`.
 
 ```http
-GET /api/v1/models?capability=coding&available=true
-X-Workspace-ID: workspace-acme
+GET /api/v1/workspaces/workspace-acme/models?capability=coding&available=true
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -90,12 +92,12 @@ uses the same offering shape with replacement-model metadata.
 
 ## Describe a model
 
-`GET /api/v1/models/{model_id}` returns every catalog offering joined with its
-workspace availability.
+`GET /api/v1/workspaces/{workspace_id}/models/{model_id}` returns every catalog
+offering joined with its availability in the addressed Workspace.
 
 ```http
-GET /api/v1/models/kimi-k2.6
-X-Workspace-ID: workspace-acme
+GET /api/v1/workspaces/workspace-acme/models/kimi-k2.6
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):

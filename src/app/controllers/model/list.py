@@ -29,7 +29,7 @@ class ModelListController:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
@@ -43,7 +43,7 @@ class ModelListController:
         """List curated models and their workspace availability."""
         models = await self._model_catalog_service.list(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
             provider_id=provider_id,
             capability=capability,
             model_status=model_status,

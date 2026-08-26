@@ -1,4 +1,4 @@
-"""REST routes for the curated model catalog."""
+"""REST routes for Workspace-aware curated model resources."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from .dependencies import (
 
 
 router = APIRouter(
-    prefix="/models",
+    prefix="/workspaces/{workspace_id}/models",
     tags=["Models"],
 )
 
@@ -48,6 +48,13 @@ ControllerDependency = Annotated[
     summary="List models",
 )
 async def list_models(
+    workspace_id: Annotated[
+        str,
+        Path(
+            min_length=1,
+            description="Workspace identifier.",
+        ),
+    ],
     context: ContextDependency,
     controller: ControllerDependency,
     provider_id: Annotated[
@@ -112,11 +119,11 @@ async def list_models(
         ),
     ] = False,
 ) -> ModelListResponse:
-    """List the curated model catalog and workspace availability."""
+    """List curated models and availability for one Workspace."""
 
     return await controller.list(
         user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
+        workspace_id=workspace_id,
         provider_id=provider_id,
         capability=capability,
         model_status=model_status,
@@ -135,6 +142,13 @@ async def list_models(
     summary="Describe model",
 )
 async def describe_model(
+    workspace_id: Annotated[
+        str,
+        Path(
+            min_length=1,
+            description="Workspace identifier.",
+        ),
+    ],
     context: ContextDependency,
     controller: ControllerDependency,
     model_id: Annotated[
@@ -145,10 +159,10 @@ async def describe_model(
         ),
     ],
 ) -> ModelResponse:
-    """Return model deployments, capabilities and availability."""
+    """Return model offerings, capabilities, and availability for one Workspace."""
 
     return await controller.describe(
         user_id=context.user_id,
         model_id=model_id,
-        requested_workspace_id=context.requested_workspace_id,
+        workspace_id=workspace_id,
     )

@@ -53,7 +53,7 @@ class ModelCatalogService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
@@ -65,9 +65,9 @@ class ModelCatalogService:
     ) -> list[ModelSummary]:
         """List curated models and their workspace availability."""
 
-        workspace_id = await self._resolve_workspace_id(
+        await self._require_workspace_access(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         normalized_search = self._normalize_search(search)
         selected_labs = frozenset(labs)
@@ -120,13 +120,13 @@ class ModelCatalogService:
         *,
         user_id: str,
         model_id: str,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
     ) -> ModelDocument:
         """Return a complete model and its workspace availability."""
 
-        workspace_id = await self._resolve_workspace_id(
+        await self._require_workspace_access(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         model = self.require_model(model_id)
 
@@ -312,20 +312,18 @@ class ModelCatalogService:
 
         return self._catalog_index.offerings_for_model(model.id)
 
-    async def _resolve_workspace_id(
+    async def _require_workspace_access(
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None,
-    ) -> str:
-        """Resolve the selected workspace for a model query."""
+        workspace_id: str,
+    ) -> None:
+        """Require access to the Workspace addressed by the model route."""
 
-        tenant = await self._tenant_service.resolve(
+        await self._tenant_service.require_access(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
-
-        return tenant.workspace_id
 
     @staticmethod
     def _normalize_search(search: str | None) -> str | None:

@@ -18,12 +18,12 @@ class ModelDescribeController:
         *,
         user_id: str,
         model_id: str,
-        requested_workspace_id: str | None = None,
+        workspace_id: str,
     ) -> ModelResponse:
         """Return one curated model and its workspace availability."""
         model = await self._model_catalog_service.describe(
             user_id=user_id,
             model_id=model_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
         return ModelResponse.model_validate(model)

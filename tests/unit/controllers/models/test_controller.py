@@ -25,6 +25,7 @@ async def test_controller_lists_models(
 
     response = await model_controller.list(
         user_id="user-1",
+        workspace_id="workspace-1",
         provider_id=ProviderId.TOGETHER,
         capability=ModelCapability.TEXT,
         available=True,
@@ -60,6 +61,7 @@ async def test_controller_describes_model(
 
     response = await model_controller.describe(
         user_id="user-1",
+        workspace_id="workspace-1",
         model_id="kimi-k2.6",
     )
 
