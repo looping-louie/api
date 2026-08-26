@@ -72,10 +72,7 @@ def build_model(
                 ModelCapability.TEXT,
             }
         ),
-        deployments=deployments
-        or (
-            build_deployment(),
-        ),
+        deployments=deployments or (build_deployment(),),
         status=status,
         replacement_model_id=replacement_model_id,
         tags=tags,

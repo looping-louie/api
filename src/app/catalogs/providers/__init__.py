@@ -6,6 +6,7 @@ from .items import (
     ProviderCatalogEntry,
     ProviderId,
 )
+from ..models.types import ProviderModelOffering
 
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "PROVIDER_CATALOG_BY_ID",
     "ProviderCatalogEntry",
     "ProviderId",
+    "ProviderModelOffering",
 ]

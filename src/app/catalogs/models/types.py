@@ -1,11 +1,15 @@
 """Domain types used by the curated logical model catalog."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
-from ..providers import ProviderId
+if TYPE_CHECKING:
+    from ..providers import ProviderId
 
 
 class ModelCatalogValidationError(ValueError):
@@ -92,6 +96,20 @@ class ModelDeployment:
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderModelOffering:
+    """Provider-specific route for one logical model."""
+
+    model_id: str
+    provider_model_id: str
+    endpoint: ModelEndpoint
+    context_window: int | None = None
+    max_output_tokens: int | None = None
+    pricing: ModelPricing | None = None
+    status: ModelStatus = ModelStatus.ACTIVE
+    deprecated_at: date | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ModelCatalogEntry:
     """Provider-independent model exposed by Looping Louie."""
 
@@ -103,7 +121,7 @@ class ModelCatalogEntry:
     description: str
     released_at: date
     capabilities: frozenset[ModelCapability]
-    deployments: tuple[ModelDeployment, ...]
+    deployments: tuple[ModelDeployment, ...] = field(default_factory=tuple)
     status: ModelStatus = ModelStatus.ACTIVE
     replacement_model_id: str | None = None
     tags: tuple[str, ...] = field(default_factory=tuple)

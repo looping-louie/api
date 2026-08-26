@@ -7,7 +7,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from src.app.catalogs.models import MODEL_CATALOG, ModelStatus
+from src.app.catalogs.models import CATALOG_INDEX, MODEL_CATALOG, ModelStatus
 from src.app.catalogs.providers import ProviderCatalogEntry
 from src.app.models.linked_service import LinkedService
 from src.app.repositories.linked_services import LinkedServiceRepository
@@ -225,7 +225,7 @@ class LinkedServiceService:
             and any(
                 deployment.provider_id.value == provider_type
                 and deployment.status != ModelStatus.DEPRECATED
-                for deployment in model.deployments
+                for deployment in CATALOG_INDEX.deployments_for_model(model.id)
             )
         ]
 

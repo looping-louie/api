@@ -9,6 +9,7 @@ from typing import Mapping, Sequence
 import httpx
 
 from src.app.catalogs.models import (
+    catalog_deployments,
     ModelCatalogEntry,
     ModelDeployment,
     ModelEndpoint,
@@ -139,7 +140,7 @@ class ModelExecutionService:
     ) -> ModelDeployment:
         """Return the selected service provider's deployment for a model."""
 
-        for deployment in model.deployments:
+        for deployment in catalog_deployments(model):
             if deployment.provider_id.value == linked_service.provider_type:
                 return deployment
         raise ModelDeploymentUnavailableError(

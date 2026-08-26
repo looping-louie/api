@@ -2,13 +2,10 @@
 
 from datetime import date
 
-from ...providers import ProviderId
-from .helpers import GENERAL_REASONING, TEXT, _pricing
+from .helpers import GENERAL_REASONING, TEXT
 from ..types import (
     ModelCapability,
     ModelCatalogEntry,
-    ModelDeployment,
-    ModelEndpoint,
     ModelLab,
     ModelStatus,
 )
@@ -24,14 +21,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         description="High-capability Qwen model.",
         released_at=date(2026, 5, 20),
         capabilities=TEXT,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="Qwen/Qwen3.7-Max",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                pricing=_pricing("1.25", "3.75"),
-            ),
-        ),
         tags=("open-model", "general-purpose"),
     ),
     ModelCatalogEntry(
@@ -50,15 +39,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.STRUCTURED_OUTPUT,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="nvidia/nemotron-3-ultra-550b-a55b",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=512_300,
-                pricing=_pricing("0.60", "3.60", "0.20"),
-            ),
-        ),
         tags=("open-model", "reasoning", "large"),
     ),
     ModelCatalogEntry(
@@ -75,17 +55,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.VISION,
                 ModelCapability.REASONING,
             }
-        ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="Qwen/Qwen3.5-397B-A17B",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=262_144,
-                pricing=_pricing("0.60", "3.60", "0.35"),
-                status=ModelStatus.DEPRECATED,
-                deprecated_at=date(2026, 6, 29),
-            ),
         ),
         status=ModelStatus.DEPRECATED,
         tags=("open-model", "deprecated"),
@@ -107,22 +76,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.CODING,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="deepseek-ai/DeepSeek-V4-Pro",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=512_000,
-                max_output_tokens=4096,
-                pricing=_pricing("1.74", "3.48", "0.20"),
-            ),
-            ModelDeployment(
-                provider_id=ProviderId.NVIDIA,
-                provider_model_id="deepseek-ai/deepseek-v4-pro",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                max_output_tokens=16_384,
-            ),
-        ),
         tags=("open-model", "coding", "reasoning"),
     ),
     ModelCatalogEntry(
@@ -139,15 +92,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.REASONING,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="Qwen/Qwen3.6-Plus",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=1_000_000,
-                pricing=_pricing("0.50", "3.00"),
-            ),
-        ),
         tags=("open-model", "long-context", "reasoning"),
     ),
     ModelCatalogEntry(
@@ -159,15 +103,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         description="Cost-efficient long-context Qwen model.",
         released_at=date(2026, 6, 1),
         capabilities=TEXT,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="Qwen/Qwen3.7-Plus",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=1_000_000,
-                pricing=_pricing("0.32", "1.28"),
-            ),
-        ),
         tags=("open-model", "long-context", "cost-efficient"),
     ),
     ModelCatalogEntry(
@@ -183,15 +118,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.TEXT,
                 ModelCapability.REASONING,
             }
-        ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="deepcogito/cogito-v2-1-671b",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=163_840,
-                pricing=_pricing("1.25", "1.25"),
-            ),
         ),
         tags=("open-model", "reasoning", "large"),
     ),
@@ -211,21 +137,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.STRUCTURED_OUTPUT,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="MiniMaxAI/MiniMax-M3",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=524_288,
-                pricing=_pricing("0.30", "1.20", "0.06"),
-            ),
-            ModelDeployment(
-                provider_id=ProviderId.NVIDIA,
-                provider_model_id="minimaxai/minimax-m3",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                max_output_tokens=8_192,
-            ),
-        ),
         tags=("open-model", "vision", "cost-efficient"),
     ),
     ModelCatalogEntry(
@@ -244,15 +155,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.STRUCTURED_OUTPUT,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="MiniMaxAI/MiniMax-M2.7",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=202_752,
-                pricing=_pricing("0.30", "1.20", "0.06"),
-            ),
-        ),
         tags=("open-model", "reasoning", "cost-efficient"),
     ),
     ModelCatalogEntry(
@@ -269,15 +171,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.FUNCTION_CALLING,
                 ModelCapability.STRUCTURED_OUTPUT,
             }
-        ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="meta-llama/Llama-3.3-70B-Instruct-Turbo",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=131_072,
-                pricing=_pricing("1.04", "1.04"),
-            ),
         ),
         tags=("open-model", "general-purpose"),
     ),
@@ -297,21 +190,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.STRUCTURED_OUTPUT,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="google/gemma-4-31B-it",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=262_144,
-                pricing=_pricing("0.39", "0.97"),
-            ),
-            ModelDeployment(
-                provider_id=ProviderId.NVIDIA,
-                provider_model_id="google/gemma-4-31b-it",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                max_output_tokens=16_384,
-            ),
-        ),
         tags=("open-model", "vision", "small"),
     ),
     ModelCatalogEntry(
@@ -323,15 +201,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         description="Multimodal reasoning model for agents and tool use.",
         released_at=date(2026, 4, 20),
         capabilities=GENERAL_REASONING,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="moonshotai/Kimi-K2.6",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=262_144,
-                pricing=_pricing("1.20", "4.50", "0.20"),
-            ),
-        ),
         tags=("open-model", "vision", "agents"),
     ),
     ModelCatalogEntry(
@@ -351,16 +220,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.CODING,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="zai-org/GLM-5.2",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=262_144,
-                max_output_tokens=128_000,
-                pricing=_pricing("1.40", "4.40", "0.26"),
-            ),
-        ),
         tags=("open-model", "coding", "agents"),
     ),
     ModelCatalogEntry(
@@ -379,17 +238,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
                 ModelCapability.CODING,
             }
         ),
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="zai-org/GLM-5.1",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=202_752,
-                pricing=_pricing("1.40", "4.40", "0.26"),
-                status=ModelStatus.DEPRECATED,
-                deprecated_at=date(2026, 6, 26),
-            ),
-        ),
         status=ModelStatus.DEPRECATED,
         replacement_model_id="glm-5.2",
         tags=("open-model", "deprecated"),
@@ -403,15 +251,6 @@ TOGETHER_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         description="Kimi model specialised in coding agents.",
         released_at=date(2026, 6, 12),
         capabilities=GENERAL_REASONING,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.TOGETHER,
-                provider_model_id="moonshotai/Kimi-K2.7-Code",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                context_window=262_144,
-                pricing=_pricing("0.95", "4.00", "0.19"),
-            ),
-        ),
         tags=("open-model", "coding", "agents"),
     ),
 )

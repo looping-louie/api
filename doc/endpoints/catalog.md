@@ -50,9 +50,9 @@ Example response (`200 OK`):
 
 ## List model catalog
 
-`GET /api/v1/catalog/models` returns active logical models. `provider_ids`
-describes catalog deployments only; it does not identify configured providers
-or available workspace connections.
+`GET /api/v1/catalog/models` returns active logical models. Provider-owned
+catalog offerings are derived into `provider_ids` and deployment summaries; they
+do not identify configured providers or available workspace connections.
 
 ```http
 GET /api/v1/catalog/models

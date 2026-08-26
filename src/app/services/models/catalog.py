@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Sequence
 
 from src.app.catalogs.models import (
+    catalog_deployments,
     MODEL_CATALOG,
     ModelCapability,
     ModelCatalogEntry,
@@ -226,7 +227,7 @@ class ModelCatalogService:
 
         return any(
             deployment.provider_id == provider_id
-            for deployment in model.deployments
+            for deployment in catalog_deployments(model)
         )
 
     @staticmethod
@@ -292,7 +293,7 @@ class ModelCatalogService:
             status=model.status,
             replacement_model_id=model.replacement_model_id,
             tags=model.tags,
-            deployments=model.deployments,
+            deployments=catalog_deployments(model),
             availability=availability.providers,
             available=availability.available,
         )
@@ -306,7 +307,7 @@ class ModelCatalogService:
         providers: list[ProviderId] = []
         seen: set[ProviderId] = set()
 
-        for deployment in model.deployments:
+        for deployment in catalog_deployments(model):
             if deployment.provider_id in seen:
                 continue
 
@@ -323,7 +324,7 @@ class ModelCatalogService:
 
         prices = [
             deployment.pricing
-            for deployment in model.deployments
+            for deployment in catalog_deployments(model)
             if deployment.status != ModelStatus.DEPRECATED
             and deployment.pricing is not None
         ]

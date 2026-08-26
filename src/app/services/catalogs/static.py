@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from src.app.catalogs.models import (
+    CATALOG_INDEX,
     MODEL_CATALOG,
     ModelCatalogEntry,
     ModelPricing,
@@ -74,8 +75,7 @@ class StaticCatalogService:
         """Return unique provider identifiers in deployment order."""
 
         return list(dict.fromkeys(
-            deployment.provider_id
-            for deployment in model.deployments
+            CATALOG_INDEX.providers_for_model(model.id)
         ))
 
     @staticmethod
@@ -84,7 +84,7 @@ class StaticCatalogService:
 
         prices = [
             deployment.pricing
-            for deployment in model.deployments
+            for deployment in CATALOG_INDEX.deployments_for_model(model.id)
             if deployment.status != ModelStatus.DEPRECATED
             and deployment.pricing is not None
         ]

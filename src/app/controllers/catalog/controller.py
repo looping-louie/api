@@ -1,5 +1,7 @@
 """Controller for static catalog list operations."""
 
+from src.app.catalogs.models import CATALOG_INDEX
+
 from src.app.schemas.catalog import (
     CatalogInstructionMetadataResponse,
     CatalogModelListResponse,
@@ -41,7 +43,9 @@ class CatalogController:
                 capabilities=set(model.capabilities),
                 status=model.status,
                 provider_ids=self._static_catalog_service.provider_ids(model),
-                deployment_count=len(model.deployments),
+                deployment_count=len(
+                    CATALOG_INDEX.deployments_for_model(model.id)
+                ),
                 starting_price=(
                     CatalogModelPricingResponse.model_validate(price)
                     if (

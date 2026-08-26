@@ -1,7 +1,8 @@
 # Models
 
-Model routes expose the curated, provider-independent model catalog and compute
-availability from enabled, configured Linked Services in the selected workspace.
+Model routes expose the curated, provider-independent model catalog. Provider-
+owned offerings are derived into deployments, and availability is computed from
+enabled, configured Linked Services in the selected workspace.
 
 ## Model calls
 

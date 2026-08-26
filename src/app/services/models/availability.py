@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Sequence
 
 from src.app.catalogs.models import (
+    catalog_deployments,
     ModelCapability,
     ModelCatalogEntry,
     ModelDeployment,
@@ -135,7 +136,8 @@ class ModelAvailabilityService:
             workspace_id,
             "workspace_id",
         )
-        provider_ids = self._get_provider_ids(model.deployments)
+        deployments = catalog_deployments(model)
+        provider_ids = self._get_provider_ids(deployments)
 
         states = await self._get_provider_states(
             workspace_id=workspace_id,
@@ -148,7 +150,7 @@ class ModelAvailabilityService:
                 deployment=deployment,
                 provider_state=states.get(deployment.provider_id),
             )
-            for deployment in model.deployments
+            for deployment in deployments
         )
 
         return ModelAvailability(
@@ -171,7 +173,7 @@ class ModelAvailabilityService:
         provider_ids = self._get_provider_ids(
             deployment
             for model in models
-            for deployment in model.deployments
+            for deployment in catalog_deployments(model)
         )
 
         states = await self._get_provider_states(
@@ -188,7 +190,7 @@ class ModelAvailabilityService:
                     deployment=deployment,
                     provider_state=states.get(deployment.provider_id),
                 )
-                for deployment in model.deployments
+                for deployment in catalog_deployments(model)
             )
             results[model.id] = ModelAvailability(
                 available=any(provider.available for provider in providers),
