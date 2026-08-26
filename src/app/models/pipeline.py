@@ -64,7 +64,6 @@ class PipelineDocument:
     updated_at: datetime
     updated_by: str
     user_id: str = ''
-    workspace_id: str | None = None
     model_id: str | None = None
     harness: PipelineHarness | None = None
 
@@ -101,7 +100,6 @@ class PipelineChangelogEntry:
     diff: JsonObject | None
     content: JsonObject | None
     user_id: str = ''
-    workspace_id: str | None = None
 
     def __post_init__(self) -> None:
         """Use the actor for legacy in-memory fixture ownership."""

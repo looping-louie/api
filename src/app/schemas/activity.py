@@ -242,7 +242,6 @@ class ActivityResponse(ResponseSchema):
     """Complete activity representation."""
 
     id: str
-    workspace_id: str | None
     name: str
     description: str
     status: ActivityStatusValue

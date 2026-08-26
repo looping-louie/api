@@ -302,7 +302,7 @@ def activity(
 
     now = datetime(2026, 8, 14, tzinfo=UTC)
     return ActivityDocument(
-        id=activity_id, workspace_id='workspace-1', name=activity_id,
+        id=activity_id, name=activity_id,
         description='Complete one pipeline step.', status='active', type=activity_type,
         config={'stop_conditions': {'max_iterations': 1}, 'agents': [], 'output_contract': {'type': 'text', 'description': 'Result.'}},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -345,7 +345,7 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     )
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run configured steps.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),
@@ -406,7 +406,7 @@ async def test_create_freezes_user_execution_defaults_when_unset(
     )
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run configured steps.', status='active',
             steps=(PipelineActivityStep(activity_id=configured_activity.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -449,7 +449,7 @@ async def test_create_freezes_user_default_harness_when_higher_scopes_are_unset(
     configured_activity = activity('activity-1')
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run configured steps.', status='active',
             steps=(PipelineActivityStep(activity_id=configured_activity.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -488,7 +488,7 @@ async def test_prepared_run_starts_before_runtime_claim(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -609,7 +609,7 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -649,7 +649,7 @@ async def test_active_claim_can_renew_its_lease_but_stale_claim_cannot(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -700,7 +700,7 @@ async def test_completed_step_schedules_success_dependent_child(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run two steps.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),
@@ -766,7 +766,7 @@ async def test_started_human_activity_creates_a_waiting_child_run(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Wait for approval.', status='active',
             steps=(PipelineActivityStep(activity_id=gate.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -831,7 +831,7 @@ async def test_rejected_human_activity_reruns_ancestors_before_retry(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Correct then approve.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),

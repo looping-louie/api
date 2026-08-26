@@ -9,9 +9,8 @@ responses. Direct, refinement, and roundtable loop activities can create
 persisted runs. Refinement runs add reviewer approval and retry checkpoints
 after local application. Approval and quiz execution are reserved for future
 pipeline orchestration. Standalone Activity routes use `X-User-ID` and ignore
-`X-Workspace-ID`; their `workspace_id` response field is `null`. Pipeline
-creation creates internal Activity definitions with the owning User and the
-Pipeline Workspace as provenance. Nested Activity-run routes remain
+`X-Workspace-ID`. Pipeline creation creates internal Activity definitions with
+the owning User. Nested Activity-run routes remain
 Workspace-selected because execution occurs in a concrete Workspace.
 
 ## Resource endpoints
@@ -98,7 +97,6 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "activity-implementation",
-      "workspace_id": null,
       "name": "ImplementRequestedChange",
       "description": "Make and validate a focused code change.",
       "status": "active",
@@ -144,7 +142,6 @@ Example response (`200 OK`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": null,
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
@@ -221,7 +218,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": null,
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
@@ -307,7 +303,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-release-review",
-  "workspace_id": null,
   "name": "ReviewReleasePlan",
   "description": "Reach a shared decision about release readiness.",
   "status": "active",
@@ -397,7 +392,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-documentation-refinement",
-  "workspace_id": null,
   "name": "RefineDocumentationDraft",
   "description": "Improve a draft through review iterations.",
   "status": "active",
@@ -450,7 +444,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-production-approval",
-  "workspace_id": null,
   "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "status": "active",
@@ -492,7 +485,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-deployment-quiz",
-  "workspace_id": null,
   "name": "DeploymentReadinessQuiz",
   "description": "Confirm operational readiness before deployment.",
   "status": "active",
@@ -539,7 +531,6 @@ Example response (`200 OK`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": null,
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "disabled",

@@ -43,7 +43,6 @@ def entry(
     return PipelineChangelogEntry(
         id=entry_id,
         pipeline_id=document.id,
-        workspace_id=document.workspace_id,
         change_type=change_type,  # type: ignore[arg-type]
         actor_id="user-1",
         changed_at=document.updated_at,
@@ -72,7 +71,6 @@ async def seed_activities(
         document = ActivityDocument(
             id=activity_id,
             user_id='user-1',
-            workspace_id='workspace-1',
             name=f'Activity {activity_id}',
             description='Complete one stage.',
             status='active',
@@ -89,7 +87,6 @@ async def seed_activities(
                 id=f'{activity_id}-entry',
                 activity_id=activity_id,
                 user_id='user-1',
-                workspace_id='workspace-1',
                 change_type='created',
                 actor_id='user-1',
                 changed_at=BASE_TIME,
@@ -108,7 +105,6 @@ def generated_activity(
     document = ActivityDocument(
         id=activity_id,
         user_id='user-1',
-        workspace_id=None,
         name=f'Generated {activity_id}',
         description='Created with a pipeline.',
         status='active',
@@ -123,7 +119,6 @@ def generated_activity(
         id=f'{activity_id}-entry',
         activity_id=activity_id,
         user_id='user-1',
-        workspace_id=None,
         change_type='created',
         actor_id='user-1',
         changed_at=BASE_TIME,

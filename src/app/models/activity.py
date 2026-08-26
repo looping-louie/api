@@ -30,7 +30,6 @@ class ActivityDocument:
     """Complete User-owned Activity definition."""
 
     id: str
-    workspace_id: str | None
     name: str
     description: str
     status: ActivityStatus
@@ -57,7 +56,6 @@ class ActivityChangelogEntry:
 
     id: str
     activity_id: str
-    workspace_id: str | None
     change_type: ActivityChangeType
     actor_id: str
     changed_at: datetime

@@ -29,13 +29,13 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         memberships=(('user-1', 'owner', True),),
     )
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Activity',
+        id='activity-1', name='Activity',
         description='Complete one stage.', status='active', type='direct_loop',
         config={'type': 'direct_loop'}, created_at=timestamp, created_by='user-1',
         updated_at=timestamp, updated_by='user-1',
     )
     pipeline = PipelineDocument(
-        id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+        id='pipeline-1', name='Pipeline',
         description='Run one stage.', status='active',
         steps=(PipelineActivityStep(activity_id=activity.id),),
         created_at=timestamp, created_by='user-1', updated_at=timestamp,
@@ -142,7 +142,7 @@ def _pipeline_entry(pipeline: PipelineDocument, timestamp: datetime) -> object:
     from src.app.models.pipeline import PipelineChangelogEntry
 
     return PipelineChangelogEntry(
-        id='pipeline-entry-1', pipeline_id=pipeline.id, workspace_id=pipeline.workspace_id,
+        id='pipeline-entry-1', pipeline_id=pipeline.id,
         change_type='created', actor_id='user-1', changed_at=timestamp, diff=None,
         content={'id': pipeline.id},
     )
@@ -152,7 +152,7 @@ def _activity_entry(activity: ActivityDocument, timestamp: datetime) -> Activity
     """Build the changelog entry required by generated Activity persistence."""
 
     return ActivityChangelogEntry(
-        id='activity-entry-1', activity_id=activity.id, workspace_id=activity.workspace_id,
+        id='activity-entry-1', activity_id=activity.id,
         change_type='created', actor_id='user-1', changed_at=timestamp, diff=None,
         content={'id': activity.id},
     )

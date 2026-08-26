@@ -136,7 +136,7 @@ class SqliteActivityRepository:
         """Map one activity row to its domain document."""
 
         return ActivityDocument(
-            id=row['id'], user_id=row['user_id'], workspace_id=row['workspace_id'], name=row['name'],
+            id=row['id'], user_id=row['user_id'], name=row['name'],
             description=row['description'], status=row['status'], type=row['activity_type'],
             config=json.loads(row['config_json']), created_at=datetime.fromisoformat(row['created_at']),
             created_by=row['created_by'], updated_at=datetime.fromisoformat(row['updated_at']),
@@ -150,7 +150,7 @@ class SqliteActivityRepository:
         """Map one changelog row to its domain entry."""
 
         return ActivityChangelogEntry(
-            id=row['id'], activity_id=row['activity_id'], user_id=row['user_id'], workspace_id=row['workspace_id'],
+            id=row['id'], activity_id=row['activity_id'], user_id=row['user_id'],
             change_type=row['change_type'], actor_id=row['actor_id'],
             changed_at=datetime.fromisoformat(row['changed_at']),
             diff=json.loads(row['diff_json']) if row['diff_json'] else None,
@@ -190,7 +190,7 @@ class SqliteActivityRepository:
             'activity_type, config_json, model_id, harness_json, created_at, '
             'created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (
-                document.id, document.user_id, document.workspace_id, document.name, document.description,
+                document.id, document.user_id, None, document.name, document.description,
                 document.status, document.type, json.dumps(document.config),
                 document.model_id, _harness_json(document.harness),
                 document.created_at.isoformat(), document.created_by, document.updated_at.isoformat(),
@@ -205,7 +205,7 @@ class SqliteActivityRepository:
         await connection.execute(
             'INSERT INTO activity_changelog_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (
-                entry.id, entry.activity_id, entry.user_id, entry.workspace_id, entry.change_type,
+                entry.id, entry.activity_id, entry.user_id, None, entry.change_type,
                 entry.actor_id, entry.changed_at.isoformat(),
                 json.dumps(entry.diff) if entry.diff is not None else None,
                 json.dumps(entry.content) if entry.content is not None else None,

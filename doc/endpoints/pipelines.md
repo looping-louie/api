@@ -90,7 +90,6 @@ Example response (`200 OK`):
       "steps": [
         {
           "id": "activity-release-review",
-          "workspace_id": "workspace-acme",
           "name": "ReviewReleasePlan",
           "dependsOn": [],
           "description": "Reach a shared decision about release readiness.",
@@ -127,7 +126,6 @@ Example response (`200 OK`):
         },
         {
           "id": "activity-readiness-quiz",
-          "workspace_id": "workspace-acme",
           "name": "DeploymentReadinessQuiz",
           "dependsOn": [
             {
@@ -150,7 +148,6 @@ Example response (`200 OK`):
         },
         {
           "id": "activity-production-approval",
-          "workspace_id": "workspace-acme",
           "name": "ApproveProductionRelease",
           "dependsOn": [
             {
@@ -201,7 +198,6 @@ Example response (`200 OK`):
   "steps": [
     {
       "id": "activity-release-review",
-      "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
       "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
@@ -228,7 +224,6 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-readiness-quiz",
-      "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
         {
@@ -251,7 +246,6 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-production-approval",
-      "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
         {"activity": "DeploymentReadinessQuiz", "condition": "success"},
@@ -371,7 +365,6 @@ Example response (`201 Created`):
   "steps": [
     {
       "id": "activity-release-review",
-      "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
       "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
@@ -410,7 +403,6 @@ Example response (`201 Created`):
     },
     {
       "id": "activity-readiness-quiz",
-      "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
         {"activity": "ReviewReleasePlan", "condition": "success"}
@@ -430,7 +422,6 @@ Example response (`201 Created`):
     },
     {
       "id": "activity-production-approval",
-      "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
         {"activity": "DeploymentReadinessQuiz", "condition": "success"},
@@ -496,7 +487,6 @@ Example response (`200 OK`):
   "steps": [
     {
       "id": "activity-release-review",
-      "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
       "dependsOn": [],
       "description": "Reach a shared decision about release readiness.",
@@ -523,7 +513,6 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-readiness-quiz",
-      "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
         {"activity": "ReviewReleasePlan", "condition": "success"}
@@ -543,7 +532,6 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-production-approval",
-      "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
         {"activity": "DeploymentReadinessQuiz", "condition": "success"},

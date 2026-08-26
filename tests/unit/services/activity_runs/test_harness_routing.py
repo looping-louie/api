@@ -116,7 +116,7 @@ async def test_create_inherits_user_default_harness(
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Implement',
+        id='activity-1', name='Implement',
         description='Implement the requested change.', status='active', type='direct_loop',
         config={}, created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )
@@ -153,7 +153,7 @@ async def test_create_louie_freezes_selected_service_for_effective_model(
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Implement',
+        id='activity-1', name='Implement',
         description='Implement the requested change.', status='active', type='direct_loop',
         config={'agents': [{'persona_id': 'persona-1', 'role': 'generator'}]},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -196,7 +196,7 @@ async def test_create_rejects_louie_activity_without_effective_model(
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Implement',
+        id='activity-1', name='Implement',
         description='Implement the requested change.', status='active', type='direct_loop',
         config={'agents': [{'persona_id': 'persona-1', 'role': 'generator'}]},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -231,7 +231,7 @@ async def test_create_codex_activity_does_not_select_api_managed_model(
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Implement',
+        id='activity-1', name='Implement',
         description='Implement the requested change.', status='active', type='direct_loop',
         config={'agents': [{'model_id': 'gpt-5', 'persona_id': 'persona-1', 'role': 'generator'}]},
         harness=PipelineHarness(kind='codex_cli'),
@@ -268,7 +268,7 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Implement',
+        id='activity-1', name='Implement',
         description='Implement the requested change.', status='active', type='direct_loop',
         config={}, created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )

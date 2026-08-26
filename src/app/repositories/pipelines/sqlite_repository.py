@@ -385,7 +385,7 @@ class SqlitePipelineRepository:
                 (
                     document.id,
                     document.user_id,
-                    document.workspace_id,
+                    None,
                     document.name,
                     document.description,
                     document.status,
@@ -409,7 +409,7 @@ class SqlitePipelineRepository:
                     entry.id,
                     entry.activity_id,
                     entry.user_id,
-                    entry.workspace_id,
+                    None,
                     entry.change_type,
                     entry.actor_id,
                     entry.changed_at.isoformat(),
@@ -425,7 +425,6 @@ class SqlitePipelineRepository:
         return ActivityDocument(
             id=str(row['id']),
             user_id=str(row['user_id']),
-            workspace_id=None,
             name=str(row['name']),
             description=str(row['description']),
             status=row['status'],

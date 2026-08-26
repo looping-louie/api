@@ -76,7 +76,7 @@ class ActivityService:
         normalized_type = self._activity_type(activity_type)
         normalized_config = self._config(config, normalized_type)
         document = ActivityDocument(
-            id=self._id_factory(), user_id=actor_id, workspace_id=None, name=self._text(name, 'name'),
+            id=self._id_factory(), user_id=actor_id, name=self._text(name, 'name'),
             description=description.strip(), status='active', type=normalized_type,
             config=normalized_config, created_at=now, created_by=actor_id, updated_at=now,
             updated_by=actor_id, model_id=model_id, harness=harness,
@@ -157,7 +157,7 @@ class ActivityService:
     def _entry(self, document: ActivityDocument, actor_id: str, change_type: Literal['created', 'updated', 'enabled', 'disabled', 'archived', 'deleted'], changed_at: datetime, *, diff: dict[str, object] | None = None, content: dict[str, object] | None = None) -> ActivityChangelogEntry:
         """Build one immutable activity history entry."""
 
-        return ActivityChangelogEntry(id=self._id_factory(), activity_id=document.id, user_id=document.user_id, workspace_id=document.workspace_id, change_type=change_type, actor_id=actor_id, changed_at=changed_at, diff=diff, content=content)
+        return ActivityChangelogEntry(id=self._id_factory(), activity_id=document.id, user_id=document.user_id, change_type=change_type, actor_id=actor_id, changed_at=changed_at, diff=diff, content=content)
 
     @staticmethod
     def _config(value: object, activity_type: ActivityType) -> dict[str, object]:

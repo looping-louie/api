@@ -429,7 +429,6 @@ class PipelineService:
             document = ActivityDocument(
                 id=self._id_factory(),
                 user_id=actor_id,
-                workspace_id=None,
                 name=value.name,
                 description=value.description,
                 status="active",
@@ -448,7 +447,6 @@ class PipelineService:
                     id=self._id_factory(),
                     activity_id=document.id,
                     user_id=actor_id,
-                    workspace_id=None,
                     change_type="created",
                     actor_id=actor_id,
                     changed_at=now,
