@@ -11,6 +11,7 @@ from .models import router as models_router
 from .linked_services import router as linked_services_router
 from .workers import router as workers_router
 from .workspaces import router as workspaces_router
+from .users import router as users_router
 
 
 router = APIRouter(
@@ -26,3 +27,4 @@ router.include_router(models_router)
 router.include_router(linked_services_router)
 router.include_router(workers_router)
 router.include_router(workspaces_router)
+router.include_router(users_router)

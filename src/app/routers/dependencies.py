@@ -17,6 +17,7 @@ from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.user import UserController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -35,6 +36,13 @@ class RequestContext:
 
 async def get_request_context(
     request: Request,
+    request_user_id: Annotated[
+        str | None,
+        Header(
+            alias='X-User-ID',
+            description='Identity acting on the request.',
+        ),
+    ] = None,
     workspace_id: Annotated[
         str | None,
         Header(
@@ -49,7 +57,9 @@ async def get_request_context(
     Authentication middleware must set request.state.user_id.
     """
 
-    user_id = getattr(request.state, "user_id", None)
+    user_id = getattr(request.state, 'user_id', None)
+    if not isinstance(user_id, str) or not user_id.strip():
+        user_id = request_user_id
 
     if not isinstance(user_id, str) or not user_id.strip():
         raise HTTPException(
@@ -204,6 +214,16 @@ def get_workspace_controller(
         request,
         attribute_name='workspace_controller',
         expected_type=WorkspaceController,
+    )
+
+
+def get_user_controller(request: Request) -> UserController:
+    """Return the configured current-user controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='user_controller',
+        expected_type=UserController,
     )
 
 

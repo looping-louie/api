@@ -22,6 +22,7 @@ from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.user import UserController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
@@ -51,6 +52,7 @@ EXPECTED_TABLES = {
     "pipeline_run_events",
     "workers",
     "workspace_execution_defaults",
+    "users",
 }
 
 
@@ -129,6 +131,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.workspace_controller,
             WorkspaceController,
+        )
+        assert isinstance(
+            app.state.user_controller,
+            UserController,
         )
         assert isinstance(
             app.state.database,
@@ -226,6 +232,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
             "0043_workspace_execution_defaults",
             "0044_execution_overrides",
                 "0045_remove_persona_linked_service_selections",
+            "0046_users",
     ]
     assert activity_rows == []
 

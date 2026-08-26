@@ -11,6 +11,7 @@ operations.
 
 - [Catalog](catalog.md) exposes static provider, model, built-in Persona, and
   built-in Skill definitions.
+- [Users](users.md) registers and retrieves the current API user.
 - [Linked Services](linked-services.md) manages workspace-owned provider
   connections.
 - [Workspaces](workspaces.md) manages workspace-owned execution defaults.
@@ -27,9 +28,11 @@ operations.
 All catalog, linked-service, workspace, model, persona, skill,
 activity, and pipeline routes use the `/api/v1` prefix.
 
-These routes require an authenticated user. In local development,
-`LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` as that user. A request may
-select one of the user's workspaces with the optional `X-Workspace-ID` header.
+These routes require a user identity. Until authentication is implemented,
+clients provide it through `X-User-ID`. In local development,
+`LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` when the request does not
+already have an identity. A request may select one of the user's workspaces
+with the optional `X-Workspace-ID` header.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 

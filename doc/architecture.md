@@ -17,10 +17,11 @@ Heartbeat liveness never renews or revokes a lease.
 
 ## Ownership boundaries
 
-The API owns resource management, durable pipeline and activity-run state,
-prompt generation, model decisions, and checkpoint transitions. The runtime
-owns workspace lifecycle, repository inspection, filesystem changes, Git
-operations, and activity execution after it claims a queued pipeline run.
+The API owns User and Workspace resource management, durable pipeline and
+activity-run state, prompt generation, model decisions, and checkpoint
+transitions. The runtime owns workspace lifecycle, repository inspection,
+filesystem changes, Git operations, and activity execution after it claims a
+queued pipeline run.
 
 ## Execution defaults
 
@@ -232,6 +233,9 @@ services/
 |   |-- metadata_validator.py      Validates structured metadata
 |   |-- service.py                 Manages workspace resources
 |   `-- types.py                   Defines Skill lifecycle input contracts
+|-- users/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Manages durable request identities
 |-- workspaces/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages workspace-owned defaults
@@ -298,7 +302,8 @@ controllers/
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
 |-- workspace.py                  Coordinates Workspace HTTP operations
-`-- worker.py                     Coordinates Worker HTTP operations
+|-- worker.py                     Coordinates Worker HTTP operations
+`-- user.py                       Coordinates current User HTTP operations
 ```
 
 ### Catalogs
@@ -403,10 +408,14 @@ repositories/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists workspace defaults
+|-- users/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists User records
 `-- workers/
-    |-- __init__.py                Declares persistence contracts
-    |-- repository.py              Defines the persistence contract
-    `-- sqlite_repository.py       Persists Worker records
+  |-- __init__.py                Declares persistence contracts
+  |-- repository.py              Defines the persistence contract
+  `-- sqlite_repository.py       Persists Worker records
 ```
 
 ### Models
@@ -429,6 +438,7 @@ models/
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
 |-- tenant.py                      Defines workspace and membership state
+|-- user.py                        Defines persisted user identities
 |-- workspace.py                   Defines workspace default values
 `-- worker.py                      Defines Worker registration and Harness state
 ```

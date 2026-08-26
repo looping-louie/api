@@ -256,6 +256,11 @@ request GET "/catalog/models" >/dev/null
 request GET "/catalog/personas" >/dev/null
 request GET "/catalog/skills" >/dev/null
 
+log "Checking current user"
+
+request PUT "/users/me" >/dev/null
+request GET "/users/me" >/dev/null
+
 log "Checking linked services"
 
 linked_service_response="$(
