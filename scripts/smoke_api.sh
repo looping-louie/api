@@ -261,6 +261,17 @@ log "Checking current user"
 request POST "/users" >/dev/null
 request GET "/users/me" >/dev/null
 
+log "Checking workspaces"
+
+request POST "/workspaces" "$(
+    cat <<JSON
+{
+    "name": "Smoke Workspace ${SMOKE_RUN_ID}"
+}
+JSON
+)" >/dev/null
+request GET "/workspaces" >/dev/null
+
 log "Checking linked services"
 
 linked_service_response="$(

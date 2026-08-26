@@ -1,5 +1,9 @@
 # Workspaces
 
+Users own Workspaces. Creating a Workspace creates an `owner` membership for
+the requesting User. The first Workspace owned by a User becomes its default;
+later Workspaces require `X-Workspace-ID` when the User needs to select one.
+
 Workspace defaults store optional model-target and Harness overrides for the
 selected workspace. They are configuration candidates for the hierarchical
 execution-default system. Pipeline, Activity, and loop-agent configuration can
@@ -11,8 +15,61 @@ execution dimension, then freezes the effective value in its run snapshots.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
+| `GET` | `/api/v1/workspaces` | List Workspaces accessible to the current User. |
+| `POST` | `/api/v1/workspaces` | Create a Workspace owned by the current User. |
 | `GET` | `/api/v1/workspaces/defaults` | Describes workspace default overrides. |
 | `PUT` | `/api/v1/workspaces/defaults` | Replaces all workspace default overrides. |
+
+## List workspaces
+
+`GET /api/v1/workspaces` returns every Workspace accessible to the User
+identified by `X-User-ID`. The default Workspace appears first.
+
+```http
+GET /api/v1/workspaces
+X-User-ID: user-123
+```
+
+Example response (`200 OK`):
+
+```json
+[
+  {
+    "id": "workspace-acme",
+    "name": "Acme",
+    "created_at": "2026-08-26T10:00:00Z",
+    "updated_at": "2026-08-26T10:00:00Z"
+  }
+]
+```
+
+## Create workspace
+
+`POST /api/v1/workspaces` creates a Workspace owned by the User identified by
+`X-User-ID`. The User must first be registered through `POST /api/v1/users`.
+
+```http
+POST /api/v1/workspaces
+X-User-ID: user-123
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Acme"
+}
+```
+
+Example response (`201 Created`):
+
+```json
+{
+  "id": "workspace-acme",
+  "name": "Acme",
+  "created_at": "2026-08-26T10:00:00Z",
+  "updated_at": "2026-08-26T10:00:00Z"
+}
+```
 
 `model_target` selects one configured linked service and one logical catalog
 model. The linked service must belong to the selected workspace, be enabled and

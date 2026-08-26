@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 from src.app.models.execution import ModelTarget
-from src.app.models.workspace import WorkspaceDefaults
+from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
 from src.app.models.pipeline import PipelineHarness
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
@@ -18,6 +18,77 @@ class SqliteWorkspaceRepository:
         """Initialize the repository with the shared SQLite database."""
 
         self._database = database
+
+    async def create(
+        self,
+        *,
+        workspace: WorkspaceDocument,
+        owner_id: str,
+    ) -> WorkspaceDocument:
+        """Create a workspace and an owner membership in one transaction."""
+
+        async with self._database.connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                await connection.execute(
+                    '''
+                    INSERT INTO workspaces (id, name, created_at, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ''',
+                    (
+                        workspace.id,
+                        workspace.name,
+                        workspace.created_at.isoformat(),
+                        workspace.updated_at.isoformat(),
+                    ),
+                )
+                await connection.execute(
+                    '''
+                    INSERT INTO workspace_memberships (
+                        workspace_id, user_id, role, is_default, created_at
+                    ) VALUES (
+                        ?, ?, 'owner',
+                        CASE WHEN EXISTS (
+                            SELECT 1
+                            FROM workspace_memberships
+                            WHERE user_id = ? AND is_default = 1
+                        ) THEN 0 ELSE 1 END,
+                        ?
+                    )
+                    ''',
+                    (
+                        workspace.id,
+                        owner_id,
+                        owner_id,
+                        workspace.created_at.isoformat(),
+                    ),
+                )
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+        return workspace
+
+    async def list_for_user(self, *, user_id: str) -> list[WorkspaceDocument]:
+        """Return every workspace available to one user."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT w.id, w.name, w.created_at, w.updated_at
+                FROM workspaces AS w
+                INNER JOIN workspace_memberships AS membership
+                    ON membership.workspace_id = w.id
+                WHERE membership.user_id = ?
+                ORDER BY membership.is_default DESC, w.created_at ASC, w.id ASC
+                ''',
+                (user_id,),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return [self._workspace_from_row(row) for row in rows]
 
     async def get(
         self,
@@ -110,6 +181,18 @@ class SqliteWorkspaceRepository:
             updated_at=datetime.fromisoformat(
                 str(values['updated_at']),
             ),
+        )
+
+    @staticmethod
+    def _workspace_from_row(row: object) -> WorkspaceDocument:
+        """Deserialize one SQLite row to a workspace document."""
+
+        values = dict(row)  # type: ignore[arg-type]
+        return WorkspaceDocument(
+            id=str(values['id']),
+            name=str(values['name']),
+            created_at=datetime.fromisoformat(str(values['created_at'])),
+            updated_at=datetime.fromisoformat(str(values['updated_at'])),
         )
 
     @staticmethod

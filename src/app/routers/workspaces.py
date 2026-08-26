@@ -2,12 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from src.app.controllers.workspace import WorkspaceController
 from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,
     WorkspaceDefaultsResponse,
+    WorkspaceCreateRequest,
+    WorkspaceResponse,
 )
 
 from .dependencies import (
@@ -23,6 +25,32 @@ ControllerDependency = Annotated[
     WorkspaceController,
     Depends(get_workspace_controller),
 ]
+
+
+@router.get('', response_model=list[WorkspaceResponse], summary='List workspaces')
+async def list_workspaces(
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> list[WorkspaceResponse]:
+    """List workspaces available to the requesting user."""
+
+    return await controller.list_for_user(user_id=context.user_id)
+
+
+@router.post(
+    '',
+    response_model=WorkspaceResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary='Create workspace',
+)
+async def create_workspace(
+    payload: WorkspaceCreateRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> WorkspaceResponse:
+    """Create a workspace owned by the requesting user."""
+
+    return await controller.create(user_id=context.user_id, payload=payload)
 
 
 @router.get('/defaults', response_model=WorkspaceDefaultsResponse, summary='Get workspace defaults')

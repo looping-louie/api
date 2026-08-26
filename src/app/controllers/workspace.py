@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from src.app.models.execution import ModelTarget
 from src.app.models.workspace import WorkspaceDefaults
+from src.app.models.workspace import WorkspaceDocument
 from src.app.models.pipeline import PipelineHarness
 from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,
     WorkspaceDefaultsResponse,
+    WorkspaceCreateRequest,
+    WorkspaceResponse,
 )
 from src.app.services.workspaces import WorkspaceService
 
@@ -19,6 +22,27 @@ class WorkspaceController:
         """Store the workspace application service."""
 
         self._service = service
+
+    async def create(
+        self,
+        *,
+        user_id: str,
+        payload: WorkspaceCreateRequest,
+    ) -> WorkspaceResponse:
+        """Create one Workspace owned by the requesting User."""
+
+        return self._workspace_response(await self._service.create(
+            user_id=user_id,
+            name=payload.name,
+        ))
+
+    async def list_for_user(self, *, user_id: str) -> list[WorkspaceResponse]:
+        """Return all Workspaces available to the requesting User."""
+
+        return [
+            self._workspace_response(workspace)
+            for workspace in await self._service.list_for_user(user_id=user_id)
+        ]
 
     async def get_defaults(
         self,
@@ -93,4 +117,15 @@ class WorkspaceController:
                 ),
                 'updated_at': defaults.updated_at,
             },
+        )
+
+    @staticmethod
+    def _workspace_response(workspace: WorkspaceDocument) -> WorkspaceResponse:
+        """Map a workspace document to its public representation."""
+
+        return WorkspaceResponse(
+            id=workspace.id,
+            name=workspace.name,
+            created_at=workspace.created_at,
+            updated_at=workspace.updated_at,
         )

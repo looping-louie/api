@@ -10,7 +10,22 @@ from src.app.schemas.execution import (
     ModelTargetRequest,
     ModelTargetResponse,
 )
-from src.app.schemas.shared import RequestSchema, ResponseSchema
+from src.app.schemas.shared import NonEmptyString, RequestSchema, ResponseSchema
+
+
+class WorkspaceCreateRequest(RequestSchema):
+    """Fields required to create a User-owned workspace."""
+
+    name: NonEmptyString
+
+
+class WorkspaceResponse(ResponseSchema):
+    """Workspace identity visible through the current user's collection."""
+
+    id: str
+    name: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class WorkspaceDefaultsReplaceRequest(RequestSchema):

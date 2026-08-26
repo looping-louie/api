@@ -17,11 +17,11 @@ Heartbeat liveness never renews or revokes a lease.
 
 ## Ownership boundaries
 
-The API owns User and Workspace resource management, durable pipeline and
-activity-run state, prompt generation, model decisions, and checkpoint
-transitions. The runtime owns workspace lifecycle, repository inspection,
-filesystem changes, Git operations, and activity execution after it claims a
-queued pipeline run.
+The API owns User and Workspace resource management, including User-owned
+Workspace membership, durable pipeline and activity-run state, prompt
+generation, model decisions, and checkpoint transitions. The runtime owns
+workspace lifecycle, repository inspection, filesystem changes, Git
+operations, and activity execution after it claims a queued pipeline run.
 
 ## Execution defaults
 
@@ -238,7 +238,7 @@ services/
 |   `-- service.py                 Manages durable request identities
 |-- workspaces/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages workspace-owned defaults
+|   `-- service.py                 Manages User-owned Workspaces and defaults
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -301,7 +301,7 @@ controllers/
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
-|-- workspace.py                  Coordinates Workspace HTTP operations
+|-- workspace.py                  Coordinates Workspace resource operations
 |-- worker.py                     Coordinates Worker HTTP operations
 `-- user.py                       Coordinates current User HTTP operations
 ```
@@ -407,7 +407,7 @@ repositories/
 |-- workspaces/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists workspace defaults
+|   `-- sqlite_repository.py       Persists Workspaces and defaults
 |-- users/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
@@ -439,7 +439,7 @@ models/
 |-- reference.py                   Defines dependency and reference values
 |-- tenant.py                      Defines workspace and membership state
 |-- user.py                        Defines persisted user identities
-|-- workspace.py                   Defines workspace default values
+|-- workspace.py                   Defines Workspace documents and defaults
 `-- worker.py                      Defines Worker registration and Harness state
 ```
 

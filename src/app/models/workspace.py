@@ -8,6 +8,17 @@ from datetime import datetime
 from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineHarness
 
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceDocument:
+    """Workspace identity and metadata visible to its members."""
+
+    id: str
+    name: str
+    created_at: datetime
+    updated_at: datetime
+
+
 @dataclass(frozen=True, slots=True)
 class WorkspaceDefaults:
     """Optional execution overrides owned by one workspace."""

@@ -244,14 +244,16 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    user_service = UserService(
+        repository=user_repository,
+        clock=utc_now,
+    )
     workspace_service = WorkspaceService(
         repository=workspace_repository,
         tenant_service=tenant_service,
         linked_service_service=linked_service_service,
-        clock=utc_now,
-    )
-    user_service = UserService(
-        repository=user_repository,
+        user_service=user_service,
+        id_factory=create_identifier,
         clock=utc_now,
     )
     persona_service = PersonaService(
