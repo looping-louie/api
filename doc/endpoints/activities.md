@@ -283,7 +283,10 @@ Roundtable loops do not allow `reviewer` agents.
       "description": "The release decision and its rationale.",
       "schema": {
         "type": "object",
-        "required": ["decision", "rationale"],
+        "required": [
+          "decision",
+          "rationale"
+        ],
         "properties": {
           "decision": {
             "type": "string"
@@ -308,7 +311,9 @@ Example response (`201 Created`):
   "status": "active",
   "type": "roundtable_loop",
   "config": {
-    "stop_conditions": {"max_iterations": 2},
+    "stop_conditions": {
+      "max_iterations": 2
+    },
     "agents": [
       {
         "model_id": "gpt-5",
@@ -331,7 +336,10 @@ Example response (`201 Created`):
       "description": "The release decision and its rationale.",
       "schema": {
         "type": "object",
-        "required": ["decision", "rationale"],
+        "required": [
+          "decision",
+          "rationale"
+        ],
         "properties": {
           "decision": {
             "type": "string"
@@ -381,7 +389,9 @@ within the configured `max_iterations` limit.
     "output_contract": {
       "type": "files",
       "description": "An updated API guide.",
-      "files": ["doc/API.md"]
+      "files": [
+        "doc/API.md"
+      ]
     }
   }
 }
@@ -415,7 +425,9 @@ Example response (`201 Created`):
     "output_contract": {
       "type": "files",
       "description": "An updated API guide.",
-      "files": ["doc/API.md"]
+      "files": [
+        "doc/API.md"
+      ]
     }
   },
   "created_at": "2026-08-13T10:00:00Z",
@@ -435,7 +447,8 @@ additional fields.
   "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "type": "approval",
-  "config": {}
+  "config": {
+  }
 }
 ```
 
@@ -448,7 +461,8 @@ Example response (`201 Created`):
   "description": "A release manager must approve deployment to production.",
   "status": "active",
   "type": "approval",
-  "config": {},
+  "config": {
+  },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:00:00Z",
@@ -617,7 +631,8 @@ Example response (`200 OK`):
       "created_at": "2026-08-13T10:05:00Z",
       "created_by": "user-123",
       "updated_at": "2026-08-13T10:05:00Z",
-      "payload": {}
+      "payload": {
+      }
     }
   ],
   "total": 1
@@ -650,7 +665,8 @@ Example response (`200 OK`):
   "created_at": "2026-08-13T10:05:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:05:00Z",
-  "payload": {}
+  "payload": {
+  }
 }
 ```
 
@@ -678,7 +694,8 @@ Example response (`201 Created`):
   "created_at": "2026-08-13T10:05:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:05:00Z",
-  "payload": {}
+  "payload": {
+  }
 }
 ```
 
@@ -713,7 +730,10 @@ Content-Type: application/json
       "extension_counts": {
         ".py": 24
       },
-      "top_level_entries": ["src", "tests"],
+      "top_level_entries": [
+        "src",
+        "tests"
+      ],
       "markers": {
         "nuxt": false,
         "package_json": false,

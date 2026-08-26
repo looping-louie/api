@@ -14,8 +14,8 @@ operations.
 - [Users](users.md) registers and retrieves the current API user.
 - [Linked Services](linked-services.md) manages User-owned provider
   connections.
-- [Workspaces](workspaces.md) manages User-owned Workspaces, their execution
-  defaults, and model availability.
+- [Workspaces](workspaces.md) manages User-owned execution-placement
+  Workspaces.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
 - [Activities](activities.md) manages User-owned reusable concrete Activity
@@ -32,9 +32,10 @@ These routes require a user identity. Until authentication is implemented,
 clients provide it through `X-User-ID`. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` when the request does not
 already have an identity. A request may select one of the user's workspaces
-with the optional `X-Workspace-ID` header when it targets a header-selected
-Workspace resource. Workspace-addressed resources, including Model routes,
-instead include the Workspace identifier in their URL and ignore that header.
+with the optional `X-Workspace-ID` header when it targets execution placement,
+such as a Worker, PipelineRun, or ActivityRun. Workspace management routes
+instead include the Workspace identifier in their URL. User model routes are
+user-scoped and ignore the header.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 

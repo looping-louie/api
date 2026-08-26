@@ -2,11 +2,12 @@
 
 Users are durable top-level identities. Authentication is not implemented yet;
 clients identify the acting user with `X-User-ID`. The User resource has no
-profile fields beyond execution settings. Its `settings.default_harness` value
-is inherited by owned Pipeline and Activity runs when no narrower Harness is
-configured. `settings.default_model_availability` controls whether unconfigured
-catalog models are available; it defaults to `enabled`. `configured_models`
-overrides that default for individual logical model IDs.
+profile fields beyond execution settings. `settings.default_model_id` and
+`settings.default_harness` are inherited by owned Pipeline and Activity runs
+when no narrower override is configured.
+`settings.default_model_availability` controls whether unconfigured catalog
+models are available; it defaults to `enabled`. `configured_models` overrides
+that default for individual logical model IDs.
 
 ## Resource endpoints
 
@@ -37,7 +38,8 @@ Example response (`201 Created`):
     "default_model_id": null,
     "default_harness": null,
     "default_model_availability": "enabled",
-    "configured_models": []
+    "configured_models": [
+    ]
   },
   "created_at": "2026-08-26T10:00:00Z",
   "updated_at": "2026-08-26T10:00:00Z"
@@ -60,9 +62,11 @@ Example response (`200 OK`):
 {
   "id": "user-123",
   "settings": {
+    "default_model_id": null,
     "default_harness": null,
     "default_model_availability": "enabled",
-    "configured_models": []
+    "configured_models": [
+    ]
   },
   "created_at": "2026-08-26T10:00:00Z",
   "updated_at": "2026-08-26T10:00:00Z"
@@ -109,7 +113,8 @@ Example response (`200 OK`):
     "default_harness": {
       "kind": "codex_cli",
       "version": "v1",
-      "config": {}
+      "config": {
+      }
     },
     "default_model_availability": "disabled",
     "configured_models": [
@@ -193,7 +198,10 @@ Example response (`200 OK`):
 ```
 
 `GET /api/v1/users/me/models/{model_id}` returns every catalog offering for one
-logical model with the same current-User availability fields.
+logical model. Both model-list items and this response expose the same top-level
+`available` boolean and the same offering-level `configured`, `enabled`,
+`available`, and `reason` fields. The single-model response additionally
+includes `replacement_model_id`.
 
 ```http
 GET /api/v1/users/me/models/gpt-5

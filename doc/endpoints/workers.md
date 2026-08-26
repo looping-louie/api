@@ -45,7 +45,8 @@ Content-Type: application/json
     {
       "kind": "louie",
       "version": "v1",
-      "config": {}
+      "config": {
+      }
     }
   ]
 }
@@ -62,7 +63,8 @@ Example response (`201 Created`):
     {
       "kind": "louie",
       "version": "v1",
-      "config": {}
+      "config": {
+      }
     }
   ]
 }

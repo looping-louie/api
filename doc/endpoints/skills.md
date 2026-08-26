@@ -89,7 +89,9 @@ Example response (`200 OK`):
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
-    "applies_when": ["An HTTP contract changes"],
+    "applies_when": [
+      "An HTTP contract changes"
+    ],
     "default_strictness": {
       "production": 100
     }
@@ -117,7 +119,7 @@ Example response (`200 OK`):
 | `name` | Required non-empty display name. |
 | `description` | Optional description. Defaults to an empty string. |
 | `instructions` | Required non-empty complete skill instructions. |
-| `metadata` | Optional skill metadata. Defaults to `{}`. |
+| `metadata` | Optional skill metadata. Defaults to an empty object. |
 
 Skill metadata may contain `category`, `applies_when`, a non-empty list of
 strings, and `default_strictness`. Strictness values are integers from 0 to 100
@@ -155,7 +157,9 @@ Example response (`201 Created`):
   "description": "Detects breaking API changes.",
   "instructions": "Compare routes and schemas with the documented contract.",
   "metadata": {
-    "applies_when": ["An HTTP contract changes"],
+    "applies_when": [
+      "An HTTP contract changes"
+    ],
     "default_strictness": {
       "production": 100
     }

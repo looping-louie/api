@@ -115,9 +115,14 @@ Example response (`200 OK`):
       "family": "GPT",
       "description": "A general-purpose model.",
       "released_at": "2026-08-07",
-      "capabilities": ["coding", "text"],
+      "capabilities": [
+        "coding",
+        "text"
+      ],
       "status": "active",
-      "tags": ["general-purpose"]
+      "tags": [
+        "general-purpose"
+      ]
     }
   ],
   "total": 1
@@ -149,15 +154,25 @@ Example response (`200 OK`):
     "description": "Optimises for correct implementation and maintainable code.",
     "instructions": "# Persona: Tech Lead\n...",
     "metadata": {
-      "applies_when": ["code", "implementation"],
-      "applies_to": ["generator", "reviewer"]
+      "applies_when": [
+        "code",
+        "implementation"
+      ],
+      "applies_to": [
+        "generator",
+        "reviewer"
+      ]
     },
     "enabled_by_default": true,
     "catalog_version": 2,
     "deprecated": false,
     "category": "software_engineering",
-    "skill_ids": ["builtin:skill:security"],
-    "default_for": ["generator"]
+    "skill_ids": [
+      "builtin:skill:security"
+    ],
+    "default_for": [
+      "generator"
+    ]
   }
 ]
 ```
@@ -186,8 +201,13 @@ Example response (`200 OK`):
     "description": "Evaluates security risks.",
     "instructions": "# Security\n...",
     "metadata": {
-      "applies_when": ["code", "implementation"],
-      "applies_to": ["reviewer"]
+      "applies_when": [
+        "code",
+        "implementation"
+      ],
+      "applies_to": [
+        "reviewer"
+      ]
     },
     "enabled_by_default": true,
     "catalog_version": 2,
@@ -199,7 +219,10 @@ Example response (`200 OK`):
       "production": 85
     },
     "phase": "code_review",
-    "artifacts": ["changed_files", "git_diff"],
+    "artifacts": [
+      "changed_files",
+      "git_diff"
+    ],
     "output": "json"
   }
 ]

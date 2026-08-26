@@ -43,7 +43,9 @@ Example response (`200 OK`):
       "base_url": "https://api.openai.com/v1",
       "key_trimmed": "sk-...abcd",
       "configured": true,
-      "available_models": ["gpt-5"]
+      "available_models": [
+        "gpt-5"
+      ]
     },
     "version": 1,
     "created_at": "2026-08-13T10:00:00Z",
@@ -89,7 +91,9 @@ Example response (`201 Created`):
     "base_url": "https://api.openai.com/v1",
     "key_trimmed": "sk-...abcd",
     "configured": true,
-    "available_models": ["gpt-5"]
+    "available_models": [
+      "gpt-5"
+    ]
   },
   "version": 1,
   "created_at": "2026-08-13T10:00:00Z",
@@ -137,7 +141,7 @@ request returns `422`.
 ## Delete a linked service
 
 `DELETE /api/v1/linked-services/{service_id}` removes a service that is not
-referenced by another workspace resource.
+referenced by another User-owned resource.
 
 ```http
 DELETE /api/v1/linked-services/linked-service-openai-primary
@@ -152,6 +156,6 @@ Example response (`200 OK`):
 }
 ```
 
-The endpoint returns `409 resource_in_use` while a workspace-scoped resource
+The endpoint returns `409 resource_in_use` while another User-owned resource
 still references the service, and `404 linked_service_not_found` when the
 service does not exist for the identified User.

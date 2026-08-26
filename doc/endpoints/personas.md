@@ -76,7 +76,7 @@ Example response (`200 OK`):
   "instructions": "Inspect every public contract and report breaking changes.",
   "skill_ids": [
     "skill-api-compatibility"
-    ],
+  ],
   "metadata": {
     "team": "platform"
   },
@@ -103,8 +103,8 @@ identified by `X-User-ID`. Persona routes do not use `X-Workspace-ID`.
 | `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Optional | Optional | Defaults to an empty string on create. May be empty. |
 | `instructions` | String | Required | Optional | Must not be empty. |
-| `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to `[]` on create. |
-| `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to `{}` on create. |
+| `skill_ids` | Array of strings | Optional | Optional | Contains unique ordered IDs of available skills. Defaults to an empty array on create. |
+| `metadata` | Object | Optional | Optional | `category`, when present, must use the shared company-area taxonomy. Defaults to an empty object on create. |
 | `expected_version` | Integer | Not allowed | Required for content changes | Positive current Persona version. Not required for an enablement-only update. |
 | `enabled` | Boolean | Not allowed | Optional | Enables or disables the Persona for the current user. |
 
