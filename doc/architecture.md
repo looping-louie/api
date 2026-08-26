@@ -201,7 +201,7 @@ services/
 |   `-- service.py                 Manages workspace-owned provider connections
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- availability.py            Calculates workspace availability
+|   |-- availability.py            Calculates current-User availability
 |   |-- catalog.py                 Queries the curated model catalog
 |   `-- model_execution.py         Invokes provider-neutral endpoints through
 |                                  an explicit Linked Service

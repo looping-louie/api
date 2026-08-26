@@ -11,13 +11,12 @@ from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.catalog import CatalogController
 from src.app.controllers.pipeline import PipelineController
-from src.app.controllers.workspace import WorkspaceModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.workspace import WorkspaceController
-from src.app.controllers.user import UserController
+from src.app.controllers.user import UserController, UserModelController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -169,15 +168,15 @@ def get_pipeline_controller(
     )
 
 
-def get_workspace_model_controller(
+def get_user_model_controller(
     request: Request,
-) -> WorkspaceModelController:
-    """Return the configured Workspace model controller."""
+) -> UserModelController:
+    """Return the configured current-User model controller."""
 
     return _get_controller(
         request,
-        attribute_name="workspace_model_controller",
-        expected_type=WorkspaceModelController,
+        attribute_name="user_model_controller",
+        expected_type=UserModelController,
     )
 
 

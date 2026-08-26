@@ -34,7 +34,7 @@ class ModelPricingResponse(ResponseSchema):
 
 
 class ModelOfferingResponse(ResponseSchema):
-    """Provider route and its workspace availability for a logical model."""
+    """Provider route and its current-User availability for a logical model."""
 
     provider_id: ProviderId
     provider_model_id: NonEmptyString
@@ -84,4 +84,4 @@ class ModelResponse(ResponseSchema):
 
 
 class ModelListResponse(ListResponse[ModelSummaryResponse]):
-    """Response returned by GET /workspaces/{workspace_id}/models."""
+    """Response returned by GET /users/me/models."""

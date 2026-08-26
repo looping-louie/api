@@ -1,4 +1,4 @@
-"""Workspace-specific model availability calculations."""
+"""User-specific model availability calculations."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ class ModelUnavailableReason(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ProviderConnectionState:
-    """Workspace-specific configuration state for one provider."""
+    """User-specific configuration state for one provider."""
 
     provider_id: ProviderId
     configured: bool
@@ -51,7 +51,7 @@ class ModelProviderAvailability:
 
 @dataclass(frozen=True, slots=True)
 class ModelOfferingAvailability:
-    """Provider offering joined with workspace availability state."""
+    """Provider offering joined with User availability state."""
 
     provider_id: ProviderId
     provider_model_id: str
@@ -132,7 +132,7 @@ class ModelValidationError(ModelServiceError):
 
 
 class ModelAvailabilityService:
-    """Calculates model availability for a workspace."""
+    """Calculates model availability for a User."""
 
     def __init__(
         self,
@@ -144,21 +144,21 @@ class ModelAvailabilityService:
     async def describe(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         model: ModelCatalogEntry,
         offerings: Sequence[ModelOffering],
         model_enabled: bool = True,
     ) -> ModelAvailability:
         """Return availability for every provider offering of a model."""
 
-        workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        user_id = self._require_text(
+            user_id,
+            "user_id",
         )
         provider_ids = self._get_provider_ids(offerings)
 
         states = await self._get_provider_states(
-            workspace_id=workspace_id,
+            user_id=user_id,
             provider_ids=provider_ids,
         )
 
@@ -180,16 +180,16 @@ class ModelAvailabilityService:
     async def describe_many(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         models: Sequence[ModelCatalogEntry],
         offerings_by_model: dict[str, Sequence[ModelOffering]],
         model_enabled_by_id: dict[str, bool] | None = None,
     ) -> dict[str, ModelAvailability]:
         """Return availability for several models using one provider lookup."""
 
-        workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        user_id = self._require_text(
+            user_id,
+            "user_id",
         )
         provider_ids = self._get_provider_ids(
             offering
@@ -198,7 +198,7 @@ class ModelAvailabilityService:
         )
 
         states = await self._get_provider_states(
-            workspace_id=workspace_id,
+            user_id=user_id,
             provider_ids=provider_ids,
         )
 
@@ -228,15 +228,15 @@ class ModelAvailabilityService:
     async def _get_provider_states(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         provider_ids: Sequence[ProviderId],
     ) -> dict[ProviderId, ProviderConnectionState]:
-        """Aggregate configured workspace services by catalog provider type."""
+        """Aggregate configured User services by catalog provider type."""
 
         requested_provider_ids = set(provider_ids)
         states: dict[ProviderId, ProviderConnectionState] = {}
-        for linked_service in await self._linked_service_repository.list_for_workspace_owner(
-            workspace_id
+        for linked_service in await self._linked_service_repository.list_for_user(
+            user_id
         ):
             try:
                 provider_id = ProviderId(linked_service.provider_type)

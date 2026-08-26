@@ -20,7 +20,8 @@ from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.skill import SkillController
-from src.app.controllers.workspace import WorkspaceController, WorkspaceModelController
+from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.user import UserModelController
 from src.app.controllers.user import UserController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
@@ -126,8 +127,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
             PipelineController,
         )
         assert isinstance(
-            app.state.workspace_model_controller,
-            WorkspaceModelController,
+            app.state.user_model_controller,
+            UserModelController,
         )
         assert isinstance(
             app.state.workspace_controller,

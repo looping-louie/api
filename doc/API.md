@@ -9,11 +9,12 @@ The endpoint reference is organized by top-level router:
   selection, pagination, mutation conventions, and error responses.
 - [Catalog](endpoints/catalog.md) exposes static provider, model, built-in
   Persona, and built-in Skill definitions.
-- [Users](endpoints/users.md) registers and retrieves the current API user.
+- [Users](endpoints/users.md) manages the current API user, execution settings,
+  and model availability.
 - [Linked Services](endpoints/linked-services.md) manages User-owned
   provider connections.
-- [Workspaces](endpoints/workspaces.md) manages User-owned Workspaces,
-  their execution defaults, and model availability.
+- [Workspaces](endpoints/workspaces.md) manages User-owned Workspaces and
+  their execution defaults.
 - [Personas](endpoints/personas.md) manages persona instructions.
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Activities](endpoints/activities.md) manages reusable concrete Activity
@@ -44,7 +45,7 @@ instructions only. When no Harness candidate exists, the frozen Harness is the
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;
 `settings.configured_models` overrides that status per model ID. A disabled
-model is unavailable in Workspace catalog responses and cannot be resolved by
+model is unavailable in current-User catalog responses and cannot be resolved by
 the `louie` Harness, even when a compatible Linked Service is ready.
 
 Workers advertise their available Harness capabilities during registration. A

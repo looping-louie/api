@@ -1,8 +1,14 @@
 """HTTP controller for current API user profiles."""
 
+from typing import Sequence
+
+from src.app.catalogs.models import ModelCapability, ModelLab, ModelSort, ModelStatus
+from src.app.catalogs.providers import ProviderId
 from src.app.models.user import ConfiguredModelAvailability, UserDocument
 from src.app.models.pipeline import PipelineHarness
+from src.app.schemas.model import ModelListResponse, ModelResponse, ModelSummaryResponse
 from src.app.schemas.user import UserResponse, UserSettingsRequest, UserSettingsResponse
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.users import UserService
 
 
@@ -79,3 +85,54 @@ class UserController:
                 ],
             ),
         )
+
+
+class UserModelController:
+    """Translate current-User model catalog HTTP operations."""
+
+    def __init__(self, *, model_catalog_service: ModelCatalogService) -> None:
+        """Store the User-scoped model catalog service."""
+
+        self._model_catalog_service = model_catalog_service
+
+    async def list(
+        self,
+        *,
+        user_id: str,
+        provider_id: ProviderId | None = None,
+        capability: ModelCapability | None = None,
+        model_status: ModelStatus | None = None,
+        labs: Sequence[ModelLab] = (),
+        sort: ModelSort | None = None,
+        offset: int = 0,
+        available: bool | None = None,
+        search: str | None = None,
+        include_deprecated: bool = False,
+    ) -> ModelListResponse:
+        """List curated models and availability for the current User."""
+
+        models = await self._model_catalog_service.list(
+            user_id=user_id,
+            provider_id=provider_id,
+            capability=capability,
+            model_status=model_status,
+            labs=labs,
+            sort=sort,
+            available=available,
+            search=search,
+            include_deprecated=include_deprecated,
+        )
+        page = models[offset : offset + 24]
+        return ModelListResponse(
+            items=[ModelSummaryResponse.model_validate(model) for model in page],
+            total=len(models),
+        )
+
+    async def describe(self, *, user_id: str, model_id: str) -> ModelResponse:
+        """Describe one model and its availability for the current User."""
+
+        model = await self._model_catalog_service.describe(
+            user_id=user_id,
+            model_id=model_id,
+        )
+        return ModelResponse.model_validate(model)

@@ -42,7 +42,7 @@ async def test_model_is_available_when_provider_is_enabled(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        user_id="user-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -55,7 +55,7 @@ async def test_model_is_available_when_provider_is_enabled(
 
     model = build_model()
     availability = await service.describe(
-        workspace_id="workspace-1",
+        user_id="user-1",
         model=model,
         offerings=offerings_for_model(model),
     )
@@ -75,7 +75,7 @@ async def test_model_is_unavailable_when_provider_is_not_configured(
 
     model = build_model()
     availability = await service.describe(
-        workspace_id="workspace-1",
+        user_id="user-1",
         model=model,
         offerings=offerings_for_model(model),
     )
@@ -95,7 +95,7 @@ async def test_model_is_unavailable_when_provider_is_disabled(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        user_id="user-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -108,7 +108,7 @@ async def test_model_is_unavailable_when_provider_is_disabled(
 
     model = build_model()
     availability = await service.describe(
-        workspace_id="workspace-1",
+        user_id="user-1",
         model=model,
         offerings=offerings_for_model(model),
     )
@@ -126,7 +126,7 @@ async def test_deprecated_model_is_never_available(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        user_id="user-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -141,7 +141,7 @@ async def test_deprecated_model_is_never_available(
         status=ModelStatus.DEPRECATED,
     )
     availability = await service.describe(
-        workspace_id="workspace-1",
+        user_id="user-1",
         model=model,
         offerings=offerings_for_model(model),
     )
@@ -157,7 +157,7 @@ async def test_deprecated_offering_is_not_available(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        user_id="user-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -171,7 +171,7 @@ async def test_deprecated_offering_is_not_available(
     )
 
     availability = await service.describe(
-        workspace_id="workspace-1",
+        user_id="user-1",
         model=model,
         offerings=offerings_for_model(
             model,
@@ -190,7 +190,7 @@ async def test_describe_many_loads_provider_states_once(
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        user_id="user-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -198,7 +198,7 @@ async def test_describe_many_loads_provider_states_once(
         ),
     )
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        user_id="user-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.OPENAI,
             configured=True,
@@ -227,7 +227,7 @@ async def test_describe_many_loads_provider_states_once(
     )
 
     availability = await service.describe_many(
-        workspace_id="workspace-1",
+        user_id="user-1",
         models=models,
         offerings_by_model={
             model.id: catalog_index.offerings_for_model(model.id)
@@ -238,4 +238,4 @@ async def test_describe_many_loads_provider_states_once(
     assert availability["together-model"].available is True
     assert availability["openai-model"].available is False
     assert len(provider_state_repository.calls) == 1
-    assert provider_state_repository.calls == ['workspace-1']
+    assert provider_state_repository.calls == ['user-1']

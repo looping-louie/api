@@ -2,17 +2,9 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Path, status
 
-from src.app.catalogs.models import (
-    ModelCapability,
-    ModelLab,
-    ModelSort,
-    ModelStatus,
-)
-from src.app.catalogs.providers import ProviderId
-from src.app.controllers.workspace import WorkspaceController, WorkspaceModelController
-from src.app.schemas.model import ModelListResponse, ModelResponse
+from src.app.controllers.workspace import WorkspaceController
 from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,
     WorkspaceDefaultsResponse,
@@ -23,7 +15,6 @@ from src.app.schemas.workspace import (
 
 from .dependencies import (
     RequestContext,
-    get_workspace_model_controller,
     get_workspace_controller,
     get_request_context,
 )
@@ -34,10 +25,6 @@ ContextDependency = Annotated[RequestContext, Depends(get_request_context)]
 ControllerDependency = Annotated[
     WorkspaceController,
     Depends(get_workspace_controller),
-]
-WorkspaceModelControllerDependency = Annotated[
-    WorkspaceModelController,
-    Depends(get_workspace_model_controller),
 ]
 WorkspaceIdPath = Annotated[str, Path(min_length=1, description='Workspace identifier.')]
 
@@ -141,92 +128,4 @@ async def replace_workspace_defaults(
         user_id=context.user_id,
         workspace_id=workspace_id,
         payload=payload,
-    )
-
-
-@router.get(
-    '/{workspace_id}/models',
-    response_model=ModelListResponse,
-    summary='List workspace models',
-)
-async def list_workspace_models(
-    workspace_id: WorkspaceIdPath,
-    context: ContextDependency,
-    controller: WorkspaceModelControllerDependency,
-    provider_id: Annotated[
-        ProviderId | None,
-        Query(description='Filter models by provider.'),
-    ] = None,
-    capability: Annotated[
-        ModelCapability | None,
-        Query(description='Filter models by capability.'),
-    ] = None,
-    model_status: Annotated[
-        ModelStatus | None,
-        Query(alias='status', description='Filter models by catalog status.'),
-    ] = None,
-    lab: Annotated[
-        list[ModelLab] | None,
-        Query(description='Filter by one or more typed lab slugs.'),
-    ] = None,
-    sort: Annotated[
-        ModelSort | None,
-        Query(description='Order the filtered model catalog.'),
-    ] = None,
-    offset: Annotated[
-        int,
-        Query(ge=0, description='Number of filtered models to skip. Page size is 24.'),
-    ] = 0,
-    available: Annotated[
-        bool | None,
-        Query(description='Filter by workspace availability.'),
-    ] = None,
-    search: Annotated[
-        str | None,
-        Query(min_length=1, max_length=200, description='Search by name, vendor, family or tag.'),
-    ] = None,
-    include_deprecated: Annotated[
-        bool,
-        Query(
-            description=(
-                'Include deprecated entries when status is not supplied. '
-                'An explicit deprecated status always selects them.'
-            ),
-        ),
-    ] = False,
-) -> ModelListResponse:
-    """List curated models and availability for one Workspace."""
-
-    return await controller.list(
-        user_id=context.user_id,
-        workspace_id=workspace_id,
-        provider_id=provider_id,
-        capability=capability,
-        model_status=model_status,
-        labs=lab or (),
-        sort=sort,
-        offset=offset,
-        available=available,
-        search=search,
-        include_deprecated=include_deprecated,
-    )
-
-
-@router.get(
-    '/{workspace_id}/models/{model_id}',
-    response_model=ModelResponse,
-    summary='Describe workspace model',
-)
-async def describe_workspace_model(
-    workspace_id: WorkspaceIdPath,
-    model_id: Annotated[str, Path(min_length=1, description='Logical model identifier.')],
-    context: ContextDependency,
-    controller: WorkspaceModelControllerDependency,
-) -> ModelResponse:
-    """Return model offerings, capabilities, and availability for one Workspace."""
-
-    return await controller.describe(
-        user_id=context.user_id,
-        workspace_id=workspace_id,
-        model_id=model_id,
     )

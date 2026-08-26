@@ -24,7 +24,6 @@ from src.app.services.models.availability import (
     ModelSummary,
     ModelValidationError,
 )
-from src.app.services.shared.tenant import TenantService
 from src.app.models.user import UserSettings
 from src.app.services.users import UserService
 
@@ -35,7 +34,6 @@ class ModelCatalogService:
     def __init__(
         self,
         *,
-        tenant_service: TenantService,
         user_service: UserService | None = None,
         availability_service: ModelAvailabilityService,
         catalog: Sequence[ModelCatalogEntry] = MODEL_CATALOG,
@@ -43,7 +41,6 @@ class ModelCatalogService:
     ) -> None:
         """Store model catalog dependencies."""
 
-        self._tenant_service = tenant_service
         self._user_service = user_service
         self._availability_service = availability_service
         self._catalog = tuple(catalog)
@@ -57,7 +54,6 @@ class ModelCatalogService:
         self,
         *,
         user_id: str,
-        workspace_id: str,
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
@@ -67,12 +63,7 @@ class ModelCatalogService:
         search: str | None = None,
         include_deprecated: bool = False,
     ) -> list[ModelSummary]:
-        """List curated models and their workspace availability."""
-
-        await self._require_workspace_access(
-            user_id=user_id,
-            workspace_id=workspace_id,
-        )
+        """List curated models and their User availability."""
         settings = await self._user_settings(user_id=user_id)
         normalized_search = self._normalize_search(search)
         selected_labs = frozenset(labs)
@@ -92,7 +83,7 @@ class ModelCatalogService:
         ]
 
         availability_by_model = await self._availability_service.describe_many(
-            workspace_id=workspace_id,
+            user_id=user_id,
             models=models,
             offerings_by_model={
                 model.id: self.offerings_for_model(model)
@@ -129,19 +120,13 @@ class ModelCatalogService:
         *,
         user_id: str,
         model_id: str,
-        workspace_id: str,
     ) -> ModelDocument:
-        """Return a complete model and its workspace availability."""
-
-        await self._require_workspace_access(
-            user_id=user_id,
-            workspace_id=workspace_id,
-        )
+        """Return a complete model and its User availability."""
         settings = await self._user_settings(user_id=user_id)
         model = self.require_model(model_id)
 
         availability = await self._availability_service.describe(
-            workspace_id=workspace_id,
+            user_id=user_id,
             model=model,
             offerings=self.offerings_for_model(model),
             model_enabled=self._model_enabled(model.id, settings),
@@ -338,19 +323,6 @@ class ModelCatalogService:
         """Return provider-owned offerings for one logical model."""
 
         return self._catalog_index.offerings_for_model(model.id)
-
-    async def _require_workspace_access(
-        self,
-        *,
-        user_id: str,
-        workspace_id: str,
-    ) -> None:
-        """Require access to the Workspace addressed by the model route."""
-
-        await self._tenant_service.require_access(
-            user_id=user_id,
-            workspace_id=workspace_id,
-        )
 
     @staticmethod
     def _normalize_search(search: str | None) -> str | None:

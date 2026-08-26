@@ -15,11 +15,10 @@ from src.app.catalogs.persona_skills.loader import (
     load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.workspace import WorkspaceModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.workspace import WorkspaceController
-from src.app.controllers.user import UserController
+from src.app.controllers.user import UserController, UserModelController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
@@ -217,7 +216,6 @@ async def configure_application(
         linked_service_repository=linked_service_repository,
     )
     model_catalog_service = ModelCatalogService(
-        tenant_service=tenant_service,
         user_service=user_service,
         availability_service=model_availability_service,
     )
@@ -332,7 +330,7 @@ async def configure_application(
         user_service=user_service,
         model_execution_service=model_execution_service,
     )
-    app.state.workspace_model_controller = WorkspaceModelController(
+    app.state.user_model_controller = UserModelController(
         model_catalog_service=model_catalog_service,
     )
     app.state.catalog_controller = catalog_controller

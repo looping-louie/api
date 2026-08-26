@@ -15,6 +15,8 @@ overrides that default for individual logical model IDs.
 | `GET` | `/api/v1/users/me` | Return the registered current user. |
 | `POST` | `/api/v1/users` | Register the current user if it is new. |
 | `PATCH` | `/api/v1/users/me` | Replace current-user execution settings. |
+| `GET` | `/api/v1/users/me/models` | List catalog models and current-user availability. |
+| `GET` | `/api/v1/users/me/models/{model_id}` | Describe one model and current-user availability. |
 
 ## Register the current user
 
@@ -65,6 +67,26 @@ Example response (`200 OK`):
   "updated_at": "2026-08-26T10:00:00Z"
 }
 ```
+
+## User models
+
+`GET /api/v1/users/me/models` exposes the curated provider-independent model
+catalog. Each offering is joined with the current User's configured Linked
+Services and model availability policy. `X-Workspace-ID` is ignored.
+
+`available=true` or `available=false` filters by effective availability. A
+model must be enabled by the User's settings and offered by an enabled,
+configured Linked Service to be available. The endpoint accepts `provider_id`,
+`capability`, `status`, repeated `lab`, `sort`, `offset`, `available`, `search`,
+and `include_deprecated` filters.
+
+```http
+GET /api/v1/users/me/models?capability=coding&available=true
+X-User-ID: user-123
+```
+
+`GET /api/v1/users/me/models/{model_id}` returns every catalog offering for one
+logical model with the same current-User availability fields.
 
 ## Update user settings
 

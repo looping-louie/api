@@ -42,7 +42,7 @@ Persona, Skill, and Linked Service routes are user-scoped: their custom
 definitions, enablement settings, and provider connections belong to
 `X-User-ID`, and they ignore `X-Workspace-ID`.
 
-Persona, Skill, Activity, Pipeline, workspace Model, and catalog Model lists
+Persona, Skill, Activity, Pipeline, User Model, and catalog Model lists
 return an object with `items` and `total`. Catalog provider, built-in Persona,
 and built-in Skill lists, plus linked-service lists, return JSON arrays. The
 optional `search` query parameter accepted by resource lists is case-insensitive

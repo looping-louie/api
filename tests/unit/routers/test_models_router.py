@@ -11,8 +11,8 @@ from src.app.catalogs.models import (
     ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.workspace import WorkspaceModelController
-from src.app.routers.workspaces import router as workspaces_router
+from src.app.controllers.user import UserModelController
+from src.app.routers.users import router as users_router
 from src.app.services.models.availability import ProviderConnectionState
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.provider_state_repository import (
@@ -22,13 +22,13 @@ from tests.fakes.provider_state_repository import (
 
 def build_app(
     *,
-    controller: WorkspaceModelController,
+    controller: UserModelController,
     authenticated: bool = True,
 ) -> FastAPI:
     """Build a minimal FastAPI application for router tests."""
 
     app = FastAPI()
-    app.state.workspace_model_controller = controller
+    app.state.user_model_controller = controller
 
     if authenticated:
 
@@ -44,7 +44,7 @@ def build_app(
 
     register_exception_handlers(app)
     app.include_router(
-        workspaces_router,
+        users_router,
         prefix="/api/v1",
     )
 
@@ -52,7 +52,7 @@ def build_app(
 
 
 def test_list_models_route(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     """List responses honor provider and effective availability filters."""
@@ -72,7 +72,7 @@ def test_list_models_route(
     )
 
     response = client.get(
-            "/api/v1/workspaces/workspace-1/models",
+            "/api/v1/users/me/models",
         params={
             "provider_id": "together",
             "available": "true",
@@ -100,14 +100,14 @@ def test_list_models_route(
 
 
 def test_list_models_filters_sorts_and_paginates(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
 ) -> None:
     """The route composes repeated labs, date sorting, and fixed pages."""
 
     client = TestClient(build_app(controller=model_controller))
 
     first_page = client.get(
-            "/api/v1/workspaces/workspace-1/models",
+            "/api/v1/users/me/models",
         params=[
             ("include_deprecated", "true"),
             ("lab", "openai"),
@@ -129,11 +129,11 @@ def test_list_models_filters_sorts_and_paginates(
     assert release_dates == sorted(release_dates, reverse=True)
 
     all_models = client.get(
-        "/api/v1/workspaces/workspace-1/models",
+        "/api/v1/users/me/models",
         params={"include_deprecated": "true", "offset": "0"},
     ).json()
     second_page = client.get(
-        "/api/v1/workspaces/workspace-1/models",
+        "/api/v1/users/me/models",
         params={"include_deprecated": "true", "offset": "24"},
     ).json()
 
@@ -154,10 +154,10 @@ def test_list_models_filters_sorts_and_paginates(
 
 
 def test_describe_model_route(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
-    """Describe exposes the selected model and workspace availability."""
+    """Describe exposes the selected model and User availability."""
 
     provider_state_repository.seed(
         workspace_id="workspace-1",
@@ -174,7 +174,7 @@ def test_describe_model_route(
     )
 
     response = client.get(
-        "/api/v1/workspaces/workspace-1/models/kimi-k2.6",
+        "/api/v1/users/me/models/kimi-k2.6",
     )
 
     assert response.status_code == 200
@@ -189,7 +189,7 @@ def test_describe_model_route(
 
 
 def test_describe_missing_model_returns_404(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
 ) -> None:
     """Unknown model identifiers produce the public not-found error."""
 
@@ -200,7 +200,7 @@ def test_describe_missing_model_returns_404(
     )
 
     response = client.get(
-        "/api/v1/workspaces/workspace-1/models/missing-model",
+        "/api/v1/users/me/models/missing-model",
     )
 
     assert response.status_code == 404
@@ -208,7 +208,7 @@ def test_describe_missing_model_returns_404(
 
 
 def test_models_routes_require_authentication(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
 ) -> None:
     """Every model route rejects requests without an authenticated user."""
 
@@ -220,7 +220,7 @@ def test_models_routes_require_authentication(
     )
 
     response = client.get(
-        "/api/v1/workspaces/workspace-1/models",
+        "/api/v1/users/me/models",
     )
 
     assert response.status_code == 401
@@ -230,7 +230,7 @@ def test_models_routes_require_authentication(
 
 
 def test_list_models_validates_query_values(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
 ) -> None:
     """Invalid enum, range, and text filters are rejected before dispatch."""
 
@@ -251,7 +251,7 @@ def test_list_models_validates_query_values(
 
     for params in invalid_queries:
         response = client.get(
-            "/api/v1/workspaces/workspace-1/models",
+                "/api/v1/users/me/models",
             params=params,
         )
 

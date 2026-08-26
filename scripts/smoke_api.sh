@@ -312,7 +312,7 @@ request PUT "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" '{"model_id":null,"h
 
 log "Checking model catalog"
 
-models_response="$(request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}/models")"
+models_response="$(request GET "/users/me/models")"
 
 if [[ -n "${SMOKE_MODEL_ID}" ]]; then
     model_id="${SMOKE_MODEL_ID}"
@@ -323,7 +323,7 @@ else
     )"
 fi
 
-request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}/models/${model_id}" >/dev/null
+request GET "/users/me/models/${model_id}" >/dev/null
 
 log "Creating persona"
 

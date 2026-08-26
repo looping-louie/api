@@ -2,7 +2,7 @@ import pytest
 
 from src.app.catalogs.models import ModelCapability
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.workspace import WorkspaceModelController
+from src.app.controllers.user import UserModelController
 from src.app.services.models.availability import ProviderConnectionState
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
@@ -11,11 +11,10 @@ from tests.fakes.provider_state_repository import (
 
 @pytest.mark.asyncio
 async def test_controller_lists_models(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -25,7 +24,6 @@ async def test_controller_lists_models(
 
     response = await model_controller.list(
         user_id="user-1",
-        workspace_id="workspace-1",
         provider_id=ProviderId.TOGETHER,
         capability=ModelCapability.TEXT,
         available=True,
@@ -47,11 +45,10 @@ async def test_controller_lists_models(
 
 @pytest.mark.asyncio
 async def test_controller_describes_model(
-    model_controller: WorkspaceModelController,
+    model_controller: UserModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -61,7 +58,6 @@ async def test_controller_describes_model(
 
     response = await model_controller.describe(
         user_id="user-1",
-        workspace_id="workspace-1",
         model_id="kimi-k2.6",
     )
 
