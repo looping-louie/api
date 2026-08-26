@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from src.app.controllers.user import UserController
 from src.app.schemas.user import UserResponse
@@ -25,7 +25,12 @@ async def get_current_user(
     return await controller.get_current(user_id=context.user_id)
 
 
-@router.put('/me', response_model=UserResponse, summary='Register current user')
+@router.post(
+    '',
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary='Register current user',
+)
 async def register_current_user(
     context: ContextDependency,
     controller: ControllerDependency,

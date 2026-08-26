@@ -54,10 +54,10 @@ def test_register_then_get_returns_the_identified_user() -> None:
     client = build_client()
     headers = {'X-User-ID': 'user-1'}
 
-    registered = client.put('/api/v1/users/me', headers=headers)
+    registered = client.post('/api/v1/users', headers=headers)
     retrieved = client.get('/api/v1/users/me', headers=headers)
 
-    assert registered.status_code == 200
+    assert registered.status_code == 201
     assert retrieved.status_code == 200
     assert retrieved.json() == registered.json()
     assert registered.json()['id'] == 'user-1'

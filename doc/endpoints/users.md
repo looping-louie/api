@@ -10,19 +10,19 @@ will own Workspaces in the next ownership slice.
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `GET` | `/api/v1/users/me` | Return the registered current user. |
-| `PUT` | `/api/v1/users/me` | Register the current user if it is new. |
+| `POST` | `/api/v1/users` | Register the current user if it is new. |
 
 ## Register the current user
 
-`PUT /api/v1/users/me` persists the identity supplied in `X-User-ID`. Repeated
+`POST /api/v1/users` persists the identity supplied in `X-User-ID`. Repeated
 requests are idempotent and preserve the original timestamps.
 
 ```http
-PUT /api/v1/users/me
+POST /api/v1/users
 X-User-ID: user-123
 ```
 
-Example response (`200 OK`):
+Example response (`201 Created`):
 
 ```json
 {
@@ -40,4 +40,14 @@ Example response (`200 OK`):
 ```http
 GET /api/v1/users/me
 X-User-ID: user-123
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "user-123",
+  "created_at": "2026-08-26T10:00:00Z",
+  "updated_at": "2026-08-26T10:00:00Z"
+}
 ```
