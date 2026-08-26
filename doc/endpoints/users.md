@@ -12,8 +12,8 @@ overrides that default for individual logical model IDs.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
-| `GET` | `/api/v1/users/me` | Return the registered current user. |
 | `POST` | `/api/v1/users` | Register the current user if it is new. |
+| `GET` | `/api/v1/users/me` | Return the registered current user. |
 | `PATCH` | `/api/v1/users/me` | Replace current-user execution settings. |
 | `GET` | `/api/v1/users/me/models` | List catalog models and current-user availability. |
 | `GET` | `/api/v1/users/me/models/{model_id}` | Describe one model and current-user availability. |
@@ -68,26 +68,6 @@ Example response (`200 OK`):
 }
 ```
 
-## User models
-
-`GET /api/v1/users/me/models` exposes the curated provider-independent model
-catalog. Each offering is joined with the current User's configured Linked
-Services and model availability policy. `X-Workspace-ID` is ignored.
-
-`available=true` or `available=false` filters by effective availability. A
-model must be enabled by the User's settings and offered by an enabled,
-configured Linked Service to be available. The endpoint accepts `provider_id`,
-`capability`, `status`, repeated `lab`, `sort`, `offset`, `available`, `search`,
-and `include_deprecated` filters.
-
-```http
-GET /api/v1/users/me/models?capability=coding&available=true
-X-User-ID: user-123
-```
-
-`GET /api/v1/users/me/models/{model_id}` returns every catalog offering for one
-logical model with the same current-User availability fields.
-
 ## Update user settings
 
 `PATCH /api/v1/users/me` replaces the User's execution settings. A `null`
@@ -137,5 +117,128 @@ Example response (`200 OK`):
   },
   "created_at": "2026-08-26T10:00:00Z",
   "updated_at": "2026-08-26T10:05:00Z"
+}
+```
+
+## User models
+
+`GET /api/v1/users/me/models` exposes the curated provider-independent model
+catalog. Each offering is joined with the current User's configured Linked
+Services and model availability policy. `X-Workspace-ID` is ignored.
+
+`available=true` or `available=false` filters by effective availability. A
+model must be enabled by the User's settings and offered by an enabled,
+configured Linked Service to be available. The endpoint accepts `provider_id`,
+`capability`, `status`, repeated `lab`, `sort`, `offset`, `available`, `search`,
+and `include_deprecated` filters.
+
+```http
+GET /api/v1/users/me/models?capability=coding&available=true
+X-User-ID: user-123
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "gpt-5",
+      "name": "GPT-5",
+      "vendor": "OpenAI",
+      "family": "GPT-5",
+      "description": "A general-purpose model for coding and reasoning.",
+      "released_at": "2025-08-07",
+      "capabilities": [
+        "coding",
+        "text",
+        "reasoning"
+      ],
+      "status": "active",
+      "available": true,
+      "offerings": [
+        {
+          "provider_id": "openai",
+          "provider_model_id": "gpt-5",
+          "endpoint": "responses",
+          "context_window": 400000,
+          "max_output_tokens": 128000,
+          "pricing": {
+            "input_per_million_usd": "1.25",
+            "output_per_million_usd": "10.00",
+            "cached_input_per_million_usd": "0.125",
+            "valid_until": null,
+            "note": null
+          },
+          "status": "active",
+          "deprecated_at": null,
+          "configured": true,
+          "enabled": true,
+          "available": true,
+          "reason": null
+        }
+      ],
+      "tags": [
+        "coding",
+        "reasoning"
+      ]
+    }
+  ],
+  "total": 1
+}
+```
+
+`GET /api/v1/users/me/models/{model_id}` returns every catalog offering for one
+logical model with the same current-User availability fields.
+
+```http
+GET /api/v1/users/me/models/gpt-5
+X-User-ID: user-123
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "gpt-5",
+  "name": "GPT-5",
+  "vendor": "OpenAI",
+  "family": "GPT-5",
+  "description": "A general-purpose model for coding and reasoning.",
+  "released_at": "2025-08-07",
+  "capabilities": [
+    "coding",
+    "text",
+    "reasoning"
+  ],
+  "status": "active",
+  "replacement_model_id": null,
+  "tags": [
+    "coding",
+    "reasoning"
+  ],
+  "offerings": [
+    {
+      "provider_id": "openai",
+      "provider_model_id": "gpt-5",
+      "endpoint": "responses",
+      "context_window": 400000,
+      "max_output_tokens": 128000,
+      "pricing": {
+        "input_per_million_usd": "1.25",
+        "output_per_million_usd": "10.00",
+        "cached_input_per_million_usd": "0.125",
+        "valid_until": null,
+        "note": null
+      },
+      "status": "active",
+      "deprecated_at": null,
+      "configured": true,
+      "enabled": true,
+      "available": true,
+      "reason": null
+    }
+  ],
+  "available": true
 }
 ```
