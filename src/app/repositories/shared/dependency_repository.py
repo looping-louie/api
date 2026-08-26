@@ -33,8 +33,7 @@ class SqliteDependencyRepository:
 
         if target.resource_type == "activity":
             return await self._find_pipeline_usages(
-                workspace_id=workspace_id,
-            activity_id=target.resource_id,
+                activity_id=target.resource_id,
             )
         if target.resource_type == 'linked_service':
             return await self._find_linked_service_usages(
@@ -46,7 +45,6 @@ class SqliteDependencyRepository:
     async def _find_pipeline_usages(
         self,
         *,
-        workspace_id: str,
         activity_id: str,
     ) -> list[DependencyUsage]:
         """Return pipelines containing one activity reference."""
@@ -56,10 +54,10 @@ class SqliteDependencyRepository:
                 """
                 SELECT DISTINCT pipeline_id
                 FROM pipeline_steps
-                WHERE workspace_id = ? AND activity_id = ?
+                WHERE activity_id = ?
                 ORDER BY pipeline_id ASC
                 """,
-                (workspace_id, activity_id),
+                (activity_id,),
             )
             try:
                 rows = await cursor.fetchall()

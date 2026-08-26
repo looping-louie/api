@@ -1,11 +1,13 @@
 # Pipelines
 
-A pipeline stores a declared sequence of Activity definitions. The API creates
-an independent persisted Activity record for every supplied step, then stores
-the generated Activity IDs in that display order. A step can declare `dependsOn`
-conditions for other named steps, forming an acyclic execution graph that
-controls execution eligibility. Pipeline runs persist a frozen graph and wait
-for a runtime worker to claim and select one eligible Activity run at a time.
+A Pipeline is a User-owned declared sequence of Activity definitions. The API
+creates an independent User-owned Activity record for every supplied step, then
+stores the generated Activity IDs in that display order. Standalone Pipeline
+definition routes use `X-User-ID` and ignore `X-Workspace-ID`. A step can
+declare `dependsOn` conditions for other named steps, forming an acyclic
+execution graph that controls execution eligibility. Pipeline run routes use
+`X-Workspace-ID` to select the Workspace where the frozen graph executes and a
+runtime worker claims one eligible Activity run at a time.
 
 ## Pipeline calls
 
@@ -73,7 +75,6 @@ every stored step to its full persisted Activity.
 
 ```http
 GET /api/v1/pipelines?offset=0&status=active&search=release
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):

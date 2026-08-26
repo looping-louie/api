@@ -20,8 +20,8 @@ operations.
 - [Skills](skills.md) manages skill instructions.
 - [Activities](activities.md) manages User-owned reusable concrete Activity
   definitions and their Workspace-placed Activity runs.
-- [Pipelines](pipelines.md) manages ordered Activity definitions and persists
-  each supplied step as an independent Activity record.
+- [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
+  persists each supplied step as an independent User-owned Activity record.
 
 ## Versioned API conventions
 
@@ -38,9 +38,10 @@ instead include the Workspace identifier in their URL and ignore that header.
 If the user has access to more than one workspace and the header is omitted,
 the API returns `409 workspace_selection_required`.
 
-Persona, Skill, Linked Service, and standalone Activity routes are user-scoped:
-their custom definitions, enablement settings, provider connections, and
-Activity definitions belong to `X-User-ID`, and they ignore `X-Workspace-ID`.
+Persona, Skill, Linked Service, standalone Activity, and Pipeline definition
+routes are user-scoped: their custom definitions, enablement settings, provider
+connections, Activity definitions, and Pipeline definitions belong to
+`X-User-ID`, and they ignore `X-Workspace-ID`.
 
 Persona, Skill, Activity, Pipeline, User Model, and catalog Model lists
 return an object with `items` and `total`. Catalog provider, built-in Persona,

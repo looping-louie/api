@@ -18,10 +18,10 @@ Heartbeat liveness never renews or revokes a lease.
 ## Ownership boundaries
 
 The API owns User and Workspace resource management, including User-owned
-Activity definitions and Workspace membership, durable pipeline and
-activity-run state, prompt generation, model decisions, and checkpoint
-transitions. Pipeline-created Activities retain their Pipeline Workspace only
-as internal provenance; Activity runs remain Workspace-placed. The runtime owns
+Activity and Pipeline definitions, Workspace membership, durable Pipeline and
+Activity-run state, prompt generation, model decisions, and checkpoint
+transitions. Pipeline and Activity definitions are independent of execution
+placement; Pipeline and Activity runs remain Workspace-placed. The runtime owns
 workspace lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 

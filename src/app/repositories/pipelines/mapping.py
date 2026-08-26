@@ -32,14 +32,14 @@ async def insert_pipeline(
     await connection.execute(
         """
         INSERT INTO pipelines (
-            id, workspace_id, name, description, status, model_id,
+            id, user_id, name, description, status, model_id,
             harness_json,
             created_at, created_by, updated_at, updated_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             document.id,
-            document.workspace_id,
+            document.user_id,
             document.name,
             document.description,
             document.status,
@@ -62,12 +62,11 @@ async def insert_steps(
     await connection.executemany(
         """
         INSERT INTO pipeline_steps (
-            workspace_id, pipeline_id, position, activity_id
-        ) VALUES (?, ?, ?, ?)
+            pipeline_id, position, activity_id
+        ) VALUES (?, ?, ?)
         """,
         [
             (
-                document.workspace_id,
                 document.id,
                 position,
                 step.activity_id,
@@ -77,7 +76,6 @@ async def insert_steps(
     )
     dependencies = [
         (
-            document.workspace_id,
             document.id,
             position,
             dependency.activity_id,
@@ -90,9 +88,9 @@ async def insert_steps(
         await connection.executemany(
             """
             INSERT INTO pipeline_step_dependencies (
-                workspace_id, pipeline_id, dependent_position,
+                pipeline_id, dependent_position,
                 dependency_activity_id, condition
-            ) VALUES (?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?)
             """,
             dependencies,
         )
@@ -107,14 +105,14 @@ async def insert_changelog(
     await connection.execute(
         """
         INSERT INTO pipeline_changelog_entries (
-            id, pipeline_id, workspace_id, change_type, actor_id,
+            id, pipeline_id, user_id, change_type, actor_id,
             changed_at, diff_json, content_json
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             entry.id,
             entry.pipeline_id,
-            entry.workspace_id,
+            entry.user_id,
             entry.change_type,
             entry.actor_id,
             entry.changed_at.isoformat(),
@@ -134,10 +132,10 @@ async def to_document(
         """
         SELECT position, activity_id
         FROM pipeline_steps
-        WHERE workspace_id = ? AND pipeline_id = ?
+        WHERE pipeline_id = ?
         ORDER BY position ASC
         """,
-        (row["workspace_id"], row["id"]),
+        (row['id'],),
     )
     try:
         step_rows = await cursor.fetchall()
@@ -147,10 +145,10 @@ async def to_document(
         """
         SELECT dependent_position, dependency_activity_id, condition
         FROM pipeline_step_dependencies
-        WHERE workspace_id = ? AND pipeline_id = ?
+        WHERE pipeline_id = ?
         ORDER BY dependent_position ASC, rowid ASC
         """,
-        (row['workspace_id'], row['id']),
+        (row['id'],),
     )
     try:
         dependency_rows = await dependency_cursor.fetchall()
@@ -170,7 +168,7 @@ async def to_document(
 
     return PipelineDocument(
         id=str(row["id"]),
-        workspace_id=str(row["workspace_id"]),
+        user_id=str(row['user_id']),
         name=str(row["name"]),
         description=str(row["description"]),
         status=cast(PipelineStatus, row["status"]),
@@ -238,7 +236,7 @@ def to_changelog_entry(row: aiosqlite.Row) -> PipelineChangelogEntry:
     return PipelineChangelogEntry(
         id=str(row["id"]),
         pipeline_id=str(row["pipeline_id"]),
-        workspace_id=str(row["workspace_id"]),
+        user_id=str(row['user_id']),
         change_type=cast(PipelineChangeType, row["change_type"]),
         actor_id=str(row["actor_id"]),
         changed_at=datetime.fromisoformat(row["changed_at"]),
@@ -249,14 +247,14 @@ def to_changelog_entry(row: aiosqlite.Row) -> PipelineChangelogEntry:
 
 def list_filter(
     *,
-    workspace_id: str,
+    user_id: str,
     status: PipelineStatus | None,
     search: str | None,
 ) -> tuple[str, tuple[object, ...]]:
     """Build the fixed list predicates and bound values."""
 
-    clauses = ["workspace_id = ?"]
-    parameters: list[object] = [workspace_id]
+    clauses = ['user_id = ?']
+    parameters: list[object] = [user_id]
     if status is None:
         clauses.append("status <> 'archived'")
     else:

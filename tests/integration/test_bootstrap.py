@@ -242,6 +242,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
                 "0051_user_execution_settings",
                     "0052_logical_model_overrides",
                         "0053_user_owned_activities",
+                        "0054_user_owned_pipelines",
     ]
     assert activity_rows == []
 

@@ -232,12 +232,12 @@ async def _insert_pipeline_child(
         await connection.execute(
             '''
             INSERT INTO pipelines (
-                id, workspace_id, name, description, status, created_at,
+                id, user_id, name, description, status, created_at,
                 created_by, updated_at, updated_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                'pipeline-1', 'workspace-1', 'Pipeline', '', 'active',
+                'pipeline-1', 'user-1', 'Pipeline', '', 'active',
                 timestamp.isoformat(), 'user-1', timestamp.isoformat(), 'user-1',
             ),
         )

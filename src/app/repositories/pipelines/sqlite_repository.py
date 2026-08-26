@@ -39,7 +39,7 @@ class SqlitePipelineRepository:
     async def list(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         offset: int,
         limit: int,
         status: PipelineStatus | None,
@@ -48,7 +48,7 @@ class SqlitePipelineRepository:
         """Return one filtered page with active pipelines ordered first."""
 
         where, parameters = list_filter(
-            workspace_id=workspace_id,
+            user_id=user_id,
             status=status,
             search=search,
         )
@@ -84,7 +84,7 @@ class SqlitePipelineRepository:
     async def get(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDocument | None:
         """Return one pipeline with its ordered steps."""
@@ -92,7 +92,7 @@ class SqlitePipelineRepository:
         async with self._connect() as connection:
             row = await self._get_row(
                 connection,
-                workspace_id,
+                user_id,
                 pipeline_id,
             )
             if row is None:
@@ -102,7 +102,7 @@ class SqlitePipelineRepository:
     async def get_with_activities(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDetails | None:
         """Return one pipeline with Activity documents in step order."""
@@ -110,7 +110,7 @@ class SqlitePipelineRepository:
         async with self._connect() as connection:
             row = await self._get_row(
                 connection,
-                workspace_id,
+                user_id,
                 pipeline_id,
             )
             if row is None:
@@ -122,11 +122,10 @@ class SqlitePipelineRepository:
                 FROM pipeline_steps
                 JOIN activities
                     ON activities.id = pipeline_steps.activity_id
-                WHERE pipeline_steps.workspace_id = ?
-                    AND pipeline_steps.pipeline_id = ?
+                WHERE pipeline_steps.pipeline_id = ?
                 ORDER BY pipeline_steps.position ASC
                 """,
-                (workspace_id, pipeline_id),
+                (pipeline_id,),
             )
             try:
                 activity_rows = await cursor.fetchall()
@@ -202,9 +201,9 @@ class SqlitePipelineRepository:
                 await connection.execute(
                     """
                     DELETE FROM pipeline_steps
-                    WHERE workspace_id = ? AND pipeline_id = ?
+                    WHERE pipeline_id = ?
                     """,
-                    (document.workspace_id, document.id),
+                    (document.id,),
                 )
                 await insert_steps(connection, document)
                 await insert_changelog(connection, changelog_entry)
@@ -239,9 +238,9 @@ class SqlitePipelineRepository:
                 await connection.execute(
                     """
                     DELETE FROM pipeline_steps
-                    WHERE workspace_id = ? AND pipeline_id = ?
+                    WHERE pipeline_id = ?
                     """,
-                    (document.workspace_id, document.id),
+                    (document.id,),
                 )
                 await insert_steps(connection, document)
                 await insert_changelog(connection, changelog_entry)
@@ -276,7 +275,7 @@ class SqlitePipelineRepository:
     async def list_changelog(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
         offset: int,
         limit: int,
@@ -288,9 +287,9 @@ class SqlitePipelineRepository:
                 """
                 SELECT COUNT(*) AS total
                 FROM pipeline_changelog_entries
-                WHERE workspace_id = ? AND pipeline_id = ?
+                WHERE user_id = ? AND pipeline_id = ?
                 """,
-                (workspace_id, pipeline_id),
+                (user_id, pipeline_id),
             )
             try:
                 count_row = await count_cursor.fetchone()
@@ -302,11 +301,11 @@ class SqlitePipelineRepository:
                 """
                 SELECT *
                 FROM pipeline_changelog_entries
-                WHERE workspace_id = ? AND pipeline_id = ?
+                WHERE user_id = ? AND pipeline_id = ?
                 ORDER BY changed_at DESC, rowid DESC
                 LIMIT ? OFFSET ?
                 """,
-                (workspace_id, pipeline_id, limit, offset),
+                (user_id, pipeline_id, limit, offset),
             )
             try:
                 rows = await cursor.fetchall()
@@ -327,7 +326,7 @@ class SqlitePipelineRepository:
             SET name = ?, description = ?, status = ?, model_id = ?,
                 harness_json = ?,
                 updated_at = ?, updated_by = ?
-            WHERE workspace_id = ? AND id = ?
+            WHERE user_id = ? AND id = ?
             """,
             (
                 document.name,
@@ -341,7 +340,7 @@ class SqlitePipelineRepository:
                 }) if document.harness is not None else None,
                 document.updated_at.isoformat(),
                 document.updated_by,
-                document.workspace_id,
+                document.user_id,
                 document.id,
             ),
         )
@@ -353,14 +352,14 @@ class SqlitePipelineRepository:
     @staticmethod
     async def _get_row(
         connection: aiosqlite.Connection,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> aiosqlite.Row | None:
         """Return one scalar pipeline row."""
 
         cursor = await connection.execute(
-            "SELECT * FROM pipelines WHERE workspace_id = ? AND id = ?",
-            (workspace_id, pipeline_id),
+            'SELECT * FROM pipelines WHERE user_id = ? AND id = ?',
+            (user_id, pipeline_id),
         )
         try:
             return await cursor.fetchone()
@@ -426,7 +425,7 @@ class SqlitePipelineRepository:
         return ActivityDocument(
             id=str(row['id']),
             user_id=str(row['user_id']),
-            workspace_id=str(row['workspace_id']),
+            workspace_id=None,
             name=str(row['name']),
             description=str(row['description']),
             status=row['status'],

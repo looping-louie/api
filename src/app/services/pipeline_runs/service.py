@@ -76,10 +76,12 @@ class PipelineRunService:
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Create a frozen Pipeline run awaiting an explicit operator start."""
 
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             raise PipelineRunUnavailableError(
@@ -88,7 +90,7 @@ class PipelineRunService:
             )
         workspace_defaults = await self._workspace_defaults(
             user_id=user_id,
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
         )
         user_default_harness = await self._user_default_harness(user_id=user_id)
         inherited_model_id = (
@@ -118,7 +120,7 @@ class PipelineRunService:
                 activity_run_id=None,
                 activity_snapshot=await self._activity_snapshot(
                     activity,
-                    workspace_id=details.document.workspace_id,
+                    workspace_id=workspace.workspace_id,
                     user_id=user_id,
                     inherited_model_id=inherited_model_id,
                     inherited_harness=inherited_harness,
@@ -126,7 +128,7 @@ class PipelineRunService:
                 updated_at=now,
             ))
         document = PipelineRunDocument(
-            id=run_id, workspace_id=details.document.workspace_id,
+            id=run_id, workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
             commit_mode=commit_mode,
             status='prepared', worker_id=None, lease_token=None,
@@ -138,7 +140,7 @@ class PipelineRunService:
             steps=tuple(steps),
             events=(
                 self._event(
-                    workspace_id=details.document.workspace_id,
+                    workspace_id=workspace.workspace_id,
                     run_id=run_id,
                     event_type='pipeline_run_created',
                     activity_id=None,
@@ -161,10 +163,12 @@ class PipelineRunService:
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Make one prepared run eligible for runtime or human execution."""
 
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             raise PipelineRunUnavailableError(
@@ -172,7 +176,7 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         document = await self._get_required(
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
@@ -208,15 +212,17 @@ class PipelineRunService:
     ) -> list[PipelineRunDocument]:
         """List claimable runs beneath one active Pipeline."""
 
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id, pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             return []
         now = self._clock()
         return await self._repository.list_claimable(
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id,
             claimed_before=now,
         )
@@ -235,9 +241,11 @@ class PipelineRunService:
         """Atomically claim one current, claimable Pipeline run."""
 
         normalized_worker_id = self._require_text(worker_id)
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id, pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             raise PipelineRunUnavailableError(
@@ -245,18 +253,18 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         candidate = await self._get_required(
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
         now = self._clock()
         if self._worker_service is not None:
             await self._worker_service.require_active(
-                workspace_id=details.document.workspace_id,
+                workspace_id=workspace.workspace_id,
                 worker_id=normalized_worker_id,
             )
             await self._worker_service.require_harness(
-                workspace_id=details.document.workspace_id,
+                workspace_id=workspace.workspace_id,
                 worker_id=normalized_worker_id,
                 harness=self._harness_snapshot(candidate.pipeline_snapshot),
             )

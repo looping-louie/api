@@ -17,7 +17,7 @@ BASE_TIME = datetime(2026, 7, 24, 10, 0, tzinfo=UTC)
 def build_pipeline(
     *,
     pipeline_id: str = "pipeline-1",
-    workspace_id: str = "workspace-1",
+    workspace_id: str | None = None,
     status: str = "active",
 ) -> PipelineDocument:
     """Build one complete two-step pipeline."""
