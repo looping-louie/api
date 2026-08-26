@@ -19,7 +19,6 @@ class SkillPatchController:
         user_id: str,
         skill_id: str,
         payload: SkillPatchRequest,
-        requested_workspace_id: str | None = None,
     ) -> SkillResponse:
         """Apply supplied content and enabled-state changes."""
         if payload.has_content_changes():
@@ -32,7 +31,6 @@ class SkillPatchController:
             await self._skill_service.update(
                 user_id=user_id,
                 skill_id=skill_id,
-                requested_workspace_id=requested_workspace_id,
                 payload=SkillUpdate(
                     expected_version=payload.expected_version,
                     name=payload.name,
@@ -46,11 +44,9 @@ class SkillPatchController:
                 user_id=user_id,
                 skill_id=skill_id,
                 enabled=payload.enabled,
-                requested_workspace_id=requested_workspace_id,
             )
         document = await self._skill_service.describe(
             user_id=user_id,
             skill_id=skill_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return SkillResponse.model_validate(document)

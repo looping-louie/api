@@ -18,12 +18,10 @@ class SkillDeleteController:
         *,
         user_id: str,
         skill_id: str,
-        requested_workspace_id: str | None = None,
     ) -> DeleteResponse:
         """Delete an owned custom skill."""
         await self._skill_service.delete(
             user_id=user_id,
             skill_id=skill_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return DeleteResponse()

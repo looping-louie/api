@@ -54,6 +54,8 @@ EXPECTED_CHECKSUMS = {
     '0044_execution_overrides.sql': '1a5675323a4d481d2ff73aad4cfc603ec17ef36c686177d99aa81936128114fc',
     '0045_remove_persona_linked_service_selections.sql': 'cadc2fe790d4caaaac9c928fd0129e268a17b1da7ac3d2ba57043ebbffaca261',
     '0046_users.sql': 'e30aff37c6c2a63f64733c7ac3cd524b4d58a3595edefd518901a15ab73ce22f',
+    '0047_user_owned_instructions.sql': '071ccc7bda7b33d51f912df348778be7def0d8cfc2c40894764802df91a54de4',
+    '0048_user_skill_settings.sql': '0919d5b1f8547860180bdb4a50ac18f7e5231a813e658d41dff93b6a67423934',
 }
 
 

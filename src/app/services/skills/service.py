@@ -1,4 +1,4 @@
-"""Workspace-aware application service for skill resources."""
+"""User-owned application service for skill resources."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from ..persona_skills import (
     DefinitionDocument,
     SkillDefinitionService,
 )
-from ..shared.tenant import TenantService
+from ..users import UserService
 from .metadata_validator import (
     validate_skill_metadata,
 )
@@ -30,19 +30,18 @@ class SkillService:
     def __init__(
         self,
         *,
-        tenant_service: TenantService,
+        user_service: UserService,
         skill_definition_service: SkillDefinitionService,
     ) -> None:
-        """Initialize workspace resolution and Skill definitions."""
+        """Initialize registered-user Skill definitions."""
 
-        self._tenant_service = tenant_service
+        self._user_service = user_service
         self._skill_definition_service = skill_definition_service
 
     async def list(
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
         search: str | None = None,
         status: CatalogInstructionStatus | None = None,
         categories: Sequence[CatalogInstructionCategory] = (),
@@ -50,15 +49,12 @@ class SkillService:
         offset: int = 0,
         limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
     ) -> AvailableDefinitionPage:
-        """Return one filtered page of skills in the resolved workspace."""
+        """Return one filtered page of skills owned by a registered user."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         return await self._skill_definition_service.list(
-            workspace_id=workspace_id,
+            workspace_id=user_id,
             search=search,
             status=status,
             categories=categories,
@@ -72,18 +68,14 @@ class SkillService:
         *,
         user_id: str,
         skill_id: str,
-        requested_workspace_id: str | None = None,
         include_deprecated: bool = False,
     ) -> AvailableDefinitionDocument:
         """Return a complete skill."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         return await self._skill_definition_service.describe(
-            workspace_id=workspace_id,
+            workspace_id=user_id,
             instruction_id=skill_id,
             include_deprecated=include_deprecated,
         )
@@ -94,21 +86,17 @@ class SkillService:
         user_id: str,
         skill_id: str,
         enabled: bool,
-        requested_workspace_id: str | None = None,
     ) -> AvailableDefinitionDocument:
-        """Set whether a skill is enabled in the resolved workspace."""
+        """Set whether a skill is enabled for a registered user."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
         operation = (
             self._skill_definition_service.enable
             if enabled
             else self._skill_definition_service.disable
         )
         return await operation(
-            workspace_id=workspace_id,
+            workspace_id=user_id,
             instruction_id=skill_id,
         )
 
@@ -117,19 +105,15 @@ class SkillService:
         *,
         user_id: str,
         payload: SkillCreate,
-        requested_workspace_id: str | None = None,
     ) -> DefinitionDocument:
-        """Create a skill in the resolved workspace."""
+        """Create a skill owned by a registered user."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         validate_skill_metadata(payload.metadata)
 
         return await self._skill_definition_service.create(
-            workspace_id=workspace_id,
+            workspace_id=user_id,
             payload=payload,
         )
 
@@ -139,20 +123,16 @@ class SkillService:
         user_id: str,
         skill_id: str,
         payload: SkillUpdate,
-        requested_workspace_id: str | None = None,
     ) -> DefinitionDocument:
         """Update an existing skill."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         if payload.metadata is not None:
             validate_skill_metadata(payload.metadata)
 
         return await self._skill_definition_service.update(
-            workspace_id=workspace_id,
+            workspace_id=user_id,
             instruction_id=skill_id,
             payload=payload,
         )
@@ -162,31 +142,12 @@ class SkillService:
         *,
         user_id: str,
         skill_id: str,
-        requested_workspace_id: str | None = None,
     ) -> None:
         """Delete a skill when it has no blocking dependencies."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         await self._skill_definition_service.delete(
-            workspace_id=workspace_id,
+            workspace_id=user_id,
             instruction_id=skill_id,
         )
-
-    async def _resolve_workspace_id(
-        self,
-        *,
-        user_id: str,
-        requested_workspace_id: str | None,
-    ) -> str:
-        """Resolve the workspace selected for a skill operation."""
-
-        tenant = await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-
-        return tenant.workspace_id

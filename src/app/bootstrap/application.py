@@ -33,6 +33,7 @@ from src.app.repositories.shared.dependency_repository import (
 )
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
+    SqliteUserSkillRepository,
 )
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
@@ -162,6 +163,9 @@ async def configure_application(
     instruction_repository = SqliteInstructionRepository(
         resolved_settings.database_path,
     )
+    user_skill_repository = SqliteUserSkillRepository(
+        resolved_settings.database_path,
+    )
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
@@ -227,7 +231,7 @@ async def configure_application(
         clock=utc_now,
     )
     skill_definition_service = SkillDefinitionService(
-        repository=instruction_repository,
+        repository=user_skill_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
         id_factory=create_identifier,
@@ -263,7 +267,7 @@ async def configure_application(
         persona_skill_repository=persona_skill_repository,
     )
     skill_service = SkillService(
-        tenant_service=tenant_service,
+        user_service=user_service,
         skill_definition_service=skill_definition_service,
     )
     activity_service = ActivityService(

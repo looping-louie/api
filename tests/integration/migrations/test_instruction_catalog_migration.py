@@ -17,6 +17,7 @@ EXPECTED_INSTRUCTION_COLUMNS = [
     "id",
     "instruction_type",
     "origin",
+    "owner_user_id",
     "owner_workspace_id",
     "source_instruction_id",
     "name",
@@ -71,6 +72,26 @@ def insert_workspace(
             "2026-07-23T10:00:00+00:00",
         ),
     )
+    users_exists = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'",
+    ).fetchone()
+    if users_exists is not None:
+        user_id = f'user-{workspace_id}'
+        connection.execute(
+            '''
+            INSERT INTO users (id, created_at, updated_at)
+            VALUES (?, ?, ?)
+            ''',
+            (user_id, '2026-07-23T10:00:00+00:00', '2026-07-23T10:00:00+00:00'),
+        )
+        connection.execute(
+            '''
+            INSERT INTO workspace_memberships (
+                workspace_id, user_id, role, is_default, created_at
+            ) VALUES (?, ?, 'owner', 1, ?)
+            ''',
+            (workspace_id, user_id, '2026-07-23T10:00:00+00:00'),
+        )
 
 
 def test_empty_database_has_catalog_instruction_schema() -> None:
@@ -171,19 +192,59 @@ def test_existing_instruction_is_preserved_as_custom() -> None:
     assert row["version"] == 3
 
 
+def test_user_ownership_migration_uses_the_earliest_workspace_owner() -> None:
+    """Legacy custom definitions receive a deterministic User owner."""
+
+    connection = sqlite3.connect(':memory:')
+    connection.row_factory = sqlite3.Row
+    connection.execute('PRAGMA foreign_keys = ON')
+    apply_migrations(connection, through='0046_users')
+    insert_workspace(connection, 'workspace-1')
+    connection.execute(
+        '''
+        INSERT INTO users (id, created_at, updated_at)
+        VALUES ('user-earlier', '2026-07-22T10:00:00+00:00', '2026-07-22T10:00:00+00:00')
+        ''',
+    )
+    connection.execute(
+        '''
+        INSERT INTO workspace_memberships (
+            workspace_id, user_id, role, is_default, created_at
+        ) VALUES ('workspace-1', 'user-earlier', 'owner', 0, '2026-07-22T10:00:00+00:00')
+        ''',
+    )
+    insert_instruction(
+        connection,
+        instruction_id='legacy-skill',
+        origin='custom',
+        owner_workspace_id='workspace-1',
+    )
+    connection.executescript(
+        (SQLITE_MIGRATIONS / '0047_user_owned_instructions.sql').read_text(
+            encoding='utf-8',
+        ),
+    )
+
+    owner = connection.execute(
+        "SELECT owner_user_id FROM instructions WHERE id = 'legacy-skill'",
+    ).fetchone()
+
+    assert owner is not None
+    assert owner['owner_user_id'] == 'user-earlier'
+
+
 def test_origin_ownership_and_version_checks_are_enforced() -> None:
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
     apply_migrations(connection)
     insert_workspace(connection, "workspace-1")
 
-    with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
-            connection,
-            instruction_id="ownerless-custom",
-            origin="custom",
-            owner_workspace_id=None,
-        )
+    insert_instruction(
+        connection,
+        instruction_id="legacy-ownerless-custom",
+        origin="custom",
+        owner_workspace_id=None,
+    )
 
     with pytest.raises(sqlite3.IntegrityError):
         insert_instruction(
@@ -376,6 +437,7 @@ def insert_instruction(
     instruction_id: str,
     origin: str,
     owner_workspace_id: str | None,
+    owner_user_id: str | None = None,
     instruction_type: str = "skill",
     name_key: str = "catalog entry",
     catalog_version: int | None = None,
@@ -384,12 +446,55 @@ def insert_instruction(
     deprecated: int = 0,
     version: int = 1,
 ) -> None:
+    has_owner_user_id = any(
+        row[1] == 'owner_user_id'
+        for row
+        in connection.execute('PRAGMA table_info(instructions)')
+    )
+    resolved_owner_user_id = (
+        owner_user_id
+        if owner_user_id is not None
+        else (
+            f'user-{owner_workspace_id}'
+            if origin == 'custom' and owner_workspace_id is not None
+            else None
+        )
+    )
+    if not has_owner_user_id:
+        connection.execute(
+            '''
+            INSERT INTO instructions (
+                id, instruction_type, origin, owner_workspace_id,
+                source_instruction_id, name, name_key, description, content,
+                metadata_json, catalog_version, checksum, enabled_by_default,
+                deprecated, version, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, NULL, ?, ?, '', ?, '{}', ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                instruction_id,
+                instruction_type,
+                origin,
+                owner_workspace_id,
+                name_key.title(),
+                name_key,
+                'Content.',
+                catalog_version,
+                checksum,
+                enabled_by_default,
+                deprecated,
+                version,
+                '2026-07-23T10:00:00+00:00',
+                '2026-07-23T10:00:00+00:00',
+            ),
+        )
+        return
     connection.execute(
         """
         INSERT INTO instructions (
             id,
             instruction_type,
             origin,
+            owner_user_id,
             owner_workspace_id,
             source_instruction_id,
             name,
@@ -406,13 +511,14 @@ def insert_instruction(
             updated_at
         )
         VALUES (
-            ?, ?, ?, ?, NULL, ?, ?, '', ?, '{}', ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, NULL, ?, ?, '', ?, '{}', ?, ?, ?, ?, ?, ?, ?
         )
         """,
         (
             instruction_id,
             instruction_type,
             origin,
+            resolved_owner_user_id,
             owner_workspace_id,
             name_key.title(),
             name_key,

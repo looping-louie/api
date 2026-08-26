@@ -31,12 +31,12 @@ class InstructionMutationMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 await connection.execute(
-                    """
+                    f"""
                     INSERT INTO instructions (
                         id,
                         instruction_type,
                         origin,
-                        owner_workspace_id,
+                        {self._owner_column},
                         source_instruction_id,
                         name,
                         name_key,
@@ -94,7 +94,7 @@ class InstructionMutationMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 cursor = await connection.execute(
-                    """
+                    f"""
                     UPDATE instructions
                     SET
                         name = ?,
@@ -106,7 +106,7 @@ class InstructionMutationMixin:
                         updated_at = ?
                     WHERE id = ?
                       AND origin = 'custom'
-                      AND owner_workspace_id = ?
+                                            AND {self._owner_column} = ?
                       AND instruction_type = ?
                       AND version = ?
                     """,
@@ -160,11 +160,11 @@ class InstructionMutationMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 cursor = await connection.execute(
-                    """
+                    f"""
                     DELETE FROM instructions
                     WHERE id = ?
                       AND origin = 'custom'
-                      AND owner_workspace_id = ?
+                      AND {self._owner_column} = ?
                       AND instruction_type = ?
                     """,
                     (

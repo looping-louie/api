@@ -47,17 +47,17 @@ class InstructionAvailabilityMixin:
         if limit is not None and limit < 1:
             raise ValueError("limit must be positive when supplied.")
 
-        from_where = """
+        from_where = f"""
             FROM instructions AS i
-            LEFT JOIN workspace_instruction_settings AS settings
+            LEFT JOIN {self._settings_table} AS settings
                 ON settings.instruction_id = i.id
-               AND settings.workspace_id = ?
+               AND settings.{self._settings_owner_column} = ?
             WHERE i.instruction_type = ?
               AND (
                     i.origin = 'builtin'
                     OR (
                         i.origin = 'custom'
-                        AND i.owner_workspace_id = ?
+                        AND i.{self._owner_column} = ?
                     )
                     OR (
                         i.origin = 'marketplace'
@@ -236,7 +236,7 @@ class InstructionAvailabilityMixin:
                 i.id,
                 i.instruction_type,
                 i.origin,
-                i.owner_workspace_id,
+            i.{self._owner_column} AS owner_workspace_id,
                 i.source_instruction_id,
                 i.name,
                 i.description,
@@ -254,16 +254,16 @@ class InstructionAvailabilityMixin:
                 i.created_at,
                 i.updated_at
             FROM instructions AS i
-            LEFT JOIN workspace_instruction_settings AS settings
+                LEFT JOIN {self._settings_table} AS settings
                 ON settings.instruction_id = i.id
-               AND settings.workspace_id = ?
+                    AND settings.{self._settings_owner_column} = ?
             WHERE i.id = ?
               AND i.instruction_type = ?
               AND (
                     i.origin = 'builtin'
                     OR (
                         i.origin = 'custom'
-                        AND i.owner_workspace_id = ?
+                        AND i.{self._owner_column} = ?
                     )
                     OR (
                         i.origin = 'marketplace'

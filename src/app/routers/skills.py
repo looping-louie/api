@@ -92,7 +92,6 @@ async def list_skills(
 
     return await controller.list(
         user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
         search=search,
         status=skill_status,
         categories=category or (),
@@ -119,7 +118,6 @@ async def get_skill(
     return await controller.describe(
         user_id=context.user_id,
         skill_id=skill_id,
-        requested_workspace_id=context.requested_workspace_id,
     )
 
 
@@ -134,12 +132,11 @@ async def create_skill(
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> SkillResponse:
-    """Create a skill in the selected workspace."""
+    """Create a skill owned by the authenticated user."""
 
     return await controller.create(
         user_id=context.user_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
     )
 
 
@@ -157,13 +154,12 @@ async def patch_skill(
         Path(min_length=1),
     ],
 ) -> SkillResponse:
-    """Modify skill content or its workspace enabled state."""
+    """Modify skill content or its user enabled state."""
 
     return await controller.patch(
         user_id=context.user_id,
         skill_id=skill_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
     )
 
 
@@ -185,5 +181,4 @@ async def delete_skill(
     return await controller.delete(
         user_id=context.user_id,
         skill_id=skill_id,
-        requested_workspace_id=context.requested_workspace_id,
     )

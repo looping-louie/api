@@ -41,6 +41,7 @@ EXPECTED_TABLES = {
     "linked_services",
     "persona_skills",
     "workspace_instruction_settings",
+    "user_skill_settings",
     "activities",
     "activity_catalog_installations",
     "activity_changelog_entries",
@@ -233,6 +234,8 @@ def test_bootstrap_configures_application_and_runs_migrations(
             "0044_execution_overrides",
                 "0045_remove_persona_linked_service_selections",
             "0046_users",
+            "0047_user_owned_instructions",
+            "0048_user_skill_settings",
     ]
     assert activity_rows == []
 
