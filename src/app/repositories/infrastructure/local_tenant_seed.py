@@ -30,6 +30,19 @@ async def ensure_local_tenant(
         try:
             await connection.execute(
                 """
+                INSERT INTO users (id, created_at, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id) DO NOTHING
+                """,
+                (
+                    user_id,
+                    now,
+                    now,
+                ),
+            )
+
+            await connection.execute(
+                """
                 INSERT INTO workspaces (
                     id,
                     name,

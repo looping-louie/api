@@ -2,7 +2,7 @@ import pytest
 
 from src.app.catalogs.models import ModelCapability
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.model import ModelController
+from src.app.controllers.user import UserModelController
 from src.app.services.models.availability import ProviderConnectionState
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
@@ -11,11 +11,10 @@ from tests.fakes.provider_state_repository import (
 
 @pytest.mark.asyncio
 async def test_controller_lists_models(
-    model_controller: ModelController,
+    model_controller: UserModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -36,18 +35,20 @@ async def test_controller_lists_models(
         for model in response.items
     )
     assert all(
-        ProviderId.TOGETHER in model.providers
+        any(
+            offering.provider_id == ProviderId.TOGETHER
+            for offering in model.offerings
+        )
         for model in response.items
     )
 
 
 @pytest.mark.asyncio
 async def test_controller_describes_model(
-    model_controller: ModelController,
+    model_controller: UserModelController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
-        workspace_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -62,4 +63,4 @@ async def test_controller_describes_model(
 
     assert response.id == "kimi-k2.6"
     assert response.available is True
-    assert response.deployments[0].provider_id == ProviderId.TOGETHER
+    assert response.offerings[0].provider_id == ProviderId.TOGETHER

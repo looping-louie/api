@@ -1,18 +1,15 @@
-"""Domain model for workspace execution defaults."""
+"""Domain model for workspaces."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.app.models.execution import ModelTarget
-from src.app.models.pipeline import PipelineHarness
-
 @dataclass(frozen=True, slots=True)
-class WorkspaceDefaults:
-    """Optional execution overrides owned by one workspace."""
+class WorkspaceDocument:
+    """Workspace identity and metadata visible to its members."""
 
-    workspace_id: str
-    model_target: ModelTarget | None
-    harness: PipelineHarness | None
+    id: str
+    name: str
+    created_at: datetime
     updated_at: datetime

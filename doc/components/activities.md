@@ -1,9 +1,11 @@
 # Activities
 
-Activities are workspace-scoped, reusable definitions of work. An Activity has
-a name, description, status, type-specific configuration, audit history, and an
-immutable type. Activities can be created directly or supplied inline when a
-Pipeline is created or updated.
+Standalone Activities are User-owned, reusable definitions of work. An
+Activity has a name, description, status, type-specific configuration, audit
+history, and an immutable type. Activities can be created directly or supplied
+inline when a Pipeline is created or updated. Pipeline-created Activities keep
+their Pipeline Workspace as provenance for internal step resolution, while
+standalone Activities have no Workspace association.
 
 The API selects the configuration shape from the top-level `type` field. The
 `config` object does not include its own type discriminator. Activity statuses
@@ -23,7 +25,7 @@ are `active`, `disabled`, and `archived`.
 
 Loop Activities configure one or more model agents, stop conditions, and an
 output contract. An agent combines a Persona and one role. The Persona's
-instructions are combined with the agent's explicit `model_target` during
+instructions are combined with the agent's explicit `model_id` during
 generation.
 
 - `generator`: produces a candidate solution or proposed output;
@@ -80,10 +82,10 @@ A `quiz` Activity collects a human quiz response. Its configuration requires a
 Activities expose persisted runs. Each run identifies its owning Activity by
 `activity_id`; it does not expose a legacy loop identifier. A Pipeline-run
 freezes an effective Harness for every runtime-executable child Activity-run,
-preferring Activity, Pipeline, then Workspace scope. The `louie` Harness is
+preferring Activity, Pipeline, then User scope. The `louie` Harness is
 the compatibility default. PipelineRun creation also freezes agent model
-targets, preferring agent, Activity, Pipeline, then Workspace scope. Only an
-agent with an explicit `model_target` can generate a model request; Personas
+selections, preferring agent, Activity, Pipeline, then User scope. Only
+an agent with an explicit `model_id` can generate a model request; Personas
 provide instructions only. Human Activities use the built-in `human`
 execution mode and submit a terminal decision checkpoint; they do not execute
 through a Harness.

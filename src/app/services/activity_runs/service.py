@@ -26,6 +26,8 @@ from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
+from src.app.services.workspaces import WorkspaceService
 
 
 class ActivityRunService:
@@ -41,6 +43,8 @@ class ActivityRunService:
         clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
+        workspace_service: WorkspaceService | None = None,
+        user_service: UserService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
     ) -> None:
         """Store dependencies used to persist and generate activity runs."""
@@ -60,6 +64,9 @@ class ActivityRunService:
             and instruction_library_service is not None
             else None
         )
+        self._model_execution_service = model_execution_service
+        self._workspace_service = workspace_service
+        self._user_service = user_service
 
     async def create(
         self,
@@ -74,11 +81,14 @@ class ActivityRunService:
         activity = await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
+        )
+        harness = await self._inherited_harness(
+            activity=activity,
+            user_id=user_id,
         )
         now = self._clock()
         return await self._repository.create(
@@ -93,7 +103,12 @@ class ActivityRunService:
                 iteration=1,
                 token_revision=0,
                 continuation_token=self._token_factory(),
-                activity_snapshot=self._snapshot(activity),
+                activity_snapshot=await self._snapshot(
+                    activity,
+                    workspace_id=workspace.workspace_id,
+                    user_id=user_id,
+                    harness=harness,
+                ),
                 execution_context={},
                 created_at=now,
                 created_by=self._require_text(user_id, 'user_id'),
@@ -140,7 +155,6 @@ class ActivityRunService:
         await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if offset < 0:
             raise ActivityRunValidationError(
@@ -178,7 +192,6 @@ class ActivityRunService:
         await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         document = await self.get(
             user_id=user_id,
@@ -245,7 +258,6 @@ class ActivityRunService:
             try:
                 generated = await self._generation_service.generate_context(
                     loop_snapshot=document.activity_snapshot,
-                    workspace_id=workspace.workspace_id,
                     user_id=user_id,
                     requested_workspace_id=requested_workspace_id,
                     input_text=document.input,
@@ -305,7 +317,6 @@ class ActivityRunService:
                 raise RuntimeError('Activity generation is not configured.')
             review = await self._generation_service.generate_review_context(
                 loop_snapshot=document.activity_snapshot,
-                workspace_id=workspace.workspace_id,
                 input_text=document.input,
                 context=context,
                 final_diff=str(result.get('final_diff', '')),
@@ -416,13 +427,12 @@ class ActivityRunService:
         )
 
     async def _active_activity(
-        self, *, user_id: str, activity_id: str, requested_workspace_id: str | None,
+        self, *, user_id: str, activity_id: str,
     ) -> object:
         """Return an active Activity supported by the execution protocol."""
 
         activity = await self._activity_service.get(
             user_id=user_id, activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if activity.type not in ('approval', 'quiz', 'direct_loop', 'refinement_loop', 'roundtable_loop'):
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not executable')
@@ -430,8 +440,43 @@ class ActivityRunService:
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
         return activity
 
+    async def _inherited_harness(
+        self,
+        *,
+        activity: object,
+        user_id: str,
+    ) -> Mapping[str, object]:
+        """Resolve Activity and User Harness overrides in order."""
+
+        activity_harness = getattr(activity, 'harness')
+        if activity_harness is not None:
+            return self._harness_value(activity_harness)
+        if self._user_service is not None:
+            default_harness = (
+                await self._user_service.get(user_id=user_id)
+            ).settings.default_harness
+            if default_harness is not None:
+                return self._harness_value(default_harness)
+        return {'kind': 'louie', 'version': 'v1', 'config': {}}
+
     @staticmethod
-    def _snapshot(activity: object) -> dict[str, object]:
+    def _harness_value(harness: object) -> Mapping[str, object]:
+        """Convert a validated domain Harness into its frozen representation."""
+
+        return {
+            'kind': getattr(harness, 'kind'),
+            'version': getattr(harness, 'version'),
+            'config': dict(getattr(harness, 'config')),
+        }
+
+    async def _snapshot(
+        self,
+        activity: object,
+        *,
+        workspace_id: str,
+        user_id: str,
+        harness: Mapping[str, object],
+    ) -> dict[str, object]:
         """Shape a frozen configuration for its assigned ActivityRun executor."""
 
         flow = {
@@ -439,16 +484,86 @@ class ActivityRunService:
             'refinement_loop': 'refinement',
             'roundtable_loop': 'roundtable',
         }
+        config = dict(getattr(activity, 'config'))
+        if harness.get('kind') == 'louie':
+            inherited_model_id = await self._inherited_model_id(
+                activity=activity,
+                user_id=user_id,
+            )
+            agents = config.get('agents')
+            if isinstance(agents, list):
+                config['agents'] = [
+                    await self._louie_agent_snapshot(
+                        agent=agent,
+                        activity_id=str(getattr(activity, 'id')),
+                        workspace_id=workspace_id,
+                        user_id=user_id,
+                        inherited_model_id=inherited_model_id,
+                    )
+                    if isinstance(agent, dict)
+                    else agent
+                    for agent in agents
+                ]
         snapshot = {
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
-            **dict(getattr(activity, 'config')),
+            'harness': dict(harness),
+            **config,
         }
         activity_type = getattr(activity, 'type')
         if activity_type in ('approval', 'quiz'):
             return {**snapshot, 'type': activity_type, 'executor': 'human'}
         return {**snapshot, 'flow': flow[activity_type], 'executor': 'runtime'}
+
+    async def _inherited_model_id(
+        self,
+        *,
+        activity: object,
+        user_id: str,
+    ) -> str | None:
+        """Resolve the direct Activity model override and User fallback."""
+
+        model_id = getattr(activity, 'model_id')
+        if isinstance(model_id, str):
+            return model_id
+        if self._user_service is None:
+            return None
+        return (await self._user_service.get(user_id=user_id)).settings.default_model_id
+
+    async def _louie_agent_snapshot(
+        self,
+        *,
+        agent: dict[str, object],
+        activity_id: str,
+        workspace_id: str,
+        user_id: str,
+        inherited_model_id: str | None,
+    ) -> dict[str, object]:
+        """Freeze an available linked service for one Louie agent model."""
+
+        snapshot = dict(agent)
+        model_id = snapshot.get('model_id')
+        if not isinstance(model_id, str):
+            model_id = inherited_model_id
+        if not isinstance(model_id, str):
+            raise ActivityRunUnavailableError(
+                activity_id=activity_id,
+                reason='louie execution requires a model_id',
+            )
+        if self._model_execution_service is None:
+            raise RuntimeError('Louie model execution is not configured.')
+        linked_service = await self._model_execution_service.select_linked_service(
+            workspace_id=workspace_id,
+            model_id=model_id,
+            user_id=user_id,
+        )
+        snapshot['model_target'] = {
+            'linked_service_id': linked_service.id,
+            'linked_service_user_id': linked_service.user_id,
+            'model_id': model_id,
+        }
+        return snapshot
 
     @staticmethod
     def _initial_state(activity: object) -> str:

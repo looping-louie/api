@@ -17,12 +17,8 @@ from src.app.repositories.shared.reference_repository import (
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
-from src.app.repositories.shared.tenant_repository import (
-    SqliteTenantRepository,
-)
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
-from src.app.services.shared.tenant import TenantService
 from tests.integration.factories import build_instruction
 
 
@@ -42,13 +38,7 @@ def build_repository(
     availability_service = ModelAvailabilityService(
         linked_service_repository=SqliteLinkedServiceRepository(database),
     )
-    tenant_service = TenantService(
-        repository=SqliteTenantRepository(
-            database_path,
-        ),
-    )
     catalog_service = ModelCatalogService(
-        tenant_service=tenant_service,
         availability_service=availability_service,
     )
 

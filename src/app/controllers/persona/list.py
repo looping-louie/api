@@ -17,7 +17,7 @@ from .response import persona_summary_response
 
 
 class PersonaListController:
-    """List persona summaries available in a workspace."""
+    """List persona summaries available to a user."""
 
     def __init__(self, *, persona_service: PersonaService) -> None:
         """Store the persona application service."""
@@ -27,17 +27,15 @@ class PersonaListController:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
         search: str | None = None,
         status: CatalogInstructionStatus | None = None,
         categories: Sequence[CatalogInstructionCategory] = (),
         sort: CatalogInstructionSort | None = None,
         offset: int = 0,
     ) -> PersonaListResponse:
-        """List persona summaries available in a workspace."""
+        """List persona summaries available to a user."""
         page = await self._persona_service.list(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
             search=search,
             status=status,
             categories=categories,

@@ -136,7 +136,7 @@ Every behavior change MUST include or update corresponding tests.
   suite pass.
 - MUST NOT make tests depend on execution order, network access, or shared
   mutable state unless the test explicitly covers such an integration.
-- Test code follows the same 300-line and documentation rules as production
+- Test code follows the same documentation rules as production
   code.
 
 ## Development Workflow

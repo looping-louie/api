@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 
+import aiosqlite
 import pytest
 
 from src.app.models.activity import (
@@ -42,7 +43,6 @@ def entry(
     return PipelineChangelogEntry(
         id=entry_id,
         pipeline_id=document.id,
-        workspace_id=document.workspace_id,
         change_type=change_type,  # type: ignore[arg-type]
         actor_id="user-1",
         changed_at=document.updated_at,
@@ -57,11 +57,20 @@ async def seed_activities(
 ) -> None:
     """Insert active activities referenced by repository fixtures."""
 
+    async with aiosqlite.connect(database_path) as connection:
+        await connection.execute(
+            '''
+            INSERT OR IGNORE INTO users (id, created_at, updated_at)
+            VALUES ('user-1', ?, ?)
+            ''',
+            (BASE_TIME.isoformat(), BASE_TIME.isoformat()),
+        )
+        await connection.commit()
     repository = SqliteActivityRepository(database_path)
     for activity_id in activity_ids:
         document = ActivityDocument(
             id=activity_id,
-            workspace_id='workspace-1',
+            user_id='user-1',
             name=f'Activity {activity_id}',
             description='Complete one stage.',
             status='active',
@@ -77,7 +86,7 @@ async def seed_activities(
             changelog_entry=ActivityChangelogEntry(
                 id=f'{activity_id}-entry',
                 activity_id=activity_id,
-                workspace_id='workspace-1',
+                user_id='user-1',
                 change_type='created',
                 actor_id='user-1',
                 changed_at=BASE_TIME,
@@ -95,7 +104,7 @@ def generated_activity(
 
     document = ActivityDocument(
         id=activity_id,
-        workspace_id='workspace-1',
+        user_id='user-1',
         name=f'Generated {activity_id}',
         description='Created with a pipeline.',
         status='active',
@@ -109,7 +118,7 @@ def generated_activity(
     return document, ActivityChangelogEntry(
         id=f'{activity_id}-entry',
         activity_id=activity_id,
-        workspace_id='workspace-1',
+        user_id='user-1',
         change_type='created',
         actor_id='user-1',
         changed_at=BASE_TIME,
@@ -125,7 +134,10 @@ async def test_creates_generated_activities_with_pipeline_atomically(
 ) -> None:
     """Generated Activities persist independently with their Pipeline steps."""
 
-    await create_workspace(workspace_id='workspace-1')
+    await create_workspace(
+        workspace_id='workspace-1',
+        memberships=(('user-1', 'owner', True),),
+    )
     repository = SqlitePipelineRepository(sqlite_database_path)
     activity_repository = SqliteActivityRepository(sqlite_database_path)
     first, first_entry = generated_activity(activity_id='generated-1')
@@ -146,15 +158,15 @@ async def test_creates_generated_activities_with_pipeline_atomically(
     )
 
     assert await activity_repository.get(
-        workspace_id='workspace-1',
+        user_id='user-1',
         activity_id=first.id,
     ) == first
     assert await repository.get(
-        workspace_id='workspace-1',
+        user_id='user-1',
         pipeline_id=document.id,
     ) == document
     details = await repository.get_with_activities(
-        workspace_id='workspace-1',
+        user_id='user-1',
         pipeline_id=document.id,
     )
     assert details is not None
@@ -190,7 +202,7 @@ async def test_failed_generated_activity_insert_rolls_back_pipeline_creation(
         )
 
     assert await repository.get(
-        workspace_id='workspace-1',
+        user_id='user-1',
         pipeline_id=document.id,
     ) is None
 
@@ -227,7 +239,7 @@ async def test_round_trips_ordered_activity_steps_and_dependencies(
         changelog_entry=entry(document, entry_id="entry-1"),
     )
     stored = await repository.get(
-        workspace_id="workspace-1",
+        user_id='user-1',
         pipeline_id=document.id,
     )
 
@@ -270,21 +282,21 @@ async def test_list_filters_searches_orders_and_paginates(
     )
 
     first, total = await repository.list(
-        workspace_id="workspace-1",
+        user_id='user-1',
         offset=0,
         limit=10,
         status=None,
         search="KNOWLEDGE",
     )
     second, second_total = await repository.list(
-        workspace_id="workspace-1",
+        user_id='user-1',
         offset=10,
         limit=10,
         status=None,
         search=None,
     )
     archived_items, archived_total = await repository.list(
-        workspace_id="workspace-1",
+        user_id='user-1',
         offset=0,
         limit=10,
         status="archived",
@@ -346,7 +358,7 @@ async def test_update_archive_and_changelog_are_atomic_resources(
         ),
     )
     entries, total = await repository.list_changelog(
-        workspace_id="workspace-1",
+        user_id='user-1',
         pipeline_id=original.id,
         offset=0,
         limit=10,
@@ -355,6 +367,6 @@ async def test_update_archive_and_changelog_are_atomic_resources(
     assert total == 3
     assert entries[0].change_type == "archived"
     assert await repository.get(
-        workspace_id="workspace-1",
+        user_id='user-1',
         pipeline_id=original.id,
     ) == archived

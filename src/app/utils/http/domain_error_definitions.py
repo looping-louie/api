@@ -80,6 +80,7 @@ from src.app.services.shared.validation import (
     ResourceVersionConflictError,
 )
 from src.app.services.skills import SkillValidationError
+from src.app.services.users import UserNotFoundError
 
 from .domain_error_details import (
     _duplicate_resource_details,
@@ -106,6 +107,10 @@ from .domain_error_details import _linked_service_not_found_details
 
 
 ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
+    UserNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='user_not_found',
+    ),
     TenantValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="tenant_validation_error",

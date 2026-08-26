@@ -7,7 +7,7 @@ from src.app.services.skills import SkillService
 
 
 class SkillDescribeController:
-    """Return one complete skill visible in a workspace."""
+    """Return one complete skill visible to a user."""
 
     def __init__(self, *, skill_service: SkillService) -> None:
         """Store the skill application service."""
@@ -18,12 +18,10 @@ class SkillDescribeController:
         *,
         user_id: str,
         skill_id: str,
-        requested_workspace_id: str | None = None,
     ) -> SkillResponse:
-        """Return one complete skill visible in a workspace."""
+        """Return one complete skill visible to a user."""
         document = await self._skill_service.describe(
             user_id=user_id,
             skill_id=skill_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return SkillResponse.model_validate(document)

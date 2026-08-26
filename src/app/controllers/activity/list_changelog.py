@@ -16,14 +16,12 @@ class ActivityListChangelogController:
         user_id: str,
         activity_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
     ) -> ActivityChangelogListResponse:
         """Return one activity changelog page."""
         entries, total = await self._activity_service.list_changelog(
             user_id=user_id,
             activity_id=activity_id,
             offset=offset,
-            requested_workspace_id=requested_workspace_id,
         )
         return ActivityChangelogListResponse(
             items=[

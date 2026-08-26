@@ -256,6 +256,32 @@ request GET "/catalog/models" >/dev/null
 request GET "/catalog/personas" >/dev/null
 request GET "/catalog/skills" >/dev/null
 
+log "Checking current user"
+
+request POST "/users" >/dev/null
+request GET "/users/me" >/dev/null
+request PATCH "/users/me" '{"default_harness":null}' >/dev/null
+
+log "Checking workspaces"
+
+workspace_response="$(
+    request POST "/workspaces" "$(
+    cat <<JSON
+{
+    "name": "Smoke Workspace ${SMOKE_RUN_ID}"
+}
+JSON
+)"
+)"
+WORKSPACE_DEFAULTS_ID="$(printf '%s' "${workspace_response}" | json_field id)"
+request GET "/workspaces" >/dev/null
+request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}" >/dev/null
+request \
+    PATCH \
+    "/workspaces/${WORKSPACE_DEFAULTS_ID}" \
+    "{\"name\":\"Smoke Workspace updated ${SMOKE_RUN_ID}\"}" \
+    >/dev/null
+
 log "Checking linked services"
 
 linked_service_response="$(
@@ -281,12 +307,12 @@ request GET "/linked-services" >/dev/null
 
 log "Checking workspace defaults"
 
-request GET "/workspaces/defaults" >/dev/null
-request PUT "/workspaces/defaults" '{"model_target":null,"harness":null}' >/dev/null
+request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" >/dev/null
+request PUT "/workspaces/${WORKSPACE_DEFAULTS_ID}/defaults" '{"model_id":null,"harness":null}' >/dev/null
 
 log "Checking model catalog"
 
-models_response="$(request GET "/models")"
+models_response="$(request GET "/users/me/models")"
 
 if [[ -n "${SMOKE_MODEL_ID}" ]]; then
     model_id="${SMOKE_MODEL_ID}"
@@ -297,7 +323,7 @@ else
     )"
 fi
 
-request GET "/models/${model_id}" >/dev/null
+request GET "/users/me/models/${model_id}" >/dev/null
 
 log "Creating persona"
 

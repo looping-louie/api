@@ -31,14 +31,14 @@ ActivityIdPath = Annotated[str, Path(min_length=1)]
 async def list_activities(context: ContextDependency, controller: ControllerDependency, offset: OffsetQuery = 0) -> ActivityListResponse:
     """Return ten activities after the requested offset."""
 
-    return await controller.list(user_id=context.user_id, offset=offset, requested_workspace_id=context.requested_workspace_id)
+    return await controller.list(user_id=context.user_id, offset=offset)
 
 
 @router.post('', response_model=ActivityResponse, status_code=status.HTTP_201_CREATED, summary='Create activity')
 async def create_activity(payload: ActivityCreateRequest, context: ContextDependency, controller: ControllerDependency) -> ActivityResponse:
     """Create an active activity."""
 
-    return await controller.create(user_id=context.user_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
+    return await controller.create(user_id=context.user_id, payload=payload)
 
 
 @router.get('/{activity_id}/runs', response_model=ActivityRunListResponse, summary='List activity runs')
@@ -66,25 +66,25 @@ async def continue_activity_run(payload: ActivityRunContinueRequest, context: Co
 async def get_activity(context: ContextDependency, controller: ControllerDependency, activity_id: ActivityIdPath) -> ActivityResponse:
     """Return one complete activity."""
 
-    return await controller.get(user_id=context.user_id, activity_id=activity_id, requested_workspace_id=context.requested_workspace_id)
+    return await controller.get(user_id=context.user_id, activity_id=activity_id)
 
 
 @router.patch('/{activity_id}', response_model=ActivityResponse, summary='Update activity')
 async def patch_activity(payload: ActivityPatchRequest, context: ContextDependency, controller: ControllerDependency, activity_id: ActivityIdPath) -> ActivityResponse:
     """Update supplied mutable activity fields."""
 
-    return await controller.patch(user_id=context.user_id, activity_id=activity_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
+    return await controller.patch(user_id=context.user_id, activity_id=activity_id, payload=payload)
 
 
 @router.delete('/{activity_id}', response_model=DeleteResponse, summary='Delete activity')
 async def delete_activity(context: ContextDependency, controller: ControllerDependency, activity_id: ActivityIdPath) -> DeleteResponse:
     """Delete an activity while preserving its changelog."""
 
-    return await controller.delete(user_id=context.user_id, activity_id=activity_id, requested_workspace_id=context.requested_workspace_id)
+    return await controller.delete(user_id=context.user_id, activity_id=activity_id)
 
 
 @router.get('/{activity_id}/changelog', response_model=ActivityChangelogListResponse, summary='List activity changelog')
 async def list_activity_changelog(context: ContextDependency, controller: ControllerDependency, activity_id: ActivityIdPath, offset: OffsetQuery = 0) -> ActivityChangelogListResponse:
     """Return ten newest activity changelog entries after the requested offset."""
 
-    return await controller.list_changelog(user_id=context.user_id, activity_id=activity_id, offset=offset, requested_workspace_id=context.requested_workspace_id)
+    return await controller.list_changelog(user_id=context.user_id, activity_id=activity_id, offset=offset)

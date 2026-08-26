@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from itertools import count
+from types import SimpleNamespace
 
 import pytest
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
@@ -19,7 +19,7 @@ from src.app.models.pipeline import (
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
-from src.app.models.workspace import WorkspaceDefaults
+from src.app.models.user import UserDocument, UserSettings
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
 from src.app.services.pipeline_runs.types import (
@@ -263,18 +263,35 @@ class PipelineDetailsService:
         return self._details
 
 
-class StaticWorkspaceService:
-    """Return fixed workspace execution defaults for scheduler tests."""
+class StaticUserService:
+    """Return one user with a fixed execution default for scheduler tests."""
 
-    def __init__(self, defaults: WorkspaceDefaults) -> None:
-        """Store the defaults returned during PipelineRun creation."""
+    def __init__(self, document: UserDocument) -> None:
+        """Store the user returned by every lookup."""
 
-        self._defaults = defaults
+        self._document = document
 
-    async def get_defaults(self, **_: object) -> WorkspaceDefaults:
-        """Return the static workspace-level execution candidates."""
+    async def get(self, **_: object) -> UserDocument:
+        """Return the configured current user."""
 
-        return self._defaults
+        return self._document
+
+
+class StaticModelExecutionService:
+    """Select one deterministic linked service for frozen Louie snapshots."""
+
+    async def select_linked_service(
+        self,
+        *,
+        user_id: str,
+        **_: object,
+    ) -> SimpleNamespace:
+        """Return the service selected by this focused scheduler fixture."""
+
+        return SimpleNamespace(
+            id='linked-service-selected',
+            user_id=user_id,
+        )
 
 
 def activity(
@@ -285,7 +302,7 @@ def activity(
 
     now = datetime(2026, 8, 14, tzinfo=UTC)
     return ActivityDocument(
-        id=activity_id, workspace_id='workspace-1', name=activity_id,
+        id=activity_id, name=activity_id,
         description='Complete one pipeline step.', status='active', type=activity_type,
         config={'stop_conditions': {'max_iterations': 1}, 'agents': [], 'output_contract': {'type': 'text', 'description': 'Result.'}},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -299,21 +316,15 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     """Narrower agent and Activity values override Pipeline candidates."""
 
     now = datetime(2026, 8, 25, tzinfo=UTC)
-    agent_target = ModelTarget('service-agent', 'model-agent')
-    activity_target = ModelTarget('service-activity', 'model-activity')
-    pipeline_target = ModelTarget('service-pipeline', 'model-pipeline')
     first = replace(
         activity('activity-1'),
-        model_target=activity_target,
+        model_id='model-activity',
         harness=PipelineHarness(kind='codex_cli'),
         config={
             **activity('activity-1').config,
             'agents': [
                 {
-                    'model_target': {
-                        'linked_service_id': agent_target.linked_service_id,
-                        'model_id': agent_target.model_id,
-                    },
+                    'model_id': 'model-agent',
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
@@ -334,23 +345,17 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     )
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run configured steps.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),
                 PipelineActivityStep(activity_id=second.id),
             ),
-            model_target=pipeline_target,
+            model_id='model-pipeline',
             harness=PipelineHarness(kind='louie'),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
         ),
         activities=(first, second),
-    )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1',
-        model_target=ModelTarget('service-workspace', 'model-workspace'),
-        harness=PipelineHarness(kind='codex_cli'),
-        updated_at=now,
     )
     runs = InMemoryPipelineRunRepository()
     service = PipelineRunService(
@@ -358,7 +363,7 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
         activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details),
         tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        model_execution_service=StaticModelExecutionService(),  # type: ignore[arg-type]
         id_factory=lambda: 'run-1',
         clock=IncrementingClock(),
     )
@@ -371,21 +376,20 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
     second_agent = created.steps[1].activity_snapshot['agents'][0]
     assert created.pipeline_snapshot['harness']['kind'] == 'louie'
     assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
-    assert first_agent['model_target'] == {
-        'linked_service_id': 'service-agent',
-        'model_id': 'model-agent',
-    }
+    assert first_agent['model_id'] == 'model-agent'
+    assert 'model_id' not in second_agent
     assert second_agent['model_target'] == {
-        'linked_service_id': 'service-pipeline',
+        'linked_service_id': 'linked-service-selected',
+        'linked_service_user_id': 'user-1',
         'model_id': 'model-pipeline',
     }
 
 
 @pytest.mark.asyncio
-async def test_create_freezes_workspace_execution_defaults_when_unset(
+async def test_create_freezes_user_execution_defaults_when_unset(
     tenant_service: TenantService,
 ) -> None:
-    """Workspace candidates supply otherwise unset Pipeline and Activity values."""
+    """User candidates supply otherwise unset Pipeline and Activity values."""
 
     now = datetime(2026, 8, 25, tzinfo=UTC)
     configured_activity = replace(
@@ -402,18 +406,12 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
     )
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run configured steps.', status='active',
             steps=(PipelineActivityStep(activity_id=configured_activity.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
         ),
         activities=(configured_activity,),
-    )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1',
-        model_target=ModelTarget('service-workspace', 'model-workspace'),
-        harness=PipelineHarness(kind='codex_cli'),
-        updated_at=now,
     )
     runs = InMemoryPipelineRunRepository()
     service = PipelineRunService(
@@ -421,7 +419,13 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
         activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details),
         tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        user_service=StaticUserService(UserDocument(  # type: ignore[arg-type]
+            id='user-1', created_at=now, updated_at=now,
+            settings=UserSettings(
+                default_model_id='model-user',
+                default_harness=PipelineHarness(kind='codex_cli'),
+            ),
+        )),
         id_factory=lambda: 'run-1',
         clock=IncrementingClock(),
     )
@@ -432,10 +436,46 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
 
     assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
     assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
-    assert created.steps[0].activity_snapshot['agents'][0]['model_target'] == {
-        'linked_service_id': 'service-workspace',
-        'model_id': 'model-workspace',
-    }
+    assert 'model_id' not in created.steps[0].activity_snapshot['agents'][0]
+
+
+@pytest.mark.asyncio
+async def test_create_freezes_user_default_harness_when_higher_scopes_are_unset(
+    tenant_service: TenantService,
+) -> None:
+    """User settings provide the final Harness candidate for every step."""
+
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    configured_activity = activity('activity-1')
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', name='Pipeline',
+            description='Run configured steps.', status='active',
+            steps=(PipelineActivityStep(activity_id=configured_activity.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(configured_activity,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs,
+        activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details),
+        tenant_service=tenant_service,
+        user_service=StaticUserService(UserDocument(  # type: ignore[arg-type]
+            id='user-1', created_at=now, updated_at=now,
+            settings=UserSettings(default_harness=PipelineHarness(kind='codex_cli')),
+        )),
+        id_factory=lambda: 'run-1',
+        clock=IncrementingClock(),
+    )
+
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+
+    assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
+    assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
 
 
 @pytest.mark.asyncio
@@ -448,7 +488,7 @@ async def test_prepared_run_starts_before_runtime_claim(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -569,7 +609,7 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -609,7 +649,7 @@ async def test_active_claim_can_renew_its_lease_but_stale_claim_cannot(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -660,7 +700,7 @@ async def test_completed_step_schedules_success_dependent_child(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run two steps.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),
@@ -726,7 +766,7 @@ async def test_started_human_activity_creates_a_waiting_child_run(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Wait for approval.', status='active',
             steps=(PipelineActivityStep(activity_id=gate.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -791,7 +831,7 @@ async def test_rejected_human_activity_reruns_ancestors_before_retry(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Correct then approve.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),

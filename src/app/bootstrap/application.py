@@ -15,10 +15,10 @@ from src.app.catalogs.persona_skills.loader import (
     load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.user import UserController, UserModelController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
@@ -32,6 +32,8 @@ from src.app.repositories.shared.dependency_repository import (
 )
 from src.app.repositories.instructions.repository import (
     SqliteInstructionRepository,
+    SqliteUserPersonaRepository,
+    SqliteUserSkillRepository,
 )
 from src.app.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
@@ -45,6 +47,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
 from src.app.repositories.workspaces import SqliteWorkspaceRepository
+from src.app.repositories.users import SqliteUserRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -90,6 +93,7 @@ from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
 from src.app.services.workers import WorkerService
 from src.app.services.workspaces import WorkspaceService
+from src.app.services.users import UserService
 
 
 LOGGER = logging.getLogger(__name__)
@@ -159,6 +163,12 @@ async def configure_application(
     instruction_repository = SqliteInstructionRepository(
         resolved_settings.database_path,
     )
+    user_skill_repository = SqliteUserSkillRepository(
+        resolved_settings.database_path,
+    )
+    user_persona_repository = SqliteUserPersonaRepository(
+        resolved_settings.database_path,
+    )
     persona_skill_repository = SqlitePersonaSkillRepository(
         resolved_settings.database_path,
     )
@@ -171,6 +181,11 @@ async def configure_application(
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
     workspace_repository = SqliteWorkspaceRepository(database)
+    user_repository = SqliteUserRepository(database)
+    user_service = UserService(
+        repository=user_repository,
+        clock=utc_now,
+    )
 
     validation_repository = SqliteValidationRepository(
         resolved_settings.database_path,
@@ -185,6 +200,7 @@ async def configure_application(
     execution_instruction_library_service = (
         ExecutionInstructionLibraryService(
             repository=instruction_repository,
+            persona_repository=user_persona_repository,
             persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
         )
@@ -200,7 +216,7 @@ async def configure_application(
         linked_service_repository=linked_service_repository,
     )
     model_catalog_service = ModelCatalogService(
-        tenant_service=tenant_service,
+        user_service=user_service,
         availability_service=model_availability_service,
     )
     catalog_controller = CatalogController(
@@ -216,14 +232,14 @@ async def configure_application(
     )
 
     persona_definition_service = PersonaDefinitionService(
-        repository=instruction_repository,
+        repository=user_persona_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
         id_factory=create_identifier,
         clock=utc_now,
     )
     skill_definition_service = SkillDefinitionService(
-        repository=instruction_repository,
+        repository=user_skill_repository,
         validation_service=validation_service,
         dependency_checker=dependency_checker,
         id_factory=create_identifier,
@@ -232,6 +248,7 @@ async def configure_application(
     secret_service = FernetSecretService(encryption_key)
     linked_service_service = LinkedServiceService(
         repository=linked_service_repository,
+        user_service=user_service,
         tenant_service=tenant_service,
         secret_service=secret_service,
         connection_service=HttpProviderConnectionService(),
@@ -244,16 +261,18 @@ async def configure_application(
         repository=workspace_repository,
         tenant_service=tenant_service,
         linked_service_service=linked_service_service,
+        user_service=user_service,
+        id_factory=create_identifier,
         clock=utc_now,
     )
     persona_service = PersonaService(
-        tenant_service=tenant_service,
+        user_service=user_service,
         persona_definition_service=persona_definition_service,
         skill_definition_service=skill_definition_service,
         persona_skill_repository=persona_skill_repository,
     )
     skill_service = SkillService(
-        tenant_service=tenant_service,
+        user_service=user_service,
         skill_definition_service=skill_definition_service,
     )
     activity_service = ActivityService(
@@ -264,18 +283,22 @@ async def configure_application(
         clock=utc_now,
         linked_service_service=linked_service_service,
     )
+    model_execution_service = ModelExecutionService(
+        model_catalog_service=model_catalog_service,
+        secret_service=secret_service,
+        linked_service_repository=linked_service_repository,
+        user_service=user_service,
+    )
     activity_run_service = ActivityRunService(
         repository=activity_run_repository,
         activity_service=activity_service,
         tenant_service=tenant_service,
         id_factory=create_identifier,
         clock=utc_now,
-        model_execution_service=ModelExecutionService(
-            model_catalog_service=model_catalog_service,
-            secret_service=secret_service,
-            linked_service_repository=linked_service_repository,
-        ),
+        model_execution_service=model_execution_service,
         instruction_library_service=execution_instruction_library_service,
+        workspace_service=workspace_service,
+        user_service=user_service,
     )
     worker_service = WorkerService(
         repository=worker_repository,
@@ -304,8 +327,10 @@ async def configure_application(
         worker_service=worker_service,
         linked_service_service=linked_service_service,
         workspace_service=workspace_service,
+        user_service=user_service,
+        model_execution_service=model_execution_service,
     )
-    app.state.model_controller = ModelController(
+    app.state.user_model_controller = UserModelController(
         model_catalog_service=model_catalog_service,
     )
     app.state.catalog_controller = catalog_controller
@@ -315,6 +340,7 @@ async def configure_application(
     app.state.workspace_controller = WorkspaceController(
         service=workspace_service,
     )
+    app.state.user_controller = UserController(service=user_service)
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database

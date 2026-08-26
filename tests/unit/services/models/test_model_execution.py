@@ -10,27 +10,36 @@ import httpx
 import pytest
 
 from src.app.catalogs.models import (
+    CatalogIndex,
     ModelCapability,
     ModelCatalogEntry,
-    ModelDeployment,
     ModelEndpoint,
     ModelLab,
+    ModelOffering,
+    ProviderModelOffering,
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
+from src.app.models.user import UserDocument, UserSettings
 from src.app.services.models import (
     ModelDeploymentUnavailableError,
     ModelExecutionService,
 )
+from tests.factories.models import build_offering, build_provider
 
 
 class FakeModelCatalogService:
     """Return one catalog model for execution-service tests."""
 
-    def __init__(self, model_entry: ModelCatalogEntry) -> None:
+    def __init__(
+        self,
+        model_entry: ModelCatalogEntry,
+        offerings: tuple[ModelOffering, ...],
+    ) -> None:
         """Store the test model returned by require_model."""
 
         self._model_entry = model_entry
+        self._offerings = offerings
 
     def require_model(self, model_id: str) -> ModelCatalogEntry:
         """Return the configured model when its ID matches."""
@@ -38,26 +47,47 @@ class FakeModelCatalogService:
         assert model_id == self._model_entry.id
         return self._model_entry
 
+    def offerings_for_model(
+        self,
+        model_entry: ModelCatalogEntry,
+    ) -> tuple[ModelOffering, ...]:
+        """Return provider-owned offerings for the configured test model."""
+
+        assert model_entry == self._model_entry
+        return self._offerings
+
 
 class FakeLinkedServiceRepository:
-    """Store workspace linked services in memory."""
+    """Store User-owned linked services in memory."""
 
     def __init__(self, linked_services: list[LinkedService]) -> None:
-        """Index linked services by workspace and immutable identifier."""
+        """Index linked services by owner and identifier."""
 
         self._linked_services = {
-            (linked_service.workspace_id, linked_service.id): linked_service
+            (linked_service.user_id, linked_service.id): linked_service
             for linked_service in linked_services
         }
 
-    async def get(
+    async def get_for_user(
         self,
-        workspace_id: str,
+        user_id: str,
         service_id: str,
     ) -> LinkedService | None:
-        """Return one linked service owned by the workspace."""
+        """Return one linked service owned by the User."""
 
-        return self._linked_services.get((workspace_id, service_id))
+        return self._linked_services.get((user_id, service_id))
+
+    async def list_for_user(
+        self,
+        user_id: str,
+    ) -> list[LinkedService]:
+        """Return linked services in the configured stable test order."""
+
+        return [
+            linked_service
+            for (owner_id, _), linked_service in self._linked_services.items()
+            if owner_id == user_id
+        ]
 
 
 class FakeSecretService:
@@ -70,8 +100,28 @@ class FakeSecretService:
         return 'test-key'
 
 
-def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
-    """Build one logical model with the supplied deployment order."""
+class FakeUserService:
+    """Return one User profile with model availability settings."""
+
+    def __init__(self, settings: UserSettings) -> None:
+        """Store the settings returned for model selection."""
+
+        self._settings = settings
+
+    async def get(self, *, user_id: str) -> UserDocument:
+        """Return a profile for the requested User identity."""
+
+        now = datetime(2026, 8, 26, tzinfo=UTC)
+        return UserDocument(
+            id=user_id,
+            created_at=now,
+            updated_at=now,
+            settings=self._settings,
+        )
+
+
+def model() -> ModelCatalogEntry:
+    """Build one provider-neutral logical model."""
 
     return ModelCatalogEntry(
         id='model-1',
@@ -82,7 +132,6 @@ def model(*deployments: ModelDeployment) -> ModelCatalogEntry:
         description='Test model.',
         released_at=date(2026, 1, 1),
         capabilities=frozenset({ModelCapability.TEXT}),
-        deployments=deployments,
     )
 
 
@@ -92,7 +141,7 @@ def linked_service(provider: ProviderId) -> LinkedService:
     now = datetime(2026, 8, 3, tzinfo=UTC)
     return LinkedService(
         id='linked-service-1',
-        workspace_id='workspace-1',
+        user_id='user-1',
         name='Selected provider',
         provider_type=provider.value,
         enabled=True,
@@ -108,30 +157,85 @@ def linked_service(provider: ProviderId) -> LinkedService:
 
 def service(
     *,
-    model_entry: ModelCatalogEntry,
+    offerings: tuple[ProviderModelOffering, ...],
+    provider_id: ProviderId = ProviderId.TOGETHER,
     linked_services: list[LinkedService],
     handler: Any,
+    user_service: FakeUserService | None = None,
 ) -> ModelExecutionService:
     """Build the executor with a transport that captures no real network calls."""
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    model_entry = model()
+    catalog_index = CatalogIndex(
+        models=(model_entry,),
+        providers=(build_provider(
+            *offerings,
+            provider_id=provider_id,
+        ),),
+    )
     return ModelExecutionService(
-        model_catalog_service=FakeModelCatalogService(model_entry),
+        model_catalog_service=FakeModelCatalogService(
+            model_entry,
+            catalog_index.offerings_for_model(model_entry.id),
+        ),
         secret_service=FakeSecretService(),
         linked_service_repository=FakeLinkedServiceRepository(linked_services),
+        user_service=user_service,  # type: ignore[arg-type]
         client=client,
     )
+
+
+@pytest.mark.asyncio
+async def test_select_linked_service_skips_unusable_candidates() -> None:
+    """Selection returns the first enabled configured service offering the model."""
+
+    disabled = linked_service(ProviderId.TOGETHER)
+    usable = linked_service(ProviderId.TOGETHER)
+    disabled = LinkedService(
+        **{**disabled.__dict__, 'id': 'linked-service-disabled', 'enabled': False},
+    )
+    usable = LinkedService(
+        **{**usable.__dict__, 'id': 'linked-service-usable'},
+    )
+
+    selected = await service(
+        offerings=(build_offering(),),
+        linked_services=[disabled, usable],
+        handler=lambda _: httpx.Response(500),
+    ).select_linked_service(
+        user_id='user-1',
+        model_id='model-1',
+    )
+
+    assert selected.id == 'linked-service-usable'
+
+
+@pytest.mark.asyncio
+async def test_select_linked_service_rejects_user_disabled_model() -> None:
+    """Louie selection cannot bypass a User's disabled model policy."""
+
+    executor = service(
+        offerings=(build_offering(),),
+        linked_services=[linked_service(ProviderId.TOGETHER)],
+        handler=lambda _: httpx.Response(500),
+        user_service=FakeUserService(UserSettings(
+            default_model_availability='disabled',
+        )),
+    )
+
+    with pytest.raises(ModelDeploymentUnavailableError, match='disabled by User settings'):
+        await executor.select_linked_service(
+            user_id='user-1',
+            model_id='model-1',
+        )
 
 
 @pytest.mark.asyncio
 async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None:
     """Configured Together deployment uses its catalog model and bearer key."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-    )
+    offering = build_offering()
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert the outgoing OpenAI-compatible chat request."""
@@ -155,11 +259,11 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
         )
 
     result = await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -176,10 +280,7 @@ async def test_executes_chat_completion_for_enabled_catalog_deployment() -> None
 async def test_executes_chat_completion_with_deployment_output_limit() -> None:
     """A catalog deployment overrides the chat completion output default."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
+    offering = build_offering(
         max_output_tokens=8192,
     )
 
@@ -193,11 +294,11 @@ async def test_executes_chat_completion_with_deployment_output_limit() -> None:
         )
 
     await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -208,11 +309,7 @@ async def test_executes_chat_completion_with_deployment_output_limit() -> None:
 async def test_executes_chat_completion_in_json_mode() -> None:
     """JSON mode requests an OpenAI-compatible structured response."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-    )
+    offering = build_offering()
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert the structured-output request option."""
@@ -226,11 +323,11 @@ async def test_executes_chat_completion_in_json_mode() -> None:
         )
 
     result = await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='Return JSON.',
@@ -244,11 +341,7 @@ async def test_executes_chat_completion_in_json_mode() -> None:
 async def test_executes_model_through_selected_linked_service() -> None:
     """Selected linked services define the execution route."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.TOGETHER,
-        provider_model_id='vendor/model-1',
-        endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-    )
+    offering = build_offering()
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Assert execution uses the selected service URL and credential."""
@@ -265,13 +358,13 @@ async def test_executes_model_through_selected_linked_service() -> None:
         )
 
     executor = service(
-        model_entry=model(deployment),
+        offerings=(offering,),
         linked_services=[linked_service(ProviderId.TOGETHER)],
         handler=handler,
     )
 
     result = await executor.execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -285,8 +378,7 @@ async def test_executes_model_through_selected_linked_service() -> None:
 async def test_executes_anthropic_messages_deployment() -> None:
     """Configured Anthropic deployment uses the native messages protocol."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.ANTHROPIC,
+    offering = build_offering(
         provider_model_id='claude-test',
         endpoint=ModelEndpoint.MESSAGES,
     )
@@ -306,11 +398,12 @@ async def test_executes_anthropic_messages_deployment() -> None:
         )
 
     result = await service(
-        model_entry=model(deployment),
+        offerings=(offering,),
+        provider_id=ProviderId.ANTHROPIC,
         linked_services=[linked_service(ProviderId.ANTHROPIC)],
         handler=handler,
     ).execute(
-        workspace_id='workspace-1',
+        user_id='user-1',
         linked_service_id='linked-service-1',
         model_id='model-1',
         prompt='User prompt.',
@@ -325,19 +418,19 @@ async def test_executes_anthropic_messages_deployment() -> None:
 async def test_rejects_model_without_enabled_configured_deployment() -> None:
     """A logical model cannot execute without its selected linked service."""
 
-    deployment = ModelDeployment(
-        provider_id=ProviderId.OPENAI,
+    offering = build_offering(
         provider_model_id='gpt-test',
         endpoint=ModelEndpoint.RESPONSES,
     )
 
     with pytest.raises(ModelDeploymentUnavailableError):
         await service(
-            model_entry=model(deployment),
+            offerings=(offering,),
+            provider_id=ProviderId.OPENAI,
             linked_services=[],
             handler=lambda request: httpx.Response(500),
         ).execute(
-            workspace_id='workspace-1',
+            user_id='user-1',
             linked_service_id='linked-service-1',
             model_id='model-1',
             prompt='User prompt.',

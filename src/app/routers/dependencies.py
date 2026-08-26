@@ -11,12 +11,12 @@ from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
 from src.app.controllers.catalog import CatalogController
 from src.app.controllers.pipeline import PipelineController
-from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.user import UserController, UserModelController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -35,7 +35,14 @@ class RequestContext:
 
 async def get_request_context(
     request: Request,
-    workspace_id: Annotated[
+    request_user_id: Annotated[
+        str | None,
+        Header(
+            alias='X-User-ID',
+            description='Identity acting on the request.',
+        ),
+    ] = None,
+    requested_workspace_id_header: Annotated[
         str | None,
         Header(
             alias="X-Workspace-ID",
@@ -49,7 +56,9 @@ async def get_request_context(
     Authentication middleware must set request.state.user_id.
     """
 
-    user_id = getattr(request.state, "user_id", None)
+    user_id = getattr(request.state, 'user_id', None)
+    if not isinstance(user_id, str) or not user_id.strip():
+        user_id = request_user_id
 
     if not isinstance(user_id, str) or not user_id.strip():
         raise HTTPException(
@@ -62,8 +71,8 @@ async def get_request_context(
 
     normalized_workspace_id = None
 
-    if workspace_id is not None:
-        normalized_workspace_id = workspace_id.strip() or None
+    if requested_workspace_id_header is not None:
+        normalized_workspace_id = requested_workspace_id_header.strip() or None
 
     return RequestContext(
         user_id=user_id.strip(),
@@ -159,15 +168,15 @@ def get_pipeline_controller(
     )
 
 
-def get_model_controller(
+def get_user_model_controller(
     request: Request,
-) -> ModelController:
-    """Return the configured model controller."""
+) -> UserModelController:
+    """Return the configured current-User model controller."""
 
     return _get_controller(
         request,
-        attribute_name="model_controller",
-        expected_type=ModelController,
+        attribute_name="user_model_controller",
+        expected_type=UserModelController,
     )
 
 
@@ -204,6 +213,16 @@ def get_workspace_controller(
         request,
         attribute_name='workspace_controller',
         expected_type=WorkspaceController,
+    )
+
+
+def get_user_controller(request: Request) -> UserController:
+    """Return the configured current-user controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='user_controller',
+        expected_type=UserController,
     )
 
 

@@ -16,7 +16,8 @@ class FakeProviderStateRepository:
     def seed(
         self,
         *,
-        workspace_id: str,
+        workspace_id: str = 'workspace-1',
+        user_id: str = 'user-1',
         state: object,
     ) -> None:
         """Register a service derived from a test provider state."""
@@ -28,7 +29,7 @@ class FakeProviderStateRepository:
 
         self._services[(workspace_id, provider_id)] = LinkedService(
             id=f'{provider_id.value}-service',
-            workspace_id=workspace_id,
+            user_id=user_id,
             name=provider_id.value,
             provider_type=provider_id.value,
             enabled=enabled,
@@ -51,12 +52,15 @@ class FakeProviderStateRepository:
 
         self._services.pop((workspace_id, provider_id), None)
 
-    async def list_for_workspace(self, workspace_id: str) -> list[LinkedService]:
-        """Return all test services for the requested workspace."""
+    async def list_for_user(
+        self,
+        user_id: str,
+    ) -> list[LinkedService]:
+        """Return test services owned by the requested User."""
 
-        self.calls.append(workspace_id)
+        self.calls.append(user_id)
         return [
             service
             for (service_workspace_id, _), service in self._services.items()
-            if service_workspace_id == workspace_id
+            if service.user_id == user_id
         ]

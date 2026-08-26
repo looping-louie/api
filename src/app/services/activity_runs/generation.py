@@ -66,7 +66,6 @@ class ActivityRunGenerationService:
         self,
         *,
         loop_snapshot: Mapping[str, object],
-        workspace_id: str,
         user_id: str,
         requested_workspace_id: str | None,
         input_text: str,
@@ -81,7 +80,6 @@ class ActivityRunGenerationService:
         if loop_snapshot.get('flow') == 'roundtable':
             return await self._generate_roundtable_context(
                 loop_snapshot=loop_snapshot,
-                workspace_id=workspace_id,
                 input_text=input_text,
                 context=context,
                 instruction_library=instruction_library,
@@ -89,7 +87,6 @@ class ActivityRunGenerationService:
         generators = self._agents_for_role(loop_snapshot, 'generator')
         require_commit_message = loop_snapshot.get('commit_mode') != 'forbid'
         return await self._generate_operation_context(
-            workspace_id=workspace_id,
             agent=generators[0],
             prompt=self._agent_prompt(
                 agent=generators[0],
@@ -109,7 +106,6 @@ class ActivityRunGenerationService:
         self,
         *,
         loop_snapshot: Mapping[str, object],
-        workspace_id: str,
         input_text: str,
         context: dict[str, object],
         instruction_library: ExecutionInstructionLibrary | None,
@@ -130,7 +126,6 @@ class ActivityRunGenerationService:
         )
         proposals = [
             await self._execute_agent(
-                workspace_id,
                 agent,
                 self._agent_prompt(
                     agent=agent,
@@ -151,7 +146,6 @@ class ActivityRunGenerationService:
             f'\n\nGenerator proposals:\n{json.dumps(proposals)}'
         )
         return await self._generate_operation_context(
-            workspace_id=workspace_id,
             agent=aggregators[0],
             prompt=self._agent_prompt(
                 agent=aggregators[0],
@@ -165,7 +159,6 @@ class ActivityRunGenerationService:
     async def _generate_operation_context(
         self,
         *,
-        workspace_id: str,
         agent: Mapping[str, object],
         prompt: str,
         context: dict[str, object],
@@ -176,7 +169,6 @@ class ActivityRunGenerationService:
         retry_prompt = prompt
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             generated = await self._execute_agent(
-                workspace_id,
                 agent,
                 retry_prompt,
             )
@@ -206,7 +198,6 @@ class ActivityRunGenerationService:
         self,
         *,
         loop_snapshot: Mapping[str, object],
-        workspace_id: str,
         input_text: str,
         context: Mapping[str, object],
         final_diff: str,
@@ -235,7 +226,6 @@ class ActivityRunGenerationService:
         reviews: list[dict[str, object]] = []
         for reviewer in reviewers:
             review = await self._execute_agent(
-                workspace_id,
                 reviewer,
                 review_prompt,
             )
@@ -329,7 +319,6 @@ class ActivityRunGenerationService:
 
     async def _execute_agent(
         self,
-        workspace_id: str,
         agent: Mapping[str, object],
         prompt: str,
     ) -> dict[str, object]:
@@ -339,11 +328,19 @@ class ActivityRunGenerationService:
         target = agent.get('model_target')
         if isinstance(target, Mapping):
             linked_service_id = target.get('linked_service_id')
+            linked_service_user_id = target.get('linked_service_user_id')
             target_model_id = target.get('model_id')
-            if not isinstance(linked_service_id, str) or not isinstance(target_model_id, str):
+            if (
+                not isinstance(linked_service_id, str)
+                or not isinstance(linked_service_user_id, str)
+                or not isinstance(target_model_id, str)
+            ):
                 raise ActivityRunValidationError(
                     field_name='agents',
-                    message='model_target must contain a linked service and model ID.',
+                    message=(
+                        'model_target must contain a linked service, its User, '
+                        'and model ID.'
+                    ),
                 )
         else:
             raise ActivityRunValidationError(
@@ -354,7 +351,7 @@ class ActivityRunGenerationService:
         for attempt in range(MAX_JSON_RESPONSE_ATTEMPTS):
             try:
                 result = await self._model_execution_service.execute(
-                    workspace_id=workspace_id,
+                    user_id=linked_service_user_id,
                     linked_service_id=linked_service_id,
                     model_id=target_model_id,
                     prompt=retry_prompt,

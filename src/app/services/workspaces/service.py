@@ -1,20 +1,18 @@
-"""Application service for workspace execution defaults."""
-
-from __future__ import annotations
+"""Application service for workspaces."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 
-from src.app.models.execution import ModelTarget
-from src.app.models.workspace import WorkspaceDefaults
-from src.app.models.pipeline import PipelineHarness
+from src.app.models.workspace import WorkspaceDocument
 from src.app.repositories.workspaces import WorkspaceRepository
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
 
 
 class WorkspaceService:
-    """Read and replace optional defaults for one workspace."""
+    """Manage User-owned Workspaces."""
 
     def __init__(
         self,
@@ -22,6 +20,8 @@ class WorkspaceService:
         repository: WorkspaceRepository,
         tenant_service: TenantService,
         linked_service_service: LinkedServiceService,
+        user_service: UserService,
+        id_factory: Callable[[], str],
         clock: Callable[[], datetime],
     ) -> None:
         """Store workspace resolution, validation, persistence, and clock."""
@@ -29,69 +29,67 @@ class WorkspaceService:
         self._repository = repository
         self._tenant_service = tenant_service
         self._linked_service_service = linked_service_service
+        self._user_service = user_service
+        self._id_factory = id_factory
         self._clock = clock
 
-    async def get_defaults(
+    async def create(
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
-    ) -> WorkspaceDefaults:
-        """Return configured or fully inherited defaults for one workspace."""
+        name: str,
+    ) -> WorkspaceDocument:
+        """Create a workspace owned by an existing user."""
 
-        workspace_id = await self._workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+        await self._user_service.get(user_id=user_id)
+        now = self._clock()
+        return await self._repository.create(
+            workspace=WorkspaceDocument(
+                id=self._id_factory(),
+                name=name,
+                created_at=now,
+                updated_at=now,
+            ),
+            owner_id=user_id,
         )
-        defaults = await self._repository.get(workspace_id=workspace_id)
-        if defaults is not None:
-            return defaults
-        return WorkspaceDefaults(
+
+    async def list_for_user(self, *, user_id: str) -> list[WorkspaceDocument]:
+        """Return workspaces accessible to an existing user."""
+
+        await self._user_service.get(user_id=user_id)
+        return await self._repository.list_for_user(user_id=user_id)
+
+    async def describe(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+    ) -> WorkspaceDocument:
+        """Return one Workspace accessible to the requesting User."""
+
+        await self._tenant_service.require_access(
+            user_id=user_id,
             workspace_id=workspace_id,
-            model_target=None,
-            harness=None,
-            updated_at=self._clock(),
         )
+        return await self._repository.get_workspace(workspace_id=workspace_id)
 
-    async def replace_defaults(
+    async def update(
         self,
         *,
         user_id: str,
-        model_target: ModelTarget | None,
-        harness: PipelineHarness | None,
-        requested_workspace_id: str | None = None,
-    ) -> WorkspaceDefaults:
-        """Replace all workspace overrides after validating model routing."""
+        workspace_id: str,
+        name: str,
+    ) -> WorkspaceDocument:
+        """Update the mutable metadata for one accessible Workspace."""
 
-        workspace_id = await self._workspace_id(
+        current = await self.describe(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            workspace_id=workspace_id,
         )
-        if model_target is not None:
-            await self._linked_service_service.require_available_selection(
-                workspace_id=workspace_id,
-                service_id=model_target.linked_service_id,
-                model_id=model_target.model_id,
-            )
-        return await self._repository.replace(
-            defaults=WorkspaceDefaults(
-                workspace_id=workspace_id,
-                model_target=model_target,
-                harness=harness,
+        return await self._repository.update_workspace(
+            workspace=replace(
+                current,
+                name=name,
                 updated_at=self._clock(),
             ),
         )
-
-    async def _workspace_id(
-        self,
-        *,
-        user_id: str,
-        requested_workspace_id: str | None,
-    ) -> str:
-        """Resolve the workspace selected for this configuration operation."""
-
-        tenant = await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-        return tenant.workspace_id

@@ -39,7 +39,7 @@ class SqlitePipelineRepository:
     async def list(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         offset: int,
         limit: int,
         status: PipelineStatus | None,
@@ -48,7 +48,7 @@ class SqlitePipelineRepository:
         """Return one filtered page with active pipelines ordered first."""
 
         where, parameters = list_filter(
-            workspace_id=workspace_id,
+            user_id=user_id,
             status=status,
             search=search,
         )
@@ -84,7 +84,7 @@ class SqlitePipelineRepository:
     async def get(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDocument | None:
         """Return one pipeline with its ordered steps."""
@@ -92,7 +92,7 @@ class SqlitePipelineRepository:
         async with self._connect() as connection:
             row = await self._get_row(
                 connection,
-                workspace_id,
+                user_id,
                 pipeline_id,
             )
             if row is None:
@@ -102,7 +102,7 @@ class SqlitePipelineRepository:
     async def get_with_activities(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDetails | None:
         """Return one pipeline with Activity documents in step order."""
@@ -110,7 +110,7 @@ class SqlitePipelineRepository:
         async with self._connect() as connection:
             row = await self._get_row(
                 connection,
-                workspace_id,
+                user_id,
                 pipeline_id,
             )
             if row is None:
@@ -121,13 +121,11 @@ class SqlitePipelineRepository:
                 SELECT activities.*
                 FROM pipeline_steps
                 JOIN activities
-                    ON activities.workspace_id = pipeline_steps.workspace_id
-                    AND activities.id = pipeline_steps.activity_id
-                WHERE pipeline_steps.workspace_id = ?
-                    AND pipeline_steps.pipeline_id = ?
+                    ON activities.id = pipeline_steps.activity_id
+                WHERE pipeline_steps.pipeline_id = ?
                 ORDER BY pipeline_steps.position ASC
                 """,
-                (workspace_id, pipeline_id),
+                (pipeline_id,),
             )
             try:
                 activity_rows = await cursor.fetchall()
@@ -203,9 +201,9 @@ class SqlitePipelineRepository:
                 await connection.execute(
                     """
                     DELETE FROM pipeline_steps
-                    WHERE workspace_id = ? AND pipeline_id = ?
+                    WHERE pipeline_id = ?
                     """,
-                    (document.workspace_id, document.id),
+                    (document.id,),
                 )
                 await insert_steps(connection, document)
                 await insert_changelog(connection, changelog_entry)
@@ -240,9 +238,9 @@ class SqlitePipelineRepository:
                 await connection.execute(
                     """
                     DELETE FROM pipeline_steps
-                    WHERE workspace_id = ? AND pipeline_id = ?
+                    WHERE pipeline_id = ?
                     """,
-                    (document.workspace_id, document.id),
+                    (document.id,),
                 )
                 await insert_steps(connection, document)
                 await insert_changelog(connection, changelog_entry)
@@ -277,7 +275,7 @@ class SqlitePipelineRepository:
     async def list_changelog(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
         offset: int,
         limit: int,
@@ -289,9 +287,9 @@ class SqlitePipelineRepository:
                 """
                 SELECT COUNT(*) AS total
                 FROM pipeline_changelog_entries
-                WHERE workspace_id = ? AND pipeline_id = ?
+                WHERE user_id = ? AND pipeline_id = ?
                 """,
-                (workspace_id, pipeline_id),
+                (user_id, pipeline_id),
             )
             try:
                 count_row = await count_cursor.fetchone()
@@ -303,11 +301,11 @@ class SqlitePipelineRepository:
                 """
                 SELECT *
                 FROM pipeline_changelog_entries
-                WHERE workspace_id = ? AND pipeline_id = ?
+                WHERE user_id = ? AND pipeline_id = ?
                 ORDER BY changed_at DESC, rowid DESC
                 LIMIT ? OFFSET ?
                 """,
-                (workspace_id, pipeline_id, limit, offset),
+                (user_id, pipeline_id, limit, offset),
             )
             try:
                 rows = await cursor.fetchall()
@@ -325,19 +323,16 @@ class SqlitePipelineRepository:
         cursor = await connection.execute(
             """
             UPDATE pipelines
-            SET name = ?, description = ?, status = ?, model_target_json = ?,
+            SET name = ?, description = ?, status = ?, model_id = ?,
                 harness_json = ?,
                 updated_at = ?, updated_by = ?
-            WHERE workspace_id = ? AND id = ?
+            WHERE user_id = ? AND id = ?
             """,
             (
                 document.name,
                 document.description,
                 document.status,
-                json.dumps({
-                    'linked_service_id': document.model_target.linked_service_id,
-                    'model_id': document.model_target.model_id,
-                }) if document.model_target is not None else None,
+                document.model_id,
                 json.dumps({
                     'kind': document.harness.kind,
                     'version': document.harness.version,
@@ -345,7 +340,7 @@ class SqlitePipelineRepository:
                 }) if document.harness is not None else None,
                 document.updated_at.isoformat(),
                 document.updated_by,
-                document.workspace_id,
+                document.user_id,
                 document.id,
             ),
         )
@@ -357,14 +352,14 @@ class SqlitePipelineRepository:
     @staticmethod
     async def _get_row(
         connection: aiosqlite.Connection,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> aiosqlite.Row | None:
         """Return one scalar pipeline row."""
 
         cursor = await connection.execute(
-            "SELECT * FROM pipelines WHERE workspace_id = ? AND id = ?",
-            (workspace_id, pipeline_id),
+            'SELECT * FROM pipelines WHERE user_id = ? AND id = ?',
+            (user_id, pipeline_id),
         )
         try:
             return await cursor.fetchone()
@@ -383,22 +378,20 @@ class SqlitePipelineRepository:
             raise ValueError("Activity documents and changelog entries must align.")
         for document, entry in zip(documents, entries, strict=True):
             await connection.execute(
-                "INSERT INTO activities (id, workspace_id, name, description, "
-                "status, activity_type, config_json, model_target_json, "
+                "INSERT INTO activities (id, user_id, workspace_id, name, description, "
+                "status, activity_type, config_json, model_id, "
                 "harness_json, created_at, created_by, updated_at, updated_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     document.id,
-                    document.workspace_id,
+                    document.user_id,
+                    None,
                     document.name,
                     document.description,
                     document.status,
                     document.type,
                     json.dumps(document.config),
-                    json.dumps({
-                        'linked_service_id': document.model_target.linked_service_id,
-                        'model_id': document.model_target.model_id,
-                    }) if document.model_target is not None else None,
+                    document.model_id,
                     json.dumps({
                         'kind': document.harness.kind,
                         'version': document.harness.version,
@@ -411,11 +404,12 @@ class SqlitePipelineRepository:
                 ),
             )
             await connection.execute(
-                "INSERT INTO activity_changelog_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO activity_changelog_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     entry.id,
                     entry.activity_id,
-                    entry.workspace_id,
+                    entry.user_id,
+                    None,
                     entry.change_type,
                     entry.actor_id,
                     entry.changed_at.isoformat(),
@@ -430,7 +424,7 @@ class SqlitePipelineRepository:
 
         return ActivityDocument(
             id=str(row['id']),
-            workspace_id=str(row['workspace_id']),
+            user_id=str(row['user_id']),
             name=str(row['name']),
             description=str(row['description']),
             status=row['status'],

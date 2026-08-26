@@ -9,20 +9,6 @@ from pydantic import Field, model_validator
 from .shared import NonEmptyString, RequestSchema, ResponseSchema
 
 
-class ModelTargetRequest(RequestSchema):
-    """One explicit provider connection and logical model selection."""
-
-    linked_service_id: NonEmptyString
-    model_id: NonEmptyString
-
-
-class ModelTargetResponse(ResponseSchema):
-    """One effective provider connection and logical model selection."""
-
-    linked_service_id: str
-    model_id: str
-
-
 class HarnessRequest(RequestSchema):
     """One supported local execution mechanism."""
 

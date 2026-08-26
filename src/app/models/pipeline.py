@@ -8,7 +8,6 @@ from typing import Literal, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.changelog import JsonObject
-from src.app.models.execution import ModelTarget
 
 
 PipelineStatus = Literal["active", "disabled", "archived"]
@@ -42,7 +41,7 @@ class PipelineStepDependency:
 
 @dataclass(frozen=True, slots=True)
 class PipelineActivityStep:
-    """Reference to one active workspace activity."""
+    """Reference to one active User-owned Activity."""
 
     activity_id: str
     depends_on: tuple[PipelineStepDependency, ...] = ()
@@ -53,10 +52,9 @@ PipelineStep = PipelineActivityStep
 
 @dataclass(frozen=True, slots=True)
 class PipelineDocument:
-    """Complete workspace-scoped pipeline definition."""
+    """Complete User-owned pipeline definition."""
 
     id: str
-    workspace_id: str
     name: str
     description: str
     status: PipelineStatus
@@ -65,8 +63,15 @@ class PipelineDocument:
     created_by: str
     updated_at: datetime
     updated_by: str
-    model_target: ModelTarget | None = None
+    user_id: str = ''
+    model_id: str | None = None
     harness: PipelineHarness | None = None
+
+    def __post_init__(self) -> None:
+        """Use the creator for legacy in-memory fixture ownership."""
+
+        if not self.user_id:
+            object.__setattr__(self, 'user_id', self.created_by)
 
     @property
     def enabled(self) -> bool:
@@ -89,9 +94,15 @@ class PipelineChangelogEntry:
 
     id: str
     pipeline_id: str
-    workspace_id: str
     change_type: PipelineChangeType
     actor_id: str
     changed_at: datetime
     diff: JsonObject | None
     content: JsonObject | None
+    user_id: str = ''
+
+    def __post_init__(self) -> None:
+        """Use the actor for legacy in-memory fixture ownership."""
+
+        if not self.user_id:
+            object.__setattr__(self, 'user_id', self.actor_id)

@@ -53,11 +53,11 @@ async def test_finds_pipeline_usage_of_activity(
 
 
 @pytest.mark.asyncio
-async def test_finds_linked_service_usage_in_execution_model_targets(
+async def test_does_not_block_linked_service_deletion_for_definition_models(
     sqlite_database_path: Path,
     create_workspace: WorkspaceFactory,
 ) -> None:
-    """Linked services remain protected by every persisted model-target scope."""
+    """Logical model definitions do not retain linked-service dependencies."""
 
     await create_workspace(workspace_id="workspace-1")
     await seed_activities(sqlite_database_path)
@@ -74,14 +74,6 @@ async def test_finds_linked_service_usage_in_execution_model_targets(
     )
 
     async with aiosqlite.connect(sqlite_database_path) as connection:
-        await connection.execute(
-            """
-            INSERT INTO workspace_execution_defaults (
-                workspace_id, model_target_json, harness_json, updated_at
-            ) VALUES (?, ?, NULL, ?)
-            """,
-            ("workspace-1", target, "2026-08-25T00:00:00+00:00"),
-        )
         await connection.execute(
             "UPDATE pipelines SET model_target_json = ? WHERE id = ?",
             (target, "pipeline-1"),
@@ -103,9 +95,4 @@ async def test_finds_linked_service_usage_in_execution_model_targets(
         target=ResourceReference("linked_service", "linked-service-1"),
     )
 
-    assert {(usage.source, usage.relation) for usage in usages} == {
-        (ResourceReference("workspace", "workspace-1"), "model_target"),
-        (ResourceReference("pipeline", "pipeline-1"), "model_target"),
-        (ResourceReference("activity", "activity-1"), "model_target"),
-        (ResourceReference("activity", "activity-1"), "agent_model_target"),
-    }
+    assert usages == []

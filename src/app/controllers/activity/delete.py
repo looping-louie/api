@@ -12,13 +12,11 @@ class ActivityDeleteController:
         *,
         user_id: str,
         activity_id: str,
-        requested_workspace_id: str | None = None,
     ) -> DeleteResponse:
         """Delete one activity."""
         await self._activity_service.delete(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         return DeleteResponse()
 

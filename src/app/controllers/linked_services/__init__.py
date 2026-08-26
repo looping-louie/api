@@ -16,32 +16,27 @@ class LinkedServiceController:
         """Store the linked-service application service."""
         self._linked_service_service = linked_service_service
 
-    async def list(self, *, user_id: str, requested_workspace_id: str | None = None) -> list[LinkedServiceResponse]:
-        """List linked services in the selected workspace."""
-        linked_services = await self._linked_service_service.list(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
-        )
+    async def list(self, *, user_id: str) -> list[LinkedServiceResponse]:
+        """List linked services owned by the current user."""
+        linked_services = await self._linked_service_service.list(user_id=user_id)
         return [self._response(linked_service) for linked_service in linked_services]
 
-    async def get(self, *, user_id: str, service_id: str, requested_workspace_id: str | None = None) -> LinkedServiceResponse:
-        """Get one linked service in the selected workspace."""
-        linked_service = await self._linked_service_service.get(
-            user_id=user_id, service_id=service_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+    async def get(self, *, user_id: str, service_id: str) -> LinkedServiceResponse:
+        """Get one linked service owned by the current user."""
+        linked_service = await self._linked_service_service.get(user_id=user_id, service_id=service_id)
         return self._response(linked_service)
 
-    async def create(self, *, user_id: str, payload: LinkedServiceCreateRequest, requested_workspace_id: str | None = None) -> LinkedServiceResponse:
-        """Create one linked service in the selected workspace."""
+    async def create(self, *, user_id: str, payload: LinkedServiceCreateRequest) -> LinkedServiceResponse:
+        """Create one linked service for the current user."""
         linked_service = await self._linked_service_service.create(
             user_id=user_id, name=payload.name,
             provider_type=payload.provider_type.value,
             api_key=payload.config.api_key, base_url=payload.config.base_url,
-            enabled=payload.enabled, requested_workspace_id=requested_workspace_id,
+            enabled=payload.enabled,
         )
         return self._response(linked_service)
 
-    async def patch(self, *, user_id: str, service_id: str, payload: LinkedServicePatchRequest, requested_workspace_id: str | None = None) -> LinkedServiceResponse:
+    async def patch(self, *, user_id: str, service_id: str, payload: LinkedServicePatchRequest) -> LinkedServiceResponse:
         """Patch mutable fields of one linked service."""
         config = payload.config
         supplied_config_fields = config.model_fields_set if config is not None else set()
@@ -51,16 +46,13 @@ class LinkedServiceController:
             api_key_supplied='api_key' in supplied_config_fields,
             base_url=config.base_url if config is not None else None,
             base_url_supplied='base_url' in supplied_config_fields,
-            enabled=payload.enabled, requested_workspace_id=requested_workspace_id,
+            enabled=payload.enabled,
         )
         return self._response(linked_service)
 
-    async def delete(self, *, user_id: str, service_id: str, requested_workspace_id: str | None = None) -> None:
-        """Delete one linked service from the selected workspace."""
-        await self._linked_service_service.delete(
-            user_id=user_id, service_id=service_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+    async def delete(self, *, user_id: str, service_id: str) -> None:
+        """Delete one linked service owned by the current user."""
+        await self._linked_service_service.delete(user_id=user_id, service_id=service_id)
 
     def _response(self, linked_service: LinkedService) -> LinkedServiceResponse:
         """Build a safe response with catalog-derived model availability."""

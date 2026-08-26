@@ -1,13 +1,13 @@
 # Linked Services
 
-Linked Services are workspace-owned, independently named provider connections.
+Linked Services are User-owned, independently named provider connections.
 Several services can use the same curated provider type.
 
 ## Linked service calls
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `GET` | `/api/v1/linked-services` | Lists workspace linked services. |
+| `GET` | `/api/v1/linked-services` | Lists User-owned linked services. |
 | `POST` | `/api/v1/linked-services` | Creates and tests a linked service. |
 | `GET` | `/api/v1/linked-services/{service_id}` | Describes one linked service. |
 | `PATCH` | `/api/v1/linked-services/{service_id}` | Updates mutable settings. |
@@ -21,12 +21,13 @@ models are never stored in the linked-services table.
 
 ## List linked services
 
-`GET /api/v1/linked-services` returns every linked service in the selected
-workspace as a JSON array.
+`GET /api/v1/linked-services` returns every linked service owned by the User
+identified by `X-User-ID` as a JSON array. Linked Service routes ignore
+`X-Workspace-ID`.
 
 ```http
 GET /api/v1/linked-services
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -42,7 +43,9 @@ Example response (`200 OK`):
       "base_url": "https://api.openai.com/v1",
       "key_trimmed": "sk-...abcd",
       "configured": true,
-      "available_models": ["gpt-5"]
+      "available_models": [
+        "gpt-5"
+      ]
     },
     "version": 1,
     "created_at": "2026-08-13T10:00:00Z",
@@ -56,11 +59,11 @@ Example response (`200 OK`):
 `POST /api/v1/linked-services` creates a named service and tests its candidate
 configuration before it is stored. `enabled` defaults to `true`. A provider
 that requires credentials must receive a usable `config.api_key` before it can
-be enabled.
+be enabled. The service belongs to the User identified by `X-User-ID`.
 
 ```http
 POST /api/v1/linked-services
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 Content-Type: application/json
 ```
 
@@ -88,7 +91,9 @@ Example response (`201 Created`):
     "base_url": "https://api.openai.com/v1",
     "key_trimmed": "sk-...abcd",
     "configured": true,
-    "available_models": ["gpt-5"]
+    "available_models": [
+      "gpt-5"
+    ]
   },
   "version": 1,
   "created_at": "2026-08-13T10:00:00Z",
@@ -98,17 +103,17 @@ Example response (`201 Created`):
 
 ## Describe a linked service
 
-`GET /api/v1/linked-services/{service_id}` returns one service in the selected
-workspace. The response has the same shape as a list item and never includes
+`GET /api/v1/linked-services/{service_id}` returns one service owned by the
+identified User. The response has the same shape as a list item and never includes
 the full API key.
 
 ```http
 GET /api/v1/linked-services/linked-service-openai-primary
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 ```
 
-The endpoint returns `404 linked_service_not_found` when the selected workspace
-does not own `service_id`.
+The endpoint returns `404 linked_service_not_found` when the User does not own
+`service_id`.
 
 ## Update a linked service
 
@@ -120,7 +125,7 @@ service validate and test the candidate connection before storage.
 
 ```http
 PATCH /api/v1/linked-services/linked-service-openai-primary
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 Content-Type: application/json
 ```
 
@@ -136,11 +141,11 @@ request returns `422`.
 ## Delete a linked service
 
 `DELETE /api/v1/linked-services/{service_id}` removes a service that is not
-referenced by another workspace resource.
+referenced by another User-owned resource.
 
 ```http
 DELETE /api/v1/linked-services/linked-service-openai-primary
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -151,6 +156,6 @@ Example response (`200 OK`):
 }
 ```
 
-The endpoint returns `409 resource_in_use` while a Persona or another resource
-still references the service, and `404 linked_service_not_found` when
-the service does not exist in the selected workspace.
+The endpoint returns `409 resource_in_use` while another User-owned resource
+still references the service, and `404 linked_service_not_found` when the
+service does not exist for the identified User.

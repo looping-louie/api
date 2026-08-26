@@ -24,7 +24,6 @@ from src.app.services.shared.reference_resolver import (
     ResourceNotFoundError,
     ResourceReference,
 )
-from src.app.services.shared.changelog import build_changelog_metadata
 from src.app.services.shared.pagination import require_offset
 
 
@@ -40,14 +39,14 @@ async def validate_activity_references(
     unresolved: list[ResourceReference] = []
     for activity_id in activity_ids:
         activity = await activity_repository.get(
-            workspace_id=document.workspace_id,
+            user_id=document.user_id,
             activity_id=activity_id,
         )
         if activity is None or activity.status != "active":
             unresolved.append(ResourceReference("activity", activity_id))
     if unresolved:
         raise ResourceNotFoundError(
-            workspace_id=document.workspace_id,
+            workspace_id=document.user_id,
             references=unresolved,
         )
 
@@ -55,14 +54,14 @@ async def validate_activity_references(
 async def require_pipeline(
     repository: PipelineRepository,
     *,
-    workspace_id: str,
+    user_id: str,
     pipeline_id: str,
 ) -> PipelineDocument:
     """Load one pipeline or raise its stable not-found error."""
 
     normalized_id = require_text(pipeline_id, "pipeline_id")
     document = await repository.get(
-        workspace_id=workspace_id,
+        user_id=user_id,
         pipeline_id=normalized_id,
     )
     if document is None:
@@ -82,23 +81,15 @@ def build_entry(
 ) -> PipelineChangelogEntry:
     """Build one generated pipeline changelog entry."""
 
-    metadata = build_changelog_metadata(
-        entry_id=id_factory(),
-        workspace_id=document.workspace_id,
+    return PipelineChangelogEntry(
+        id=id_factory(),
+        pipeline_id=document.id,
+        user_id=document.user_id,
+        change_type=entry_change_type,  # type: ignore[arg-type]
         actor_id=actor_id,
         changed_at=changed_at,
         diff=diff,
         content=content,
-    )
-    return PipelineChangelogEntry(
-        id=metadata.id,
-        pipeline_id=document.id,
-        workspace_id=metadata.workspace_id,
-        change_type=entry_change_type,  # type: ignore[arg-type]
-        actor_id=metadata.actor_id,
-        changed_at=metadata.changed_at,
-        diff=metadata.diff,
-        content=metadata.content,
     )
 
 

@@ -50,7 +50,11 @@ class SqliteValidationRepository:
 
         table_name, type_column = location
         name_key = normalized_name
-        workspace_column = "owner_workspace_id"
+        workspace_column = (
+            'owner_user_id'
+            if resource_type == 'skill'
+            else 'owner_workspace_id'
+        )
         origin_clause = "AND origin = 'custom'"
 
         query = f"""

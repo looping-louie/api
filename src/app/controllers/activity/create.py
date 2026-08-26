@@ -1,7 +1,6 @@
 """Controller for creating activity definitions."""
 
 from src.app.schemas.activity import ActivityCreateRequest, ActivityResponse
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineHarness
 from src.app.services.activities.service import ActivityService
 
@@ -14,7 +13,6 @@ class ActivityCreateController:
         *,
         user_id: str,
         payload: ActivityCreateRequest,
-        requested_workspace_id: str | None = None,
     ) -> ActivityResponse:
         """Create one activity."""
         document = await self._activity_service.create(
@@ -23,14 +21,7 @@ class ActivityCreateController:
             description=payload.description,
             activity_type=payload.type,
             config=payload.config.model_dump(by_alias=True),
-            model_target=(
-                ModelTarget(
-                    linked_service_id=payload.model_target.linked_service_id,
-                    model_id=payload.model_target.model_id,
-                )
-                if payload.model_target is not None
-                else None
-            ),
+            model_id=payload.model_id,
             harness=(
                 PipelineHarness(
                     kind=payload.harness.kind,
@@ -40,7 +31,6 @@ class ActivityCreateController:
                 if payload.harness is not None
                 else None
             ),
-            requested_workspace_id=requested_workspace_id,
         )
         return ActivityResponse.model_validate(document)
 

@@ -10,14 +10,15 @@ import httpx
 
 from src.app.catalogs.models import (
     ModelCatalogEntry,
-    ModelDeployment,
     ModelEndpoint,
+    ModelOffering,
 )
 from src.app.catalogs.providers import ProviderId
 from src.app.models.linked_service import LinkedService
 from src.app.repositories.linked_services import LinkedServiceRepository
 from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.providers.secret import SecretService
+from src.app.services.users import UserService
 
 
 class ModelExecutionError(RuntimeError):
@@ -49,7 +50,7 @@ class ModelExecutionResult:
 
 
 class ModelExecutionService:
-    """Execute logical model IDs through enabled workspace deployments."""
+    """Execute logical model IDs through enabled User-owned deployments."""
 
     def __init__(
         self,
@@ -57,6 +58,7 @@ class ModelExecutionService:
         model_catalog_service: ModelCatalogService,
         secret_service: SecretService,
         linked_service_repository: LinkedServiceRepository,
+        user_service: UserService | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         """Store catalog, linked-service, secret, and HTTP dependencies."""
@@ -64,12 +66,13 @@ class ModelExecutionService:
         self._model_catalog_service = model_catalog_service
         self._secret_service = secret_service
         self._linked_service_repository = linked_service_repository
+        self._user_service = user_service
         self._client = client
 
     async def execute(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         linked_service_id: str,
         model_id: str,
         prompt: str,
@@ -79,7 +82,7 @@ class ModelExecutionService:
         """Invoke one logical model through its selected linked service."""
 
         linked_service = await self._require_linked_service(
-            workspace_id=workspace_id,
+            user_id=user_id,
             linked_service_id=linked_service_id,
         )
         model = self._model_catalog_service.require_model(model_id)
@@ -109,16 +112,57 @@ class ModelExecutionService:
             duration_ms=round((perf_counter() - start) * 1000),
         )
 
+    async def select_linked_service(
+        self,
+        *,
+        user_id: str,
+        model_id: str,
+    ) -> LinkedService:
+        """Select the first usable User-owned service for a logical model."""
+
+        if not await self._model_enabled(user_id=user_id, model_id=model_id):
+            raise ModelDeploymentUnavailableError(
+                f"Model '{model_id}' is disabled by User settings."
+            )
+        model = self._model_catalog_service.require_model(model_id)
+        provider_ids = {
+            offering.provider_id.value
+            for offering in self._model_catalog_service.offerings_for_model(model)
+        }
+        for linked_service in (
+            await self._linked_service_repository.list_for_user(user_id)
+        ):
+            if (
+                linked_service.enabled
+                and linked_service.base_url is not None
+                and linked_service.provider_type in provider_ids
+            ):
+                return linked_service
+        raise ModelDeploymentUnavailableError(
+            f"Model '{model_id}' has no usable linked service."
+        )
+
+    async def _model_enabled(self, *, user_id: str, model_id: str) -> bool:
+        """Return whether User policy permits a logical model selection."""
+
+        if self._user_service is None:
+            return True
+        settings = (await self._user_service.get(user_id=user_id)).settings
+        for configured_model in settings.configured_models:
+            if configured_model.id == model_id:
+                return configured_model.status == 'enabled'
+        return settings.default_model_availability == 'enabled'
+
     async def _require_linked_service(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         linked_service_id: str,
     ) -> LinkedService:
-        """Return an enabled configured linked service in the workspace."""
+        """Return an enabled configured linked service owned by the User."""
 
-        linked_service = await self._linked_service_repository.get(
-            workspace_id,
+        linked_service = await self._linked_service_repository.get_for_user(
+            user_id,
             linked_service_id,
         )
         if (
@@ -131,17 +175,17 @@ class ModelExecutionService:
             )
         return linked_service
 
-    @staticmethod
     def _deployment_for_linked_service(
+        self,
         *,
         model: ModelCatalogEntry,
         linked_service: LinkedService,
-    ) -> ModelDeployment:
-        """Return the selected service provider's deployment for a model."""
+    ) -> ModelOffering:
+        """Return the selected service provider's offering for a model."""
 
-        for deployment in model.deployments:
-            if deployment.provider_id.value == linked_service.provider_type:
-                return deployment
+        for offering in self._model_catalog_service.offerings_for_model(model):
+            if offering.provider_id.value == linked_service.provider_type:
+                return offering
         raise ModelDeploymentUnavailableError(
             f"Model '{model.id}' is unavailable through linked service "
             f"'{linked_service.id}'."
@@ -157,7 +201,7 @@ class ModelExecutionService:
     async def _post_completion(
         self,
         *,
-        deployment: ModelDeployment,
+        deployment: ModelOffering,
         linked_service: LinkedService,
         api_key: str | None,
         prompt: str,
@@ -184,7 +228,7 @@ class ModelExecutionService:
     def _request_parts(
         self,
         *,
-        deployment: ModelDeployment,
+        deployment: ModelOffering,
         linked_service: LinkedService,
         api_key: str | None,
         prompt: str,
@@ -293,7 +337,7 @@ class ModelExecutionService:
     def _to_result(
         *,
         response: Mapping[str, object],
-        deployment: ModelDeployment,
+        deployment: ModelOffering,
         model_id: str,
         duration_ms: int,
     ) -> ModelExecutionResult:

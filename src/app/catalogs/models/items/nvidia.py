@@ -2,12 +2,9 @@
 
 from datetime import date
 
-from ...providers import ProviderId
 from .helpers import TEXT
 from ..types import (
     ModelCatalogEntry,
-    ModelDeployment,
-    ModelEndpoint,
     ModelLab,
 )
 
@@ -26,14 +23,6 @@ NVIDIA_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         ),
         released_at=date(2026, 7, 15),
         capabilities=TEXT,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.NVIDIA,
-                provider_model_id="thinkingmachines/inkling",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                max_output_tokens=8_192,
-            ),
-        ),
     ),
     ModelCatalogEntry(
         id="mistral-medium-3.5-128b",
@@ -48,14 +37,6 @@ NVIDIA_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         ),
         released_at=date(2026, 4, 29),
         capabilities=TEXT,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.NVIDIA,
-                provider_model_id="mistralai/mistral-medium-3.5-128b",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                max_output_tokens=16_384,
-            ),
-        ),
     ),
     ModelCatalogEntry(
         id="deepseek-v4-flash",
@@ -69,13 +50,5 @@ NVIDIA_MODEL_ITEMS: tuple[ModelCatalogEntry, ...] = (
         ),
         released_at=date(2026, 4, 24),
         capabilities=TEXT,
-        deployments=(
-            ModelDeployment(
-                provider_id=ProviderId.NVIDIA,
-                provider_model_id="deepseek-ai/deepseek-v4-flash",
-                endpoint=ModelEndpoint.CHAT_COMPLETIONS,
-                max_output_tokens=16_384,
-            ),
-        ),
     ),
 )

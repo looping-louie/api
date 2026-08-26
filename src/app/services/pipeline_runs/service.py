@@ -10,7 +10,6 @@ from typing import Callable, Mapping
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import PipelineDetails, PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
@@ -21,6 +20,7 @@ from src.app.models.pipeline_run import (
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.models import ModelExecutionService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.types import (
     PipelineRunNotFoundError,
@@ -28,6 +28,7 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
 from src.app.services.workspaces import WorkspaceService
 
@@ -44,6 +45,8 @@ class PipelineRunService:
         tenant_service: TenantService,
         worker_service: WorkerService | None = None,
         workspace_service: WorkspaceService | None = None,
+        user_service: UserService | None = None,
+        model_execution_service: ModelExecutionService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -56,6 +59,8 @@ class PipelineRunService:
         self._tenant_service = tenant_service
         self._worker_service = worker_service
         self._workspace_service = workspace_service
+        self._user_service = user_service
+        self._model_execution_service = model_execution_service
         self._id_factory = id_factory
         self._clock = clock
         self._token_factory = token_factory
@@ -71,41 +76,48 @@ class PipelineRunService:
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Create a frozen Pipeline run awaiting an explicit operator start."""
 
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             raise PipelineRunUnavailableError(
                 pipeline_id=pipeline_id,
                 reason=f'status is {details.document.status}',
             )
-        workspace_defaults = await self._workspace_defaults(
+        user_default_model_id, user_default_harness = await self._user_defaults(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
         )
-        inherited_model_target = (
-            details.document.model_target
-            or (
-                workspace_defaults.model_target
-                if workspace_defaults is not None
-                else None
-            )
+        inherited_model_id = (
+            details.document.model_id
+            or user_default_model_id
         )
         inherited_harness = (
             details.document.harness
-            or (
-                workspace_defaults.harness
-                if workspace_defaults is not None
-                else None
-            )
+            or user_default_harness
             or PipelineHarness()
         )
         now = self._clock()
         run_id = self._id_factory()
+        steps = []
+        for position, activity in enumerate(details.activities):
+            steps.append(PipelineRunStepDocument(
+                position=position, activity_id=activity.id, status='pending',
+                activity_run_id=None,
+                activity_snapshot=await self._activity_snapshot(
+                    activity,
+                    workspace_id=workspace.workspace_id,
+                    user_id=user_id,
+                    inherited_model_id=inherited_model_id,
+                    inherited_harness=inherited_harness,
+                ),
+                updated_at=now,
+            ))
         document = PipelineRunDocument(
-            id=run_id, workspace_id=details.document.workspace_id,
+            id=run_id, workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
             commit_mode=commit_mode,
             status='prepared', worker_id=None, lease_token=None,
@@ -114,22 +126,10 @@ class PipelineRunService:
                 details,
                 harness=inherited_harness,
             ),
-            steps=tuple(
-                PipelineRunStepDocument(
-                    position=position, activity_id=activity.id, status='pending',
-                    activity_run_id=None,
-                    activity_snapshot=self._activity_snapshot(
-                        activity,
-                        inherited_model_target=inherited_model_target,
-                        inherited_harness=inherited_harness,
-                    ),
-                    updated_at=now,
-                )
-                for position, activity in enumerate(details.activities)
-            ),
+            steps=tuple(steps),
             events=(
                 self._event(
-                    workspace_id=details.document.workspace_id,
+                    workspace_id=workspace.workspace_id,
                     run_id=run_id,
                     event_type='pipeline_run_created',
                     activity_id=None,
@@ -152,10 +152,12 @@ class PipelineRunService:
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Make one prepared run eligible for runtime or human execution."""
 
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             raise PipelineRunUnavailableError(
@@ -163,7 +165,7 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         document = await self._get_required(
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
@@ -199,15 +201,17 @@ class PipelineRunService:
     ) -> list[PipelineRunDocument]:
         """List claimable runs beneath one active Pipeline."""
 
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id, pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             return []
         now = self._clock()
         return await self._repository.list_claimable(
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id,
             claimed_before=now,
         )
@@ -226,9 +230,11 @@ class PipelineRunService:
         """Atomically claim one current, claimable Pipeline run."""
 
         normalized_worker_id = self._require_text(worker_id)
+        workspace = await self._tenant_service.resolve(
+            user_id=user_id, requested_workspace_id=requested_workspace_id,
+        )
         details = await self._pipeline_service.describe(
             user_id=user_id, pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if details.document.status != 'active':
             raise PipelineRunUnavailableError(
@@ -236,18 +242,18 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         candidate = await self._get_required(
-            workspace_id=details.document.workspace_id,
+            workspace_id=workspace.workspace_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
         now = self._clock()
         if self._worker_service is not None:
             await self._worker_service.require_active(
-                workspace_id=details.document.workspace_id,
+                workspace_id=workspace.workspace_id,
                 worker_id=normalized_worker_id,
             )
             await self._worker_service.require_harness(
-                workspace_id=details.document.workspace_id,
+                workspace_id=workspace.workspace_id,
                 worker_id=normalized_worker_id,
                 harness=self._harness_snapshot(candidate.pipeline_snapshot),
             )
@@ -356,20 +362,17 @@ class PipelineRunService:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         return document
 
-    async def _workspace_defaults(
+    async def _user_defaults(
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None,
-    ) -> object | None:
-        """Return configured workspace candidates when the service is available."""
+    ) -> tuple[str | None, PipelineHarness | None]:
+        """Return the lowest-priority model and Harness configured by the User."""
 
-        if self._workspace_service is None:
-            return None
-        return await self._workspace_service.get_defaults(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        if self._user_service is None:
+            return None, None
+        settings = (await self._user_service.get(user_id=user_id)).settings
+        return settings.default_model_id, settings.default_harness
 
     @staticmethod
     def _is_claimable(document: PipelineRunDocument, now: datetime) -> bool:
@@ -712,24 +715,29 @@ class PipelineRunService:
             ],
         }
 
-    @staticmethod
-    def _activity_snapshot(
+    async def _activity_snapshot(
+        self,
         activity: ActivityDocument,
         *,
-        inherited_model_target: ModelTarget | None,
+        workspace_id: str,
+        user_id: str,
+        inherited_model_id: str | None,
         inherited_harness: PipelineHarness,
     ) -> dict[str, object]:
         """Freeze an executable activity in the format used by activity runs."""
 
-        model_target = activity.model_target or inherited_model_target
+        model_id = activity.model_id or inherited_model_id
         harness = activity.harness or inherited_harness
         config = deepcopy(activity.config)
         agents = config.get('agents')
         if isinstance(agents, list):
             config['agents'] = [
-                PipelineRunService._agent_snapshot(
+                await self._agent_snapshot(
                     agent=agent,
-                    inherited_model_target=model_target,
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    inherited_model_id=model_id,
+                    harness=harness,
                 )
                 if isinstance(agent, dict)
                 else agent
@@ -768,23 +776,40 @@ class PipelineRunService:
             'flow': flow,
         }
 
-    @staticmethod
-    def _agent_snapshot(
+    async def _agent_snapshot(
+        self,
         *,
         agent: dict[str, object],
-        inherited_model_target: ModelTarget | None,
+        workspace_id: str,
+        user_id: str,
+        inherited_model_id: str | None,
+        harness: PipelineHarness,
     ) -> dict[str, object]:
-        """Freeze an agent target or preserve legacy Persona routing when absent."""
+        """Freeze Louie provider routing for an effective logical model ID."""
 
         snapshot = dict(agent)
-        target = snapshot.get('model_target')
-        if isinstance(target, dict):
+        if harness.kind != 'louie':
             return snapshot
-        if inherited_model_target is not None:
-            snapshot['model_target'] = {
-                'linked_service_id': inherited_model_target.linked_service_id,
-                'model_id': inherited_model_target.model_id,
-            }
+        model_id = snapshot.get('model_id')
+        if not isinstance(model_id, str):
+            model_id = inherited_model_id
+        if not isinstance(model_id, str):
+            raise PipelineRunUnavailableError(
+                pipeline_id='unknown',
+                reason='louie execution requires a model_id',
+            )
+        if self._model_execution_service is None:
+            raise RuntimeError('Louie model execution is not configured.')
+        linked_service = await self._model_execution_service.select_linked_service(
+            workspace_id=workspace_id,
+            model_id=model_id,
+            user_id=user_id,
+        )
+        snapshot['model_target'] = {
+            'linked_service_id': linked_service.id,
+            'linked_service_user_id': linked_service.user_id,
+            'model_id': model_id,
+        }
         return snapshot
 
     @staticmethod

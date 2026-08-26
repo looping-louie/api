@@ -1,13 +1,14 @@
-"""REST routes for workspace execution defaults."""
+"""REST routes for workspaces."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path, status
 
 from src.app.controllers.workspace import WorkspaceController
 from src.app.schemas.workspace import (
-    WorkspaceDefaultsReplaceRequest,
-    WorkspaceDefaultsResponse,
+    WorkspaceCreateRequest,
+    WorkspacePatchRequest,
+    WorkspaceResponse,
 )
 
 from .dependencies import (
@@ -23,31 +24,68 @@ ControllerDependency = Annotated[
     WorkspaceController,
     Depends(get_workspace_controller),
 ]
+WorkspaceIdPath = Annotated[str, Path(min_length=1, description='Workspace identifier.')]
 
 
-@router.get('/defaults', response_model=WorkspaceDefaultsResponse, summary='Get workspace defaults')
-async def get_workspace_defaults(
+@router.get('', response_model=list[WorkspaceResponse], summary='List workspaces')
+async def list_workspaces(
     context: ContextDependency,
     controller: ControllerDependency,
-) -> WorkspaceDefaultsResponse:
-    """Return optional execution defaults for the selected workspace."""
+) -> list[WorkspaceResponse]:
+    """List workspaces available to the requesting user."""
 
-    return await controller.get_defaults(
+    return await controller.list_for_user(user_id=context.user_id)
+
+
+@router.post(
+    '',
+    response_model=WorkspaceResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary='Create workspace',
+)
+async def create_workspace(
+    payload: WorkspaceCreateRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> WorkspaceResponse:
+    """Create a workspace owned by the requesting user."""
+
+    return await controller.create(user_id=context.user_id, payload=payload)
+
+
+@router.get(
+    '/{workspace_id}',
+    response_model=WorkspaceResponse,
+    summary='Get workspace',
+)
+async def get_workspace(
+    workspace_id: WorkspaceIdPath,
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> WorkspaceResponse:
+    """Return one Workspace accessible to the requesting User."""
+
+    return await controller.describe(
         user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
+        workspace_id=workspace_id,
     )
 
 
-@router.put('/defaults', response_model=WorkspaceDefaultsResponse, summary='Replace workspace defaults')
-async def replace_workspace_defaults(
-    payload: WorkspaceDefaultsReplaceRequest,
+@router.patch(
+    '/{workspace_id}',
+    response_model=WorkspaceResponse,
+    summary='Update workspace',
+)
+async def patch_workspace(
+    workspace_id: WorkspaceIdPath,
+    payload: WorkspacePatchRequest,
     context: ContextDependency,
     controller: ControllerDependency,
-) -> WorkspaceDefaultsResponse:
-    """Replace optional execution defaults for the selected workspace."""
+) -> WorkspaceResponse:
+    """Update mutable metadata for one accessible Workspace."""
 
-    return await controller.replace_defaults(
+    return await controller.patch(
         user_id=context.user_id,
+        workspace_id=workspace_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
     )

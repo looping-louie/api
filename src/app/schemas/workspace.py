@@ -1,28 +1,38 @@
-"""HTTP schemas for workspace execution defaults."""
+"""HTTP schemas for workspaces."""
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from src.app.schemas.execution import (
-    HarnessRequest,
-    HarnessResponse,
-    ModelTargetRequest,
-    ModelTargetResponse,
-)
-from src.app.schemas.shared import RequestSchema, ResponseSchema
+from pydantic import model_validator
+
+from src.app.schemas.shared import NonEmptyString, RequestSchema, ResponseSchema
 
 
-class WorkspaceDefaultsReplaceRequest(RequestSchema):
-    """Complete optional workspace execution-default configuration."""
+class WorkspaceCreateRequest(RequestSchema):
+    """Fields required to create a User-owned workspace."""
 
-    model_target: ModelTargetRequest | None = None
-    harness: HarnessRequest | None = None
+    name: NonEmptyString
 
 
-class WorkspaceDefaultsResponse(ResponseSchema):
-    """Workspace execution defaults, with null fields inheriting elsewhere."""
+class WorkspaceResponse(ResponseSchema):
+    """Workspace identity visible through the current user's collection."""
 
-    model_target: ModelTargetResponse | None
-    harness: HarnessResponse | None
+    id: str
+    name: str
+    created_at: datetime
     updated_at: datetime
+
+
+class WorkspacePatchRequest(RequestSchema):
+    """Mutable fields for one Workspace."""
+
+    name: NonEmptyString | None = None
+
+    @model_validator(mode='after')
+    def require_name(self) -> 'WorkspacePatchRequest':
+        """Require an explicit non-null Workspace name."""
+
+        if 'name' not in self.model_fields_set or self.name is None:
+            raise ValueError('Name must be supplied.')
+        return self

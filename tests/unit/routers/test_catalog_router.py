@@ -50,6 +50,18 @@ def test_catalog_routes_return_only_static_metadata() -> None:
     assert providers_response.status_code == 200
     provider = providers_response.json()[0]
     assert provider['id'] == 'anthropic'
+    assert provider['offerings']
+    offering = provider['offerings'][0]
+    assert {
+        'model_id',
+        'provider_model_id',
+        'endpoint',
+        'context_window',
+        'max_output_tokens',
+        'pricing',
+        'status',
+        'deprecated_at',
+    } <= offering.keys()
     assert 'configured' not in provider
     assert 'enabled' not in provider
     assert 'key_trimmed' not in provider
@@ -58,7 +70,9 @@ def test_catalog_routes_return_only_static_metadata() -> None:
     models = models_response.json()
     assert models['total'] == len(models['items'])
     model = models['items'][0]
-    assert model['provider_ids']
+    assert 'provider_ids' not in model
+    assert 'deployment_count' not in model
+    assert 'starting_price' not in model
     assert 'available' not in model
     assert 'availability' not in model
 

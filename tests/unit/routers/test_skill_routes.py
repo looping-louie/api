@@ -114,6 +114,30 @@ def test_create_skill_rejects_source_identifier(
     assert response.status_code == 422
 
 
+def test_skills_ignore_workspace_selection(
+    skill_controller: SkillController,
+) -> None:
+    """Skill ownership and visibility depend only on the authenticated user."""
+
+    client = TestClient(build_app(controller=skill_controller))
+    created = client.post(
+        '/api/v1/skills',
+        headers={'X-Workspace-ID': 'workspace-a'},
+        json={
+            'name': 'User-owned Skill',
+            'instructions': 'Review the supplied work.',
+        },
+    )
+    listed = client.get(
+        '/api/v1/skills',
+        headers={'X-Workspace-ID': 'workspace-b'},
+    )
+
+    assert created.status_code == 201
+    assert listed.status_code == 200
+    assert listed.json()['total'] == 1
+
+
 def test_list_skills_filters_sorts_and_paginates(
     skill_controller: SkillController,
 ) -> None:

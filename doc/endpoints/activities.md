@@ -1,14 +1,17 @@
 # Activities
 
-Activities are workspace-scoped, possibly reusable units of work. They can be
-created directly or generated when an inline definition is supplied while
-creating or updating a Pipeline. The current supported types are `approval`,
+Standalone Activities are User-owned, possibly reusable units of work. They
+can be created directly or generated when an inline definition is supplied
+while creating or updating a Pipeline. The current supported types are `approval`,
 `quiz`, `direct_loop`, `refinement_loop`, and `roundtable_loop`. Approval
 activities represent human approval, and quiz activities collect human quiz
 responses. Direct, refinement, and roundtable loop activities can create
 persisted runs. Refinement runs add reviewer approval and retry checkpoints
 after local application. Approval and quiz execution are reserved for future
-pipeline orchestration.
+pipeline orchestration. Standalone Activity routes use `X-User-ID` and ignore
+`X-Workspace-ID`. Pipeline creation creates internal Activity definitions with
+the owning User. Nested Activity-run routes remain
+Workspace-selected because execution occurs in a concrete Workspace.
 
 ## Resource endpoints
 
@@ -26,19 +29,16 @@ include a `type` field; its required shape is selected by the top-level type.
 The activity type is immutable after creation, and PATCH validates replacement
 configurations against the persisted activity type.
 
-Activities also accept nullable top-level `model_target` and `harness`
-overrides. Loop agents accept nullable `model_target` values. A model target
-always contains both
-`linked_service_id` and `model_id`; the API validates it against the selected
-workspace's available Linked Service. `null` clears an Activity override.
-PipelineRun creation resolves an Activity model target before Pipeline and
-Workspace candidates, and resolves an Activity Harness before Pipeline and
-Workspace candidates. The resolved values are frozen into the child
-ActivityRun snapshot. An agent target takes precedence over the resolved
-Activity target; an agent without a target fails generation. Personas provide
+Activities also accept nullable top-level `model_id` and `harness` overrides.
+Loop agents accept nullable `model_id` values. `null` clears an Activity
+override. PipelineRun creation resolves an Activity model ID before Pipeline
+and User candidates, and resolves an Activity Harness before Pipeline and User
+candidates. The resolved values are frozen into the child ActivityRun
+snapshot. An agent model ID takes precedence over the resolved Activity model
+ID. For `louie`, run creation requires an effective model ID; Personas provide
 instructions only.
 
-Every Activity response includes top-level `model_target` and `harness` keys,
+Every Activity response includes top-level `model_id` and `harness` keys,
 with `null` for an unset override. The type-specific response examples below
 omit those repeated `null` fields unless an override is relevant.
 
@@ -53,7 +53,7 @@ accepts the mutable properties marked as optional; it rejects an empty request.
 | `description` | String | Required | Optional | May be empty. |
 | `type` | String | Required | Not allowed | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. Immutable after creation. |
 | `config` | Object | Required | Optional | Shape is selected by `type`. Does not contain a nested `type` property. |
-| `model_target` | Object or null | Optional | Optional | A linked service and model pair. `null` clears the override. |
+| `model_id` | String or null | Optional | Optional | A logical catalog model ID. `null` clears the override. |
 | `harness` | Object or null | Optional | Optional | An empty `louie` v1 or `codex_cli` v1 configuration. `null` clears the override. |
 | `status` | String | Not allowed | Optional | One of `active`, `disabled`, or `archived`. |
 
@@ -68,10 +68,10 @@ type.
 | `refinement_loop` | `stop_conditions`, `agents`, `output_contract` | Exactly one generator, at least one reviewer, and no aggregator. |
 | `roundtable_loop` | `stop_conditions`, `agents`, `output_contract` | At least two generators, exactly one aggregator, and no reviewer. |
 
-Every loop agent requires a `persona_id` and `role`. An explicit agent
-`model_target` is validated as a linked-service/model pair. Activity definition
-validation permits an absent target, but generation rejects that agent until a
-`model_target` is supplied.
+Every loop agent requires a `persona_id` and `role`. Its `model_id` is nullable.
+Activity definition validation permits an absent model ID. For `louie`, run
+creation rejects an agent when no effective model ID is available after
+inheritance.
 
 ## Activity runs
 
@@ -88,7 +88,6 @@ non-negative `offset`.
 
 ```http
 GET /api/v1/activities?offset=0
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -98,7 +97,6 @@ Example response (`200 OK`):
   "items": [
     {
       "id": "activity-implementation",
-      "workspace_id": "workspace-acme",
       "name": "ImplementRequestedChange",
       "description": "Make and validate a focused code change.",
       "status": "active",
@@ -110,10 +108,7 @@ Example response (`200 OK`):
         },
         "agents": [
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "software-engineer",
             "role": "generator"
           }
@@ -140,7 +135,6 @@ including its type-specific configuration.
 
 ```http
 GET /api/v1/activities/activity-implementation
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -148,7 +142,6 @@ Example response (`200 OK`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": "workspace-acme",
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
@@ -160,10 +153,7 @@ Example response (`200 OK`):
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -182,9 +172,9 @@ Example response (`200 OK`):
 
 ## Create an activity
 
-`POST /api/v1/activities` creates an active Activity in the workspace supplied
-by `X-Workspace-ID`. Every request needs a non-empty `name`, a `description`,
-a supported `type`, and a configuration matching that type.
+`POST /api/v1/activities` creates an active Activity for `X-User-ID`. Every
+request needs a non-empty `name`, a `description`, a supported `type`, and a
+configuration matching that type.
 
 ### Direct loop
 
@@ -195,7 +185,6 @@ not allow `reviewer` or `aggregator` agents.
 
 ```http
 POST /api/v1/activities
-X-Workspace-ID: workspace-acme
 Content-Type: application/json
 ```
 
@@ -211,10 +200,7 @@ Content-Type: application/json
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -232,7 +218,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": "workspace-acme",
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "active",
@@ -244,10 +229,7 @@ Example response (`201 Created`):
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -281,26 +263,17 @@ Roundtable loops do not allow `reviewer` agents.
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "release-manager",
         "role": "generator"
       },
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "quality-engineer",
         "role": "generator"
       },
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "technical-lead",
         "role": "aggregator"
       }
@@ -310,7 +283,10 @@ Roundtable loops do not allow `reviewer` agents.
       "description": "The release decision and its rationale.",
       "schema": {
         "type": "object",
-        "required": ["decision", "rationale"],
+        "required": [
+          "decision",
+          "rationale"
+        ],
         "properties": {
           "decision": {
             "type": "string"
@@ -330,35 +306,27 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-release-review",
-  "workspace_id": "workspace-acme",
   "name": "ReviewReleasePlan",
   "description": "Reach a shared decision about release readiness.",
   "status": "active",
   "type": "roundtable_loop",
   "config": {
-    "stop_conditions": {"max_iterations": 2},
+    "stop_conditions": {
+      "max_iterations": 2
+    },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "release-manager",
         "role": "generator"
       },
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "quality-engineer",
         "role": "generator"
       },
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "technical-lead",
         "role": "aggregator"
       }
@@ -368,7 +336,10 @@ Example response (`201 Created`):
       "description": "The release decision and its rationale.",
       "schema": {
         "type": "object",
-        "required": ["decision", "rationale"],
+        "required": [
+          "decision",
+          "rationale"
+        ],
         "properties": {
           "decision": {
             "type": "string"
@@ -405,18 +376,12 @@ within the configured `max_iterations` limit.
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "technical-writer",
         "role": "generator"
       },
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "documentation-reviewer",
         "role": "reviewer"
       }
@@ -424,7 +389,9 @@ within the configured `max_iterations` limit.
     "output_contract": {
       "type": "files",
       "description": "An updated API guide.",
-      "files": ["doc/API.md"]
+      "files": [
+        "doc/API.md"
+      ]
     }
   }
 }
@@ -435,7 +402,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-documentation-refinement",
-  "workspace_id": "workspace-acme",
   "name": "RefineDocumentationDraft",
   "description": "Improve a draft through review iterations.",
   "status": "active",
@@ -446,18 +412,12 @@ Example response (`201 Created`):
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "technical-writer",
         "role": "generator"
       },
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "documentation-reviewer",
         "role": "reviewer"
       }
@@ -465,7 +425,9 @@ Example response (`201 Created`):
     "output_contract": {
       "type": "files",
       "description": "An updated API guide.",
-      "files": ["doc/API.md"]
+      "files": [
+        "doc/API.md"
+      ]
     }
   },
   "created_at": "2026-08-13T10:00:00Z",
@@ -485,7 +447,8 @@ additional fields.
   "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "type": "approval",
-  "config": {}
+  "config": {
+  }
 }
 ```
 
@@ -494,12 +457,12 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-production-approval",
-  "workspace_id": "workspace-acme",
   "name": "ApproveProductionRelease",
   "description": "A release manager must approve deployment to production.",
   "status": "active",
   "type": "approval",
-  "config": {},
+  "config": {
+  },
   "created_at": "2026-08-13T10:00:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:00:00Z",
@@ -536,7 +499,6 @@ Example response (`201 Created`):
 ```json
 {
   "id": "activity-deployment-quiz",
-  "workspace_id": "workspace-acme",
   "name": "DeploymentReadinessQuiz",
   "description": "Confirm operational readiness before deployment.",
   "status": "active",
@@ -562,14 +524,13 @@ Example response (`201 Created`):
 ## Update an activity
 
 `PATCH /api/v1/activities/{activity_id}` accepts one or more of `name`,
-`description`, `status`, `config`, `model_target`, and `harness`. `status` must
+`description`, `status`, `config`, `model_id`, and `harness`. `status` must
 be `active`, `disabled`, or `archived`. A replacement `config` must match the
 persisted immutable Activity type and must not include `type`. Setting
-`model_target` or `harness` to `null` clears that override.
+`model_id` or `harness` to `null` clears that override.
 
 ```http
 PATCH /api/v1/activities/activity-implementation
-X-Workspace-ID: workspace-acme
 Content-Type: application/json
 ```
 
@@ -584,7 +545,6 @@ Example response (`200 OK`):
 ```json
 {
   "id": "activity-implementation",
-  "workspace_id": "workspace-acme",
   "name": "ImplementRequestedChange",
   "description": "Make and validate a focused code change.",
   "status": "disabled",
@@ -596,10 +556,7 @@ Example response (`200 OK`):
     },
     "agents": [
       {
-        "model_target": {
-          "linked_service_id": "linked-service-openai-primary",
-          "model_id": "gpt-5"
-        },
+        "model_id": "gpt-5",
         "persona_id": "software-engineer",
         "role": "generator"
       }
@@ -623,7 +580,6 @@ preserving its changelog entries.
 
 ```http
 DELETE /api/v1/activities/activity-implementation
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -635,7 +591,7 @@ Example response (`200 OK`):
 ```
 
 The endpoint returns `404 activity_not_found` when the Activity does not exist
-in the selected workspace.
+for the current User.
 
 ## Loop activity runs
 
@@ -675,7 +631,8 @@ Example response (`200 OK`):
       "created_at": "2026-08-13T10:05:00Z",
       "created_by": "user-123",
       "updated_at": "2026-08-13T10:05:00Z",
-      "payload": {}
+      "payload": {
+      }
     }
   ],
   "total": 1
@@ -708,7 +665,8 @@ Example response (`200 OK`):
   "created_at": "2026-08-13T10:05:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:05:00Z",
-  "payload": {}
+  "payload": {
+  }
 }
 ```
 
@@ -736,7 +694,8 @@ Example response (`201 Created`):
   "created_at": "2026-08-13T10:05:00Z",
   "created_by": "user-123",
   "updated_at": "2026-08-13T10:05:00Z",
-  "payload": {}
+  "payload": {
+  }
 }
 ```
 
@@ -771,7 +730,10 @@ Content-Type: application/json
       "extension_counts": {
         ".py": 24
       },
-      "top_level_entries": ["src", "tests"],
+      "top_level_entries": [
+        "src",
+        "tests"
+      ],
       "markers": {
         "nuxt": false,
         "package_json": false,
@@ -806,7 +768,6 @@ after the optional non-negative `offset`.
 
 ```http
 GET /api/v1/activities/activity-implementation/changelog?offset=0
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):

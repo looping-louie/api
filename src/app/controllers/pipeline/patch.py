@@ -6,7 +6,6 @@ from src.app.schemas.pipeline import (
     PipelinePatchRequest,
     PipelineResponse,
 )
-from src.app.models.execution import ModelTarget
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.pipelines.types import PipelinePatch
 
@@ -38,14 +37,7 @@ class PipelinePatchController:
                 name=payload.name,
                 description=payload.description,
                 enabled=payload.enabled,
-                model_target=(
-                    ModelTarget(
-                        linked_service_id=payload.model_target.linked_service_id,
-                        model_id=payload.model_target.model_id,
-                    )
-                    if payload.model_target is not None
-                    else None
-                ),
+                model_id=payload.model_id,
                 steps=(
                     pipeline_steps(payload.steps)
                     if payload.steps is not None

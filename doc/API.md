@@ -9,11 +9,12 @@ The endpoint reference is organized by top-level router:
   selection, pagination, mutation conventions, and error responses.
 - [Catalog](endpoints/catalog.md) exposes static provider, model, built-in
   Persona, and built-in Skill definitions.
-- [Linked Services](endpoints/linked-services.md) manages workspace-owned
+- [Users](endpoints/users.md) manages the current API user, execution settings,
+  and model availability.
+- [Linked Services](endpoints/linked-services.md) manages User-owned
   provider connections.
-- [Workspaces](endpoints/workspaces.md) manages workspace-owned execution
-  defaults.
-- [Models](endpoints/models.md) exposes the curated model catalog.
+- [Workspaces](endpoints/workspaces.md) manages User-owned execution-placement
+  Workspaces.
 - [Personas](endpoints/personas.md) manages persona instructions.
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Activities](endpoints/activities.md) manages reusable concrete Activity
@@ -29,22 +30,29 @@ durable execution state. The runtime owns local repository execution, including
 filesystem, Git, workspace lifecycle operations, and Worker-local Harness
 configuration. The CLI submits and manages API resources.
 
-Workspace, Pipeline, and Activity definitions persist nullable `model_target`
-and `harness` overrides. Loop agents can persist a nullable `model_target` in
-their typed configuration. Every non-null
-model target is validated against an enabled, configured linked service and an
-active model deployment in the selected workspace. PipelineRun creation
-resolves and freezes model targets at agent, Activity, Pipeline, then Workspace
-scope, and Harnesses at Activity, Pipeline, then Workspace scope. A missing
-agent target fails generation; Personas contribute instructions only. When no
-Harness candidate exists, the frozen Harness is the `louie` v1 compatibility
-default.
+User, Pipeline, and Activity definitions persist nullable `model_id`
+and `harness` overrides. Loop agents can persist a nullable `model_id` in
+their typed configuration. PipelineRun creation resolves model IDs at agent,
+Activity, Pipeline, then User scope. For `louie`, run creation requires
+an effective model ID, selects the first deterministically ordered compatible,
+enabled, configured User-owned Linked Service, and freezes its identity and
+owner in a private `model_target` snapshot. `codex_cli` does not select API
+Linked Services or require API provider credentials. Harnesses resolve at
+Activity, Pipeline, then User scope. A missing Louie agent model
+fails run creation; Personas contribute instructions only. When no Harness
+candidate exists, the frozen Harness is the `louie` v1 compatibility default.
+
+User settings also gate logical model availability. Unconfigured models inherit
+`settings.default_model_availability`, which defaults to `enabled`;
+`settings.configured_models` overrides that status per model ID. A disabled
+model is unavailable in current-User catalog responses and cannot be resolved by
+the `louie` Harness, even when a compatible Linked Service is ready.
 
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for
 the frozen Pipeline Harness selection.
 
-Workspace defaults use explicit nullable values: an absent `model_target` or
-`harness` means the workspace inherits that value from a higher-level or
-system-level source. PipelineRun creation consumes Workspace candidates only
-after all narrower Pipeline, Activity, and agent candidates are considered.
+User settings use explicit nullable values: an absent `default_model_id` or
+`default_harness` leaves the value unset after narrower Activity and Pipeline
+candidates are considered. Workspaces select where a run executes; they do not
+contribute model or Harness policy.

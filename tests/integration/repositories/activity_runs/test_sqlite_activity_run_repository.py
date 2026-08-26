@@ -30,13 +30,20 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
         await connection.execute('PRAGMA foreign_keys = ON')
         await connection.execute(
             '''
+            INSERT INTO users (id, created_at, updated_at)
+            VALUES ('user-1', ?, ?)
+            ''',
+            (timestamp.isoformat(), timestamp.isoformat()),
+        )
+        await connection.execute(
+            '''
             INSERT INTO activities (
-                id, workspace_id, name, description, status, activity_type,
+                    id, user_id, workspace_id, name, description, status, activity_type,
                 config_json, created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                'activity-1', 'workspace-1', 'Activity', '', 'active',
+                    'activity-1', 'user-1', 'workspace-1', 'Activity', '', 'active',
                 'direct_loop', '{}', timestamp.isoformat(), 'user-1',
                 timestamp.isoformat(), 'user-1',
             ),
@@ -177,13 +184,20 @@ async def _insert_pipeline_child(
         await connection.execute('PRAGMA foreign_keys = ON')
         await connection.execute(
             '''
+            INSERT INTO users (id, created_at, updated_at)
+            VALUES ('user-1', ?, ?)
+            ''',
+            (timestamp.isoformat(), timestamp.isoformat()),
+        )
+        await connection.execute(
+            '''
             INSERT INTO activities (
-                id, workspace_id, name, description, status, activity_type,
+                id, user_id, workspace_id, name, description, status, activity_type,
                 config_json, created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                'activity-1', 'workspace-1', 'Activity', '', 'active',
+                'activity-1', 'user-1', 'workspace-1', 'Activity', '', 'active',
                 'direct_loop', '{}', timestamp.isoformat(), 'user-1',
                 timestamp.isoformat(), 'user-1',
             ),
@@ -218,12 +232,12 @@ async def _insert_pipeline_child(
         await connection.execute(
             '''
             INSERT INTO pipelines (
-                id, workspace_id, name, description, status, created_at,
+                id, user_id, name, description, status, created_at,
                 created_by, updated_at, updated_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                'pipeline-1', 'workspace-1', 'Pipeline', '', 'active',
+                'pipeline-1', 'user-1', 'Pipeline', '', 'active',
                 timestamp.isoformat(), 'user-1', timestamp.isoformat(), 'user-1',
             ),
         )

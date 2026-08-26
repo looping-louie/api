@@ -1,4 +1,4 @@
-"""Application service for workspace-owned linked services."""
+"""Application service for user-owned linked services."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from src.app.catalogs.models import MODEL_CATALOG, ModelStatus
+from src.app.catalogs.models import CATALOG_INDEX, MODEL_CATALOG, ModelStatus
 from src.app.catalogs.providers import ProviderCatalogEntry
 from src.app.models.linked_service import LinkedService
 from src.app.repositories.linked_services import LinkedServiceRepository
@@ -23,6 +23,7 @@ from src.app.services.providers.secret import SecretService
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.dependency_checker import DependencyChecker
 from src.app.services.shared.reference_resolver import ResourceReference
+from src.app.services.users import UserService
 
 
 Clock = Callable[[], datetime]
@@ -30,7 +31,7 @@ IdFactory = Callable[[], str]
 
 
 class LinkedServiceNotFoundError(Exception):
-    """Raised when a linked service is absent from the selected workspace."""
+    """Raised when a linked service is absent from the selected user."""
 
     def __init__(self, service_id: str) -> None:
         super().__init__(f"Linked service '{service_id}' was not found.")
@@ -38,7 +39,7 @@ class LinkedServiceNotFoundError(Exception):
 
 
 class LinkedServiceNameConflictError(Exception):
-    """Raised when a workspace already owns the requested service name."""
+    """Raised when a user already owns the requested service name."""
 
     def __init__(self, name: str) -> None:
         """Store the conflicting linked-service name."""
@@ -65,6 +66,7 @@ class LinkedServiceService:
         self,
         *,
         repository: LinkedServiceRepository,
+        user_service: UserService,
         tenant_service: TenantService,
         secret_service: SecretService,
         connection_service: ProviderConnectionService,
@@ -75,6 +77,7 @@ class LinkedServiceService:
     ) -> None:
         """Store infrastructure and curated provider definitions."""
         self._repository = repository
+        self._user_service = user_service
         self._tenant_service = tenant_service
         self._secret_service = secret_service
         self._connection_service = connection_service
@@ -83,24 +86,24 @@ class LinkedServiceService:
         self._clock = clock or self._default_clock
         self._id_factory = id_factory or self._default_id_factory
 
-    async def list(self, *, user_id: str, requested_workspace_id: str | None = None) -> list[LinkedService]:
-        """List linked services owned by the selected workspace."""
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        return await self._repository.list_for_workspace(workspace_id)
+    async def list(self, *, user_id: str) -> list[LinkedService]:
+        """List linked services owned by the registered user."""
+        await self._user_service.get(user_id=user_id)
+        return await self._repository.list_for_user(user_id)
 
-    async def get(self, *, user_id: str, service_id: str, requested_workspace_id: str | None = None) -> LinkedService:
-        """Return one linked service owned by the selected workspace."""
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        return await self._get_required(workspace_id, service_id)
+    async def get(self, *, user_id: str, service_id: str) -> LinkedService:
+        """Return one linked service owned by the registered user."""
+        await self._user_service.get(user_id=user_id)
+        return await self._get_required_for_user(user_id, service_id)
 
     async def create(
         self, *, user_id: str, name: str, provider_type: str, api_key: str | None,
-        base_url: str | None, enabled: bool, requested_workspace_id: str | None = None,
+        base_url: str | None, enabled: bool,
     ) -> LinkedService:
         """Create and test a new linked service before it is stored."""
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
+        await self._user_service.get(user_id=user_id)
         definition = self._definition(provider_type)
-        await self._require_unique_name(workspace_id, name)
+        await self._require_unique_name(user_id, name)
         plaintext_api_key = clean_optional_value(api_key)
         key_ciphertext = self._encrypt(plaintext_api_key)
         resolved_base_url = resolve_base_url(
@@ -110,7 +113,7 @@ class LinkedServiceService:
         await self._test(definition, key_ciphertext, plaintext_api_key, resolved_base_url)
         now = self._clock()
         return await self._repository.create(LinkedService(
-            id=self._id_factory(), workspace_id=workspace_id, name=name,
+            id=self._id_factory(), user_id=user_id, name=name,
             provider_type=definition.id.value, enabled=enabled,
             key_trimmed=self._trim(plaintext_api_key), key_ciphertext=key_ciphertext,
             key_version=1, base_url=resolved_base_url, version=1,
@@ -120,13 +123,13 @@ class LinkedServiceService:
     async def patch(
         self, *, user_id: str, service_id: str, name: str | None, api_key: str | None,
         api_key_supplied: bool, base_url: str | None, base_url_supplied: bool,
-        enabled: bool | None, requested_workspace_id: str | None = None,
+        enabled: bool | None,
     ) -> LinkedService:
         """Update mutable linked-service fields and test changed configurations."""
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
-        current = await self._get_required(workspace_id, service_id)
+        await self._user_service.get(user_id=user_id)
+        current = await self._get_required_for_user(user_id, service_id)
         if name is not None and name != current.name:
-            await self._require_unique_name(workspace_id, name)
+            await self._require_unique_name(user_id, name)
         definition = self._definition(current.provider_type)
         plaintext_api_key = clean_optional_value(api_key) if api_key_supplied else None
         key_ciphertext = self._encrypt(plaintext_api_key) if api_key_supplied else current.key_ciphertext
@@ -148,27 +151,38 @@ class LinkedServiceService:
         )
         return await self._repository.update(updated)
 
-    async def delete(self, *, user_id: str, service_id: str, requested_workspace_id: str | None = None) -> None:
-        """Delete one linked service owned by the selected workspace."""
-        workspace_id = await self._workspace_id(user_id, requested_workspace_id)
+    async def delete(self, *, user_id: str, service_id: str) -> None:
+        """Delete one linked service owned by the registered user."""
+        await self._user_service.get(user_id=user_id)
         if self._dependency_checker is not None:
+            workspace_id = await self._workspace_id(user_id, None)
             await self._dependency_checker.require_deletable(
                 workspace_id=workspace_id,
                 target=ResourceReference('linked_service', service_id),
             )
-        if not await self._repository.delete(workspace_id, service_id):
+        if not await self._repository.delete_for_user(user_id, service_id):
             raise LinkedServiceNotFoundError(service_id)
 
-    async def require_available_selection(
+    async def require_available_selection_for_user(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
-        """Require a configured enabled service with an active model deployment."""
+        """Require a user-owned service with an active model deployment."""
 
-        linked_service = await self._get_required(workspace_id, service_id)
+        linked_service = await self._get_required_for_user(user_id, service_id)
+        self._require_available(linked_service, service_id, model_id)
+
+    def _require_available(
+        self,
+        linked_service: LinkedService,
+        service_id: str,
+        model_id: str,
+    ) -> None:
+        """Require a linked service to support one active model deployment."""
+
         if not linked_service.enabled:
             raise LinkedServiceSelectionUnavailableError(
                 service_id=service_id,
@@ -193,9 +207,9 @@ class LinkedServiceService:
             for model in MODEL_CATALOG
             if model.status != ModelStatus.DEPRECATED
             and any(
-                deployment.provider_id.value == provider_type
-                and deployment.status != ModelStatus.DEPRECATED
-                for deployment in model.deployments
+                offering.provider_id.value == provider_type
+                and offering.status != ModelStatus.DEPRECATED
+                for offering in CATALOG_INDEX.offerings_for_model(model.id)
             )
         ]
 
@@ -212,21 +226,21 @@ class LinkedServiceService:
         tenant = await self._tenant_service.resolve(user_id=user_id, requested_workspace_id=requested_workspace_id)
         return tenant.workspace_id
 
-    async def _get_required(self, workspace_id: str, service_id: str) -> LinkedService:
+    async def _get_required_for_user(self, user_id: str, service_id: str) -> LinkedService:
         """Load a service or raise the stable not-found error."""
-        linked_service = await self._repository.get(workspace_id, service_id)
+        linked_service = await self._repository.get_for_user(user_id, service_id)
         if linked_service is None:
             raise LinkedServiceNotFoundError(service_id)
         return linked_service
 
     async def _require_unique_name(
         self,
-        workspace_id: str,
+        user_id: str,
         name: str,
     ) -> None:
-        """Reject a duplicate linked-service name in one workspace."""
+        """Reject a duplicate linked-service name for one user."""
 
-        existing = await self._repository.get_by_name(workspace_id, name)
+        existing = await self._repository.get_by_name(user_id, name)
         if existing is not None:
             raise LinkedServiceNameConflictError(name)
 

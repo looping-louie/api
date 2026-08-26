@@ -1,4 +1,4 @@
-"""SQLite persistence for workspace-owned linked services."""
+"""SQLite persistence for user-owned linked services."""
 
 from __future__ import annotations
 
@@ -14,20 +14,20 @@ from src.app.repositories.shared.datetime import parse_datetime
 class LinkedServiceRepository(Protocol):
     """Persistence operations required by LinkedServiceService."""
 
-    async def list_for_workspace(self, workspace_id: str) -> list[LinkedService]:
-        """Return linked services owned by a workspace."""
+    async def list_for_user(self, user_id: str) -> list[LinkedService]:
+        """Return linked services owned by a user."""
         raise NotImplementedError
 
-    async def get(self, workspace_id: str, service_id: str) -> LinkedService | None:
-        """Return one linked service when it belongs to the workspace."""
+    async def get_for_user(self, user_id: str, service_id: str) -> LinkedService | None:
+        """Return one linked service when it belongs to the user."""
         raise NotImplementedError
 
     async def get_by_name(
         self,
-        workspace_id: str,
+        user_id: str,
         name: str,
     ) -> LinkedService | None:
-        """Return one linked service matching a workspace-local name."""
+        """Return one linked service matching a user-local name."""
         raise NotImplementedError
 
     async def create(self, linked_service: LinkedService) -> LinkedService:
@@ -38,8 +38,8 @@ class LinkedServiceRepository(Protocol):
         """Persist mutable fields of an existing linked service."""
         raise NotImplementedError
 
-    async def delete(self, workspace_id: str, service_id: str) -> bool:
-        """Delete one workspace-owned linked service."""
+    async def delete_for_user(self, user_id: str, service_id: str) -> bool:
+        """Delete one user-owned linked service."""
         raise NotImplementedError
 
 
@@ -50,12 +50,12 @@ class SqliteLinkedServiceRepository:
         """Store the shared SQLite connection manager."""
         self._database = database
 
-    async def list_for_workspace(self, workspace_id: str) -> list[LinkedService]:
-        """Return workspace services in stable name order."""
+    async def list_for_user(self, user_id: str) -> list[LinkedService]:
+        """Return user services in stable name order."""
         async with self._database.connect() as connection:
             cursor = await connection.execute(
-                f'{_SELECT} WHERE workspace_id = ? ORDER BY name ASC, id ASC',
-                (workspace_id,),
+                f'{_SELECT} WHERE user_id = ? ORDER BY name ASC, id ASC',
+                (user_id,),
             )
             try:
                 rows = await cursor.fetchall()
@@ -63,12 +63,12 @@ class SqliteLinkedServiceRepository:
                 await cursor.close()
         return [_row_to_linked_service(row) for row in rows]
 
-    async def get(self, workspace_id: str, service_id: str) -> LinkedService | None:
-        """Return one service only when it belongs to the requested workspace."""
+    async def get_for_user(self, user_id: str, service_id: str) -> LinkedService | None:
+        """Return one service only when it belongs to the requested user."""
         async with self._database.connect() as connection:
             cursor = await connection.execute(
-                f'{_SELECT} WHERE workspace_id = ? AND id = ? LIMIT 1',
-                (workspace_id, service_id),
+                f'{_SELECT} WHERE user_id = ? AND id = ? LIMIT 1',
+                (user_id, service_id),
             )
             try:
                 row = await cursor.fetchone()
@@ -78,15 +78,15 @@ class SqliteLinkedServiceRepository:
 
     async def get_by_name(
         self,
-        workspace_id: str,
+        user_id: str,
         name: str,
     ) -> LinkedService | None:
-        """Return one service identified by its workspace-local name."""
+        """Return one service identified by its user-local name."""
 
         async with self._database.connect() as connection:
             cursor = await connection.execute(
-                f'{_SELECT} WHERE workspace_id = ? AND name = ? LIMIT 1',
-                (workspace_id, name),
+                f'{_SELECT} WHERE user_id = ? AND name = ? LIMIT 1',
+                (user_id, name),
             )
             try:
                 row = await cursor.fetchone()
@@ -102,7 +102,7 @@ class SqliteLinkedServiceRepository:
                 await connection.execute(
                     '''
                     INSERT INTO linked_services (
-                        id, workspace_id, name, provider_type, enabled,
+                        id, user_id, name, provider_type, enabled,
                         key_trimmed, key_ciphertext, key_version, base_url,
                         version, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -126,7 +126,7 @@ class SqliteLinkedServiceRepository:
                     SET name = ?, enabled = ?, key_trimmed = ?,
                         key_ciphertext = ?, key_version = ?, base_url = ?,
                         version = ?, updated_at = ?
-                    WHERE workspace_id = ? AND id = ?
+                    WHERE user_id = ? AND id = ?
                     ''',
                     (
                         linked_service.name,
@@ -137,7 +137,7 @@ class SqliteLinkedServiceRepository:
                         linked_service.base_url,
                         linked_service.version,
                         linked_service.updated_at.isoformat(),
-                        linked_service.workspace_id,
+                        linked_service.user_id,
                         linked_service.id,
                     ),
                 )
@@ -147,14 +147,14 @@ class SqliteLinkedServiceRepository:
                 raise
         return linked_service
 
-    async def delete(self, workspace_id: str, service_id: str) -> bool:
+    async def delete_for_user(self, user_id: str, service_id: str) -> bool:
         """Delete a service and report whether a row existed."""
         async with self._database.connect() as connection:
             try:
                 await connection.execute('BEGIN IMMEDIATE')
                 cursor = await connection.execute(
-                    'DELETE FROM linked_services WHERE workspace_id = ? AND id = ?',
-                    (workspace_id, service_id),
+                    'DELETE FROM linked_services WHERE user_id = ? AND id = ?',
+                    (user_id, service_id),
                 )
                 try:
                     deleted = cursor.rowcount == 1
@@ -168,7 +168,7 @@ class SqliteLinkedServiceRepository:
 
 
 _SELECT = '''
-SELECT id, workspace_id, name, provider_type, enabled, key_trimmed,
+SELECT id, user_id, name, provider_type, enabled, key_trimmed,
        key_ciphertext, key_version, base_url, version, created_at, updated_at
 FROM linked_services
 '''
@@ -178,7 +178,7 @@ def _values(linked_service: LinkedService) -> tuple[object, ...]:
     """Convert a linked service to SQLite insert values."""
     return (
         linked_service.id,
-        linked_service.workspace_id,
+        linked_service.user_id,
         linked_service.name,
         linked_service.provider_type,
         int(linked_service.enabled),
@@ -196,7 +196,7 @@ def _row_to_linked_service(row: aiosqlite.Row) -> LinkedService:
     """Convert a SQLite result row into a linked service."""
     return LinkedService(
         id=str(row['id']),
-        workspace_id=str(row['workspace_id']),
+        user_id=str(row['user_id']),
         name=str(row['name']),
         provider_type=str(row['provider_type']),
         enabled=bool(row['enabled']),

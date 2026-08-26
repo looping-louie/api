@@ -102,6 +102,24 @@ def test_persona_rest_crud_routes(
     assert deleted.json() == {"deleted": True}
 
 
+def test_persona_routes_ignore_workspace_selection_header(
+    persona_controller: PersonaController,
+) -> None:
+    """Persona routes use user scope even when a workspace header is supplied."""
+
+    client = TestClient(build_app(controller=persona_controller))
+    response = client.post(
+        '/api/v1/personas',
+        headers={'X-Workspace-ID': 'unrelated-workspace'},
+        json={
+            'name': 'User_scoped_persona',
+            'instructions': 'Use user scope only.',
+        },
+    )
+
+    assert response.status_code == 201
+
+
 def test_create_persona_rejects_source_identifier(
     persona_controller: PersonaController,
 ) -> None:

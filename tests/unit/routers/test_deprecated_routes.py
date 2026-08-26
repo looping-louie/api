@@ -43,3 +43,14 @@ def test_legacy_provider_routes_are_not_exposed() -> None:
 
     assert '/api/v1/providers' not in paths
     assert '/api/v1/providers/{provider_id}' not in paths
+
+
+def test_top_level_model_routes_are_not_exposed() -> None:
+    """Workspace model availability replaces global model routes."""
+
+    app = FastAPI()
+    app.include_router(api_v1_router)
+    paths = set(app.openapi()['paths'])
+
+    assert '/api/v1/models' not in paths
+    assert '/api/v1/models/{model_id}' not in paths

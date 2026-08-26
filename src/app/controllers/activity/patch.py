@@ -15,14 +15,12 @@ class ActivityPatchController:
         user_id: str,
         activity_id: str,
         payload: ActivityPatchRequest,
-        requested_workspace_id: str | None = None,
     ) -> ActivityResponse:
         """Apply supplied activity fields."""
         document = await self._activity_service.patch(
             user_id=user_id,
             activity_id=activity_id,
             changes=activity_changes(payload),
-            requested_workspace_id=requested_workspace_id,
         )
         return ActivityResponse.model_validate(document)
 

@@ -53,6 +53,16 @@ EXPECTED_CHECKSUMS = {
     '0043_workspace_execution_defaults.sql': 'd2df858b00599ad9ee02f532efe6f0c4e47f6ae6fc4ef0c49a288e243b90b7ed',
     '0044_execution_overrides.sql': '1a5675323a4d481d2ff73aad4cfc603ec17ef36c686177d99aa81936128114fc',
     '0045_remove_persona_linked_service_selections.sql': 'cadc2fe790d4caaaac9c928fd0129e268a17b1da7ac3d2ba57043ebbffaca261',
+    '0046_users.sql': 'e30aff37c6c2a63f64733c7ac3cd524b4d58a3595edefd518901a15ab73ce22f',
+    '0047_user_owned_instructions.sql': 'cd85463f826f25b680d180f21617074b94a5d47eea645a40016575b846d04433',
+    '0048_user_skill_settings.sql': '3b49ca32366f2cd0a25dd50d59970d4969674e8b51607f81fe6c68dd8d73f747',
+    '0049_user_persona_settings.sql': '950ebb20f57d7e89854c0cc0e9aaa9d83a3178d49a089ace22504501c1802de7',
+    '0050_user_owned_linked_services.sql': '947e746d91aa4286e9ae7f86173640cfe8adc56904f1e46b0380f3806f43ac85',
+    '0051_user_execution_settings.sql': 'adc88f0b9c8b86972a5486481b8b24dd38daa33fb6b62137695c52042c81745b',
+    '0052_logical_model_overrides.sql': '537b670ad3847eb05a563ac4199c17564e344ba45aebd506e753997710c47ef8',
+    '0053_user_owned_activities.sql': '24d04abb45376976d809a9ec0ece5d180c8118eb5c35a592d74782a8e8da39f4',
+    '0054_user_owned_pipelines.sql': '6fe0a047ac9471affff7b6b96f85da71150a67ff0dece380205f1d8469375694',
+    '0055_user_execution_defaults.sql': 'c8db17c42ec771b968a032a76a3da7940877a768909d5319eb9a570ebab05adb',
 }
 
 

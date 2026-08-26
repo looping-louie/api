@@ -169,8 +169,10 @@ class ExecutionInstructionLibraryService:
         repository: DefinitionRepository,
         persona_skill_repository: PersonaSkillRepository,
         tenant_service: TenantService,
+        persona_repository: DefinitionRepository | None = None,
     ) -> None:
         self._repository = repository
+        self._persona_repository = persona_repository or repository
         self._persona_skill_repository = persona_skill_repository
         self._tenant_service = tenant_service
 
@@ -188,11 +190,13 @@ class ExecutionInstructionLibraryService:
         )
         workspace_id = tenant.workspace_id
         skills = await self._load_type(
+            repository=self._repository,
             workspace_id=workspace_id,
             instruction_type="skill",
         )
         personas = await self._load_type(
-            workspace_id=workspace_id,
+            repository=self._persona_repository,
+            workspace_id=user_id,
             instruction_type="persona",
         )
         skill_aliases = self._build_aliases(skills)
@@ -219,10 +223,11 @@ class ExecutionInstructionLibraryService:
     async def _load_type(
         self,
         *,
+        repository: DefinitionRepository,
         workspace_id: str,
         instruction_type: DefinitionType,
     ) -> tuple[ExecutionInstruction, ...]:
-        summaries = await self._repository.list_available_for_workspace(
+        summaries = await repository.list_available_for_workspace(
             workspace_id=workspace_id,
             instruction_type=instruction_type,
         )
@@ -233,7 +238,7 @@ class ExecutionInstructionLibraryService:
                 continue
 
             document = await (
-                self._repository.get_available_for_workspace(
+                repository.get_available_for_workspace(
                     workspace_id=workspace_id,
                     instruction_type=instruction_type,
                     instruction_id=summary.id,

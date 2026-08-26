@@ -17,14 +17,12 @@ BASE_TIME = datetime(2026, 7, 24, 10, 0, tzinfo=UTC)
 def build_pipeline(
     *,
     pipeline_id: str = "pipeline-1",
-    workspace_id: str = "workspace-1",
     status: str = "active",
 ) -> PipelineDocument:
     """Build one complete two-step pipeline."""
 
     return PipelineDocument(
         id=pipeline_id,
-        workspace_id=workspace_id,
         name=f"Pipeline {pipeline_id}",
         description="Run and approve.",
         status=status,  # type: ignore[arg-type]

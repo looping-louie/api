@@ -31,6 +31,12 @@ GET /api/v1/catalog/providers
 | `requires_api_key` | Boolean | Whether this provider type requires an API key. |
 | `default_base_url` | String or `null` | Default endpoint for this provider type. |
 | `model_catalog_note` | String or `null` | Static note about catalog support. |
+| `offerings` | Array | Authoritative provider-owned model offerings. |
+
+Each offering includes `model_id`, `provider_model_id`, `endpoint`, optional
+`context_window` and `max_output_tokens`, optional `pricing`, `status`, and
+optional `deprecated_at`. Pricing includes input, output, cached-input, valid
+until, and note fields when known.
 
 Example response (`200 OK`):
 
@@ -43,9 +49,84 @@ Example response (`200 OK`):
     "logo_url": "/providers/openai.svg",
     "requires_api_key": true,
     "default_base_url": "https://api.openai.com/v1",
-    "model_catalog_note": null
+    "model_catalog_note": null,
+    "offerings": [
+      {
+        "model_id": "gpt-5.6-sol",
+        "provider_model_id": "gpt-5.6-sol",
+        "endpoint": "responses",
+        "context_window": 1050000,
+        "max_output_tokens": 128000,
+        "pricing": {
+          "input_per_million_usd": "5.00",
+          "output_per_million_usd": "30.00",
+          "cached_input_per_million_usd": "0.50",
+          "valid_until": null,
+          "note": null
+        },
+        "status": "active",
+        "deprecated_at": null
+      }
+    ]
   }
 ]
+```
+
+## List model catalog
+
+`GET /api/v1/catalog/models` returns active logical model metadata only. It
+does not identify provider routes, configured providers, or available workspace
+connections.
+
+```http
+GET /api/v1/catalog/models
+```
+
+The response is an object with the following properties:
+
+| Property | JSON type | Description |
+| -------- | --------- | ----------- |
+| `items` | Array | Active logical model definitions. |
+| `total` | Integer | Total number of active logical model definitions. |
+
+Each `items` entry has the following properties:
+
+| Property | JSON type | Description |
+| -------- | --------- | ----------- |
+| `id` | String | Immutable logical model identifier. |
+| `name` | String | Human-readable model name. |
+| `vendor` | String | Model vendor. |
+| `family` | String | Model family. |
+| `description` | String | Static model description. |
+| `released_at` | String | ISO 8601 model release date. |
+| `capabilities` | Array of strings | Catalog capability identifiers. |
+| `status` | String | Static lifecycle status. |
+| `tags` | Array of strings | Search and grouping tags. |
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "gpt-5",
+      "name": "GPT-5",
+      "vendor": "OpenAI",
+      "family": "GPT",
+      "description": "A general-purpose model.",
+      "released_at": "2026-08-07",
+      "capabilities": [
+        "coding",
+        "text"
+      ],
+      "status": "active",
+      "tags": [
+        "general-purpose"
+      ]
+    }
+  ],
+  "total": 1
+}
 ```
 
 ## List built-in Persona catalog
@@ -73,15 +154,25 @@ Example response (`200 OK`):
     "description": "Optimises for correct implementation and maintainable code.",
     "instructions": "# Persona: Tech Lead\n...",
     "metadata": {
-      "applies_when": ["code", "implementation"],
-      "applies_to": ["generator", "reviewer"]
+      "applies_when": [
+        "code",
+        "implementation"
+      ],
+      "applies_to": [
+        "generator",
+        "reviewer"
+      ]
     },
     "enabled_by_default": true,
     "catalog_version": 2,
     "deprecated": false,
     "category": "software_engineering",
-    "skill_ids": ["builtin:skill:security"],
-    "default_for": ["generator"]
+    "skill_ids": [
+      "builtin:skill:security"
+    ],
+    "default_for": [
+      "generator"
+    ]
   }
 ]
 ```
@@ -110,8 +201,13 @@ Example response (`200 OK`):
     "description": "Evaluates security risks.",
     "instructions": "# Security\n...",
     "metadata": {
-      "applies_when": ["code", "implementation"],
-      "applies_to": ["reviewer"]
+      "applies_when": [
+        "code",
+        "implementation"
+      ],
+      "applies_to": [
+        "reviewer"
+      ]
     },
     "enabled_by_default": true,
     "catalog_version": 2,
@@ -123,66 +219,11 @@ Example response (`200 OK`):
       "production": 85
     },
     "phase": "code_review",
-    "artifacts": ["changed_files", "git_diff"],
+    "artifacts": [
+      "changed_files",
+      "git_diff"
+    ],
     "output": "json"
   }
 ]
-```
-
-## List model catalog
-
-`GET /api/v1/catalog/models` returns active logical models. `provider_ids`
-describes catalog deployments only; it does not identify configured providers
-or available workspace connections.
-
-```http
-GET /api/v1/catalog/models
-```
-
-The response is an object with the following properties:
-
-| Property | JSON type | Description |
-| -------- | --------- | ----------- |
-| `items` | Array | Active logical model definitions. |
-| `total` | Integer | Total number of active logical model definitions. |
-
-Each `items` entry has the following properties:
-
-| Property | JSON type | Description |
-| -------- | --------- | ----------- |
-| `id` | String | Immutable logical model identifier. |
-| `name` | String | Human-readable model name. |
-| `vendor` | String | Model vendor. |
-| `family` | String | Model family. |
-| `description` | String | Static model description. |
-| `released_at` | String | ISO 8601 model release date. |
-| `capabilities` | Array of strings | Catalog capability identifiers. |
-| `status` | String | Static lifecycle status. |
-| `provider_ids` | Array of strings | Provider types with an active catalog deployment. |
-| `deployment_count` | Integer | Number of catalog deployments for this logical model. |
-| `starting_price` | Object or `null` | Lowest active deployment price, when catalog pricing exists. |
-| `tags` | Array of strings | Search and grouping tags. |
-
-Example response (`200 OK`):
-
-```json
-{
-  "items": [
-    {
-      "id": "gpt-5",
-      "name": "GPT-5",
-      "vendor": "OpenAI",
-      "family": "GPT",
-      "description": "A general-purpose model.",
-      "released_at": "2026-08-07",
-      "capabilities": ["coding", "text"],
-      "status": "active",
-      "provider_ids": ["openai"],
-      "deployment_count": 1,
-      "starting_price": null,
-      "tags": ["general-purpose"]
-    }
-  ],
-  "total": 1
-}
 ```

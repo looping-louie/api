@@ -14,12 +14,12 @@ from src.app.models.pipeline import (
 
 
 class PipelineRepository(Protocol):
-    """Store workspace-scoped pipelines and immutable changelogs."""
+    """Store User-owned pipelines and immutable changelogs."""
 
     async def list(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         offset: int,
         limit: int,
         status: PipelineStatus | None,
@@ -32,7 +32,7 @@ class PipelineRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDocument | None:
         """Return one pipeline if present."""
@@ -42,7 +42,7 @@ class PipelineRepository(Protocol):
     async def get_with_activities(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDetails | None:
         """Return one pipeline and its ordered Activity documents."""
@@ -106,7 +106,7 @@ class PipelineRepository(Protocol):
     async def list_changelog(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
         offset: int,
         limit: int,

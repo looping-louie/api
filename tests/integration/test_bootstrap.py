@@ -17,11 +17,12 @@ from fastapi.testclient import TestClient
 from src.app.bootstrap import configure_application
 from src.app.controllers.activity import ActivityController
 from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.model import ModelController
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.user import UserModelController
+from src.app.controllers.user import UserController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
@@ -40,6 +41,8 @@ EXPECTED_TABLES = {
     "linked_services",
     "persona_skills",
     "workspace_instruction_settings",
+    "user_skill_settings",
+    "user_persona_settings",
     "activities",
     "activity_catalog_installations",
     "activity_changelog_entries",
@@ -50,7 +53,7 @@ EXPECTED_TABLES = {
     "pipeline_run_steps",
     "pipeline_run_events",
     "workers",
-    "workspace_execution_defaults",
+    "users",
 }
 
 
@@ -123,12 +126,16 @@ def test_bootstrap_configures_application_and_runs_migrations(
             PipelineController,
         )
         assert isinstance(
-            app.state.model_controller,
-            ModelController,
+            app.state.user_model_controller,
+            UserModelController,
         )
         assert isinstance(
             app.state.workspace_controller,
             WorkspaceController,
+        )
+        assert isinstance(
+            app.state.user_controller,
+            UserController,
         )
         assert isinstance(
             app.state.database,
@@ -226,6 +233,16 @@ def test_bootstrap_configures_application_and_runs_migrations(
             "0043_workspace_execution_defaults",
             "0044_execution_overrides",
                 "0045_remove_persona_linked_service_selections",
+            "0046_users",
+            "0047_user_owned_instructions",
+            "0048_user_skill_settings",
+                "0049_user_persona_settings",
+                "0050_user_owned_linked_services",
+                "0051_user_execution_settings",
+                    "0052_logical_model_overrides",
+                        "0053_user_owned_activities",
+                        "0054_user_owned_pipelines",
+                        "0055_user_execution_defaults",
     ]
     assert activity_rows == []
 

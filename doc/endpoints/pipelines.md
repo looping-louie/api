@@ -1,11 +1,13 @@
 # Pipelines
 
-A pipeline stores a declared sequence of Activity definitions. The API creates
-an independent persisted Activity record for every supplied step, then stores
-the generated Activity IDs in that display order. A step can declare `dependsOn`
-conditions for other named steps, forming an acyclic execution graph that
-controls execution eligibility. Pipeline runs persist a frozen graph and wait
-for a runtime worker to claim and select one eligible Activity run at a time.
+A Pipeline is a User-owned declared sequence of Activity definitions. The API
+creates an independent User-owned Activity record for every supplied step, then
+stores the generated Activity IDs in that display order. Standalone Pipeline
+definition routes use `X-User-ID` and ignore `X-Workspace-ID`. A step can
+declare `dependsOn` conditions for other named steps, forming an acyclic
+execution graph that controls execution eligibility. Pipeline run routes use
+`X-Workspace-ID` to select the Workspace where the frozen graph executes and a
+runtime worker claims one eligible Activity run at a time.
 
 ## Pipeline calls
 
@@ -27,18 +29,18 @@ for a runtime worker to claim and select one eligible Activity run at a time.
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
 
 Creation requires a non-empty `name`, a `description`, and at least one step.
-Pipelines persist nullable `model_target` and `harness` overrides. PATCH accepts
-`name`, `description`, `enabled`, `steps`, `model_target`, and `harness`;
-supplying `steps` replaces the complete ordered array. A non-null model target
-is validated against the selected workspace Linked Service, and `null` clears
-either override. PipelineRun creation resolves
-model targets at agent, Activity, Pipeline, then Workspace scope, and Harnesses
-at Activity, Pipeline, then Workspace scope. It freezes the effective values
+Pipelines persist nullable `model_id` and `harness` overrides. PATCH accepts
+`name`, `description`, `enabled`, `steps`, `model_id`, and `harness`;
+supplying `steps` replaces the complete ordered array. `null` clears either
+override. PipelineRun creation resolves model IDs at agent, Activity, Pipeline,
+then User scope. The `louie` Harness selects and freezes the first usable
+Linked Service offering the effective model. Harnesses resolve
+at Activity, Pipeline, then User scope. It freezes the effective values
 in its Pipeline and Activity snapshots. An unset effective Harness retains the
 legacy `louie` v1 compatibility behavior.
 Archived pipelines are immutable and omitted from unfiltered listings.
 
-Every Pipeline response includes top-level `model_target` and `harness` keys,
+Every Pipeline response includes top-level `model_id` and `harness` keys,
 and every returned step includes its own Activity-level keys. Unset overrides
 serialize as `null`; the repeated `null` fields are omitted from examples where
 they are not relevant to the example.
@@ -55,9 +57,9 @@ the same name restrictions as the Pipeline name. Each item can also contain a
 | `description` | String | Yes | May be empty. |
 | `type` | String | Yes | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. |
 | `config` | Object | Yes | Matches the selected Activity type. |
-| `model_target` | Object or null | No | A linked service and model pair. `null` means inherit. |
+| `model_id` | String or null | No | A logical catalog model ID. `null` means inherit. |
 | `harness` | Object or null | No | An empty `louie` v1 or `codex_cli` v1 configuration. `null` means inherit. |
-| `dependsOn` | Array | No | Defaults to `[]`. Every item names another unique step and uses a `success` or `failure` condition. The resulting graph must be acyclic. |
+| `dependsOn` | Array | No | Defaults to an empty array. Every item names another unique step and uses a `success` or `failure` condition. The resulting graph must be acyclic. |
 
 Each step has a `dependsOn` array. Every item contains an `activity` name from
 another step and a `condition` of `success` or `failure`. The array can be
@@ -73,7 +75,6 @@ every stored step to its full persisted Activity.
 
 ```http
 GET /api/v1/pipelines?offset=0&status=active&search=release
-X-Workspace-ID: workspace-acme
 ```
 
 Example response (`200 OK`):
@@ -89,9 +90,9 @@ Example response (`200 OK`):
       "steps": [
         {
           "id": "activity-release-review",
-          "workspace_id": "workspace-acme",
           "name": "ReviewReleasePlan",
-          "dependsOn": [],
+          "dependsOn": [
+          ],
           "description": "Reach a shared decision about release readiness.",
           "status": "active",
           "type": "roundtable_loop",
@@ -101,24 +102,15 @@ Example response (`200 OK`):
             },
             "agents": [
               {
-                "model_target": {
-                  "linked_service_id": "linked-service-openai-primary",
-                  "model_id": "gpt-5"
-                },
+                "model_id": "gpt-5",
                 "persona_id": "release-manager",
                 "role": "generator"},
               {
-                "model_target": {
-                  "linked_service_id": "linked-service-openai-primary",
-                  "model_id": "gpt-5"
-                },
+                "model_id": "gpt-5",
                 "persona_id": "quality-engineer",
                 "role": "generator"},
               {
-                "model_target": {
-                  "linked_service_id": "linked-service-openai-primary",
-                  "model_id": "gpt-5"
-                },
+                "model_id": "gpt-5",
                 "persona_id": "technical-lead",
                 "role": "aggregator"
               }
@@ -135,7 +127,6 @@ Example response (`200 OK`):
         },
         {
           "id": "activity-readiness-quiz",
-          "workspace_id": "workspace-acme",
           "name": "DeploymentReadinessQuiz",
           "dependsOn": [
             {
@@ -148,7 +139,8 @@ Example response (`200 OK`):
           "type": "quiz",
           "config": {
             "quiz": {
-              "questions": []
+              "questions": [
+              ]
             }
           },
           "created_at": "2026-08-13T10:00:00Z",
@@ -158,7 +150,6 @@ Example response (`200 OK`):
         },
         {
           "id": "activity-production-approval",
-          "workspace_id": "workspace-acme",
           "name": "ApproveProductionRelease",
           "dependsOn": [
             {
@@ -173,7 +164,8 @@ Example response (`200 OK`):
           "description": "A release manager approves deployment.",
           "status": "active",
           "type": "approval",
-          "config": {},
+          "config": {
+          },
           "created_at": "2026-08-13T10:00:00Z",
           "created_by": "user-123",
           "updated_at": "2026-08-13T10:00:00Z",
@@ -195,7 +187,7 @@ with the full persisted Activity for every step, including its generated ID.
 
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -209,9 +201,9 @@ Example response (`200 OK`):
   "steps": [
     {
       "id": "activity-release-review",
-      "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
-      "dependsOn": [],
+      "dependsOn": [
+      ],
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -220,9 +212,21 @@ Example response (`200 OK`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+          {
+            "model_id": "gpt-5",
+            "persona_id": "release-manager",
+            "role": "generator"
+          },
+          {
+            "model_id": "gpt-5",
+            "persona_id": "quality-engineer",
+            "role": "generator"
+          },
+          {
+            "model_id": "gpt-5",
+            "persona_id": "technical-lead",
+            "role": "aggregator"
+          }
         ],
         "output_contract": {
           "type": "text",
@@ -236,7 +240,6 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-readiness-quiz",
-      "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
         {
@@ -249,7 +252,8 @@ Example response (`200 OK`):
       "type": "quiz",
       "config": {
         "quiz": {
-          "questions": []
+          "questions": [
+          ]
         }
       },
       "created_at": "2026-08-13T10:00:00Z",
@@ -259,16 +263,22 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-production-approval",
-      "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
-        {"activity": "ReviewReleasePlan", "condition": "failure"}
+        {
+          "activity": "DeploymentReadinessQuiz",
+          "condition": "success"
+        },
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "failure"
+        }
       ],
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
-      "config": {},
+      "config": {
+      },
       "created_at": "2026-08-13T10:00:00Z",
       "created_by": "user-123",
       "updated_at": "2026-08-13T10:00:00Z",
@@ -282,11 +292,11 @@ Example response (`200 OK`):
 
 ## Create a pipeline
 
-`POST /api/v1/pipelines` creates an enabled pipeline in the workspace supplied
-by `X-Workspace-ID`. Supply complete Activity definitions in execution order.
-The API validates and persists each Activity in the same transaction, assigns
-each one an ID, and stores those IDs as Pipeline steps. The response resolves
-each stored step to its full persisted Activity.
+`POST /api/v1/pipelines` creates an enabled Pipeline for the User supplied by
+`X-User-ID` and ignores `X-Workspace-ID`. Supply complete Activity definitions
+in execution order. The API validates and persists each Activity in the same
+transaction, assigns each one an ID, and stores those IDs as Pipeline steps. The
+response resolves each stored step to its full persisted Activity.
 
 ### Create Request Properties
 
@@ -295,12 +305,12 @@ each stored step to its full persisted Activity.
 | `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Yes | May be empty. |
 | `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
-| `model_target` | Object or null | No | A linked service and model pair. `null` means inherit. |
+| `model_id` | String or null | No | A logical catalog model ID. `null` means inherit. |
 | `harness` | Object or null | No | Empty `louie` v1 and `codex_cli` v1 configurations are accepted. `null` means inherit. |
 
 ```http
 POST /api/v1/pipelines
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 Content-Type: application/json
 ```
 
@@ -311,7 +321,8 @@ Content-Type: application/json
   "steps": [
     {
       "name": "ReviewReleasePlan",
-      "dependsOn": [],
+      "dependsOn": [
+      ],
       "description": "Reach a shared decision about release readiness.",
       "type": "roundtable_loop",
       "config": {
@@ -320,26 +331,17 @@ Content-Type: application/json
         },
         "agents": [
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "release-manager",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "quality-engineer",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "technical-lead",
             "role": "aggregator"
           }
@@ -353,25 +355,36 @@ Content-Type: application/json
     {
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "success"}
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "success"
+        }
       ],
       "description": "Confirm operational readiness before deployment.",
       "type": "quiz",
       "config": {
         "quiz": {
-          "questions": []
+          "questions": [
+          ]
         }
       }
     },
     {
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
-        {"activity": "ReviewReleasePlan", "condition": "failure"}
+        {
+          "activity": "DeploymentReadinessQuiz",
+          "condition": "success"
+        },
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "failure"
+        }
       ],
       "description": "A release manager approves deployment.",
       "type": "approval",
-      "config": {}
+      "config": {
+      }
     }
   ]
 }
@@ -388,9 +401,9 @@ Example response (`201 Created`):
   "steps": [
     {
       "id": "activity-release-review",
-      "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
-      "dependsOn": [],
+      "dependsOn": [
+      ],
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -400,26 +413,17 @@ Example response (`201 Created`):
         },
         "agents": [
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "release-manager",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "quality-engineer",
             "role": "generator"
           },
           {
-            "model_target": {
-              "linked_service_id": "linked-service-openai-primary",
-              "model_id": "gpt-5"
-            },
+            "model_id": "gpt-5",
             "persona_id": "technical-lead",
             "role": "aggregator"
           }
@@ -436,17 +440,20 @@ Example response (`201 Created`):
     },
     {
       "id": "activity-readiness-quiz",
-      "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "success"}
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "success"
+        }
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
       "config": {
         "quiz": {
-          "questions": []
+          "questions": [
+          ]
         }
       },
       "created_at": "2026-08-13T10:00:00Z",
@@ -456,16 +463,22 @@ Example response (`201 Created`):
     },
     {
       "id": "activity-production-approval",
-      "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
-        {"activity": "ReviewReleasePlan", "condition": "failure"}
+        {
+          "activity": "DeploymentReadinessQuiz",
+          "condition": "success"
+        },
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "failure"
+        }
       ],
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
-      "config": {},
+      "config": {
+      },
       "created_at": "2026-08-13T10:00:00Z",
       "created_by": "user-123",
       "updated_at": "2026-08-13T10:00:00Z",
@@ -480,9 +493,9 @@ Example response (`201 Created`):
 ## Update a pipeline
 
 `PATCH /api/v1/pipelines/{pipeline_id}` accepts one or more of `name`,
-`description`, `enabled`, `steps`, `model_target`, and `harness`. Supplying
+`description`, `enabled`, `steps`, `model_id`, and `harness`. Supplying
 `steps` replaces the complete ordered array and creates new independent Activity
-records from the supplied inline definitions. Setting `model_target` or
+records from the supplied inline definitions. Setting `model_id` or
 `harness` to `null` clears that override. The response resolves every stored
 step to its full persisted Activity.
 
@@ -496,12 +509,12 @@ At least one property is required.
 | `description` | String | May be empty. |
 | `enabled` | Boolean | Enables or disables the Pipeline. |
 | `steps` | Array of Activity definitions | Contains at least one step, uses the [Pipeline Step Schema](#pipeline-step-schema), and replaces the complete ordered step collection. |
-| `model_target` | Object or null | A linked service and model pair. `null` clears the override. |
+| `model_id` | String or null | A logical catalog model ID. `null` clears the override. |
 | `harness` | Object or null | An empty `louie` v1 or `codex_cli` v1 configuration. `null` clears the override. |
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 Content-Type: application/json
 ```
 
@@ -522,9 +535,9 @@ Example response (`200 OK`):
   "steps": [
     {
       "id": "activity-release-review",
-      "workspace_id": "workspace-acme",
       "name": "ReviewReleasePlan",
-      "dependsOn": [],
+      "dependsOn": [
+      ],
       "description": "Reach a shared decision about release readiness.",
       "status": "active",
       "type": "roundtable_loop",
@@ -533,9 +546,21 @@ Example response (`200 OK`):
           "max_iterations": 2
         },
         "agents": [
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "release-manager", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "quality-engineer", "role": "generator"},
-          {"model_target": {"linked_service_id": "linked-service-openai-primary", "model_id": "gpt-5"}, "persona_id": "technical-lead", "role": "aggregator"}
+          {
+            "model_id": "gpt-5",
+            "persona_id": "release-manager",
+            "role": "generator"
+          },
+          {
+            "model_id": "gpt-5",
+            "persona_id": "quality-engineer",
+            "role": "generator"
+          },
+          {
+            "model_id": "gpt-5",
+            "persona_id": "technical-lead",
+            "role": "aggregator"
+          }
         ],
         "output_contract": {
           "type": "text",
@@ -549,17 +574,20 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-readiness-quiz",
-      "workspace_id": "workspace-acme",
       "name": "DeploymentReadinessQuiz",
       "dependsOn": [
-        {"activity": "ReviewReleasePlan", "condition": "success"}
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "success"
+        }
       ],
       "description": "Confirm operational readiness before deployment.",
       "status": "active",
       "type": "quiz",
       "config": {
         "quiz": {
-          "questions": []
+          "questions": [
+          ]
         }
       },
       "created_at": "2026-08-13T10:00:00Z",
@@ -569,16 +597,22 @@ Example response (`200 OK`):
     },
     {
       "id": "activity-production-approval",
-      "workspace_id": "workspace-acme",
       "name": "ApproveProductionRelease",
       "dependsOn": [
-        {"activity": "DeploymentReadinessQuiz", "condition": "success"},
-        {"activity": "ReviewReleasePlan", "condition": "failure"}
+        {
+          "activity": "DeploymentReadinessQuiz",
+          "condition": "success"
+        },
+        {
+          "activity": "ReviewReleasePlan",
+          "condition": "failure"
+        }
       ],
       "description": "A release manager approves deployment.",
       "status": "active",
       "type": "approval",
-      "config": {},
+      "config": {
+      },
       "created_at": "2026-08-13T10:00:00Z",
       "created_by": "user-123",
       "updated_at": "2026-08-13T10:00:00Z",
@@ -607,13 +641,13 @@ changes, and order changes.
 ## Archive a pipeline
 
 `DELETE /api/v1/pipelines/{pipeline_id}` archives a Pipeline and returns
-`{"deleted": true}`. Archival is terminal: archived Pipelines reject PATCH
+the deletion response shown below. Archival is terminal: archived Pipelines reject PATCH
 requests and are omitted from unfiltered listings. Existing Pipeline runs retain
 their frozen graph and execution history.
 
 ```http
 DELETE /api/v1/pipelines/pipeline-production-release-review
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -631,7 +665,7 @@ after the optional non-negative `offset`.
 
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review/changelog?offset=0
-X-Workspace-ID: workspace-acme
+X-User-ID: user-123
 ```
 
 Example response (`200 OK`):
@@ -835,7 +869,7 @@ Example response (`200 OK`):
 
 `etag` is opaque. The runtime sends it unchanged as the standard HTTP
 `If-Match` request header when it attempts to claim that exact run. A Pipeline
-with no claimable work returns `{ "items": [], "total": 0 }`.
+with no claimable work returns an empty `items` array and `total` of `0`.
 
 ## Claim a pipeline run
 
@@ -885,7 +919,8 @@ Example response (`200 OK`):
       "created_at": "2026-08-18T10:01:00Z",
       "created_by": "user-123",
       "updated_at": "2026-08-18T10:01:00Z",
-      "payload": {}
+      "payload": {
+      }
     },
     "steps": [
       {
@@ -1051,7 +1086,8 @@ Example response (`200 OK`):
     "created_at": "2026-08-18T10:03:00Z",
     "created_by": "user-123",
     "updated_at": "2026-08-18T10:03:00Z",
-    "payload": {}
+    "payload": {
+    }
   },
   "steps": [
     {

@@ -30,6 +30,10 @@ class SqliteInstructionRepository(
 ):
     """Persists persona and skill instruction documents in SQLite."""
 
+    _owner_column = 'owner_workspace_id'
+    _settings_table = 'workspace_instruction_settings'
+    _settings_owner_column = 'workspace_id'
+
     def __init__(
         self,
         database_path: str | Path,
@@ -49,10 +53,10 @@ class SqliteInstructionRepository(
 
         async with self._connect() as connection:
             cursor = await connection.execute(
-                """
+                f"""
                 SELECT
                     id,
-                    owner_workspace_id AS workspace_id,
+                    {self._owner_column} AS workspace_id,
                     instruction_type,
                     name,
                     description,
@@ -61,7 +65,7 @@ class SqliteInstructionRepository(
                     updated_at
                 FROM instructions
                 WHERE origin = 'custom'
-                  AND owner_workspace_id = ?
+                                    AND {self._owner_column} = ?
                   AND instruction_type = ?
                 ORDER BY
                     name_key ASC,
@@ -126,10 +130,10 @@ class SqliteInstructionRepository(
         """Return one owned custom instruction using an open connection."""
 
         cursor = await connection.execute(
-            """
+            f"""
             SELECT
                 id,
-                owner_workspace_id AS workspace_id,
+                {self._owner_column} AS workspace_id,
                 instruction_type,
                 source_instruction_id,
                 name,
@@ -142,7 +146,7 @@ class SqliteInstructionRepository(
             FROM instructions
             WHERE id = ?
               AND origin = 'custom'
-              AND owner_workspace_id = ?
+                            AND {self._owner_column} = ?
               AND instruction_type = ?
             LIMIT 1
             """,
@@ -181,3 +185,19 @@ class SqliteInstructionRepository(
             yield connection
         finally:
             await connection.close()
+
+
+class SqliteUserSkillRepository(SqliteInstructionRepository):
+    """Persists skills owned and enabled independently by each user."""
+
+    _owner_column = 'owner_user_id'
+    _settings_table = 'user_skill_settings'
+    _settings_owner_column = 'user_id'
+
+
+class SqliteUserPersonaRepository(SqliteInstructionRepository):
+    """Persists Personas owned and enabled independently by each user."""
+
+    _owner_column = 'owner_user_id'
+    _settings_table = 'user_persona_settings'
+    _settings_owner_column = 'user_id'
