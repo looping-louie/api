@@ -175,22 +175,6 @@ class LinkedServiceService:
         linked_service = await self._get_required_for_user(user_id, service_id)
         self._require_available(linked_service, service_id, model_id)
 
-    async def require_available_selection(
-        self,
-        *,
-        workspace_id: str,
-        service_id: str,
-        model_id: str,
-    ) -> None:
-        """Validate a workspace caller through its selected workspace owner.
-
-        This adapter preserves existing workspace-scoped Activity, Pipeline, and
-        default validation until those contracts move to user ownership.
-        """
-
-        linked_service = await self._get_required_for_workspace(workspace_id, service_id)
-        self._require_available(linked_service, service_id, model_id)
-
     def _require_available(
         self,
         linked_service: LinkedService,
@@ -245,16 +229,6 @@ class LinkedServiceService:
     async def _get_required_for_user(self, user_id: str, service_id: str) -> LinkedService:
         """Load a service or raise the stable not-found error."""
         linked_service = await self._repository.get_for_user(user_id, service_id)
-        if linked_service is None:
-            raise LinkedServiceNotFoundError(service_id)
-        return linked_service
-
-    async def _get_required_for_workspace(self, workspace_id: str, service_id: str) -> LinkedService:
-        """Load a user-owned service through a temporary workspace adapter."""
-        linked_service = await self._repository.get_for_workspace_owner(
-            workspace_id,
-            service_id,
-        )
         if linked_service is None:
             raise LinkedServiceNotFoundError(service_id)
         return linked_service

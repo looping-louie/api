@@ -18,23 +18,8 @@ class LinkedServiceRepository(Protocol):
         """Return linked services owned by a user."""
         raise NotImplementedError
 
-    async def list_for_workspace_owner(
-        self,
-        workspace_id: str,
-    ) -> list[LinkedService]:
-        """Return services owned by a legacy workspace's earliest owner."""
-        raise NotImplementedError
-
     async def get_for_user(self, user_id: str, service_id: str) -> LinkedService | None:
         """Return one linked service when it belongs to the user."""
-        raise NotImplementedError
-
-    async def get_for_workspace_owner(
-        self,
-        workspace_id: str,
-        service_id: str,
-    ) -> LinkedService | None:
-        """Return a service through a legacy workspace's earliest owner."""
         raise NotImplementedError
 
     async def get_by_name(
@@ -78,57 +63,12 @@ class SqliteLinkedServiceRepository:
                 await cursor.close()
         return [_row_to_linked_service(row) for row in rows]
 
-    async def list_for_workspace_owner(
-        self,
-        workspace_id: str,
-    ) -> list[LinkedService]:
-        """Return services owned by the workspace's deterministic owner."""
-        async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                f'''{_SELECT} WHERE user_id = (
-                    SELECT user_id
-                    FROM workspace_memberships
-                    WHERE workspace_id = ? AND role = 'owner'
-                    ORDER BY created_at ASC, user_id ASC
-                    LIMIT 1
-                ) ORDER BY name ASC, id ASC''',
-                (workspace_id,),
-            )
-            try:
-                rows = await cursor.fetchall()
-            finally:
-                await cursor.close()
-        return [_row_to_linked_service(row) for row in rows]
-
     async def get_for_user(self, user_id: str, service_id: str) -> LinkedService | None:
         """Return one service only when it belongs to the requested user."""
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 f'{_SELECT} WHERE user_id = ? AND id = ? LIMIT 1',
                 (user_id, service_id),
-            )
-            try:
-                row = await cursor.fetchone()
-            finally:
-                await cursor.close()
-        return _row_to_linked_service(row) if row is not None else None
-
-    async def get_for_workspace_owner(
-        self,
-        workspace_id: str,
-        service_id: str,
-    ) -> LinkedService | None:
-        """Return a service through the workspace's deterministic owner."""
-        async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                f'''{_SELECT} WHERE user_id = (
-                    SELECT user_id
-                    FROM workspace_memberships
-                    WHERE workspace_id = ? AND role = 'owner'
-                    ORDER BY created_at ASC, user_id ASC
-                    LIMIT 1
-                ) AND id = ? LIMIT 1''',
-                (workspace_id, service_id),
             )
             try:
                 row = await cursor.fetchone()

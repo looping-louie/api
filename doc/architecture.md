@@ -67,8 +67,8 @@ A Pipeline may select one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
 not use the selected Harness. PipelineRun creation freezes the effective
 Harness for each Activity, preferring its own override before Pipeline,
-Workspace, and User candidates, then using the `louie` v1 compatibility default. A
-Pipeline edit must not change the Harness used by an existing run.
+Workspace, and User candidates, then using the `louie` v1 compatibility
+default. A Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
 object. The implemented `louie` v1 configuration must be empty. The API stores
@@ -198,7 +198,7 @@ services/
 |   `-- validation.py              Normalizes and validates input
 |-- linked_services/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages workspace-owned provider connections
+|   `-- service.py                 Manages User-owned provider connections
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- availability.py            Calculates current-User availability
@@ -386,7 +386,7 @@ repositories/
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- linked_services/
 |   |-- __init__.py                Declares persistence contracts
-|   `-- repository.py              Persists workspace provider connections
+|   `-- repository.py              Persists User-owned provider connections
 |-- activity_runs/
 |   |-- errors.py                  Defines checkpoint transition conflicts
 |   |-- __init__.py                Declares persistence contracts
@@ -404,7 +404,7 @@ repositories/
 |-- providers/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists workspace provider configuration
+|   `-- sqlite_repository.py       Persists provider configuration
 |-- shared/
 |   |-- __init__.py                Declares reusable persistence adapters
 |   |-- datetime.py                Maps SQLite timestamp values
@@ -442,7 +442,7 @@ models/
 |-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
 |-- execution.py                   Defines private model-selection snapshots
-|-- linked_service.py              Defines workspace-owned provider connections
+|-- linked_service.py              Defines User-owned provider connections
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
