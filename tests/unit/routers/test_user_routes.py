@@ -32,6 +32,12 @@ class FakeUserRepository:
 
         return self.documents.setdefault(document.id, document)
 
+    async def update(self, document: UserDocument) -> UserDocument:
+        """Replace the stored settings for one known identity."""
+
+        self.documents[document.id] = document
+        return document
+
 
 def build_client() -> TestClient:
     """Build an application that accepts an explicit request user identity."""
@@ -61,6 +67,33 @@ def test_register_then_get_returns_the_identified_user() -> None:
     assert retrieved.status_code == 200
     assert retrieved.json() == registered.json()
     assert registered.json()['id'] == 'user-1'
+    assert registered.json()['settings'] == {'default_harness': None}
+
+
+def test_update_settings_persists_default_harness() -> None:
+    """The current user can set and clear the inherited execution harness."""
+
+    client = build_client()
+    headers = {'X-User-ID': 'user-1'}
+    client.post('/api/v1/users', headers=headers)
+
+    updated = client.patch(
+        '/api/v1/users/me',
+        headers=headers,
+        json={'default_harness': {'kind': 'codex_cli'}},
+    )
+    cleared = client.patch(
+        '/api/v1/users/me',
+        headers=headers,
+        json={'default_harness': None},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()['settings'] == {
+        'default_harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+    }
+    assert cleared.status_code == 200
+    assert cleared.json()['settings'] == {'default_harness': None}
 
 
 def test_get_requires_registered_user() -> None:

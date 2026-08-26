@@ -9,8 +9,8 @@ and commit decisions.
 
 ## Harness Selection
 
-PipelineRun creation resolves Harnesses from Activity, Pipeline, then Workspace
-scope. It freezes the Pipeline-level effective Harness and each child
+PipelineRun creation resolves Harnesses from Activity, Pipeline, Workspace,
+then User scope. It freezes the Pipeline-level effective Harness and each child
 Activity-run's effective Harness independently. Existing configurations use
 `louie` v1 when no Harness candidate exists.
 

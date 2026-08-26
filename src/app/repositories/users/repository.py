@@ -15,3 +15,7 @@ class UserRepository(Protocol):
     async def create_if_absent(self, document: UserDocument) -> UserDocument:
         """Create a user or return its existing durable record."""
         raise NotImplementedError
+
+    async def update(self, document: UserDocument) -> UserDocument:
+        """Replace mutable settings for one existing user."""
+        raise NotImplementedError

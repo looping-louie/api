@@ -33,7 +33,7 @@ supplying `steps` replaces the complete ordered array. A non-null model target
 is validated against the selected workspace Linked Service, and `null` clears
 either override. PipelineRun creation resolves
 model targets at agent, Activity, Pipeline, then Workspace scope, and Harnesses
-at Activity, Pipeline, then Workspace scope. It freezes the effective values
+at Activity, Pipeline, Workspace, then User scope. It freezes the effective values
 in its Pipeline and Activity snapshots. An unset effective Harness retains the
 legacy `louie` v1 compatibility behavior.
 Archived pipelines are immutable and omitted from unfiltered listings.

@@ -19,6 +19,7 @@ from src.app.models.pipeline import (
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.models.user import UserDocument, UserSettings
 from src.app.models.workspace import WorkspaceDefaults
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
@@ -277,6 +278,20 @@ class StaticWorkspaceService:
         return self._defaults
 
 
+class StaticUserService:
+    """Return one user with a fixed execution default for scheduler tests."""
+
+    def __init__(self, document: UserDocument) -> None:
+        """Store the user returned by every lookup."""
+
+        self._document = document
+
+    async def get(self, **_: object) -> UserDocument:
+        """Return the configured current user."""
+
+        return self._document
+
+
 def activity(
     activity_id: str,
     activity_type: str = 'direct_loop',
@@ -436,6 +451,49 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
         'linked_service_id': 'service-workspace',
         'model_id': 'model-workspace',
     }
+
+
+@pytest.mark.asyncio
+async def test_create_freezes_user_default_harness_when_higher_scopes_are_unset(
+    tenant_service: TenantService,
+) -> None:
+    """User settings provide the final Harness candidate for every step."""
+
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    configured_activity = activity('activity-1')
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            description='Run configured steps.', status='active',
+            steps=(PipelineActivityStep(activity_id=configured_activity.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(configured_activity,),
+    )
+    defaults = WorkspaceDefaults(
+        workspace_id='workspace-1', model_target=None, harness=None, updated_at=now,
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs,
+        activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details),
+        tenant_service=tenant_service,
+        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        user_service=StaticUserService(UserDocument(  # type: ignore[arg-type]
+            id='user-1', created_at=now, updated_at=now,
+            settings=UserSettings(default_harness=PipelineHarness(kind='codex_cli')),
+        )),
+        id_factory=lambda: 'run-1',
+        clock=IncrementingClock(),
+    )
+
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+
+    assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
+    assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
 
 
 @pytest.mark.asyncio

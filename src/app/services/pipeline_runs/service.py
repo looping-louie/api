@@ -28,6 +28,7 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
 from src.app.services.workspaces import WorkspaceService
 
@@ -44,6 +45,7 @@ class PipelineRunService:
         tenant_service: TenantService,
         worker_service: WorkerService | None = None,
         workspace_service: WorkspaceService | None = None,
+        user_service: UserService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -56,6 +58,7 @@ class PipelineRunService:
         self._tenant_service = tenant_service
         self._worker_service = worker_service
         self._workspace_service = workspace_service
+        self._user_service = user_service
         self._id_factory = id_factory
         self._clock = clock
         self._token_factory = token_factory
@@ -85,6 +88,7 @@ class PipelineRunService:
             user_id=user_id,
             workspace_id=details.document.workspace_id,
         )
+        user_default_harness = await self._user_default_harness(user_id=user_id)
         inherited_model_target = (
             details.document.model_target
             or (
@@ -100,6 +104,7 @@ class PipelineRunService:
                 if workspace_defaults is not None
                 else None
             )
+            or user_default_harness
             or PipelineHarness()
         )
         now = self._clock()
@@ -370,6 +375,13 @@ class PipelineRunService:
             user_id=user_id,
             workspace_id=workspace_id,
         )
+
+    async def _user_default_harness(self, *, user_id: str) -> PipelineHarness | None:
+        """Return the lowest-priority Harness configured by the current user."""
+
+        if self._user_service is None:
+            return None
+        return (await self._user_service.get(user_id=user_id)).settings.default_harness
 
     @staticmethod
     def _is_claimable(document: PipelineRunDocument, now: datetime) -> bool:

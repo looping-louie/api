@@ -260,6 +260,7 @@ log "Checking current user"
 
 request POST "/users" >/dev/null
 request GET "/users/me" >/dev/null
+request PATCH "/users/me" '{"default_harness":null}' >/dev/null
 
 log "Checking workspaces"
 

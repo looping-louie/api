@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
+from src.app.models.pipeline import PipelineHarness
 from src.app.models.user import UserDocument
+from src.app.models.user import UserSettings
 from src.app.repositories.users import UserRepository
 
 
@@ -51,6 +53,22 @@ class UserService:
             id=normalized_user_id,
             created_at=now,
             updated_at=now,
+        ))
+
+    async def update_settings(
+        self,
+        *,
+        user_id: str,
+        default_harness: PipelineHarness | None,
+    ) -> UserDocument:
+        """Replace user-level defaults inherited by execution resources."""
+
+        current = await self.get(user_id=user_id)
+        return await self._repository.update(UserDocument(
+            id=current.id,
+            created_at=current.created_at,
+            updated_at=self._clock(),
+            settings=UserSettings(default_harness=default_harness),
         ))
 
 

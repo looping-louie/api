@@ -3,6 +3,15 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from src.app.models.pipeline import PipelineHarness
+
+
+@dataclass(frozen=True, slots=True)
+class UserSettings:
+    """User-level execution defaults inherited by owned resources."""
+
+    default_harness: PipelineHarness | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class UserDocument:
@@ -11,3 +20,4 @@ class UserDocument:
     id: str
     created_at: datetime
     updated_at: datetime
+    settings: UserSettings = UserSettings()

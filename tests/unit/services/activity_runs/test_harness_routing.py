@@ -9,6 +9,9 @@ import pytest
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
+from src.app.models.pipeline import PipelineHarness
+from src.app.models.user import UserDocument, UserSettings
+from src.app.models.workspace import WorkspaceDefaults
 from src.app.services.activity_runs.service import ActivityRunService
 from src.app.services.shared.tenant import TenantService
 
@@ -41,6 +44,12 @@ class _ActivityRunRepository:
 
         return self.document
 
+    async def create(self, *, document: ActivityRunDocument) -> ActivityRunDocument:
+        """Persist a newly created direct Activity run."""
+
+        self.document = document
+        return document
+
     async def has_active_pipeline_lease(self, **_arguments: object) -> bool:
         """Authorize the fixture's Pipeline-owned continuation."""
 
@@ -59,6 +68,74 @@ class _ActivityRunRepository:
             execution_context=dict(arguments['execution_context']),
         )
         return self.document
+
+
+class _WorkspaceService:
+    """Return workspace defaults with no Harness override."""
+
+    def __init__(self, defaults: WorkspaceDefaults) -> None:
+        """Store the workspace defaults returned to the run service."""
+
+        self._defaults = defaults
+
+    async def get_defaults(self, **_arguments: object) -> WorkspaceDefaults:
+        """Return the configured workspace defaults."""
+
+        return self._defaults
+
+
+class _UserService:
+    """Return one user with a configured default Harness."""
+
+    def __init__(self, document: UserDocument) -> None:
+        """Store the user returned by every lookup."""
+
+        self._document = document
+
+    async def get(self, **_arguments: object) -> UserDocument:
+        """Return the configured user profile."""
+
+        return self._document
+
+
+@pytest.mark.asyncio
+async def test_create_inherits_user_default_harness(
+    tenant_service: TenantService,
+) -> None:
+    """A direct Activity run freezes the user Harness when higher scopes are unset."""
+
+    now = datetime(2026, 8, 24, tzinfo=UTC)
+    activity = ActivityDocument(
+        id='activity-1', workspace_id='workspace-1', name='Implement',
+        description='Implement the requested change.', status='active', type='direct_loop',
+        config={}, created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+    )
+    repository = _ActivityRunRepository(ActivityRunDocument(
+        id='existing', workspace_id='workspace-1', activity_id=activity.id,
+        input='Ignored.', status='in_progress', state='awaiting_snapshot',
+        next_action='collect_snapshot', iteration=1, token_revision=0,
+        continuation_token='token', activity_snapshot={}, execution_context={},
+        created_at=now, created_by='user-1', updated_at=now,
+    ))
+    service = ActivityRunService(
+        repository=repository, activity_service=_ActivityService(activity),
+        tenant_service=tenant_service, id_factory=lambda: 'run-1', clock=lambda: now,
+        workspace_service=_WorkspaceService(WorkspaceDefaults(
+            workspace_id='workspace-1', model_target=None, harness=None, updated_at=now,
+        )),  # type: ignore[arg-type]
+        user_service=_UserService(UserDocument(  # type: ignore[arg-type]
+            id='user-1', created_at=now, updated_at=now,
+            settings=UserSettings(default_harness=PipelineHarness(kind='codex_cli')),
+        )),
+    )
+
+    created = await service.create(
+        user_id='user-1', activity_id=activity.id, input_text='Implement.',
+    )
+
+    assert created.activity_snapshot['harness'] == {
+        'kind': 'codex_cli', 'version': 'v1', 'config': {},
+    }
 
 
 @pytest.mark.asyncio

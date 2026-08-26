@@ -16,6 +16,7 @@ from src.app.services.pipelines.service import PipelineService
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
 from src.app.services.workspaces import WorkspaceService
 
@@ -30,6 +31,7 @@ def build_pipeline_controller(
     worker_service: WorkerService,
     linked_service_service: LinkedServiceService,
     workspace_service: WorkspaceService,
+    user_service: UserService,
 ) -> PipelineController:
     """Build the pipeline persistence, service, and HTTP layers."""
 
@@ -50,6 +52,7 @@ def build_pipeline_controller(
             tenant_service=tenant_service,
             worker_service=worker_service,
             workspace_service=workspace_service,
+            user_service=user_service,
             id_factory=id_factory,
             clock=clock,
         ),

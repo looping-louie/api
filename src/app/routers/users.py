@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from src.app.controllers.user import UserController
-from src.app.schemas.user import UserResponse
+from src.app.schemas.user import UserResponse, UserSettingsRequest
 
 from .dependencies import RequestContext, get_request_context, get_user_controller
 
@@ -38,3 +38,17 @@ async def register_current_user(
     """Register the identity supplied with this request when it is new."""
 
     return await controller.register_current(user_id=context.user_id)
+
+
+@router.patch('/me', response_model=UserResponse, summary='Update current user settings')
+async def update_current_user_settings(
+    settings: UserSettingsRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> UserResponse:
+    """Replace settings for the identity supplied with this request."""
+
+    return await controller.update_current_settings(
+        user_id=context.user_id,
+        settings=settings,
+    )

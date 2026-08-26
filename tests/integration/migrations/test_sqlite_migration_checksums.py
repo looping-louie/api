@@ -58,6 +58,7 @@ EXPECTED_CHECKSUMS = {
     '0048_user_skill_settings.sql': '3b49ca32366f2cd0a25dd50d59970d4969674e8b51607f81fe6c68dd8d73f747',
     '0049_user_persona_settings.sql': '950ebb20f57d7e89854c0cc0e9aaa9d83a3178d49a089ace22504501c1802de7',
     '0050_user_owned_linked_services.sql': '947e746d91aa4286e9ae7f86173640cfe8adc56904f1e46b0380f3806f43ac85',
+    '0051_user_execution_settings.sql': '745cd07fcdfa6be01281d3f7b726949524c6af89df2da7b27b94fd9a3f94983c',
 }
 
 

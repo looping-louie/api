@@ -35,7 +35,7 @@ their typed configuration. Every non-null
 model target is validated against an enabled, configured linked service and an
 active model deployment in the selected workspace. PipelineRun creation
 resolves and freezes model targets at agent, Activity, Pipeline, then Workspace
-scope, and Harnesses at Activity, Pipeline, then Workspace scope. A missing
+scope, and Harnesses at Activity, Pipeline, Workspace, then User scope. A missing
 agent target fails generation; Personas contribute instructions only. When no
 Harness candidate exists, the frozen Harness is the `louie` v1 compatibility
 default.
@@ -47,4 +47,5 @@ the frozen Pipeline Harness selection.
 Workspace defaults use explicit nullable values: an absent `model_target` or
 `harness` means the workspace inherits that value from a higher-level or
 system-level source. PipelineRun creation consumes Workspace candidates only
-after all narrower Pipeline, Activity, and agent candidates are considered.
+after all narrower Pipeline and Activity candidates are considered, and before
+the User's `settings.default_harness` value.

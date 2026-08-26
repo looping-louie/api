@@ -296,6 +296,8 @@ async def configure_application(
             linked_service_repository=linked_service_repository,
         ),
         instruction_library_service=execution_instruction_library_service,
+        workspace_service=workspace_service,
+        user_service=user_service,
     )
     worker_service = WorkerService(
         repository=worker_repository,
@@ -324,6 +326,7 @@ async def configure_application(
         worker_service=worker_service,
         linked_service_service=linked_service_service,
         workspace_service=workspace_service,
+        user_service=user_service,
     )
     app.state.workspace_model_controller = WorkspaceModelController(
         model_catalog_service=model_catalog_service,

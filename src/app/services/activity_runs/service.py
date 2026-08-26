@@ -26,6 +26,8 @@ from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
+from src.app.services.workspaces import WorkspaceService
 
 
 class ActivityRunService:
@@ -41,6 +43,8 @@ class ActivityRunService:
         clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
+        workspace_service: WorkspaceService | None = None,
+        user_service: UserService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
     ) -> None:
         """Store dependencies used to persist and generate activity runs."""
@@ -60,6 +64,8 @@ class ActivityRunService:
             and instruction_library_service is not None
             else None
         )
+        self._workspace_service = workspace_service
+        self._user_service = user_service
 
     async def create(
         self,
@@ -80,6 +86,11 @@ class ActivityRunService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
+        harness = await self._inherited_harness(
+            activity=activity,
+            user_id=user_id,
+            workspace_id=workspace.workspace_id,
+        )
         now = self._clock()
         return await self._repository.create(
             document=ActivityRunDocument(
@@ -93,7 +104,7 @@ class ActivityRunService:
                 iteration=1,
                 token_revision=0,
                 continuation_token=self._token_factory(),
-                activity_snapshot=self._snapshot(activity),
+                activity_snapshot=self._snapshot(activity, harness=harness),
                 execution_context={},
                 created_at=now,
                 created_by=self._require_text(user_id, 'user_id'),
@@ -430,8 +441,49 @@ class ActivityRunService:
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
         return activity
 
+    async def _inherited_harness(
+        self,
+        *,
+        activity: object,
+        user_id: str,
+        workspace_id: str,
+    ) -> Mapping[str, object]:
+        """Resolve Activity, Workspace, and User Harness overrides in order."""
+
+        activity_harness = getattr(activity, 'harness')
+        if activity_harness is not None:
+            return self._harness_value(activity_harness)
+        if self._workspace_service is not None:
+            defaults = await self._workspace_service.get_defaults(
+                user_id=user_id,
+                workspace_id=workspace_id,
+            )
+            if defaults.harness is not None:
+                return self._harness_value(defaults.harness)
+        if self._user_service is not None:
+            default_harness = (
+                await self._user_service.get(user_id=user_id)
+            ).settings.default_harness
+            if default_harness is not None:
+                return self._harness_value(default_harness)
+        return {'kind': 'louie', 'version': 'v1', 'config': {}}
+
     @staticmethod
-    def _snapshot(activity: object) -> dict[str, object]:
+    def _harness_value(harness: object) -> Mapping[str, object]:
+        """Convert a validated domain Harness into its frozen representation."""
+
+        return {
+            'kind': getattr(harness, 'kind'),
+            'version': getattr(harness, 'version'),
+            'config': dict(getattr(harness, 'config')),
+        }
+
+    @staticmethod
+    def _snapshot(
+        activity: object,
+        *,
+        harness: Mapping[str, object],
+    ) -> dict[str, object]:
         """Shape a frozen configuration for its assigned ActivityRun executor."""
 
         flow = {
@@ -443,6 +495,7 @@ class ActivityRunService:
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
+            'harness': dict(harness),
             **dict(getattr(activity, 'config')),
         }
         activity_type = getattr(activity, 'type')

@@ -25,7 +25,8 @@ operations, and activity execution after it claims a queued pipeline run.
 
 ## Execution defaults
 
-Workspace defaults persist optional model-target and Harness overrides. A model
+User settings persist an optional default Harness, while Workspace defaults
+persist optional model-target and Harness overrides. A model
 target always binds a logical catalog `model_id` to a
 workspace-owned `linked_service_id`; a bare model ID cannot deterministically
 select a provider connection. A missing value explicitly means inheritance.
@@ -40,7 +41,7 @@ creation resolves and freezes effective values: agent, Activity, Pipeline, then
 Workspace for model targets; and Activity, Pipeline, then Workspace for
 Harnesses. An agent without an explicit target fails generation; Personas are
 instruction-only resources. An unset effective Harness becomes the `louie` v1
-compatibility default.
+compatibility default after considering the User default.
 
 ## Harnesses
 
@@ -57,8 +58,8 @@ is the compatibility default for existing Pipelines.
 A Pipeline may select one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
 not use the selected Harness. PipelineRun creation freezes the effective
-Harness for each Activity, preferring its own override before Pipeline and
-Workspace candidates, then using the `louie` v1 compatibility default. A
+Harness for each Activity, preferring its own override before Pipeline,
+Workspace, and User candidates, then using the `louie` v1 compatibility default. A
 Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
