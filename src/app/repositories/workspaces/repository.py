@@ -23,7 +23,23 @@ class WorkspaceRepository(Protocol):
         """Return all workspaces accessible to one user."""
         raise NotImplementedError
 
-    async def get(
+    async def get_workspace(
+        self,
+        *,
+        workspace_id: str,
+    ) -> WorkspaceDocument:
+        """Return one Workspace that is known to have an active membership."""
+        raise NotImplementedError
+
+    async def update_workspace(
+        self,
+        *,
+        workspace: WorkspaceDocument,
+    ) -> WorkspaceDocument:
+        """Persist mutable Workspace fields and return the updated document."""
+        raise NotImplementedError
+
+    async def get_defaults(
         self,
         *,
         workspace_id: str,
@@ -31,7 +47,7 @@ class WorkspaceRepository(Protocol):
         """Return stored defaults when the workspace has configured them."""
         raise NotImplementedError
 
-    async def replace(
+    async def replace_defaults(
         self,
         *,
         defaults: WorkspaceDefaults,

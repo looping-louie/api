@@ -1,7 +1,7 @@
 """Application service for workspace execution defaults."""
-    )
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 
 from src.app.models.execution import ModelTarget
@@ -15,7 +15,7 @@ from src.app.services.users import UserService
 
 
 class WorkspaceService:
-    """Read and replace optional defaults for one workspace."""
+    """Manage User-owned Workspaces and their execution defaults."""
 
     def __init__(
         self,
@@ -62,6 +62,41 @@ class WorkspaceService:
         await self._user_service.get(user_id=user_id)
         return await self._repository.list_for_user(user_id=user_id)
 
+    async def describe(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+    ) -> WorkspaceDocument:
+        """Return one Workspace accessible to the requesting User."""
+
+        await self._tenant_service.require_access(
+            user_id=user_id,
+            workspace_id=workspace_id,
+        )
+        return await self._repository.get_workspace(workspace_id=workspace_id)
+
+    async def update(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+        name: str,
+    ) -> WorkspaceDocument:
+        """Update the mutable metadata for one accessible Workspace."""
+
+        current = await self.describe(
+            user_id=user_id,
+            workspace_id=workspace_id,
+        )
+        return await self._repository.update_workspace(
+            workspace=replace(
+                current,
+                name=name,
+                updated_at=self._clock(),
+            ),
+        )
+
     async def get_defaults(
         self,
         *,
@@ -74,7 +109,7 @@ class WorkspaceService:
             user_id=user_id,
             workspace_id=workspace_id,
         )
-        defaults = await self._repository.get(workspace_id=workspace_id)
+        defaults = await self._repository.get_defaults(workspace_id=workspace_id)
         if defaults is not None:
             return defaults
         return WorkspaceDefaults(
@@ -104,7 +139,7 @@ class WorkspaceService:
                 service_id=model_target.linked_service_id,
                 model_id=model_target.model_id,
             )
-        return await self._repository.replace(
+        return await self._repository.replace_defaults(
             defaults=WorkspaceDefaults(
                 workspace_id=workspace_id,
                 model_target=model_target,

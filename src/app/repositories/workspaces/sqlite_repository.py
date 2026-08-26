@@ -90,7 +90,62 @@ class SqliteWorkspaceRepository:
                 await cursor.close()
         return [self._workspace_from_row(row) for row in rows]
 
-    async def get(
+    async def get_workspace(self, *, workspace_id: str) -> WorkspaceDocument:
+        """Return one Workspace known to have an active membership."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, name, created_at, updated_at
+                FROM workspaces
+                WHERE id = ?
+                ''',
+                (workspace_id,),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        if row is None:
+            raise RuntimeError('Workspace membership references no Workspace.')
+        return self._workspace_from_row(row)
+
+    async def update_workspace(
+        self,
+        *,
+        workspace: WorkspaceDocument,
+    ) -> WorkspaceDocument:
+        """Persist mutable Workspace metadata."""
+
+        async with self._database.connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                cursor = await connection.execute(
+                    '''
+                    UPDATE workspaces
+                    SET name = ?, updated_at = ?
+                    WHERE id = ?
+                    RETURNING id, name, created_at, updated_at
+                    ''',
+                    (
+                        workspace.name,
+                        workspace.updated_at.isoformat(),
+                        workspace.id,
+                    ),
+                )
+                try:
+                    row = await cursor.fetchone()
+                finally:
+                    await cursor.close()
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+        if row is None:
+            raise RuntimeError('Workspace update did not return a Workspace.')
+        return self._workspace_from_row(row)
+
+    async def get_defaults(
         self,
         *,
         workspace_id: str,
@@ -114,7 +169,7 @@ class SqliteWorkspaceRepository:
             return None
         return self._defaults_from_row(row)
 
-    async def replace(
+    async def replace_defaults(
         self,
         *,
         defaults: WorkspaceDefaults,

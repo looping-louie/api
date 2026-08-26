@@ -9,6 +9,7 @@ from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,
     WorkspaceDefaultsResponse,
     WorkspaceCreateRequest,
+    WorkspacePatchRequest,
     WorkspaceResponse,
 )
 
@@ -52,6 +53,44 @@ async def create_workspace(
     """Create a workspace owned by the requesting user."""
 
     return await controller.create(user_id=context.user_id, payload=payload)
+
+
+@router.get(
+    '/{workspace_id}',
+    response_model=WorkspaceResponse,
+    summary='Get workspace',
+)
+async def get_workspace(
+    workspace_id: WorkspaceIdPath,
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> WorkspaceResponse:
+    """Return one Workspace accessible to the requesting User."""
+
+    return await controller.describe(
+        user_id=context.user_id,
+        workspace_id=workspace_id,
+    )
+
+
+@router.patch(
+    '/{workspace_id}',
+    response_model=WorkspaceResponse,
+    summary='Update workspace',
+)
+async def patch_workspace(
+    workspace_id: WorkspaceIdPath,
+    payload: WorkspacePatchRequest,
+    context: ContextDependency,
+    controller: ControllerDependency,
+) -> WorkspaceResponse:
+    """Update mutable metadata for one accessible Workspace."""
+
+    return await controller.patch(
+        user_id=context.user_id,
+        workspace_id=workspace_id,
+        payload=payload,
+    )
 
 
 @router.get(

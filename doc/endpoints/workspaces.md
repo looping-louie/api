@@ -17,6 +17,8 @@ execution dimension, then freezes the effective value in its run snapshots.
 | ------ | ---- | ----------- |
 | `GET` | `/api/v1/workspaces` | List Workspaces accessible to the current User. |
 | `POST` | `/api/v1/workspaces` | Create a Workspace owned by the current User. |
+| `GET` | `/api/v1/workspaces/{workspace_id}` | Describe one accessible Workspace. |
+| `PATCH` | `/api/v1/workspaces/{workspace_id}` | Update one accessible Workspace. |
 | `GET` | `/api/v1/workspaces/{workspace_id}/defaults` | Describes workspace default overrides. |
 | `PUT` | `/api/v1/workspaces/{workspace_id}/defaults` | Replaces all workspace default overrides. |
 
@@ -68,6 +70,56 @@ Example response (`201 Created`):
   "name": "Acme",
   "created_at": "2026-08-26T10:00:00Z",
   "updated_at": "2026-08-26T10:00:00Z"
+}
+```
+
+## Describe workspace
+
+`GET /api/v1/workspaces/{workspace_id}` returns one Workspace accessible to
+the User identified by `X-User-ID`.
+
+```http
+GET /api/v1/workspaces/workspace-acme
+X-User-ID: user-123
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "workspace-acme",
+  "name": "Acme",
+  "created_at": "2026-08-26T10:00:00Z",
+  "updated_at": "2026-08-26T10:00:00Z"
+}
+```
+
+## Update workspace
+
+`PATCH /api/v1/workspaces/{workspace_id}` updates mutable metadata for one
+Workspace accessible to the User identified by `X-User-ID`. Currently, `name`
+is the only mutable field, and it must be supplied with a non-empty value.
+
+```http
+PATCH /api/v1/workspaces/workspace-acme
+X-User-ID: user-123
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Acme Platform"
+}
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "workspace-acme",
+  "name": "Acme Platform",
+  "created_at": "2026-08-26T10:00:00Z",
+  "updated_at": "2026-08-26T10:15:00Z"
 }
 ```
 

@@ -10,6 +10,7 @@ from src.app.schemas.workspace import (
     WorkspaceDefaultsReplaceRequest,
     WorkspaceDefaultsResponse,
     WorkspaceCreateRequest,
+    WorkspacePatchRequest,
     WorkspaceResponse,
 )
 from src.app.services.workspaces import WorkspaceService
@@ -43,6 +44,34 @@ class WorkspaceController:
             self._workspace_response(workspace)
             for workspace in await self._service.list_for_user(user_id=user_id)
         ]
+
+    async def describe(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+    ) -> WorkspaceResponse:
+        """Return one Workspace accessible to the requesting User."""
+
+        return self._workspace_response(await self._service.describe(
+            user_id=user_id,
+            workspace_id=workspace_id,
+        ))
+
+    async def patch(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+        payload: WorkspacePatchRequest,
+    ) -> WorkspaceResponse:
+        """Update mutable metadata for one accessible Workspace."""
+
+        return self._workspace_response(await self._service.update(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            name=payload.name,
+        ))
 
     async def get_defaults(
         self,

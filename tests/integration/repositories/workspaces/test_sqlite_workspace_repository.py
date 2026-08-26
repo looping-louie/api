@@ -57,3 +57,24 @@ async def test_create_assigns_the_first_workspace_as_owner_default(
         ('workspace-1', 'owner', 1),
         ('workspace-2', 'owner', 0),
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_and_update_workspace_persist_its_metadata(
+    sqlite_database_path: Path,
+) -> None:
+    """Workspace persistence returns and updates one stored document."""
+
+    repository = SqliteWorkspaceRepository(SqliteDatabase(sqlite_database_path))
+    created = workspace_document('workspace-1')
+    updated = WorkspaceDocument(
+        id=created.id,
+        name='Updated workspace',
+        created_at=created.created_at,
+        updated_at=datetime(2026, 8, 26, 11, 0, tzinfo=UTC),
+    )
+    await repository.create(workspace=created, owner_id='user-1')
+
+    assert await repository.get_workspace(workspace_id=created.id) == created
+    assert await repository.update_workspace(workspace=updated) == updated
+    assert await repository.get_workspace(workspace_id=updated.id) == updated

@@ -274,6 +274,12 @@ JSON
 )"
 WORKSPACE_DEFAULTS_ID="$(printf '%s' "${workspace_response}" | json_field id)"
 request GET "/workspaces" >/dev/null
+request GET "/workspaces/${WORKSPACE_DEFAULTS_ID}" >/dev/null
+request \
+    PATCH \
+    "/workspaces/${WORKSPACE_DEFAULTS_ID}" \
+    "{\"name\":\"Smoke Workspace updated ${SMOKE_RUN_ID}\"}" \
+    >/dev/null
 
 log "Checking linked services"
 

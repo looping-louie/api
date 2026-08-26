@@ -63,12 +63,35 @@ class InMemoryWorkspaceRepository:
 
         return list(self.workspaces_by_user_id.get(user_id, []))
 
-    async def get(self, *, workspace_id: str) -> WorkspaceDefaults | None:
+    async def get_workspace(self, *, workspace_id: str) -> WorkspaceDocument:
+        """Return one Workspace accessible to the test User."""
+
+        for workspaces in self.workspaces_by_user_id.values():
+            for workspace in workspaces:
+                if workspace.id == workspace_id:
+                    return workspace
+        raise RuntimeError('Workspace not found.')
+
+    async def update_workspace(
+        self,
+        *,
+        workspace: WorkspaceDocument,
+    ) -> WorkspaceDocument:
+        """Replace stored Workspace metadata."""
+
+        for workspaces in self.workspaces_by_user_id.values():
+            for index, current in enumerate(workspaces):
+                if current.id == workspace.id:
+                    workspaces[index] = workspace
+                    return workspace
+        raise RuntimeError('Workspace not found.')
+
+    async def get_defaults(self, *, workspace_id: str) -> WorkspaceDefaults | None:
         """Return stored defaults for one Workspace."""
 
         return self.defaults_by_workspace_id.get(workspace_id)
 
-    async def replace(self, *, defaults: WorkspaceDefaults) -> WorkspaceDefaults:
+    async def replace_defaults(self, *, defaults: WorkspaceDefaults) -> WorkspaceDefaults:
         """Store replacement defaults for one Workspace."""
 
         self.defaults_by_workspace_id[defaults.workspace_id] = defaults
@@ -182,3 +205,35 @@ def test_defaults_require_access_to_the_path_workspace() -> None:
 
     assert response.status_code == 403
     assert response.json()['error']['code'] == 'workspace_access_denied'
+
+
+def test_describe_and_patch_use_the_workspace_resource_path() -> None:
+    """Workspace detail routes expose and update one accessible Workspace."""
+
+    client = build_client()
+    headers = {'X-User-ID': 'user-1'}
+    client.post('/api/v1/workspaces', headers=headers, json={'name': 'Acme'})
+
+    described = client.get('/api/v1/workspaces/workspace-1', headers=headers)
+    updated = client.patch(
+        '/api/v1/workspaces/workspace-1',
+        headers=headers,
+        json={'name': 'Acme Platform'},
+    )
+
+    assert described.status_code == 200
+    assert described.json()['name'] == 'Acme'
+    assert updated.status_code == 200
+    assert updated.json()['name'] == 'Acme Platform'
+
+
+def test_patch_requires_a_workspace_name() -> None:
+    """Workspace metadata cannot be patched with an empty request."""
+
+    response = build_client().patch(
+        '/api/v1/workspaces/workspace-1',
+        headers={'X-User-ID': 'user-1'},
+        json={},
+    )
+
+    assert response.status_code == 422

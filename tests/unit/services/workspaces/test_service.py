@@ -40,20 +40,35 @@ class FakeWorkspaceRepository:
 
         return list(self.workspaces_by_user_id.get(user_id, []))
 
-    async def get(
+    async def get_workspace(self, *, workspace_id: str) -> WorkspaceDocument:
+        """Return a stored Workspace visible through any user collection."""
+
+        for workspaces in self.workspaces_by_user_id.values():
+            for workspace in workspaces:
+                if workspace.id == workspace_id:
+                    return workspace
+        raise RuntimeError('Workspace not found.')
+
+    async def update_workspace(
         self,
         *,
-        workspace_id: str,
-    ) -> WorkspaceDefaults | None:
+        workspace: WorkspaceDocument,
+    ) -> WorkspaceDocument:
+        """Replace stored Workspace metadata."""
+
+        for workspaces in self.workspaces_by_user_id.values():
+            for index, current in enumerate(workspaces):
+                if current.id == workspace.id:
+                    workspaces[index] = workspace
+                    return workspace
+        raise RuntimeError('Workspace not found.')
+
+    async def get_defaults(self, *, workspace_id: str) -> WorkspaceDefaults | None:
         """Return defaults stored for one workspace."""
 
         return self.defaults_by_workspace_id.get(workspace_id)
 
-    async def replace(
-        self,
-        *,
-        defaults: WorkspaceDefaults,
-    ) -> WorkspaceDefaults:
+    async def replace_defaults(self, *, defaults: WorkspaceDefaults) -> WorkspaceDefaults:
         """Replace the stored defaults for one workspace."""
 
         self.defaults_by_workspace_id[defaults.workspace_id] = defaults
@@ -226,3 +241,33 @@ async def test_list_for_user_returns_only_its_workspaces() -> None:
 
     assert user_service.user_ids == ['user-1', 'user-1']
     assert [workspace.id for workspace in workspaces] == ['workspace-created']
+
+
+@pytest.mark.asyncio
+async def test_update_changes_workspace_name_and_timestamp() -> None:
+    """Workspace updates preserve identity and replace mutable metadata."""
+
+    repository = FakeWorkspaceRepository()
+    service = build_service(
+        repository=repository,
+        linked_service_service=FakeLinkedServiceService(),
+        user_service=FakeUserService(),
+    )
+    repository.workspaces_by_user_id['user-1'] = [
+        WorkspaceDocument(
+            id='workspace-1',
+            name='Acme',
+            created_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        ),
+    ]
+
+    updated = await service.update(
+        user_id='user-1',
+        workspace_id='workspace-1',
+        name='Acme Platform',
+    )
+
+    assert updated.id == 'workspace-1'
+    assert updated.name == 'Acme Platform'
+    assert updated.updated_at == datetime(2026, 8, 25, tzinfo=timezone.utc)
