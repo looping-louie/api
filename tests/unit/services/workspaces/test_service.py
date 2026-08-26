@@ -1,4 +1,4 @@
-"""Tests for workspace execution-default operations."""
+"""Tests for Workspace operations."""
 
 from __future__ import annotations
 
@@ -7,20 +7,18 @@ from datetime import datetime, timezone
 import pytest
 
 from src.app.models.user import UserDocument
-from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
-from src.app.models.pipeline import PipelineHarness
+from src.app.models.workspace import WorkspaceDocument
 from src.app.services.workspaces import WorkspaceService
 from src.app.services.shared.tenant import TenantService, WorkspaceMembership
 from tests.fakes.tenant_repository import FakeTenantRepository
 
 
 class FakeWorkspaceRepository:
-    """Store workspace defaults in memory for service tests."""
+    """Store Workspaces in memory for service tests."""
 
     def __init__(self) -> None:
-        """Initialize an empty workspace-default store."""
+        """Initialize an empty Workspace store."""
 
-        self.defaults_by_workspace_id: dict[str, WorkspaceDefaults] = {}
         self.workspaces_by_user_id: dict[str, list[WorkspaceDocument]] = {}
 
     async def create(
@@ -61,18 +59,6 @@ class FakeWorkspaceRepository:
                     workspaces[index] = workspace
                     return workspace
         raise RuntimeError('Workspace not found.')
-
-    async def get_defaults(self, *, workspace_id: str) -> WorkspaceDefaults | None:
-        """Return defaults stored for one workspace."""
-
-        return self.defaults_by_workspace_id.get(workspace_id)
-
-    async def replace_defaults(self, *, defaults: WorkspaceDefaults) -> WorkspaceDefaults:
-        """Replace the stored defaults for one workspace."""
-
-        self.defaults_by_workspace_id[defaults.workspace_id] = defaults
-        return defaults
-
 
 class FakeLinkedServiceService:
     """Capture model-target validation requests."""
@@ -144,49 +130,6 @@ def build_service(
 
 
 @pytest.mark.asyncio
-async def test_get_returns_inherited_defaults_for_unconfigured_workspace() -> None:
-    """An unconfigured workspace inherits both execution dimensions."""
-
-    service = build_service(
-        repository=FakeWorkspaceRepository(),
-        linked_service_service=FakeLinkedServiceService(),
-        user_service=FakeUserService(),
-    )
-
-    defaults = await service.get_defaults(
-        user_id='user-1',
-        workspace_id='workspace-1',
-    )
-
-    assert defaults.workspace_id == 'workspace-1'
-    assert defaults.model_id is None
-    assert defaults.harness is None
-
-
-@pytest.mark.asyncio
-async def test_replace_persists_model_id_and_harness() -> None:
-    """Workspace overrides preserve logical model and Harness dimensions."""
-
-    repository = FakeWorkspaceRepository()
-    linked_service_service = FakeLinkedServiceService()
-    service = build_service(
-        repository=repository,
-        linked_service_service=linked_service_service,
-        user_service=FakeUserService(),
-    )
-
-    defaults = await service.replace_defaults(
-        user_id='user-1',
-        workspace_id='workspace-1',
-        model_id='gpt-5',
-        harness=PipelineHarness(kind='codex_cli'),
-    )
-
-    assert defaults == repository.defaults_by_workspace_id['workspace-1']
-    assert defaults.model_id == 'gpt-5'
-    assert defaults.harness == PipelineHarness(kind='codex_cli')
-
-
 @pytest.mark.asyncio
 async def test_create_assigns_workspace_to_the_requesting_user() -> None:
     """Workspace creation verifies the User and stores its owned workspace."""

@@ -63,6 +63,7 @@ class UserService:
         self,
         *,
         user_id: str,
+        default_model_id: str | None,
         default_harness: PipelineHarness | None,
         default_model_availability: ModelAvailabilityStatus,
         configured_models: tuple[ConfiguredModelAvailability, ...],
@@ -75,6 +76,7 @@ class UserService:
             created_at=current.created_at,
             updated_at=self._clock(),
             settings=UserSettings(
+                default_model_id=default_model_id,
                 default_harness=default_harness,
                 default_model_availability=default_model_availability,
                 configured_models=configured_models,

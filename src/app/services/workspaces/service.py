@@ -1,12 +1,10 @@
-"""Application service for workspace execution defaults."""
+"""Application service for workspaces."""
 
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 
-from src.app.models.workspace import WorkspaceDefaults
 from src.app.models.workspace import WorkspaceDocument
-from src.app.models.pipeline import PipelineHarness
 from src.app.repositories.workspaces import WorkspaceRepository
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.shared.tenant import TenantService
@@ -14,7 +12,7 @@ from src.app.services.users import UserService
 
 
 class WorkspaceService:
-    """Manage User-owned Workspaces and their execution defaults."""
+    """Manage User-owned Workspaces."""
 
     def __init__(
         self,
@@ -92,51 +90,6 @@ class WorkspaceService:
             workspace=replace(
                 current,
                 name=name,
-                updated_at=self._clock(),
-            ),
-        )
-
-    async def get_defaults(
-        self,
-        *,
-        user_id: str,
-        workspace_id: str,
-    ) -> WorkspaceDefaults:
-        """Return configured or fully inherited defaults for one workspace."""
-
-        await self._tenant_service.require_access(
-            user_id=user_id,
-            workspace_id=workspace_id,
-        )
-        defaults = await self._repository.get_defaults(workspace_id=workspace_id)
-        if defaults is not None:
-            return defaults
-        return WorkspaceDefaults(
-            workspace_id=workspace_id,
-            model_id=None,
-            harness=None,
-            updated_at=self._clock(),
-        )
-
-    async def replace_defaults(
-        self,
-        *,
-        user_id: str,
-        model_id: str | None,
-        harness: PipelineHarness | None,
-        workspace_id: str,
-    ) -> WorkspaceDefaults:
-        """Replace all workspace execution overrides."""
-
-        await self._tenant_service.require_access(
-            user_id=user_id,
-            workspace_id=workspace_id,
-        )
-        return await self._repository.replace_defaults(
-            defaults=WorkspaceDefaults(
-                workspace_id=workspace_id,
-                model_id=model_id,
-                harness=harness,
                 updated_at=self._clock(),
             ),
         )

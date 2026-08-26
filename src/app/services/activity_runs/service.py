@@ -81,7 +81,6 @@ class ActivityRunService:
         activity = await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
@@ -90,7 +89,6 @@ class ActivityRunService:
         harness = await self._inherited_harness(
             activity=activity,
             user_id=user_id,
-            workspace_id=workspace.workspace_id,
         )
         now = self._clock()
         return await self._repository.create(
@@ -157,7 +155,6 @@ class ActivityRunService:
         await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if offset < 0:
             raise ActivityRunValidationError(
@@ -195,7 +192,6 @@ class ActivityRunService:
         await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         document = await self.get(
             user_id=user_id,
@@ -431,7 +427,7 @@ class ActivityRunService:
         )
 
     async def _active_activity(
-        self, *, user_id: str, activity_id: str, requested_workspace_id: str | None,
+        self, *, user_id: str, activity_id: str,
     ) -> object:
         """Return an active Activity supported by the execution protocol."""
 
@@ -449,20 +445,12 @@ class ActivityRunService:
         *,
         activity: object,
         user_id: str,
-        workspace_id: str,
     ) -> Mapping[str, object]:
-        """Resolve Activity, Workspace, and User Harness overrides in order."""
+        """Resolve Activity and User Harness overrides in order."""
 
         activity_harness = getattr(activity, 'harness')
         if activity_harness is not None:
             return self._harness_value(activity_harness)
-        if self._workspace_service is not None:
-            defaults = await self._workspace_service.get_defaults(
-                user_id=user_id,
-                workspace_id=workspace_id,
-            )
-            if defaults.harness is not None:
-                return self._harness_value(defaults.harness)
         if self._user_service is not None:
             default_harness = (
                 await self._user_service.get(user_id=user_id)
@@ -501,7 +489,6 @@ class ActivityRunService:
             inherited_model_id = await self._inherited_model_id(
                 activity=activity,
                 user_id=user_id,
-                workspace_id=workspace_id,
             )
             agents = config.get('agents')
             if isinstance(agents, list):
@@ -534,21 +521,15 @@ class ActivityRunService:
         *,
         activity: object,
         user_id: str,
-        workspace_id: str,
     ) -> str | None:
-        """Resolve the direct Activity model override and Workspace fallback."""
+        """Resolve the direct Activity model override and User fallback."""
 
         model_id = getattr(activity, 'model_id')
         if isinstance(model_id, str):
             return model_id
-        if self._workspace_service is None:
+        if self._user_service is None:
             return None
-        return (
-            await self._workspace_service.get_defaults(
-                user_id=user_id,
-                workspace_id=workspace_id,
-            )
-        ).model_id
+        return (await self._user_service.get(user_id=user_id)).settings.default_model_id
 
     async def _louie_agent_snapshot(
         self,

@@ -1,10 +1,10 @@
-"""Persistence protocol for workspace execution defaults."""
+"""Persistence protocol for workspaces."""
 
 from __future__ import annotations
 
 from typing import Protocol
 
-from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
+from src.app.models.workspace import WorkspaceDocument
 
 
 class WorkspaceRepository(Protocol):
@@ -37,20 +37,4 @@ class WorkspaceRepository(Protocol):
         workspace: WorkspaceDocument,
     ) -> WorkspaceDocument:
         """Persist mutable Workspace fields and return the updated document."""
-        raise NotImplementedError
-
-    async def get_defaults(
-        self,
-        *,
-        workspace_id: str,
-    ) -> WorkspaceDefaults | None:
-        """Return stored defaults when the workspace has configured them."""
-        raise NotImplementedError
-
-    async def replace_defaults(
-        self,
-        *,
-        defaults: WorkspaceDefaults,
-    ) -> WorkspaceDefaults:
-        """Insert or replace the complete workspace default configuration."""
         raise NotImplementedError

@@ -122,6 +122,7 @@ def _settings_json(settings: UserSettings) -> str:
 
     harness = settings.default_harness
     return json.dumps({
+        'default_model_id': settings.default_model_id,
         'default_harness': (
             {
                 'kind': harness.kind,
@@ -161,6 +162,11 @@ def _settings_from_json(value: str | None) -> UserSettings:
     default_model_availability = payload.get('default_model_availability')
     configured_models = payload.get('configured_models')
     return UserSettings(
+        default_model_id=(
+            payload.get('default_model_id')
+            if isinstance(payload.get('default_model_id'), str)
+            else None
+        ),
         default_harness=default_harness,
         default_model_availability=(
             default_model_availability

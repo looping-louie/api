@@ -53,7 +53,6 @@ EXPECTED_TABLES = {
     "pipeline_run_steps",
     "pipeline_run_events",
     "workers",
-    "workspace_execution_defaults",
     "users",
 }
 
@@ -243,6 +242,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
                     "0052_logical_model_overrides",
                         "0053_user_owned_activities",
                         "0054_user_owned_pipelines",
+                        "0055_user_execution_defaults",
     ]
     assert activity_rows == []
 

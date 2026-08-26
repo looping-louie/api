@@ -75,14 +75,6 @@ async def test_does_not_block_linked_service_deletion_for_definition_models(
 
     async with aiosqlite.connect(sqlite_database_path) as connection:
         await connection.execute(
-            """
-            INSERT INTO workspace_execution_defaults (
-                workspace_id, model_target_json, harness_json, updated_at
-            ) VALUES (?, ?, NULL, ?)
-            """,
-            ("workspace-1", target, "2026-08-25T00:00:00+00:00"),
-        )
-        await connection.execute(
             "UPDATE pipelines SET model_target_json = ? WHERE id = ?",
             (target, "pipeline-1"),
         )

@@ -34,6 +34,7 @@ Example response (`201 Created`):
 {
   "id": "user-123",
   "settings": {
+    "default_model_id": null,
     "default_harness": null,
     "default_model_availability": "enabled",
     "configured_models": []
@@ -71,11 +72,12 @@ Example response (`200 OK`):
 ## Update user settings
 
 `PATCH /api/v1/users/me` replaces the User's execution settings. A `null`
-`default_harness` clears the User-level override. A configured value is used
-only after Activity, Pipeline, and Workspace Harness candidates are absent.
+`default_model_id` or `default_harness` clears the corresponding User-level
+override. Configured values are used only after narrower Activity and Pipeline
+candidates are absent.
 `configured_models` contains unique logical model IDs with an `enabled` or
 `disabled` status. An entry overrides `default_model_availability`; a disabled
-model remains unavailable even when the Workspace has a ready provider.
+model remains unavailable even when a compatible Linked Service is ready.
 
 ```http
 PATCH /api/v1/users/me
@@ -83,6 +85,7 @@ X-User-ID: user-123
 Content-Type: application/json
 
 {
+  "default_model_id": "gpt-5",
   "default_harness": {
     "kind": "codex_cli"
   },
@@ -102,6 +105,7 @@ Example response (`200 OK`):
 {
   "id": "user-123",
   "settings": {
+    "default_model_id": "gpt-5",
     "default_harness": {
       "kind": "codex_cli",
       "version": "v1",

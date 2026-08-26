@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from src.app.controllers.workspace import WorkspaceController
 from src.app.models.user import UserDocument
-from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
+from src.app.models.workspace import WorkspaceDocument
 from src.app.routers.workspaces import router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.tenant import WorkspaceMembership
@@ -39,12 +39,11 @@ class InMemoryUserRepository:
 
 
 class InMemoryWorkspaceRepository:
-    """Store workspace documents and defaults for route tests."""
+    """Store workspace documents for route tests."""
 
     def __init__(self) -> None:
         """Initialize empty Workspace storage."""
 
-        self.defaults_by_workspace_id: dict[str, WorkspaceDefaults] = {}
         self.workspaces_by_user_id: dict[str, list[WorkspaceDocument]] = {}
 
     async def create(
@@ -85,18 +84,6 @@ class InMemoryWorkspaceRepository:
                     workspaces[index] = workspace
                     return workspace
         raise RuntimeError('Workspace not found.')
-
-    async def get_defaults(self, *, workspace_id: str) -> WorkspaceDefaults | None:
-        """Return stored defaults for one Workspace."""
-
-        return self.defaults_by_workspace_id.get(workspace_id)
-
-    async def replace_defaults(self, *, defaults: WorkspaceDefaults) -> WorkspaceDefaults:
-        """Store replacement defaults for one Workspace."""
-
-        self.defaults_by_workspace_id[defaults.workspace_id] = defaults
-        return defaults
-
 
 class FakeLinkedServiceService:
     """Provide the validation collaborator required by WorkspaceService."""
@@ -174,37 +161,6 @@ def test_create_requires_a_registered_user() -> None:
 
     assert response.status_code == 404
     assert response.json()['error']['code'] == 'user_not_found'
-
-
-def test_defaults_use_the_workspace_resource_path() -> None:
-    """Defaults are addressed through the workspace they configure."""
-
-    client = build_client()
-    headers = {'X-User-ID': 'user-1'}
-
-    current = client.get('/api/v1/workspaces/workspace-1/defaults', headers=headers)
-    replaced = client.put(
-        '/api/v1/workspaces/workspace-1/defaults',
-        headers=headers,
-        json={'model_id': None, 'harness': None},
-    )
-
-    assert current.status_code == 200
-    assert replaced.status_code == 200
-    assert current.json()['model_id'] is None
-    assert replaced.json()['harness'] is None
-
-
-def test_defaults_require_access_to_the_path_workspace() -> None:
-    """Defaults reject a workspace not accessible to the requesting User."""
-
-    response = build_client().get(
-        '/api/v1/workspaces/workspace-2/defaults',
-        headers={'X-User-ID': 'user-1'},
-    )
-
-    assert response.status_code == 403
-    assert response.json()['error']['code'] == 'workspace_access_denied'
 
 
 def test_describe_and_patch_use_the_workspace_resource_path() -> None:

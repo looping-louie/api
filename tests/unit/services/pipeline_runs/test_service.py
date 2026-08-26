@@ -20,7 +20,6 @@ from src.app.models.pipeline import (
 )
 from src.app.models.pipeline_run import PipelineRunDocument
 from src.app.models.user import UserDocument, UserSettings
-from src.app.models.workspace import WorkspaceDefaults
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
 from src.app.services.pipeline_runs.types import (
@@ -264,20 +263,6 @@ class PipelineDetailsService:
         return self._details
 
 
-class StaticWorkspaceService:
-    """Return fixed workspace execution defaults for scheduler tests."""
-
-    def __init__(self, defaults: WorkspaceDefaults) -> None:
-        """Store the defaults returned during PipelineRun creation."""
-
-        self._defaults = defaults
-
-    async def get_defaults(self, **_: object) -> WorkspaceDefaults:
-        """Return the static workspace-level execution candidates."""
-
-        return self._defaults
-
-
 class StaticUserService:
     """Return one user with a fixed execution default for scheduler tests."""
 
@@ -372,19 +357,12 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
         ),
         activities=(first, second),
     )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1',
-        model_id='model-workspace',
-        harness=PipelineHarness(kind='codex_cli'),
-        updated_at=now,
-    )
     runs = InMemoryPipelineRunRepository()
     service = PipelineRunService(
         repository=runs,
         activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details),
         tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
         model_execution_service=StaticModelExecutionService(),  # type: ignore[arg-type]
         id_factory=lambda: 'run-1',
         clock=IncrementingClock(),
@@ -408,10 +386,10 @@ async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
 
 
 @pytest.mark.asyncio
-async def test_create_freezes_workspace_execution_defaults_when_unset(
+async def test_create_freezes_user_execution_defaults_when_unset(
     tenant_service: TenantService,
 ) -> None:
-    """Workspace candidates supply otherwise unset Pipeline and Activity values."""
+    """User candidates supply otherwise unset Pipeline and Activity values."""
 
     now = datetime(2026, 8, 25, tzinfo=UTC)
     configured_activity = replace(
@@ -435,19 +413,19 @@ async def test_create_freezes_workspace_execution_defaults_when_unset(
         ),
         activities=(configured_activity,),
     )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1',
-        model_id='model-workspace',
-        harness=PipelineHarness(kind='codex_cli'),
-        updated_at=now,
-    )
     runs = InMemoryPipelineRunRepository()
     service = PipelineRunService(
         repository=runs,
         activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details),
         tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
+        user_service=StaticUserService(UserDocument(  # type: ignore[arg-type]
+            id='user-1', created_at=now, updated_at=now,
+            settings=UserSettings(
+                default_model_id='model-user',
+                default_harness=PipelineHarness(kind='codex_cli'),
+            ),
+        )),
         id_factory=lambda: 'run-1',
         clock=IncrementingClock(),
     )
@@ -478,16 +456,12 @@ async def test_create_freezes_user_default_harness_when_higher_scopes_are_unset(
         ),
         activities=(configured_activity,),
     )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1', model_id=None, harness=None, updated_at=now,
-    )
     runs = InMemoryPipelineRunRepository()
     service = PipelineRunService(
         repository=runs,
         activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details),
         tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
         user_service=StaticUserService(UserDocument(  # type: ignore[arg-type]
             id='user-1', created_at=now, updated_at=now,
             settings=UserSettings(default_harness=PipelineHarness(kind='codex_cli')),

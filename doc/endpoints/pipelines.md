@@ -33,9 +33,9 @@ Pipelines persist nullable `model_id` and `harness` overrides. PATCH accepts
 `name`, `description`, `enabled`, `steps`, `model_id`, and `harness`;
 supplying `steps` replaces the complete ordered array. `null` clears either
 override. PipelineRun creation resolves model IDs at agent, Activity, Pipeline,
-then Workspace scope. The `louie` Harness selects and freezes the first usable
+then User scope. The `louie` Harness selects and freezes the first usable
 Linked Service offering the effective model. Harnesses resolve
-at Activity, Pipeline, Workspace, then User scope. It freezes the effective values
+at Activity, Pipeline, then User scope. It freezes the effective values
 in its Pipeline and Activity snapshots. An unset effective Harness retains the
 legacy `louie` v1 compatibility behavior.
 Archived pipelines are immutable and omitted from unfiltered listings.

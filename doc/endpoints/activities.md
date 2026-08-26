@@ -33,8 +33,8 @@ configurations against the persisted activity type.
 Activities also accept nullable top-level `model_id` and `harness` overrides.
 Loop agents accept nullable `model_id` values. `null` clears an Activity
 override. PipelineRun creation resolves an Activity model ID before Pipeline
-and Workspace candidates, and resolves an Activity Harness before Pipeline and
-Workspace candidates. The resolved values are frozen into the child ActivityRun
+and User candidates, and resolves an Activity Harness before Pipeline and User
+candidates. The resolved values are frozen into the child ActivityRun
 snapshot. An agent model ID takes precedence over the resolved Activity model
 ID. For `louie`, run creation requires an effective model ID; Personas provide
 instructions only.

@@ -88,26 +88,15 @@ class PipelineRunService:
                 pipeline_id=pipeline_id,
                 reason=f'status is {details.document.status}',
             )
-        workspace_defaults = await self._workspace_defaults(
+        user_default_model_id, user_default_harness = await self._user_defaults(
             user_id=user_id,
-            workspace_id=workspace.workspace_id,
         )
-        user_default_harness = await self._user_default_harness(user_id=user_id)
         inherited_model_id = (
             details.document.model_id
-            or (
-                workspace_defaults.model_id
-                if workspace_defaults is not None
-                else None
-            )
+            or user_default_model_id
         )
         inherited_harness = (
             details.document.harness
-            or (
-                workspace_defaults.harness
-                if workspace_defaults is not None
-                else None
-            )
             or user_default_harness
             or PipelineHarness()
         )
@@ -373,27 +362,17 @@ class PipelineRunService:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         return document
 
-    async def _workspace_defaults(
+    async def _user_defaults(
         self,
         *,
         user_id: str,
-        workspace_id: str,
-    ) -> object | None:
-        """Return configured workspace candidates when the service is available."""
-
-        if self._workspace_service is None:
-            return None
-        return await self._workspace_service.get_defaults(
-            user_id=user_id,
-            workspace_id=workspace_id,
-        )
-
-    async def _user_default_harness(self, *, user_id: str) -> PipelineHarness | None:
-        """Return the lowest-priority Harness configured by the current user."""
+    ) -> tuple[str | None, PipelineHarness | None]:
+        """Return the lowest-priority model and Harness configured by the User."""
 
         if self._user_service is None:
-            return None
-        return (await self._user_service.get(user_id=user_id)).settings.default_harness
+            return None, None
+        settings = (await self._user_service.get(user_id=user_id)).settings
+        return settings.default_model_id, settings.default_harness
 
     @staticmethod
     def _is_claimable(document: PipelineRunDocument, now: datetime) -> bool:

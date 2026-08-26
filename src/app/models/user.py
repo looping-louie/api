@@ -22,6 +22,7 @@ class ConfiguredModelAvailability:
 class UserSettings:
     """User-level execution defaults inherited by owned resources."""
 
+    default_model_id: str | None = None
     default_harness: PipelineHarness | None = None
     default_model_availability: ModelAvailabilityStatus = 'enabled'
     configured_models: tuple[ConfiguredModelAvailability, ...] = ()

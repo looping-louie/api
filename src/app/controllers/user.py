@@ -41,6 +41,7 @@ class UserController:
         harness = settings.default_harness
         return self._response(await self._service.update_settings(
             user_id=user_id,
+            default_model_id=settings.default_model_id,
             default_harness=(
                 PipelineHarness(
                     kind=harness.kind,
@@ -66,6 +67,7 @@ class UserController:
             created_at=document.created_at,
             updated_at=document.updated_at,
             settings=UserSettingsResponse(
+                default_model_id=document.settings.default_model_id,
                 default_harness=(
                     {
                         'kind': document.settings.default_harness.kind,

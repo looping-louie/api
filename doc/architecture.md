@@ -27,9 +27,8 @@ operations, and activity execution after it claims a queued pipeline run.
 
 ## Execution defaults
 
-User settings persist an optional default Harness, while Workspace defaults
-persist optional `model_id` and Harness overrides. A missing value explicitly
-means inheritance.
+User settings persist optional `default_model_id` and `default_harness`
+overrides. A missing value explicitly means no User-level default.
 
 User settings also persist model availability policy. Unconfigured logical
 models inherit `default_model_availability`, which defaults to `enabled`, and
@@ -37,21 +36,22 @@ models inherit `default_model_availability`, which defaults to `enabled`, and
 current-User catalog availability and `louie` User-owned Linked Service
 selection; provider readiness remains required for an enabled model.
 
-The hierarchy persists candidates at workspace, Pipeline, Activity, and
-loop-agent scopes. Pipeline and Activity store first-class nullable
+The hierarchy persists candidates at User, Pipeline, Activity, and loop-agent
+scopes. Pipeline and Activity store first-class nullable
 `model_id` and `harness` fields; agents store nullable `model_id` in their
 typed loop configuration.
 It is intentionally separate from Personas, which are reusable instructions
 rather than model-routing or provider-connection resources. PipelineRun
 creation resolves and freezes effective values: agent, Activity, Pipeline, then
-Workspace for model IDs; and Activity, Pipeline, then Workspace for Harnesses.
+User for model IDs; and Activity, Pipeline, then User for Harnesses.
 For `louie`, creation requires an effective model ID and selects the first
 deterministically ordered compatible, enabled, configured User-owned Linked
 Service before freezing its identity and owner in a private `model_target`
 snapshot. `codex_cli` does not select API Linked Services or require API
 provider credentials. An agent without an explicit model ID fails generation;
 Personas are instruction-only resources. An unset effective Harness becomes the
-`louie` v1 compatibility default after considering the User default.
+`louie` v1 compatibility default after considering the User default. Workspaces
+continue to select execution placement only.
 
 ## Harnesses
 
@@ -68,8 +68,8 @@ is the compatibility default for existing Pipelines.
 A Pipeline may select one Harness for its runtime-executable Activities. Human
 Activities (`approval` and `quiz`) remain intrinsically human-executed and do
 not use the selected Harness. PipelineRun creation freezes the effective
-Harness for each Activity, preferring its own override before Pipeline,
-Workspace, and User candidates, then using the `louie` v1 compatibility
+Harness for each Activity, preferring its own override before Pipeline and
+User candidates, then using the `louie` v1 compatibility
 default. A Pipeline edit must not change the Harness used by an existing run.
 
 Harness definitions use a stable kind, a version, and a kind-specific `config`
@@ -249,7 +249,7 @@ services/
 |   `-- service.py                 Manages durable request identities
 |-- workspaces/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages User-owned Workspaces and defaults
+|   `-- service.py                 Manages User-owned execution-placement Workspaces
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -418,7 +418,7 @@ repositories/
 |-- workspaces/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists Workspaces and defaults
+|   `-- sqlite_repository.py       Persists Workspaces
 |-- users/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
@@ -450,7 +450,7 @@ models/
 |-- reference.py                   Defines dependency and reference values
 |-- tenant.py                      Defines workspace and membership state
 |-- user.py                        Defines persisted user identities
-|-- workspace.py                   Defines Workspace documents and defaults
+|-- workspace.py                   Defines Workspace documents
 `-- worker.py                      Defines Worker registration and Harness state
 ```
 

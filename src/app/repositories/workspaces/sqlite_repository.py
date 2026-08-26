@@ -1,12 +1,10 @@
-"""SQLite persistence for workspace execution defaults."""
+"""SQLite persistence for workspaces."""
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 
-from src.app.models.workspace import WorkspaceDefaults, WorkspaceDocument
-from src.app.models.pipeline import PipelineHarness
+from src.app.models.workspace import WorkspaceDocument
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
 
@@ -144,87 +142,6 @@ class SqliteWorkspaceRepository:
             raise RuntimeError('Workspace update did not return a Workspace.')
         return self._workspace_from_row(row)
 
-    async def get_defaults(
-        self,
-        *,
-        workspace_id: str,
-    ) -> WorkspaceDefaults | None:
-        """Return the workspace defaults when configured."""
-
-        async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                '''
-                SELECT workspace_id, model_id, harness_json, updated_at
-                FROM workspace_execution_defaults
-                WHERE workspace_id = ?
-                ''',
-                (workspace_id,),
-            )
-            try:
-                row = await cursor.fetchone()
-            finally:
-                await cursor.close()
-        if row is None:
-            return None
-        return self._defaults_from_row(row)
-
-    async def replace_defaults(
-        self,
-        *,
-        defaults: WorkspaceDefaults,
-    ) -> WorkspaceDefaults:
-        """Persist the complete workspace default configuration."""
-
-        async with self._database.connect() as connection:
-            await connection.execute(
-                '''
-                INSERT INTO workspace_execution_defaults (
-                    workspace_id, model_id, harness_json, updated_at
-                ) VALUES (?, ?, ?, ?)
-                ON CONFLICT (workspace_id) DO UPDATE SET
-                    model_id = excluded.model_id,
-                    harness_json = excluded.harness_json,
-                    updated_at = excluded.updated_at
-                ''',
-                (
-                    defaults.workspace_id,
-                    defaults.model_id,
-                    self._harness_json(defaults.harness),
-                    defaults.updated_at.isoformat(),
-                ),
-            )
-            await connection.commit()
-        return defaults
-
-    @staticmethod
-    def _defaults_from_row(row: object) -> WorkspaceDefaults:
-        """Deserialize one SQLite row to its typed domain model."""
-
-        values = dict(row)  # type: ignore[arg-type]
-        model_id = values['model_id']
-        harness_value = values['harness_json']
-        harness_data = (
-            json.loads(str(harness_value))
-            if harness_value is not None
-            else None
-        )
-        return WorkspaceDefaults(
-            workspace_id=str(values['workspace_id']),
-            model_id=str(model_id) if model_id is not None else None,
-            harness=(
-                PipelineHarness(
-                    kind=str(harness_data['kind']),
-                    version=str(harness_data['version']),
-                    config=dict(harness_data['config']),
-                )
-                if harness_data is not None
-                else None
-            ),
-            updated_at=datetime.fromisoformat(
-                str(values['updated_at']),
-            ),
-        )
-
     @staticmethod
     def _workspace_from_row(row: object) -> WorkspaceDocument:
         """Deserialize one SQLite row to a workspace document."""
@@ -235,19 +152,4 @@ class SqliteWorkspaceRepository:
             name=str(values['name']),
             created_at=datetime.fromisoformat(str(values['created_at'])),
             updated_at=datetime.fromisoformat(str(values['updated_at'])),
-        )
-
-    @staticmethod
-    def _harness_json(harness: PipelineHarness | None) -> str | None:
-        """Serialize a Harness override without creating an inherited value."""
-
-        if harness is None:
-            return None
-        return json.dumps(
-            {
-                'kind': harness.kind,
-                'version': harness.version,
-                'config': dict(harness.config),
-            },
-            sort_keys=True,
         )

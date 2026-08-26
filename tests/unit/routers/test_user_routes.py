@@ -69,6 +69,7 @@ def test_register_then_get_returns_the_identified_user() -> None:
     assert registered.json()['id'] == 'user-1'
     assert registered.json()['settings'] == {
         'default_harness': None,
+        'default_model_id': None,
         'default_model_availability': 'enabled',
         'configured_models': [],
     }
@@ -95,12 +96,14 @@ def test_update_settings_persists_default_harness() -> None:
     assert updated.status_code == 200
     assert updated.json()['settings'] == {
         'default_harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        'default_model_id': None,
         'default_model_availability': 'enabled',
         'configured_models': [],
     }
     assert cleared.status_code == 200
     assert cleared.json()['settings'] == {
         'default_harness': None,
+        'default_model_id': None,
         'default_model_availability': 'enabled',
         'configured_models': [],
     }
@@ -127,6 +130,7 @@ def test_update_settings_persists_model_availability_policy() -> None:
     assert updated.status_code == 200
     assert updated.json()['settings'] == {
         'default_harness': None,
+        'default_model_id': None,
         'default_model_availability': 'disabled',
         'configured_models': [{'id': 'gpt-5', 'status': 'enabled'}],
     }

@@ -82,9 +82,9 @@ A `quiz` Activity collects a human quiz response. Its configuration requires a
 Activities expose persisted runs. Each run identifies its owning Activity by
 `activity_id`; it does not expose a legacy loop identifier. A Pipeline-run
 freezes an effective Harness for every runtime-executable child Activity-run,
-preferring Activity, Pipeline, then Workspace scope. The `louie` Harness is
+preferring Activity, Pipeline, then User scope. The `louie` Harness is
 the compatibility default. PipelineRun creation also freezes agent model
-selections, preferring agent, Activity, Pipeline, then Workspace scope. Only
+selections, preferring agent, Activity, Pipeline, then User scope. Only
 an agent with an explicit `model_id` can generate a model request; Personas
 provide instructions only. Human Activities use the built-in `human`
 execution mode and submit a terminal decision checkpoint; they do not execute

@@ -12,7 +12,6 @@ from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline import PipelineHarness
 from src.app.models.user import UserDocument, UserSettings
-from src.app.models.workspace import WorkspaceDefaults
 from src.app.services.activity_runs.service import ActivityRunService
 from src.app.services.shared.tenant import TenantService
 
@@ -69,20 +68,6 @@ class _ActivityRunRepository:
             execution_context=dict(arguments['execution_context']),
         )
         return self.document
-
-
-class _WorkspaceService:
-    """Return workspace defaults with no Harness override."""
-
-    def __init__(self, defaults: WorkspaceDefaults) -> None:
-        """Store the workspace defaults returned to the run service."""
-
-        self._defaults = defaults
-
-    async def get_defaults(self, **_arguments: object) -> WorkspaceDefaults:
-        """Return the configured workspace defaults."""
-
-        return self._defaults
 
 
 class _UserService:
@@ -145,9 +130,6 @@ async def test_create_inherits_user_default_harness(
     service = ActivityRunService(
         repository=repository, activity_service=_ActivityService(activity),
         tenant_service=tenant_service, id_factory=lambda: 'run-1', clock=lambda: now,
-        workspace_service=_WorkspaceService(WorkspaceDefaults(
-            workspace_id='workspace-1', model_id=None, harness=None, updated_at=now,
-        )),  # type: ignore[arg-type]
         user_service=_UserService(UserDocument(  # type: ignore[arg-type]
             id='user-1', created_at=now, updated_at=now,
             settings=UserSettings(default_harness=PipelineHarness(kind='codex_cli')),
@@ -167,7 +149,7 @@ async def test_create_inherits_user_default_harness(
 async def test_create_louie_freezes_selected_service_for_effective_model(
     tenant_service: TenantService,
 ) -> None:
-    """A Louie direct Activity resolves and freezes the Workspace model route."""
+    """A Louie direct Activity resolves and freezes the User model default."""
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
@@ -188,9 +170,10 @@ async def test_create_louie_freezes_selected_service_for_effective_model(
         activity_service=_ActivityService(activity), tenant_service=tenant_service,
         id_factory=lambda: 'run-1', clock=lambda: now,
         model_execution_service=selector,  # type: ignore[arg-type]
-        workspace_service=_WorkspaceService(WorkspaceDefaults(
-            workspace_id='workspace-1', model_id='gpt-5', harness=None, updated_at=now,
-        )),  # type: ignore[arg-type]
+        user_service=_UserService(UserDocument(  # type: ignore[arg-type]
+            id='user-1', created_at=now, updated_at=now,
+            settings=UserSettings(default_model_id='gpt-5'),
+        )),
     )
 
     created = await service.create(
@@ -229,9 +212,6 @@ async def test_create_rejects_louie_activity_without_effective_model(
         activity_service=_ActivityService(activity), tenant_service=tenant_service,
         id_factory=lambda: 'run-1', clock=lambda: now,
         model_execution_service=_ModelExecutionService(),  # type: ignore[arg-type]
-        workspace_service=_WorkspaceService(WorkspaceDefaults(
-            workspace_id='workspace-1', model_id=None, harness=None, updated_at=now,
-        )),  # type: ignore[arg-type]
     )
 
     with pytest.raises(

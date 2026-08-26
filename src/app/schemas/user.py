@@ -26,6 +26,7 @@ class ConfiguredModelAvailabilityResponse(ResponseSchema):
 class UserSettingsRequest(RequestSchema):
     """Mutable user-level execution defaults."""
 
+    default_model_id: NonEmptyString | None = None
     default_harness: HarnessRequest | None = None
     default_model_availability: Literal['enabled', 'disabled'] = 'enabled'
     configured_models: list[ConfiguredModelAvailabilityRequest] = Field(
@@ -45,6 +46,7 @@ class UserSettingsRequest(RequestSchema):
 class UserSettingsResponse(ResponseSchema):
     """Persisted user-level execution defaults."""
 
+    default_model_id: str | None
     default_harness: HarnessResponse | None
     default_model_availability: Literal['enabled', 'disabled']
     configured_models: list[ConfiguredModelAvailabilityResponse]

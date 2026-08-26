@@ -1,4 +1,4 @@
-"""REST routes for workspace execution defaults."""
+"""REST routes for workspaces."""
 
 from typing import Annotated
 
@@ -6,8 +6,6 @@ from fastapi import APIRouter, Depends, Path, status
 
 from src.app.controllers.workspace import WorkspaceController
 from src.app.schemas.workspace import (
-    WorkspaceDefaultsReplaceRequest,
-    WorkspaceDefaultsResponse,
     WorkspaceCreateRequest,
     WorkspacePatchRequest,
     WorkspaceResponse,
@@ -87,44 +85,6 @@ async def patch_workspace(
     """Update mutable metadata for one accessible Workspace."""
 
     return await controller.patch(
-        user_id=context.user_id,
-        workspace_id=workspace_id,
-        payload=payload,
-    )
-
-
-@router.get(
-    '/{workspace_id}/defaults',
-    response_model=WorkspaceDefaultsResponse,
-    summary='Get workspace defaults',
-)
-async def get_workspace_defaults(
-    workspace_id: WorkspaceIdPath,
-    context: ContextDependency,
-    controller: ControllerDependency,
-) -> WorkspaceDefaultsResponse:
-    """Return optional execution defaults for one accessible workspace."""
-
-    return await controller.get_defaults(
-        user_id=context.user_id,
-        workspace_id=workspace_id,
-    )
-
-
-@router.put(
-    '/{workspace_id}/defaults',
-    response_model=WorkspaceDefaultsResponse,
-    summary='Replace workspace defaults',
-)
-async def replace_workspace_defaults(
-    workspace_id: WorkspaceIdPath,
-    payload: WorkspaceDefaultsReplaceRequest,
-    context: ContextDependency,
-    controller: ControllerDependency,
-) -> WorkspaceDefaultsResponse:
-    """Replace optional execution defaults for one accessible workspace."""
-
-    return await controller.replace_defaults(
         user_id=context.user_id,
         workspace_id=workspace_id,
         payload=payload,
