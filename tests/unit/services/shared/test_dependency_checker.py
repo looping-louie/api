@@ -24,12 +24,12 @@ async def test_find_usages_normalizes_and_removes_duplicates(
         blocking=True,
     )
     dependency_repository.add_usage(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=target,
         usage=usage,
     )
     dependency_repository.add_usage(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=target,
         usage=usage,
     )
@@ -38,7 +38,7 @@ async def test_find_usages_normalizes_and_removes_duplicates(
         repository=dependency_repository,
     )
     usages = await checker.find_usages(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=target,
     )
 
@@ -59,7 +59,7 @@ async def test_non_blocking_usage_allows_deletion(
 
     target = ResourceReference("loop", "loop-1")
     dependency_repository.add_usage(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=target,
         usage=DependencyUsage(
             source=ResourceReference("run", "run-1"),
@@ -73,7 +73,7 @@ async def test_non_blocking_usage_allows_deletion(
     )
 
     await checker.require_deletable(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=target,
     )
 
@@ -86,7 +86,7 @@ async def test_blocking_usage_prevents_deletion(
 
     target = ResourceReference("persona", "persona-1")
     dependency_repository.add_usage(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=target,
         usage=DependencyUsage(
             source=ResourceReference("loop", "loop-1"),
@@ -101,7 +101,7 @@ async def test_blocking_usage_prevents_deletion(
 
     with pytest.raises(ResourceInUseError) as error:
         await checker.require_deletable(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             target=target,
         )
 

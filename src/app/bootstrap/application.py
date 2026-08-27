@@ -144,8 +144,8 @@ async def configure_application(
 
     await ensure_local_tenant(
         database_path=resolved_settings.database_path,
-        workspace_id="local-workspace",
-        workspace_name="Local workspace",
+        project_id='local-project',
+        project_name='Local project',
         user_id="local-user",
     )
 

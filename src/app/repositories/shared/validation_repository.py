@@ -35,7 +35,7 @@ class SqliteValidationRepository:
     async def find_resource_id_by_name(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         normalized_name: str,
     ) -> str | None:
@@ -53,7 +53,7 @@ class SqliteValidationRepository:
         workspace_column = (
             'owner_user_id'
             if resource_type == 'skill'
-            else 'owner_workspace_id'
+            else 'owner_project_id'
         )
         origin_clause = "AND origin = 'custom'"
 
@@ -71,7 +71,7 @@ class SqliteValidationRepository:
             cursor = await connection.execute(
                 query,
                 (
-                    workspace_id,
+                    project_id,
                     resource_type,
                     name_key,
                 ),

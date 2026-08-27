@@ -26,7 +26,7 @@ WorkspaceFactory = Callable[..., Awaitable[None]]
 def build_instruction(
     *,
     instruction_id: str = "instruction-1",
-    workspace_id: str = "workspace-1",
+    project_id: str = "workspace-1",
     instruction_type: DefinitionType = "persona",
     name: str = "Security Reviewer",
     description: str = "Reviews security concerns.",
@@ -49,7 +49,7 @@ def build_instruction(
 
     return DefinitionDocument(
         id=instruction_id,
-        workspace_id=workspace_id,
+        project_id=project_id,
         instruction_type=instruction_type,
         name=name,
         description=description,
@@ -72,7 +72,7 @@ async def test_create_get_and_list_instruction(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -83,12 +83,12 @@ async def test_create_get_and_list_instruction(
         document,
     )
     stored = await repository.get(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
         instruction_id="instruction-1",
     )
     summaries = await repository.list_summaries(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
     )
 
@@ -108,7 +108,7 @@ async def test_repository_preserves_metadata_and_datetimes(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -131,7 +131,7 @@ async def test_repository_preserves_metadata_and_datetimes(
         document,
     )
     stored = await repository.get(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
         instruction_id="instruction-1",
     )
@@ -148,10 +148,10 @@ async def test_repository_isolates_workspace_and_type(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     await create_workspace(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -160,7 +160,7 @@ async def test_repository_isolates_workspace_and_type(
     await repository.create(
         build_instruction(
             instruction_id="persona-workspace-1",
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_type="persona",
             name="Reviewer",
         )
@@ -168,7 +168,7 @@ async def test_repository_isolates_workspace_and_type(
     await repository.create(
         build_instruction(
             instruction_id="skill-workspace-1",
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_type="skill",
             name="Reviewer",
         )
@@ -176,23 +176,23 @@ async def test_repository_isolates_workspace_and_type(
     await repository.create(
         build_instruction(
             instruction_id="persona-workspace-2",
-            workspace_id="workspace-2",
+            project_id="workspace-2",
             instruction_type="persona",
             name="Reviewer",
         )
     )
 
     summaries = await repository.list_summaries(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
     )
     wrong_workspace = await repository.get(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
         instruction_type="persona",
         instruction_id="persona-workspace-1",
     )
     wrong_type = await repository.get(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id="persona-workspace-1",
     )
@@ -213,7 +213,7 @@ async def test_list_summaries_orders_by_normalized_name(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -233,7 +233,7 @@ async def test_list_summaries_orders_by_normalized_name(
     )
 
     summaries = await repository.list_summaries(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
     )
 
@@ -252,7 +252,7 @@ async def test_update_uses_optimistic_concurrency(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -291,7 +291,7 @@ async def test_update_uses_optimistic_concurrency(
         expected_version=1,
     )
     current = await repository.get(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
         instruction_id="instruction-1",
     )
@@ -306,7 +306,7 @@ async def test_delete_removes_instruction(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -318,17 +318,17 @@ async def test_delete_removes_instruction(
     )
 
     deleted = await repository.delete(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
         instruction_id="instruction-1",
     )
     deleted_again = await repository.delete(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
         instruction_id="instruction-1",
     )
     stored = await repository.get(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="persona",
         instruction_id="instruction-1",
     )
@@ -344,7 +344,7 @@ async def test_database_rejects_duplicate_normalized_name(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     repository = SqliteInstructionRepository(
         sqlite_database_path,

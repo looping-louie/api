@@ -240,7 +240,7 @@ async def test_skill_service_sets_enabled_and_creates_content(
     created = await service.create(
         user_id="user-1",
         payload=DefinitionCreate(
-            name="Workspace Security",
+            name="Project Security",
             description=builtin.description,
             instructions=builtin.instructions,
             metadata=builtin.metadata,
@@ -248,5 +248,5 @@ async def test_skill_service_sets_enabled_and_creates_content(
     )
 
     assert created.source_instruction_id is None
-    assert created.name == "Workspace Security"
+    assert created.name == "Project Security"
     assert created.metadata == builtin.metadata

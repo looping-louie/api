@@ -50,10 +50,10 @@ def build_builtin(
     now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
     return AvailableDefinitionDocument(
         id=instruction_id,
-        workspace_id="catalog",
+        project_id="catalog",
         instruction_type="skill",
         origin=InstructionOrigin.BUILTIN,
-        owner_workspace_id=None,
+        owner_project_id=None,
         source_instruction_id=None,
         name="Security",
         description="Security checks.",
@@ -73,17 +73,17 @@ def build_builtin(
 def build_custom(
     *,
     instruction_id: str,
-    workspace_id: str,
+    project_id: str,
 ) -> DefinitionDocument:
     """Build one workspace-owned skill definition."""
 
     now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
     return DefinitionDocument(
         id=instruction_id,
-        workspace_id=workspace_id,
+        project_id=project_id,
         instruction_type="skill",
         name="Custom security",
-        description="Workspace checks.",
+        description="Project checks.",
         instructions="Review custom security.",
         metadata={},
         version=1,
@@ -109,18 +109,18 @@ async def test_effective_reference_lookup_enforces_workspace_and_selection(
     instruction_repository.seed_available(deprecated)
     own_custom = build_custom(
         instruction_id="custom-own",
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     other_custom = build_custom(
         instruction_id="custom-other",
-        workspace_id="workspace-2",
+        project_id="workspace-2",
     )
     await instruction_repository.create(document=own_custom)
     await instruction_repository.create(document=other_custom)
     repository = build_repository(instruction_repository)
 
     available = await repository.get_many(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="skill",
         resource_ids=[
             builtin.id,
@@ -136,12 +136,12 @@ async def test_effective_reference_lookup_enforces_workspace_and_selection(
     }
 
     await instruction_repository.set_enabled(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=builtin.id,
         enabled=False,
     )
     selectable = await repository.get_many(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="skill",
         resource_ids=[builtin.id],
     )

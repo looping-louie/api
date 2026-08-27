@@ -9,20 +9,20 @@ provider.
 
 ## Worker provisioning
 
-The API provisions each workspace worker identity. The runtime stores the
-assigned ID in its workspace configuration and refreshes its heartbeat before
+The API provisions each Project worker identity. The runtime stores the
+assigned ID in its Project configuration and refreshes its heartbeat before
 polling. PipelineRun claims require an active worker heartbeat, while the
 existing PipelineRun lease continues to authorize only one claimed run.
 Heartbeat liveness never renews or revokes a lease.
 
 ## Ownership boundaries
 
-The API owns User and Workspace resource management, including User-owned
-Activity and Pipeline definitions, Workspace membership, durable Pipeline and
+The API owns User and Project resource management, including User-owned
+Activity and Pipeline definitions, Project membership, durable Pipeline and
 Activity-run state, prompt generation, model decisions, and checkpoint
 transitions. Pipeline and Activity definitions are independent of execution
-placement; Pipeline and Activity runs remain Workspace-placed. The runtime owns
-workspace lifecycle, repository inspection, filesystem changes, Git
+placement; Pipeline and Activity runs remain Project-placed. The runtime owns
+Project lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 
 ## Execution defaults
@@ -50,7 +50,7 @@ Service before freezing its identity and owner in a private `model_target`
 snapshot. `codex_cli` does not select API Linked Services or require API
 provider credentials. An agent without an explicit model ID fails generation;
 Personas are instruction-only resources. An unset effective Harness becomes the
-`louie` v1 compatibility default after considering the User default. Workspaces
+`louie` v1 compatibility default after considering the User default. Projects
 continue to select execution placement only.
 
 ## Harnesses
@@ -235,21 +235,21 @@ services/
 |   |-- dependency_checker.py      Prevents deletion of referenced resources
 |   |-- generation.py              Creates resource IDs and UTC timestamps
 |   |-- pagination.py              Defines fixed-size offset pagination rules
-|   |-- reference_resolver.py      Resolves references between workspace resources
+|   |-- reference_resolver.py      Resolves references between Project resources
 |   |-- settings.py                Loads environment-backed application settings
-|   |-- tenant.py                  Resolves workspace tenancy and memberships
+|   |-- tenant.py                  Resolves Project tenancy and memberships
 |   `-- validation.py              Provides reusable domain validations
 |-- skills/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured metadata
-|   |-- service.py                 Manages workspace resources
+|   |-- service.py                 Manages Project resources
 |   `-- types.py                   Defines Skill lifecycle input contracts
 |-- users/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages durable request identities
-|-- workspaces/
+|-- projects/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages User-owned execution-placement Workspaces
+|   `-- service.py                 Manages User-owned execution-placement Projects
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -413,12 +413,12 @@ repositories/
 |   |-- dependency_repository.py   Looks up resource dependencies
 |   |-- json_mapping.py            Serializes and deserializes JSON values
 |   |-- reference_repository.py    Resolves instruction and model references
-|   |-- tenant_repository.py       Persists workspace memberships
+|   |-- tenant_repository.py       Persists Project memberships
 |   `-- validation_repository.py   Looks up normalized resource names
-|-- workspaces/
+|-- projects/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists Workspaces
+|   `-- sqlite_repository.py       Persists Projects
 |-- users/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract

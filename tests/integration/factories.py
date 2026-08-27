@@ -25,7 +25,7 @@ DEFAULT_DATETIME = datetime(
 def build_instruction(
     *,
     instruction_id: str = "instruction-1",
-    workspace_id: str = "workspace-1",
+    project_id: str = "workspace-1",
     instruction_type: DefinitionType = "persona",
     name: str = "Security Reviewer",
     description: str = "Reviews security concerns.",
@@ -39,7 +39,7 @@ def build_instruction(
 
     return DefinitionDocument(
         id=instruction_id,
-        workspace_id=workspace_id,
+        project_id=project_id,
         instruction_type=instruction_type,
         name=name,
         description=description,

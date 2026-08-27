@@ -56,14 +56,14 @@ class InMemoryPipelineRunRepository:
         return document
 
     async def get(
-        self, *, workspace_id: str, pipeline_id: str, run_id: str,
+        self, *, project_id: str, pipeline_id: str, run_id: str,
     ) -> PipelineRunDocument | None:
         """Return the stored run only when its ownership matches."""
 
         if self.document is None:
             return None
-        if (workspace_id, pipeline_id, run_id) != (
-            self.document.workspace_id, self.document.pipeline_id, self.document.id,
+        if (project_id, pipeline_id, run_id) != (
+            self.document.project_id, self.document.pipeline_id, self.document.id,
         ):
             return None
         return replace(self.document, events=())
@@ -90,12 +90,12 @@ class InMemoryPipelineRunRepository:
         return True
 
     async def list_events(
-        self, *, workspace_id: str, pipeline_id: str, run_id: str,
+        self, *, project_id: str, pipeline_id: str, run_id: str,
     ) -> list[object]:
         """Return immutable events under the run's verified ownership."""
 
-        if self.document is None or (workspace_id, pipeline_id, run_id) != (
-            self.document.workspace_id,
+        if self.document is None or (project_id, pipeline_id, run_id) != (
+            self.document.project_id,
             self.document.pipeline_id,
             self.document.id,
         ):
@@ -103,12 +103,12 @@ class InMemoryPipelineRunRepository:
         return list(self.events)
 
     async def list_claimable(
-        self, *, workspace_id: str, pipeline_id: str, claimed_before: datetime,
+        self, *, project_id: str, pipeline_id: str, claimed_before: datetime,
     ) -> list[PipelineRunDocument]:
         """Return the stored queued or expired run beneath one Pipeline."""
 
-        if self.document is None or (self.document.workspace_id, self.document.pipeline_id) != (
-            workspace_id,
+        if self.document is None or (self.document.project_id, self.document.pipeline_id) != (
+            project_id,
             pipeline_id,
         ):
             return []
@@ -209,23 +209,23 @@ class InMemoryWorkerService:
         self.calls: list[tuple[str, str]] = []
         self.harness_calls: list[tuple[str, str, dict[str, object]]] = []
 
-    async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
+    async def require_active(self, *, project_id: str, worker_id: str) -> None:
         """Record one admission check and reject inactive worker identities."""
 
-        self.calls.append((workspace_id, worker_id))
+        self.calls.append((project_id, worker_id))
         if not self.active:
             raise WorkerUnavailableError(worker_id)
 
     async def require_harness(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         harness: dict[str, object],
     ) -> None:
         """Record one capability admission check and reject mismatches."""
 
-        self.harness_calls.append((workspace_id, worker_id, harness))
+        self.harness_calls.append((project_id, worker_id, harness))
         if not self.supports_harness:
             raise WorkerHarnessUnavailableError(worker_id)
 
@@ -239,12 +239,12 @@ class InMemoryActivityRunRepository:
         self._run_repository = run_repository
 
     async def get(
-        self, *, workspace_id: str, activity_id: str, run_id: str,
+        self, *, project_id: str, activity_id: str, run_id: str,
     ) -> ActivityRunDocument | None:
         """Return the requested child when its activity ownership matches."""
 
         child = self._run_repository.children.get(run_id)
-        if child is None or (child.workspace_id, child.activity_id) != (workspace_id, activity_id):
+        if child is None or (child.project_id, child.activity_id) != (project_id, activity_id):
             return None
         return child
 

@@ -57,7 +57,7 @@ async def test_resolves_instruction_references(
     """Resolve visible instructions while omitting missing identifiers."""
 
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     instruction_repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -74,7 +74,7 @@ async def test_resolves_instruction_references(
     )
 
     personas = await repository.get_many(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="persona",
         resource_ids=[
             "persona-1",
@@ -99,7 +99,7 @@ async def test_resolves_curated_models(
     )
 
     models = await repository.get_many(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="model",
         resource_ids=[
             "kimi-k2.6",
@@ -123,10 +123,10 @@ async def test_reference_lookup_isolated_by_workspace(
     """Do not expose custom instructions owned by another workspace."""
 
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
     await create_workspace(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
     )
     instruction_repository = SqliteInstructionRepository(
         sqlite_database_path,
@@ -135,7 +135,7 @@ async def test_reference_lookup_isolated_by_workspace(
     await instruction_repository.create(
         build_instruction(
             instruction_id="persona-1",
-            workspace_id="workspace-1",
+            project_id="workspace-1",
         )
     )
 
@@ -145,7 +145,7 @@ async def test_reference_lookup_isolated_by_workspace(
     )
 
     resources = await repository.get_many(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
         resource_type="persona",
         resource_ids=[
             "persona-1",

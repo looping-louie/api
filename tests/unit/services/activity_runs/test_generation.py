@@ -219,7 +219,7 @@ def selected_persona_library(
     }
     return StaticInstructionLibraryService(
         ExecutionInstructionLibrary(
-            workspace_id='workspace-1',
+            project_id='workspace-1',
             skills={},
             personas=personas,
             skill_aliases={},

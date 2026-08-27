@@ -45,7 +45,7 @@ class DefinitionDocument:
     """Complete Persona or Skill definition."""
 
     id: str
-    workspace_id: str
+    project_id: str
     instruction_type: DefinitionType
     name: str
     description: str
@@ -62,10 +62,10 @@ class AvailableDefinitionSummary:
     """Definition visible in one workspace's effective library."""
 
     id: str
-    workspace_id: str
+    project_id: str
     instruction_type: DefinitionType
     origin: InstructionOrigin
-    owner_workspace_id: str | None
+    owner_project_id: str | None
     source_instruction_id: str | None
     name: str
     description: str
@@ -90,7 +90,7 @@ class AvailableDefinitionSummary:
 
         return (
             self.origin == InstructionOrigin.CUSTOM
-            and self.owner_workspace_id == self.workspace_id
+            and self.owner_project_id == self.project_id
         )
 
     @property
@@ -126,10 +126,10 @@ class AvailableDefinitionDocument:
     """Complete definition resolved in one workspace's library."""
 
     id: str
-    workspace_id: str
+    project_id: str
     instruction_type: DefinitionType
     origin: InstructionOrigin
-    owner_workspace_id: str | None
+    owner_project_id: str | None
     source_instruction_id: str | None
     name: str
     description: str
@@ -156,7 +156,7 @@ class AvailableDefinitionDocument:
 
         return (
             self.origin == InstructionOrigin.CUSTOM
-            and self.owner_workspace_id == self.workspace_id
+            and self.owner_project_id == self.project_id
         )
 
     @property
@@ -193,7 +193,7 @@ class DefinitionRepository(Protocol):
     async def list_summaries(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         search: str | None = None,
     ) -> Sequence[DefinitionSummary]:
@@ -203,7 +203,7 @@ class DefinitionRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
@@ -213,7 +213,7 @@ class DefinitionRepository(Protocol):
     async def list_available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
@@ -229,7 +229,7 @@ class DefinitionRepository(Protocol):
     async def get_available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
@@ -240,7 +240,7 @@ class DefinitionRepository(Protocol):
     async def get_owned_custom(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
@@ -250,7 +250,7 @@ class DefinitionRepository(Protocol):
     async def set_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         enabled: bool,
     ) -> bool:
@@ -260,7 +260,7 @@ class DefinitionRepository(Protocol):
     async def is_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> bool:
         """Return whether an instruction is selectable in the workspace."""
@@ -286,7 +286,7 @@ class DefinitionRepository(Protocol):
     async def delete(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:

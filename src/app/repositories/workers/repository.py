@@ -18,7 +18,7 @@ class WorkerRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
     ) -> WorkerDocument | None:
         """Return one persisted Worker and its declared capabilities."""
@@ -27,7 +27,7 @@ class WorkerRepository(Protocol):
     async def heartbeat(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         occurred_at: datetime,
     ) -> WorkerDocument | None:
@@ -37,7 +37,7 @@ class WorkerRepository(Protocol):
     async def is_active(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         active_since: datetime,
     ) -> bool:

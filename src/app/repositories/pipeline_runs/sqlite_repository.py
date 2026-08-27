@@ -51,7 +51,7 @@ class SqlitePipelineRunRepository:
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> PipelineRunDocument | None:
@@ -61,9 +61,9 @@ class SqlitePipelineRunRepository:
             cursor = await connection.execute(
                 '''
                 SELECT * FROM pipeline_runs
-                WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                WHERE project_id = ? AND pipeline_id = ? AND id = ?
                 ''',
-                (workspace_id, pipeline_id, run_id),
+                (project_id, pipeline_id, run_id),
             )
             try:
                 row = await cursor.fetchone()
@@ -93,7 +93,7 @@ class SqlitePipelineRunRepository:
                     SET status = ?, worker_id = ?, lease_token = ?,
                         lease_expires_at = ?, current_activity_run_id = ?,
                         updated_at = ?
-                    WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                    WHERE project_id = ? AND pipeline_id = ? AND id = ?
                         AND updated_at = ? AND status = 'prepared'
                     ''',
                     (
@@ -101,7 +101,7 @@ class SqlitePipelineRunRepository:
                         document.lease_expires_at.isoformat()
                         if document.lease_expires_at is not None else None,
                         document.current_activity_run_id,
-                        document.updated_at.isoformat(), document.workspace_id,
+                        document.updated_at.isoformat(), document.project_id,
                         document.pipeline_id, document.id,
                         expected_updated_at.isoformat(),
                     ),
@@ -124,7 +124,7 @@ class SqlitePipelineRunRepository:
     async def list_claimable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         claimed_before: datetime,
     ) -> list[PipelineRunDocument]:
@@ -134,14 +134,14 @@ class SqlitePipelineRunRepository:
             cursor = await connection.execute(
                 '''
                 SELECT * FROM pipeline_runs
-                WHERE workspace_id = ? AND pipeline_id = ?
+                WHERE project_id = ? AND pipeline_id = ?
                   AND (
                     status = 'queued'
                     OR (status = 'claimed' AND lease_expires_at <= ?)
                   )
                 ORDER BY created_at ASC
                 ''',
-                (workspace_id, pipeline_id, claimed_before.isoformat()),
+                (project_id, pipeline_id, claimed_before.isoformat()),
             )
             try:
                 rows = await cursor.fetchall()
@@ -152,7 +152,7 @@ class SqlitePipelineRunRepository:
     async def list_events(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> list[PipelineRunEventDocument]:
@@ -164,14 +164,14 @@ class SqlitePipelineRunRepository:
                 SELECT events.*
                 FROM pipeline_run_events AS events
                 JOIN pipeline_runs AS runs
-                    ON runs.workspace_id = events.workspace_id
+                    ON runs.project_id = events.project_id
                     AND runs.id = events.pipeline_run_id
-                WHERE events.workspace_id = ?
+                WHERE events.project_id = ?
                     AND events.pipeline_run_id = ?
                     AND runs.pipeline_id = ?
                 ORDER BY events.created_at ASC, events.id ASC
                 ''',
-                (workspace_id, run_id, pipeline_id),
+                (project_id, run_id, pipeline_id),
             )
             try:
                 rows = await cursor.fetchall()
@@ -200,7 +200,7 @@ class SqlitePipelineRunRepository:
                     SET status = ?, worker_id = ?, lease_token = ?,
                         lease_expires_at = ?, attempt = ?,
                         current_activity_run_id = ?, updated_at = ?
-                    WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                    WHERE project_id = ? AND pipeline_id = ? AND id = ?
                       AND updated_at = ? AND current_activity_run_id IS ?
                       AND status IN ('queued', 'claimed')
                     ''',
@@ -209,7 +209,7 @@ class SqlitePipelineRunRepository:
                         document.lease_expires_at.isoformat()
                         if document.lease_expires_at is not None else None,
                         document.attempt, document.current_activity_run_id,
-                        document.updated_at.isoformat(), document.workspace_id,
+                        document.updated_at.isoformat(), document.project_id,
                         document.pipeline_id, document.id,
                         expected_updated_at.isoformat(),
                         expected_current_activity_run_id,
@@ -244,14 +244,14 @@ class SqlitePipelineRunRepository:
                 '''
                 UPDATE pipeline_runs
                 SET lease_expires_at = ?, updated_at = ?
-                WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                WHERE project_id = ? AND pipeline_id = ? AND id = ?
                   AND lease_token = ? AND lease_expires_at > ?
                   AND status IN ('claimed', 'in_progress')
                 ''',
                 (
                     document.lease_expires_at.isoformat()
                     if document.lease_expires_at is not None else None,
-                    document.updated_at.isoformat(), document.workspace_id,
+                    document.updated_at.isoformat(), document.project_id,
                     document.pipeline_id, document.id, expected_lease_token,
                     now.isoformat(),
                 ),
@@ -285,7 +285,7 @@ class SqlitePipelineRunRepository:
                     SET status = ?, worker_id = ?, lease_token = ?,
                         lease_expires_at = ?, current_activity_run_id = ?,
                         updated_at = ?
-                    WHERE workspace_id = ? AND pipeline_id = ? AND id = ?
+                    WHERE project_id = ? AND pipeline_id = ? AND id = ?
                       AND current_activity_run_id IS ?
                       AND (
                             (lease_token = ? AND lease_expires_at > ?
@@ -301,7 +301,7 @@ class SqlitePipelineRunRepository:
                         if document.lease_expires_at is not None else None,
                         document.current_activity_run_id,
                         document.updated_at.isoformat(),
-                        document.workspace_id,
+                        document.project_id,
                         document.pipeline_id,
                         document.id,
                         expected_current_activity_run_id,
@@ -346,14 +346,14 @@ class SqlitePipelineRunRepository:
         await connection.execute(
             '''
             INSERT INTO pipeline_runs (
-                id, workspace_id, pipeline_id, input, commit_mode, status,
+                id, project_id, pipeline_id, input, commit_mode, status,
                 worker_id, lease_token, lease_expires_at, attempt,
                 current_activity_run_id, pipeline_snapshot_json,
                 created_at, created_by, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                document.id, document.workspace_id, document.pipeline_id,
+                document.id, document.project_id, document.pipeline_id,
                 document.input, document.commit_mode, document.status, document.worker_id,
                 document.lease_token,
                 document.lease_expires_at.isoformat()
@@ -375,13 +375,13 @@ class SqlitePipelineRunRepository:
         await connection.executemany(
             '''
             INSERT INTO pipeline_run_steps (
-                workspace_id, pipeline_run_id, position, activity_id, status,
+                project_id, pipeline_run_id, position, activity_id, status,
                 activity_run_id, activity_snapshot_json, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             [
                 (
-                    document.workspace_id, document.id, step.position,
+                    document.project_id, document.id, step.position,
                     step.activity_id, step.status, step.activity_run_id,
                     json.dumps(step.activity_snapshot, sort_keys=True),
                     step.updated_at.isoformat(),
@@ -401,12 +401,12 @@ class SqlitePipelineRunRepository:
             '''
             UPDATE pipeline_run_steps
             SET status = ?, activity_run_id = ?, updated_at = ?
-            WHERE workspace_id = ? AND pipeline_run_id = ? AND position = ?
+            WHERE project_id = ? AND pipeline_run_id = ? AND position = ?
             ''',
             [
                 (
                     step.status, step.activity_run_id, step.updated_at.isoformat(),
-                    document.workspace_id, document.id, step.position,
+                    document.project_id, document.id, step.position,
                 )
                 for step in document.steps
             ],
@@ -422,14 +422,14 @@ class SqlitePipelineRunRepository:
         await connection.executemany(
             '''
             INSERT INTO pipeline_run_events (
-                id, workspace_id, pipeline_run_id, event_type, activity_id,
+                id, project_id, pipeline_run_id, event_type, activity_id,
                 actor_id, payload_json, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             [
                 (
                     event.id,
-                    event.workspace_id,
+                    event.project_id,
                     event.pipeline_run_id,
                     event.event_type,
                     event.activity_id,
@@ -451,13 +451,13 @@ class SqlitePipelineRunRepository:
         await connection.execute(
             '''
             INSERT INTO activity_runs (
-                id, workspace_id, activity_id, input, status, state, next_action,
+                id, project_id, activity_id, input, status, state, next_action,
                 iteration, token_revision, continuation_token, activity_snapshot_json,
                 execution_context_json, created_at, created_by, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                document.id, document.workspace_id, document.activity_id,
+                document.id, document.project_id, document.activity_id,
                 document.input, document.status, document.state,
                 document.next_action, document.iteration, document.token_revision,
                 document.continuation_token,
@@ -470,12 +470,12 @@ class SqlitePipelineRunRepository:
         await connection.execute(
             '''
             INSERT INTO activity_run_checkpoints (
-                workspace_id, run_id, token_revision, continuation_token,
+                project_id, run_id, token_revision, continuation_token,
                 state, next_action, context_json, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                document.workspace_id, document.id, document.token_revision,
+                document.project_id, document.id, document.token_revision,
                 document.continuation_token, document.state, document.next_action,
                 json.dumps(document.execution_context, sort_keys=True),
                 document.created_at.isoformat(),
@@ -493,17 +493,17 @@ class SqlitePipelineRunRepository:
         cursor = await connection.execute(
             '''
             SELECT * FROM pipeline_run_steps
-            WHERE workspace_id = ? AND pipeline_run_id = ?
+            WHERE project_id = ? AND pipeline_run_id = ?
             ORDER BY position ASC
             ''',
-            (row['workspace_id'], row['id']),
+            (row['project_id'], row['id']),
         )
         try:
             step_rows = await cursor.fetchall()
         finally:
             await cursor.close()
         return PipelineRunDocument(
-            id=str(row['id']), workspace_id=str(row['workspace_id']),
+            id=str(row['id']), project_id=str(row['project_id']),
             pipeline_id=str(row['pipeline_id']), input=str(row['input']),
             commit_mode=row['commit_mode'],
             status=row['status'], worker_id=row['worker_id'],
@@ -527,7 +527,7 @@ class SqlitePipelineRunRepository:
 
         return PipelineRunEventDocument(
             id=str(row['id']),
-            workspace_id=str(row['workspace_id']),
+            project_id=str(row['project_id']),
             pipeline_run_id=str(row['pipeline_run_id']),
             event_type=str(row['event_type']),
             activity_id=row['activity_id'],

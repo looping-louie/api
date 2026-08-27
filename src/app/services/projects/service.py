@@ -69,7 +69,7 @@ class ProjectService:
 
         await self._tenant_service.require_access(
             user_id=user_id,
-            workspace_id=project_id,
+            project_id=project_id,
         )
         return await self._repository.get_project(project_id=project_id)
 

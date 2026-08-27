@@ -1,4 +1,4 @@
-"""Workspace tenant resolution and membership operations."""
+"""Project tenant resolution and membership operations."""
 
 from dataclasses import dataclass
 from typing import Protocol, Sequence
@@ -6,7 +6,7 @@ from typing import Protocol, Sequence
 
 @dataclass(frozen=True, slots=True)
 class ProjectContext:
-    """Workspace context resolved for the authenticated user."""
+    """Project context resolved for the authenticated user."""
 
     project_id: str
     user_id: str
@@ -17,7 +17,7 @@ class ProjectMembership:
     """Relationship between a user and an accessible workspace."""
 
     user_id: str
-    workspace_id: str
+    project_id: str
     is_enabled: bool = True
     is_default: bool = False
 
@@ -29,7 +29,7 @@ class TenantRepository(Protocol):
         self,
         *,
         user_id: str,
-        workspace_id: str,
+        project_id: str,
     ) -> ProjectMembership | None:
         """Return the membership between a user and a workspace."""
         ...
@@ -75,11 +75,11 @@ class TenantNotFoundError(TenantServiceError):
 class TenantAccessDeniedError(TenantServiceError):
     """Raised when the User cannot access a requested Project."""
 
-    def __init__(self, *, user_id: str, workspace_id: str) -> None:
-        message = f"User '{user_id}' does not have access to Project '{workspace_id}'."
+    def __init__(self, *, user_id: str, project_id: str) -> None:
+        message = f"User '{user_id}' does not have access to Project '{project_id}'."
         super().__init__(message)
         self.user_id = user_id
-        self.workspace_id = workspace_id
+        self.project_id = project_id
 
 
 class TenantSelectionRequiredError(TenantServiceError):
@@ -128,7 +128,7 @@ class TenantService:
         if requested_project_id is not None:
             return await self._resolve_requested_workspace(
                 user_id=user_id,
-                workspace_id=requested_project_id,
+                project_id=requested_project_id,
             )
 
         default_membership = await self._repository.get_default_membership(
@@ -152,7 +152,7 @@ class TenantService:
             raise TenantSelectionRequiredError(
                 user_id=user_id,
                 project_ids=[
-                    membership.workspace_id
+                    membership.project_id
                     for membership in enabled_memberships
                 ],
             )
@@ -163,30 +163,30 @@ class TenantService:
         self,
         *,
         user_id: str,
-        workspace_id: str,
+        project_id: str,
     ) -> ProjectContext:
         """Verify access to an explicitly selected Project."""
 
         return await self.resolve(
             user_id=user_id,
-            requested_project_id=workspace_id,
+            requested_project_id=project_id,
         )
 
     async def _resolve_requested_workspace(
         self,
         *,
         user_id: str,
-        workspace_id: str,
+        project_id: str,
     ) -> ProjectContext:
         membership = await self._repository.get_membership(
             user_id=user_id,
-            workspace_id=workspace_id,
+            project_id=project_id,
         )
 
         if membership is None or not membership.is_enabled:
             raise TenantAccessDeniedError(
                 user_id=user_id,
-                workspace_id=workspace_id,
+                project_id=project_id,
             )
 
         return self._build_context(membership)
@@ -194,7 +194,7 @@ class TenantService:
     @staticmethod
     def _build_context(membership: ProjectMembership) -> ProjectContext:
         return ProjectContext(
-            project_id=membership.workspace_id,
+            project_id=membership.project_id,
             user_id=membership.user_id,
         )
 

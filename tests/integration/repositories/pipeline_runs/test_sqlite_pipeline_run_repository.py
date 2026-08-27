@@ -25,7 +25,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
 
     timestamp = datetime(2026, 8, 19, tzinfo=UTC)
     await create_workspace(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         memberships=(('user-1', 'owner', True),),
     )
     activity = ActivityDocument(
@@ -49,7 +49,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     )
     repository = SqlitePipelineRunRepository(sqlite_database_path)
     prepared = PipelineRunDocument(
-        id='run-1', workspace_id='workspace-1', pipeline_id=pipeline.id,
+        id='run-1', project_id='workspace-1', pipeline_id=pipeline.id,
         input='Implement.', status='prepared', worker_id=None, lease_token=None,
         lease_expires_at=None, attempt=0, current_activity_run_id=None,
         pipeline_snapshot={'steps': []},
@@ -76,7 +76,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     )
     assert started is True
     child = ActivityRunDocument(
-        id='activity-run-1', workspace_id='workspace-1', activity_id=activity.id,
+        id='activity-run-1', project_id='workspace-1', activity_id=activity.id,
         input='Implement.', status='in_progress', state='awaiting_snapshot',
         next_action='collect_snapshot', iteration=1, token_revision=0,
         continuation_token='token-1', activity_snapshot={'flow': 'direct'},
@@ -97,7 +97,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         activity_run=child,
     )
     fetched = await repository.get(
-        workspace_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
+        project_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
     )
 
     assert persisted is True
@@ -129,7 +129,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         activity_run=successor,
     )
     fetched_successor = await repository.get(
-        workspace_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
+        project_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
     )
 
     assert transitioned is True

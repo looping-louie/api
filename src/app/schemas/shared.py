@@ -69,7 +69,7 @@ class ResourceSummaryResponse(ResponseSchema):
 
 
 class InstructionCapabilitiesResponse(ResponseSchema):
-    """Workspace-specific origin and action capabilities for an instruction."""
+    """Project-specific origin and action capabilities for an instruction."""
 
     origin: InstructionOrigin
     enabled: bool

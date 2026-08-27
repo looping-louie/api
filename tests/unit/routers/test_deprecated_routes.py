@@ -46,7 +46,7 @@ def test_legacy_provider_routes_are_not_exposed() -> None:
 
 
 def test_top_level_model_routes_are_not_exposed() -> None:
-    """Workspace model availability replaces global model routes."""
+    """Project model availability replaces global model routes."""
 
     app = FastAPI()
     app.include_router(api_v1_router)

@@ -137,7 +137,7 @@ class ActivityService:
         entries, total = await self._repository.list_changelog(user_id=user_id, activity_id=activity_id, offset=self._offset(offset), limit=PAGE_SIZE)
         return list(entries), total
 
-    async def _workspace_id(self, user_id: str, requested_project_id: str | None) -> str:
+    async def _project_id(self, user_id: str, requested_project_id: str | None) -> str:
         """Resolve the selected workspace for a user."""
 
         context = await self._tenant_service.resolve(

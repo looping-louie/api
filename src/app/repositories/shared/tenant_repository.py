@@ -26,7 +26,7 @@ class SqliteTenantRepository:
         self,
         *,
         user_id: str,
-        workspace_id: str,
+        project_id: str,
     ) -> ProjectMembership | None:
         """Return one membership for a user and workspace."""
 
@@ -34,16 +34,16 @@ class SqliteTenantRepository:
             """
             SELECT
                 user_id,
-                workspace_id,
+                project_id,
                 is_default
-            FROM workspace_memberships
+            FROM project_memberships
             WHERE user_id = ?
-              AND workspace_id = ?
+              AND project_id = ?
             LIMIT 1
             """,
             (
                 user_id,
-                workspace_id,
+                project_id,
             ),
         )
 
@@ -63,9 +63,9 @@ class SqliteTenantRepository:
             """
             SELECT
                 user_id,
-                workspace_id,
+                project_id,
                 is_default
-            FROM workspace_memberships
+            FROM project_memberships
             WHERE user_id = ?
               AND is_default = 1
             LIMIT 1
@@ -89,14 +89,14 @@ class SqliteTenantRepository:
             """
             SELECT
                 user_id,
-                workspace_id,
+                project_id,
                 is_default
-            FROM workspace_memberships
+            FROM project_memberships
             WHERE user_id = ?
             ORDER BY
                 is_default DESC,
                 created_at ASC,
-                workspace_id ASC
+                project_id ASC
             """,
             (user_id,),
         )
@@ -162,6 +162,6 @@ class SqliteTenantRepository:
 
         return ProjectMembership(
             user_id=str(row["user_id"]),
-            workspace_id=str(row["workspace_id"]),
+            project_id=str(row["project_id"]),
             is_default=bool(row["is_default"]),
         )

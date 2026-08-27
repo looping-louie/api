@@ -31,8 +31,8 @@ from src.app.services.shared.settings import AppSettings
 
 EXPECTED_TABLES = {
     "schema_migrations",
-    "workspaces",
-    "workspace_memberships",
+    "projects",
+    "project_memberships",
     "instructions",
     "pipelines",
     "pipeline_steps",
@@ -40,7 +40,7 @@ EXPECTED_TABLES = {
     "pipeline_changelog_entries",
     "linked_services",
     "persona_skills",
-    "workspace_instruction_settings",
+    "project_instruction_settings",
     "user_skill_settings",
     "user_persona_settings",
     "activities",
@@ -164,7 +164,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
             """
             SELECT name
             FROM activities
-            WHERE workspace_id = 'local-workspace'
+            WHERE project_id = 'local-project'
             ORDER BY name
             """
         ).fetchall()
@@ -243,6 +243,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
                         "0053_user_owned_activities",
                         "0054_user_owned_pipelines",
                         "0055_user_execution_defaults",
+                        "0056_projects",
     ]
     assert activity_rows == []
 

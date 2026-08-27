@@ -53,4 +53,4 @@ async def test_persona_controller_patches_and_creates(
     assert copied.editable is True
     assert copied.duplicable is True
     assert copied.source_instruction_id is None
-    assert 'owner_workspace_id' not in copied.model_dump()
+    assert 'owner_project_id' not in copied.model_dump()

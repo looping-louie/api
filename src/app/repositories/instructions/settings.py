@@ -1,4 +1,4 @@
-"""Workspace enablement settings for instruction persistence."""
+"""Project enablement settings for instruction persistence."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ class InstructionSettingsMixin:
     async def set_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         enabled: bool,
     ) -> bool:
@@ -49,9 +49,9 @@ class InstructionSettingsMixin:
                     LIMIT 1
                     """,
                     (
-                        workspace_id,
+                        project_id,
                         instruction_id,
-                        workspace_id,
+                        project_id,
                     ),
                 )
 
@@ -80,7 +80,7 @@ class InstructionSettingsMixin:
                         updated_at = excluded.updated_at
                     """,
                     (
-                        workspace_id,
+                        project_id,
                         instruction_id,
                         int(enabled),
                         timestamp,
@@ -96,7 +96,7 @@ class InstructionSettingsMixin:
     async def is_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> bool:
         """Return whether an active visible instruction is selectable."""
@@ -129,9 +129,9 @@ class InstructionSettingsMixin:
                 LIMIT 1
                 """,
                 (
-                    workspace_id,
+                    project_id,
                     instruction_id,
-                    workspace_id,
+                    project_id,
                 ),
             )
 

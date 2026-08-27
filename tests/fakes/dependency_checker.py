@@ -32,12 +32,12 @@ class FakeDependencyChecker:
     def add_usage(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
         usage: DependencyUsage,
     ) -> None:
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
         )
         self._usages.setdefault(key, []).append(usage)
@@ -45,7 +45,7 @@ class FakeDependencyChecker:
     def block(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
         source_type: str = "loop",
         source_id: str = "loop-1",
@@ -54,7 +54,7 @@ class FakeDependencyChecker:
         """Convenience helper for adding one blocking dependency."""
 
         self.add_usage(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
             usage=DependencyUsage(
                 source=ResourceReference(
@@ -69,11 +69,11 @@ class FakeDependencyChecker:
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> list[DependencyUsage]:
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
         )
         return list(self._usages.get(key, []))
@@ -81,11 +81,11 @@ class FakeDependencyChecker:
     async def require_deletable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> None:
         usages = await self.find_usages(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
         )
         blocking_usages = tuple(
@@ -103,11 +103,11 @@ class FakeDependencyChecker:
     @staticmethod
     def _build_key(
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> tuple[str, str, str]:
         return (
-            workspace_id,
+            project_id,
             target.resource_type,
             target.resource_id,
         )

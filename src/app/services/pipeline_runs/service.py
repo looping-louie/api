@@ -109,7 +109,7 @@ class PipelineRunService:
                 activity_run_id=None,
                 activity_snapshot=await self._activity_snapshot(
                     activity,
-                    workspace_id=workspace.project_id,
+                    project_id=workspace.project_id,
                     user_id=user_id,
                     inherited_model_id=inherited_model_id,
                     inherited_harness=inherited_harness,
@@ -117,7 +117,7 @@ class PipelineRunService:
                 updated_at=now,
             ))
         document = PipelineRunDocument(
-            id=run_id, workspace_id=workspace.project_id,
+            id=run_id, project_id=workspace.project_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
             commit_mode=commit_mode,
             status='prepared', worker_id=None, lease_token=None,
@@ -129,7 +129,7 @@ class PipelineRunService:
             steps=tuple(steps),
             events=(
                 self._event(
-                    workspace_id=workspace.project_id,
+                    project_id=workspace.project_id,
                     run_id=run_id,
                     event_type='pipeline_run_created',
                     activity_id=None,
@@ -165,7 +165,7 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         document = await self._get_required(
-            workspace_id=workspace.project_id,
+            project_id=workspace.project_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
@@ -211,7 +211,7 @@ class PipelineRunService:
             return []
         now = self._clock()
         return await self._repository.list_claimable(
-            workspace_id=workspace.project_id,
+            project_id=workspace.project_id,
             pipeline_id=details.document.id,
             claimed_before=now,
         )
@@ -242,18 +242,18 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         candidate = await self._get_required(
-            workspace_id=workspace.project_id,
+            project_id=workspace.project_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
         now = self._clock()
         if self._worker_service is not None:
             await self._worker_service.require_active(
-                workspace_id=workspace.project_id,
+                project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
             )
             await self._worker_service.require_harness(
-                workspace_id=workspace.project_id,
+                project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
                 harness=self._harness_snapshot(candidate.pipeline_snapshot),
             )
@@ -333,12 +333,12 @@ class PipelineRunService:
             user_id=user_id, requested_project_id=requested_project_id,
         )
         document = await self._repository.get(
-            workspace_id=workspace.project_id, pipeline_id=pipeline_id, run_id=run_id,
+            project_id=workspace.project_id, pipeline_id=pipeline_id, run_id=run_id,
         )
         if document is None:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         events = await self._repository.list_events(
-            workspace_id=workspace.project_id,
+            project_id=workspace.project_id,
             pipeline_id=pipeline_id,
             run_id=run_id,
         )
@@ -347,14 +347,14 @@ class PipelineRunService:
     async def _get_required(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> PipelineRunDocument:
         """Return one run under a resolved workspace and Pipeline."""
 
         document = await self._repository.get(
-            workspace_id=workspace_id,
+            project_id=project_id,
             pipeline_id=pipeline_id,
             run_id=run_id,
         )
@@ -487,7 +487,7 @@ class PipelineRunService:
             if value.activity_run_id == document.current_activity_run_id
         )
         return await self._activity_run_repository.get(
-            workspace_id=document.workspace_id,
+            project_id=document.project_id,
             activity_id=step.activity_id,
             run_id=document.current_activity_run_id,
         )
@@ -540,7 +540,7 @@ class PipelineRunService:
                 updated_at=now,
             ), None
         child = ActivityRunDocument(
-            id=self._id_factory(), workspace_id=document.workspace_id,
+            id=self._id_factory(), project_id=document.project_id,
             activity_id=ready.activity_id, input=document.input,
             status='in_progress',
             state='awaiting_human_decision' if human_activity else 'awaiting_snapshot',
@@ -667,7 +667,7 @@ class PipelineRunService:
     def _event(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         run_id: str,
         event_type: str,
         activity_id: str | None,
@@ -679,7 +679,7 @@ class PipelineRunService:
 
         return PipelineRunEventDocument(
             id=self._id_factory(),
-            workspace_id=workspace_id,
+            project_id=project_id,
             pipeline_run_id=run_id,
             event_type=event_type,
             activity_id=activity_id,
@@ -719,7 +719,7 @@ class PipelineRunService:
         self,
         activity: ActivityDocument,
         *,
-        workspace_id: str,
+        project_id: str,
         user_id: str,
         inherited_model_id: str | None,
         inherited_harness: PipelineHarness,
@@ -734,7 +734,7 @@ class PipelineRunService:
             config['agents'] = [
                 await self._agent_snapshot(
                     agent=agent,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     user_id=user_id,
                     inherited_model_id=model_id,
                     harness=harness,
@@ -780,7 +780,7 @@ class PipelineRunService:
         self,
         *,
         agent: dict[str, object],
-        workspace_id: str,
+        project_id: str,
         user_id: str,
         inherited_model_id: str | None,
         harness: PipelineHarness,
@@ -801,7 +801,7 @@ class PipelineRunService:
         if self._model_execution_service is None:
             raise RuntimeError('Louie model execution is not configured.')
         linked_service = await self._model_execution_service.select_linked_service(
-            workspace_id=workspace_id,
+            project_id=project_id,
             model_id=model_id,
             user_id=user_id,
         )

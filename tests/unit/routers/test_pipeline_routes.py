@@ -479,13 +479,13 @@ class _EventService:
         )
         timestamp = datetime(2026, 8, 21, tzinfo=UTC)
         return PipelineRunDocument(
-            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            id='run-1', project_id='workspace-1', pipeline_id='pipeline-1',
             input='Implement.', commit_mode='forbid', status='completed',
             worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
             current_activity_run_id=None, pipeline_snapshot={'steps': []}, steps=(),
             created_at=timestamp, created_by='user-1', updated_at=timestamp,
             events=(PipelineRunEventDocument(
-                id='event-1', workspace_id='workspace-1', pipeline_run_id='run-1',
+                id='event-1', project_id='workspace-1', pipeline_run_id='run-1',
                 event_type='pipeline_run_created', activity_id=None, actor_id='user-1',
                 payload={'commit_mode': 'forbid'}, created_at=timestamp,
             ),),
@@ -510,7 +510,7 @@ class _StartService:
         )
         timestamp = datetime(2026, 8, 19, tzinfo=UTC)
         return PipelineRunDocument(
-            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            id='run-1', project_id='workspace-1', pipeline_id='pipeline-1',
             input='Implement.', commit_mode='allow', status='queued',
             worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
             current_activity_run_id=None, pipeline_snapshot={'steps': []},

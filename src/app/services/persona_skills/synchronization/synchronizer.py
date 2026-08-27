@@ -309,7 +309,7 @@ class PersonaSkillCatalogSynchronizer:
                 id,
                 instruction_type,
                 origin,
-                owner_workspace_id,
+                owner_project_id,
                 source_instruction_id,
                 name,
                 name_key,
@@ -350,7 +350,7 @@ class PersonaSkillCatalogSynchronizer:
             SET
                 instruction_type = ?,
                 origin = 'builtin',
-                owner_workspace_id = NULL,
+                owner_project_id = NULL,
                 source_instruction_id = NULL,
                 name = ?,
                 name_key = ?,

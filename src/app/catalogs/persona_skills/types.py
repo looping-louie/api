@@ -35,7 +35,7 @@ class CatalogInstructionCategory(StrEnum):
 
 
 class CatalogInstructionStatus(StrEnum):
-    """Workspace availability states accepted by catalog listings."""
+    """Project availability states accepted by catalog listings."""
 
     ENABLED = "enabled"
     DISABLED = "disabled"

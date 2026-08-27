@@ -16,11 +16,11 @@ async def test_resolve_requested_workspace() -> None:
         [
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-2",
+                project_id="workspace-2",
             ),
         ]
     )
@@ -41,11 +41,11 @@ async def test_resolve_default_workspace() -> None:
         [
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-2",
+                project_id="workspace-2",
                 is_default=True,
             ),
         ]
@@ -63,12 +63,12 @@ async def test_resolve_only_enabled_workspace() -> None:
         [
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-disabled",
+                project_id="workspace-disabled",
                 is_enabled=False,
             ),
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-enabled",
+                project_id="workspace-enabled",
             ),
         ]
     )
@@ -85,11 +85,11 @@ async def test_resolve_requires_selection_for_multiple_workspaces() -> None:
         [
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-2",
+                project_id="workspace-2",
             ),
         ]
     )
@@ -110,7 +110,7 @@ async def test_resolve_rejects_inaccessible_workspace() -> None:
         [
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
         ]
     )

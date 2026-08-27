@@ -155,9 +155,9 @@ class LinkedServiceService:
         """Delete one linked service owned by the registered user."""
         await self._user_service.get(user_id=user_id)
         if self._dependency_checker is not None:
-            workspace_id = await self._workspace_id(user_id, None)
+            project_id = await self._project_id(user_id, None)
             await self._dependency_checker.require_deletable(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 target=ResourceReference('linked_service', service_id),
             )
         if not await self._repository.delete_for_user(user_id, service_id):
@@ -221,7 +221,7 @@ class LinkedServiceService:
             credential=linked_service,
         )
 
-    async def _workspace_id(self, user_id: str, requested_project_id: str | None) -> str:
+    async def _project_id(self, user_id: str, requested_project_id: str | None) -> str:
         """Resolve the selected workspace for a user operation."""
         tenant = await self._tenant_service.resolve(user_id=user_id, requested_project_id=requested_project_id)
         return tenant.project_id

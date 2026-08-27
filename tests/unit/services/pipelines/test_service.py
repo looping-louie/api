@@ -33,13 +33,13 @@ class RecordingLinkedServiceService:
     async def require_available_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
         """Record one explicit model-target availability request."""
 
-        self.calls.append((workspace_id, service_id, model_id))
+        self.calls.append((project_id, service_id, model_id))
 
 
 def activity_step(

@@ -22,7 +22,7 @@ class ActivityRunRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         run_id: str,
     ) -> ActivityRunDocument | None:
@@ -32,7 +32,7 @@ class ActivityRunRepository(Protocol):
     async def list(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         offset: int,
         limit: int,
@@ -43,7 +43,7 @@ class ActivityRunRepository(Protocol):
     async def has_active_pipeline_lease(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_run_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
@@ -55,7 +55,7 @@ class ActivityRunRepository(Protocol):
     async def transition(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         run_id: str,
         continuation_token: str,

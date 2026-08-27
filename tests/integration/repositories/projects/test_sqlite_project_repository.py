@@ -44,10 +44,10 @@ async def test_create_assigns_the_first_project_as_owner_default(
         rows = await (
             await connection.execute(
                 '''
-                SELECT workspace_id, role, is_default
-                FROM workspace_memberships
+                SELECT project_id, role, is_default
+                FROM project_memberships
                 WHERE user_id = ?
-                ORDER BY workspace_id
+                ORDER BY project_id
                 ''',
                 ('user-1',),
             )

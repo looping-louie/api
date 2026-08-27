@@ -29,7 +29,7 @@ class SqliteProjectRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 await connection.execute(
                     '''
-                    INSERT INTO workspaces (id, name, created_at, updated_at)
+                    INSERT INTO projects (id, name, created_at, updated_at)
                     VALUES (?, ?, ?, ?)
                     ''',
                     (
@@ -41,13 +41,13 @@ class SqliteProjectRepository:
                 )
                 await connection.execute(
                     '''
-                    INSERT INTO workspace_memberships (
-                        workspace_id, user_id, role, is_default, created_at
+                    INSERT INTO project_memberships (
+                        project_id, user_id, role, is_default, created_at
                     ) VALUES (
                         ?, ?, 'owner',
                         CASE WHEN EXISTS (
                             SELECT 1
-                            FROM workspace_memberships
+                            FROM project_memberships
                             WHERE user_id = ? AND is_default = 1
                         ) THEN 0 ELSE 1 END,
                         ?
@@ -73,9 +73,9 @@ class SqliteProjectRepository:
             cursor = await connection.execute(
                 '''
                 SELECT w.id, w.name, w.created_at, w.updated_at
-                FROM workspaces AS w
-                INNER JOIN workspace_memberships AS membership
-                    ON membership.workspace_id = w.id
+                FROM projects AS w
+                INNER JOIN project_memberships AS membership
+                    ON membership.project_id = w.id
                 WHERE membership.user_id = ?
                 ORDER BY membership.is_default DESC, w.created_at ASC, w.id ASC
                 ''',
@@ -94,7 +94,7 @@ class SqliteProjectRepository:
             cursor = await connection.execute(
                 '''
                 SELECT id, name, created_at, updated_at
-                FROM workspaces
+                FROM projects
                 WHERE id = ?
                 ''',
                 (project_id,),
@@ -119,7 +119,7 @@ class SqliteProjectRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 cursor = await connection.execute(
                     '''
-                    UPDATE workspaces
+                    UPDATE projects
                     SET name = ?, updated_at = ?
                     WHERE id = ?
                     RETURNING id, name, created_at, updated_at

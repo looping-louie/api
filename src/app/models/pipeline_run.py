@@ -29,7 +29,7 @@ class PipelineRunEventDocument:
     """One immutable event emitted during a Pipeline run."""
 
     id: str
-    workspace_id: str
+    project_id: str
     pipeline_run_id: str
     event_type: str
     activity_id: str | None
@@ -55,7 +55,7 @@ class PipelineRunDocument:
     """One workspace-scoped execution of a frozen pipeline definition."""
 
     id: str
-    workspace_id: str
+    project_id: str
     pipeline_id: str
     input: str
     status: PipelineRunStatus

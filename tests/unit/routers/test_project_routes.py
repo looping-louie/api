@@ -91,7 +91,7 @@ class FakeLinkedServiceService:
     async def require_available_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
@@ -119,7 +119,7 @@ def build_client() -> TestClient:
                 repository=FakeTenantRepository([
                     ProjectMembership(
                         user_id='user-1',
-                        workspace_id='project-1',
+                        project_id='project-1',
                         is_default=True,
                     ),
                 ]),

@@ -43,16 +43,16 @@ class FakeActivityRunRepository:
         self.documents[document.id] = document
         return document
 
-    async def get(self, *, workspace_id: str, activity_id: str, run_id: str) -> ActivityRunDocument | None:
+    async def get(self, *, project_id: str, activity_id: str, run_id: str) -> ActivityRunDocument | None:
         """Return a run only for its parent activity."""
 
         document = self.documents.get(run_id)
-        return document if document is not None and document.workspace_id == workspace_id and document.activity_id == activity_id else None
+        return document if document is not None and document.project_id == project_id and document.activity_id == activity_id else None
 
-    async def list(self, *, workspace_id: str, activity_id: str, offset: int, limit: int) -> tuple[list[ActivityRunDocument], int]:
+    async def list(self, *, project_id: str, activity_id: str, offset: int, limit: int) -> tuple[list[ActivityRunDocument], int]:
         """Return a deterministic page for one activity."""
 
-        values = [document for document in self.documents.values() if document.workspace_id == workspace_id and document.activity_id == activity_id]
+        values = [document for document in self.documents.values() if document.project_id == project_id and document.activity_id == activity_id]
         return values[offset:offset + limit], len(values)
 
     async def has_active_pipeline_lease(self, **_: object) -> bool:
@@ -60,14 +60,14 @@ class FakeActivityRunRepository:
 
         return True
 
-    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None, pipeline_run_id: str | None = None, lease_token: str | None = None) -> ActivityRunDocument:
+    async def transition(self, *, project_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None, pipeline_run_id: str | None = None, lease_token: str | None = None) -> ActivityRunDocument:
         """Advance the snapshot checkpoint for the in-memory route fixture."""
 
         del idempotency_key, pipeline_run_id, lease_token
         current = self.documents[run_id]
-        assert current.workspace_id == workspace_id and current.activity_id == activity_id
+        assert current.project_id == project_id and current.activity_id == activity_id
         assert current.continuation_token == continuation_token and current.next_action == expected_action
-        updated = ActivityRunDocument(id=current.id, workspace_id=current.workspace_id, activity_id=current.activity_id, input=current.input, status=cast(object, status), state=cast(object, state), next_action=cast(object, next_action), iteration=iteration or current.iteration, token_revision=current.token_revision + 1, continuation_token=next_continuation_token, activity_snapshot=current.activity_snapshot, execution_context=execution_context, created_at=current.created_at, created_by=current.created_by, updated_at=updated_at)
+        updated = ActivityRunDocument(id=current.id, project_id=current.project_id, activity_id=current.activity_id, input=current.input, status=cast(object, status), state=cast(object, state), next_action=cast(object, next_action), iteration=iteration or current.iteration, token_revision=current.token_revision + 1, continuation_token=next_continuation_token, activity_snapshot=current.activity_snapshot, execution_context=execution_context, created_at=current.created_at, created_by=current.created_by, updated_at=updated_at)
         self.documents[run_id] = updated
         return updated
 
@@ -120,13 +120,13 @@ class RecordingLinkedServiceService:
     async def require_available_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
         """Record one availability validation request."""
 
-        self.calls.append((workspace_id, service_id, model_id))
+        self.calls.append((project_id, service_id, model_id))
 
 
 def build_client(
@@ -295,7 +295,7 @@ def test_activity_allows_agent_without_model_id_or_persona_selection(
 
     reference_repository = FakeReferenceRepository()
     reference_repository.seed(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         resource_type='persona',
         resource_id='persona-1',
         value={'id': 'persona-1'},

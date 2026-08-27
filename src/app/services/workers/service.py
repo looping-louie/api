@@ -82,7 +82,7 @@ class WorkerService:
         now = self._clock()
         return await self._repository.create(WorkerDocument(
             id=self._id_factory(),
-            workspace_id=workspace.project_id,
+            project_id=workspace.project_id,
             registered_at=now,
             last_heartbeat_at=now,
             harnesses=(
@@ -106,7 +106,7 @@ class WorkerService:
             requested_project_id=requested_project_id,
         )
         worker = await self._repository.heartbeat(
-            workspace_id=workspace.project_id,
+            project_id=workspace.project_id,
             worker_id=_require_text(worker_id),
             occurred_at=self._clock(),
         )
@@ -114,11 +114,11 @@ class WorkerService:
             raise WorkerNotFoundError(worker_id)
         return worker
 
-    async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
+    async def require_active(self, *, project_id: str, worker_id: str) -> None:
         """Reject claims from workers without a current registration heartbeat."""
 
         if not await self._repository.is_active(
-            workspace_id=workspace_id,
+            project_id=project_id,
             worker_id=_require_text(worker_id),
             active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
         ):
@@ -127,7 +127,7 @@ class WorkerService:
     async def require_harness(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         harness: Mapping[str, object],
     ) -> None:
@@ -135,7 +135,7 @@ class WorkerService:
 
         normalized_worker_id = _require_text(worker_id)
         worker = await self._repository.get(
-            workspace_id=workspace_id,
+            project_id=project_id,
             worker_id=normalized_worker_id,
         )
         if worker is None or not any(

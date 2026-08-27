@@ -21,12 +21,12 @@ class FakeTenantRepository:
         self,
         *,
         user_id: str,
-        workspace_id: str,
+        project_id: str,
     ) -> ProjectMembership | None:
         for membership in self._memberships:
             if (
                 membership.user_id == user_id
-                and membership.workspace_id == workspace_id
+                and membership.project_id == project_id
             ):
                 return membership
 

@@ -16,7 +16,7 @@ class FakeReferenceRepository:
     def seed(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         resource_id: str,
         value: object,
@@ -24,7 +24,7 @@ class FakeReferenceRepository:
         """Register a resource that can later be resolved."""
 
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             resource_type=resource_type,
             resource_id=resource_id,
         )
@@ -33,14 +33,14 @@ class FakeReferenceRepository:
     def remove(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         resource_id: str,
     ) -> None:
         """Remove a resource from the fake repository."""
 
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             resource_type=resource_type,
             resource_id=resource_id,
         )
@@ -49,7 +49,7 @@ class FakeReferenceRepository:
     async def get_many(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
     ) -> Mapping[str, object]:
@@ -60,7 +60,7 @@ class FakeReferenceRepository:
 
         self.calls.append(
             (
-                workspace_id,
+                project_id,
                 normalized_type,
                 requested_ids,
             )
@@ -70,7 +70,7 @@ class FakeReferenceRepository:
 
         for resource_id in requested_ids:
             key = self._build_key(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 resource_type=normalized_type,
                 resource_id=resource_id,
             )
@@ -84,10 +84,10 @@ class FakeReferenceRepository:
     @staticmethod
     def _build_key(
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         resource_id: str,
     ) -> tuple[str, str, str]:
         """Build a normalized in-memory resource key."""
 
-        return workspace_id, resource_type.casefold(), resource_id
+        return project_id, resource_type.casefold(), resource_id

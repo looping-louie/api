@@ -71,13 +71,13 @@ class FakeLinkedServiceService:
     async def require_available_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
         """Record the selection requested for validation."""
 
-        self.calls.append((workspace_id, service_id, model_id))
+        self.calls.append((project_id, service_id, model_id))
 
 
 class FakeUserService:
@@ -113,7 +113,7 @@ def build_service(
             [
                 ProjectMembership(
                     user_id='user-1',
-                    workspace_id='project-1',
+                    project_id='project-1',
                     is_default=True,
                 ),
             ],

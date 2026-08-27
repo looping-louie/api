@@ -38,7 +38,7 @@ class SqliteActivityRunRepository:
                 await connection.execute(
                     '''
                     INSERT INTO activity_runs (
-                        id, workspace_id, activity_id, input, status, state,
+                        id, project_id, activity_id, input, status, state,
                         next_action, iteration, token_revision,
                         continuation_token, activity_snapshot_json,
                         execution_context_json, created_at, created_by,
@@ -48,7 +48,7 @@ class SqliteActivityRunRepository:
                     ''',
                     (
                         document.id,
-                        document.workspace_id,
+                        document.project_id,
                         document.activity_id,
                         document.input,
                         document.status,
@@ -78,7 +78,7 @@ class SqliteActivityRunRepository:
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         run_id: str,
     ) -> ActivityRunDocument | None:
@@ -87,7 +87,7 @@ class SqliteActivityRunRepository:
         async with self._connect() as connection:
             row = await self._get_row(
                 connection,
-                workspace_id=workspace_id,
+                project_id=project_id,
                 activity_id=activity_id,
                 run_id=run_id,
             )
@@ -96,7 +96,7 @@ class SqliteActivityRunRepository:
     async def list(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         offset: int,
         limit: int,
@@ -106,8 +106,8 @@ class SqliteActivityRunRepository:
         async with self._connect() as connection:
             count_cursor = await connection.execute(
                 'SELECT COUNT(*) AS total FROM activity_runs '
-                'WHERE workspace_id = ? AND activity_id = ?',
-                (workspace_id, activity_id),
+                'WHERE project_id = ? AND activity_id = ?',
+                (project_id, activity_id),
             )
             try:
                 count_row = await count_cursor.fetchone()
@@ -116,11 +116,11 @@ class SqliteActivityRunRepository:
             cursor = await connection.execute(
                 '''
                 SELECT * FROM activity_runs
-                WHERE workspace_id = ? AND activity_id = ?
+                WHERE project_id = ? AND activity_id = ?
                 ORDER BY created_at DESC, id ASC
                 LIMIT ? OFFSET ?
                 ''',
-                (workspace_id, activity_id, limit, offset),
+                (project_id, activity_id, limit, offset),
             )
             try:
                 rows = await cursor.fetchall()
@@ -132,7 +132,7 @@ class SqliteActivityRunRepository:
     async def transition(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         run_id: str,
         continuation_token: str,
@@ -155,7 +155,7 @@ class SqliteActivityRunRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 row = await self._get_row(
                     connection,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     activity_id=activity_id,
                     run_id=run_id,
                 )
@@ -163,7 +163,7 @@ class SqliteActivityRunRepository:
                     raise ActivityRunInvalidTransitionError()
                 if not await self._has_active_pipeline_lease(
                     connection,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     activity_run_id=run_id,
                     pipeline_run_id=pipeline_run_id,
                     lease_token=lease_token,
@@ -172,7 +172,7 @@ class SqliteActivityRunRepository:
                     raise ActivityRunInvalidTransitionError()
                 revision = await self._get_checkpoint_revision(
                     connection,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     run_id=run_id,
                     continuation_token=continuation_token,
                 )
@@ -180,7 +180,7 @@ class SqliteActivityRunRepository:
                     raise ActivityRunTokenConflictError()
                 replay = await self._get_idempotent_response(
                     connection,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     run_id=run_id,
                     token_revision=revision,
                     idempotency_key=idempotency_key,
@@ -209,7 +209,7 @@ class SqliteActivityRunRepository:
                     SET status = ?, state = ?, next_action = ?, iteration = ?,
                         token_revision = ?, continuation_token = ?,
                         execution_context_json = ?, updated_at = ?
-                    WHERE workspace_id = ? AND activity_id = ? AND id = ?
+                    WHERE project_id = ? AND activity_id = ? AND id = ?
                     ''',
                     (
                         updated.status,
@@ -220,7 +220,7 @@ class SqliteActivityRunRepository:
                         updated.continuation_token,
                         json.dumps(updated.execution_context, sort_keys=True),
                         updated.updated_at.isoformat(),
-                        workspace_id,
+                        project_id,
                         activity_id,
                         run_id,
                     ),
@@ -232,7 +232,7 @@ class SqliteActivityRunRepository:
                 )
                 await self._store_idempotent_response(
                     connection,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     run_id=run_id,
                     token_revision=revision,
                     idempotency_key=idempotency_key,
@@ -248,7 +248,7 @@ class SqliteActivityRunRepository:
     async def has_active_pipeline_lease(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_run_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
@@ -259,7 +259,7 @@ class SqliteActivityRunRepository:
         async with self._connect() as connection:
             return await self._has_active_pipeline_lease(
                 connection,
-                workspace_id=workspace_id,
+                project_id=project_id,
                 activity_run_id=activity_run_id,
                 pipeline_run_id=pipeline_run_id,
                 lease_token=lease_token,
@@ -270,7 +270,7 @@ class SqliteActivityRunRepository:
     async def _has_active_pipeline_lease(
         connection: aiosqlite.Connection,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_run_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
@@ -282,9 +282,9 @@ class SqliteActivityRunRepository:
             '''
             SELECT pipeline_run_id
             FROM pipeline_run_steps
-            WHERE workspace_id = ? AND activity_run_id = ?
+            WHERE project_id = ? AND activity_run_id = ?
             ''',
-            (workspace_id, activity_run_id),
+            (project_id, activity_run_id),
         )
         try:
             owner = await cursor.fetchone()
@@ -302,9 +302,9 @@ class SqliteActivityRunRepository:
             SELECT 1
             FROM pipeline_runs AS runs
             JOIN activity_runs AS child
-                ON child.workspace_id = runs.workspace_id
+                ON child.project_id = runs.project_id
                 AND child.id = runs.current_activity_run_id
-            WHERE runs.workspace_id = ? AND runs.id = ?
+            WHERE runs.project_id = ? AND runs.id = ?
                 AND runs.current_activity_run_id = ?
                             AND (
                     (runs.lease_token = ? AND runs.lease_expires_at > ?
@@ -314,7 +314,7 @@ class SqliteActivityRunRepository:
                             )
             ''',
             (
-                workspace_id, pipeline_run_id, activity_run_id, lease_token,
+                project_id, pipeline_run_id, activity_run_id, lease_token,
                 now.isoformat(),
             ),
         )
@@ -340,7 +340,7 @@ class SqliteActivityRunRepository:
 
         return ActivityRunDocument(
             id=str(row['id']),
-            workspace_id=str(row['workspace_id']),
+            project_id=str(row['project_id']),
             activity_id=str(row['activity_id']),
             input=str(row['input']),
             status=status or str(row['status']),
@@ -372,7 +372,7 @@ class SqliteActivityRunRepository:
     async def _get_row(
         connection: aiosqlite.Connection,
         *,
-        workspace_id: str,
+        project_id: str,
         activity_id: str,
         run_id: str,
     ) -> aiosqlite.Row | None:
@@ -380,8 +380,8 @@ class SqliteActivityRunRepository:
 
         cursor = await connection.execute(
             'SELECT * FROM activity_runs '
-            'WHERE workspace_id = ? AND activity_id = ? AND id = ?',
-            (workspace_id, activity_id, run_id),
+            'WHERE project_id = ? AND activity_id = ? AND id = ?',
+            (project_id, activity_id, run_id),
         )
         try:
             return await cursor.fetchone()
@@ -392,7 +392,7 @@ class SqliteActivityRunRepository:
     async def _get_checkpoint_revision(
         connection: aiosqlite.Connection,
         *,
-        workspace_id: str,
+        project_id: str,
         run_id: str,
         continuation_token: str,
     ) -> int | None:
@@ -400,8 +400,8 @@ class SqliteActivityRunRepository:
 
         cursor = await connection.execute(
             'SELECT token_revision FROM activity_run_checkpoints '
-            'WHERE workspace_id = ? AND run_id = ? AND continuation_token = ?',
-            (workspace_id, run_id, continuation_token),
+            'WHERE project_id = ? AND run_id = ? AND continuation_token = ?',
+            (project_id, run_id, continuation_token),
         )
         try:
             row = await cursor.fetchone()
@@ -414,7 +414,7 @@ class SqliteActivityRunRepository:
         cls,
         connection: aiosqlite.Connection,
         *,
-        workspace_id: str,
+        project_id: str,
         run_id: str,
         token_revision: int,
         idempotency_key: str,
@@ -423,9 +423,9 @@ class SqliteActivityRunRepository:
 
         cursor = await connection.execute(
             'SELECT response_json FROM activity_run_idempotency '
-            'WHERE workspace_id = ? AND run_id = ? AND token_revision = ? '
+            'WHERE project_id = ? AND run_id = ? AND token_revision = ? '
             'AND idempotency_key = ?',
-            (workspace_id, run_id, token_revision, idempotency_key),
+            (project_id, run_id, token_revision, idempotency_key),
         )
         try:
             row = await cursor.fetchone()
@@ -445,12 +445,12 @@ class SqliteActivityRunRepository:
         await connection.execute(
             '''
             INSERT INTO activity_run_checkpoints (
-                workspace_id, run_id, token_revision, continuation_token,
+                project_id, run_id, token_revision, continuation_token,
                 state, next_action, context_json, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                document.workspace_id,
+                document.project_id,
                 document.id,
                 document.token_revision,
                 document.continuation_token,
@@ -466,7 +466,7 @@ class SqliteActivityRunRepository:
         cls,
         connection: aiosqlite.Connection,
         *,
-        workspace_id: str,
+        project_id: str,
         run_id: str,
         token_revision: int,
         idempotency_key: str,
@@ -478,12 +478,12 @@ class SqliteActivityRunRepository:
         await connection.execute(
             '''
             INSERT INTO activity_run_idempotency (
-                workspace_id, run_id, token_revision, idempotency_key,
+                project_id, run_id, token_revision, idempotency_key,
                 response_json, created_at
             ) VALUES (?, ?, ?, ?, ?, ?)
             ''',
             (
-                workspace_id,
+                project_id,
                 run_id,
                 token_revision,
                 idempotency_key,
@@ -498,7 +498,7 @@ class SqliteActivityRunRepository:
 
         return {
             'id': document.id,
-            'workspace_id': document.workspace_id,
+            'project_id': document.project_id,
             'activity_id': document.activity_id,
             'input': document.input,
             'status': document.status,
@@ -520,7 +520,7 @@ class SqliteActivityRunRepository:
 
         return ActivityRunDocument(
             id=str(value['id']),
-            workspace_id=str(value['workspace_id']),
+            project_id=str(value['project_id']),
             activity_id=str(value['activity_id']),
             input=str(value['input']),
             status=str(value['status']),

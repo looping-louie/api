@@ -30,7 +30,7 @@ async def test_persists_multiple_services_for_the_same_provider(
 ) -> None:
     """Provider type is reusable across independent linked-service rows."""
     await create_workspace(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         memberships=(('user-workspace-1', 'owner', True),),
     )
     repository = SqliteLinkedServiceRepository(sqlite_database)
@@ -49,11 +49,11 @@ async def test_get_and_delete_are_user_scoped(
 ) -> None:
     """A service cannot be read or deleted through another user."""
     await create_workspace(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         memberships=(('user-workspace-1', 'owner', True),),
     )
     await create_workspace(
-        workspace_id='workspace-2',
+        project_id='workspace-2',
         memberships=(('user-workspace-2', 'owner', True),),
     )
     repository = SqliteLinkedServiceRepository(sqlite_database)

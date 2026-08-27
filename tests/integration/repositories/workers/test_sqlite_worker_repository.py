@@ -19,19 +19,19 @@ async def test_worker_repository_preserves_harnesses_across_heartbeat(
 ) -> None:
     """Worker reads and heartbeats retain the persisted Harness capability set."""
 
-    await create_workspace(workspace_id='workspace-1')
+    await create_workspace(project_id='workspace-1')
     timestamp = datetime(2026, 8, 24, tzinfo=UTC)
     repository = SqliteWorkerRepository(sqlite_database)
     created = await repository.create(WorkerDocument(
-        id='worker-1', workspace_id='workspace-1', registered_at=timestamp,
+        id='worker-1', project_id='workspace-1', registered_at=timestamp,
         last_heartbeat_at=timestamp,
     ))
     fetched = await repository.get(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         worker_id='worker-1',
     )
     heartbeated = await repository.heartbeat(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         worker_id='worker-1',
         occurred_at=timestamp + timedelta(seconds=1),
     )

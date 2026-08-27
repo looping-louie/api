@@ -46,7 +46,7 @@ async def validate_activity_references(
             unresolved.append(ResourceReference("activity", activity_id))
     if unresolved:
         raise ResourceNotFoundError(
-            workspace_id=document.user_id,
+            project_id=document.user_id,
             references=unresolved,
         )
 

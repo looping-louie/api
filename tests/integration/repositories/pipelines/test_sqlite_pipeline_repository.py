@@ -135,7 +135,7 @@ async def test_creates_generated_activities_with_pipeline_atomically(
     """Generated Activities persist independently with their Pipeline steps."""
 
     await create_workspace(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         memberships=(('user-1', 'owner', True),),
     )
     repository = SqlitePipelineRepository(sqlite_database_path)
@@ -181,7 +181,7 @@ async def test_failed_generated_activity_insert_rolls_back_pipeline_creation(
 ) -> None:
     """A bundled create rolls back when one generated Activity conflicts."""
 
-    await create_workspace(workspace_id='workspace-1')
+    await create_workspace(project_id='workspace-1')
     repository = SqlitePipelineRepository(sqlite_database_path)
     first, first_entry = generated_activity(activity_id='generated-1')
     duplicate, duplicate_entry = generated_activity(activity_id='generated-1')
@@ -214,7 +214,7 @@ async def test_round_trips_ordered_activity_steps_and_dependencies(
 ) -> None:
     """Persistence retains exact activity order and duplicates."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     await seed_activities(sqlite_database_path)
     repository = SqlitePipelineRepository(sqlite_database_path)
     document = replace(
@@ -253,7 +253,7 @@ async def test_list_filters_searches_orders_and_paginates(
 ) -> None:
     """Active-first listing supports status, search, offset, and limit ten."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     await seed_activities(sqlite_database_path)
     repository = SqlitePipelineRepository(sqlite_database_path)
     for position in range(12):
@@ -319,7 +319,7 @@ async def test_update_archive_and_changelog_are_atomic_resources(
 ) -> None:
     """Updates replace steps, archival persists, and changelog is retained."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     await seed_activities(sqlite_database_path)
     repository = SqlitePipelineRepository(sqlite_database_path)
     original = build_pipeline()

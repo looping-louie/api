@@ -10,7 +10,7 @@ def insert_custom(
     connection: sqlite3.Connection,
     *,
     instruction_id: str,
-    workspace_id: str,
+    project_id: str,
     name: str,
     description: str,
 ) -> None:
@@ -19,7 +19,7 @@ def insert_custom(
     connection.execute(
         """
         INSERT INTO instructions (
-            id, instruction_type, origin, owner_workspace_id, name, name_key,
+            id, instruction_type, origin, owner_project_id, name, name_key,
             description, content, metadata_json, enabled_by_default,
             deprecated, version, created_at, updated_at
         )
@@ -27,7 +27,7 @@ def insert_custom(
         """,
         (
             instruction_id,
-            workspace_id,
+            project_id,
             name,
             normalize(name),
             description,
@@ -44,7 +44,7 @@ def insert_marketplace(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
         INSERT INTO instructions (
-            id, instruction_type, origin, owner_workspace_id, name, name_key,
+            id, instruction_type, origin, owner_project_id, name, name_key,
             description, content, metadata_json, catalog_version, checksum,
             enabled_by_default, deprecated, version, created_at, updated_at
         )

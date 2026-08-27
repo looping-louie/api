@@ -58,7 +58,7 @@ def test_list_models_route(
     """List responses honor provider and effective availability filters."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -160,7 +160,7 @@ def test_describe_model_route(
     """Describe exposes the selected model and User availability."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,

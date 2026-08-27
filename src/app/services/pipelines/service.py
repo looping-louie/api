@@ -390,7 +390,7 @@ class PipelineService:
             raise PipelineNotFoundError(pipeline_id=normalized_id)
         return list(entries), total
 
-    async def _workspace_id(
+    async def _project_id(
         self,
         user_id: str,
         requested_project_id: str | None,

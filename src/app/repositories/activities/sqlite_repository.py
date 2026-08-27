@@ -186,7 +186,7 @@ class SqliteActivityRepository:
         """Insert one activity document."""
 
         await connection.execute(
-            'INSERT INTO activities (id, user_id, workspace_id, name, description, status, '
+            'INSERT INTO activities (id, user_id, project_id, name, description, status, '
             'activity_type, config_json, model_id, harness_json, created_at, '
             'created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             (

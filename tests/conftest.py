@@ -80,7 +80,7 @@ def tenant_repository() -> FakeTenantRepository:
         [
             ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
                 is_default=True,
             ),
         ]
