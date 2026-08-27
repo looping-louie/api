@@ -27,7 +27,7 @@ from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 from src.app.services.users import UserService
-from src.app.services.workspaces import WorkspaceService
+from src.app.services.projects.service import ProjectService
 
 
 class ActivityRunService:
@@ -43,7 +43,7 @@ class ActivityRunService:
         clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
-        workspace_service: WorkspaceService | None = None,
+        workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
     ) -> None:

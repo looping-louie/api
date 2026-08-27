@@ -1,4 +1,4 @@
-"""Domain model for workspaces."""
+"""Domain model for projects."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 @dataclass(frozen=True, slots=True)
-class WorkspaceDocument:
-    """Workspace identity and metadata visible to its members."""
+class ProjectDocument:
+    """Project identity and metadata visible to its members."""
 
     id: str
     name: str

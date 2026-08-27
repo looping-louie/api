@@ -1,4 +1,4 @@
-"""Tests for Workspace operations."""
+"""Tests for Project operations."""
 
 from __future__ import annotations
 
@@ -7,58 +7,58 @@ from datetime import datetime, timezone
 import pytest
 
 from src.app.models.user import UserDocument
-from src.app.models.workspace import WorkspaceDocument
-from src.app.services.workspaces import WorkspaceService
+from src.app.models.project import ProjectDocument
+from src.app.services.projects import ProjectService
 from src.app.services.shared.tenant import TenantService, WorkspaceMembership
 from tests.fakes.tenant_repository import FakeTenantRepository
 
 
-class FakeWorkspaceRepository:
-    """Store Workspaces in memory for service tests."""
+class FakeProjectRepository:
+    """Store Projects in memory for service tests."""
 
     def __init__(self) -> None:
-        """Initialize an empty Workspace store."""
+        """Initialize an empty Project store."""
 
-        self.workspaces_by_user_id: dict[str, list[WorkspaceDocument]] = {}
+        self.projects_by_user_id: dict[str, list[ProjectDocument]] = {}
 
     async def create(
         self,
         *,
-        workspace: WorkspaceDocument,
+        project: ProjectDocument,
         owner_id: str,
-    ) -> WorkspaceDocument:
-        """Store a Workspace in its owner's collection."""
+    ) -> ProjectDocument:
+        """Store a Project in its owner's collection."""
 
-        self.workspaces_by_user_id.setdefault(owner_id, []).append(workspace)
-        return workspace
+        self.projects_by_user_id.setdefault(owner_id, []).append(project)
+        return project
 
-    async def list_for_user(self, *, user_id: str) -> list[WorkspaceDocument]:
-        """Return Workspaces stored for one User."""
+    async def list_for_user(self, *, user_id: str) -> list[ProjectDocument]:
+        """Return Projects stored for one User."""
 
-        return list(self.workspaces_by_user_id.get(user_id, []))
+        return list(self.projects_by_user_id.get(user_id, []))
 
-    async def get_workspace(self, *, workspace_id: str) -> WorkspaceDocument:
-        """Return a stored Workspace visible through any user collection."""
+    async def get_project(self, *, project_id: str) -> ProjectDocument:
+        """Return a stored Project visible through any User collection."""
 
-        for workspaces in self.workspaces_by_user_id.values():
-            for workspace in workspaces:
-                if workspace.id == workspace_id:
-                    return workspace
-        raise RuntimeError('Workspace not found.')
+        for projects in self.projects_by_user_id.values():
+            for project in projects:
+                if project.id == project_id:
+                    return project
+        raise RuntimeError('Project not found.')
 
-    async def update_workspace(
+    async def update_project(
         self,
         *,
-        workspace: WorkspaceDocument,
-    ) -> WorkspaceDocument:
-        """Replace stored Workspace metadata."""
+        project: ProjectDocument,
+    ) -> ProjectDocument:
+        """Replace stored Project metadata."""
 
-        for workspaces in self.workspaces_by_user_id.values():
-            for index, current in enumerate(workspaces):
-                if current.id == workspace.id:
-                    workspaces[index] = workspace
-                    return workspace
-        raise RuntimeError('Workspace not found.')
+        for projects in self.projects_by_user_id.values():
+            for index, current in enumerate(projects):
+                if current.id == project.id:
+                    projects[index] = project
+                    return project
+        raise RuntimeError('Project not found.')
 
 class FakeLinkedServiceService:
     """Capture model-target validation requests."""
@@ -81,7 +81,7 @@ class FakeLinkedServiceService:
 
 
 class FakeUserService:
-    """Record profile lookups required before workspace operations."""
+    """Record profile lookups required before Project operations."""
 
     def __init__(self) -> None:
         """Initialize the User lookup log."""
@@ -102,39 +102,39 @@ class FakeUserService:
 
 def build_service(
     *,
-    repository: FakeWorkspaceRepository,
+    repository: FakeProjectRepository,
     linked_service_service: FakeLinkedServiceService,
     user_service: FakeUserService,
-) -> WorkspaceService:
-    """Build the service for one default workspace membership."""
+) -> ProjectService:
+    """Build the service for one default Project membership."""
 
     tenant_service = TenantService(
         repository=FakeTenantRepository(
             [
                 WorkspaceMembership(
                     user_id='user-1',
-                    workspace_id='workspace-1',
+                    workspace_id='project-1',
                     is_default=True,
                 ),
             ],
         ),
     )
-    return WorkspaceService(
+    return ProjectService(
         repository=repository,
         tenant_service=tenant_service,
         linked_service_service=linked_service_service,  # type: ignore[arg-type]
         user_service=user_service,  # type: ignore[arg-type]
-        id_factory=lambda: 'workspace-created',
+        id_factory=lambda: 'project-created',
         clock=lambda: datetime(2026, 8, 25, tzinfo=timezone.utc),
     )
 
 
 @pytest.mark.asyncio
 @pytest.mark.asyncio
-async def test_create_assigns_workspace_to_the_requesting_user() -> None:
-    """Workspace creation verifies the User and stores its owned workspace."""
+async def test_create_assigns_project_to_the_requesting_user() -> None:
+    """Project creation verifies the User and stores its owned Project."""
 
-    repository = FakeWorkspaceRepository()
+    repository = FakeProjectRepository()
     user_service = FakeUserService()
     service = build_service(
         repository=repository,
@@ -142,18 +142,18 @@ async def test_create_assigns_workspace_to_the_requesting_user() -> None:
         user_service=user_service,
     )
 
-    workspace = await service.create(user_id='user-1', name='Acme')
+    project = await service.create(user_id='user-1', name='Acme')
 
     assert user_service.user_ids == ['user-1']
-    assert workspace.id == 'workspace-created'
-    assert repository.workspaces_by_user_id['user-1'] == [workspace]
+    assert project.id == 'project-created'
+    assert repository.projects_by_user_id['user-1'] == [project]
 
 
 @pytest.mark.asyncio
-async def test_list_for_user_returns_only_its_workspaces() -> None:
-    """Workspace listings are scoped to the requesting User."""
+async def test_list_for_user_returns_only_its_projects() -> None:
+    """Project listings are scoped to the requesting User."""
 
-    repository = FakeWorkspaceRepository()
+    repository = FakeProjectRepository()
     user_service = FakeUserService()
     service = build_service(
         repository=repository,
@@ -161,34 +161,34 @@ async def test_list_for_user_returns_only_its_workspaces() -> None:
         user_service=user_service,
     )
     await service.create(user_id='user-1', name='Acme')
-    repository.workspaces_by_user_id['user-2'] = [
-        WorkspaceDocument(
-            id='workspace-other',
+    repository.projects_by_user_id['user-2'] = [
+        ProjectDocument(
+            id='project-other',
             name='Other',
             created_at=datetime(2026, 8, 25, tzinfo=timezone.utc),
             updated_at=datetime(2026, 8, 25, tzinfo=timezone.utc),
         ),
     ]
 
-    workspaces = await service.list_for_user(user_id='user-1')
+    projects = await service.list_for_user(user_id='user-1')
 
     assert user_service.user_ids == ['user-1', 'user-1']
-    assert [workspace.id for workspace in workspaces] == ['workspace-created']
+    assert [project.id for project in projects] == ['project-created']
 
 
 @pytest.mark.asyncio
-async def test_update_changes_workspace_name_and_timestamp() -> None:
-    """Workspace updates preserve identity and replace mutable metadata."""
+async def test_update_changes_project_name_and_timestamp() -> None:
+    """Project updates preserve identity and replace mutable metadata."""
 
-    repository = FakeWorkspaceRepository()
+    repository = FakeProjectRepository()
     service = build_service(
         repository=repository,
         linked_service_service=FakeLinkedServiceService(),
         user_service=FakeUserService(),
     )
-    repository.workspaces_by_user_id['user-1'] = [
-        WorkspaceDocument(
-            id='workspace-1',
+    repository.projects_by_user_id['user-1'] = [
+        ProjectDocument(
+            id='project-1',
             name='Acme',
             created_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
             updated_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
@@ -197,10 +197,10 @@ async def test_update_changes_workspace_name_and_timestamp() -> None:
 
     updated = await service.update(
         user_id='user-1',
-        workspace_id='workspace-1',
+        project_id='project-1',
         name='Acme Platform',
     )
 
-    assert updated.id == 'workspace-1'
+    assert updated.id == 'project-1'
     assert updated.name == 'Acme Platform'
     assert updated.updated_at == datetime(2026, 8, 25, tzinfo=timezone.utc)

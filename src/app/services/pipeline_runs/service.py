@@ -30,7 +30,7 @@ from src.app.services.pipeline_runs.types import (
 from src.app.services.shared.tenant import TenantService
 from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
-from src.app.services.workspaces import WorkspaceService
+from src.app.services.projects.service import ProjectService
 
 
 class PipelineRunService:
@@ -44,7 +44,7 @@ class PipelineRunService:
         pipeline_service: PipelineService,
         tenant_service: TenantService,
         worker_service: WorkerService | None = None,
-        workspace_service: WorkspaceService | None = None,
+        workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         model_execution_service: ModelExecutionService | None = None,
         id_factory: Callable[[], str],

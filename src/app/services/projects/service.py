@@ -1,30 +1,30 @@
-"""Application service for workspaces."""
+"""Application service for projects."""
 
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 
-from src.app.models.workspace import WorkspaceDocument
-from src.app.repositories.workspaces import WorkspaceRepository
+from src.app.models.project import ProjectDocument
+from src.app.repositories.projects import ProjectRepository
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.shared.tenant import TenantService
 from src.app.services.users import UserService
 
 
-class WorkspaceService:
-    """Manage User-owned Workspaces."""
+class ProjectService:
+    """Manage User-owned Projects."""
 
     def __init__(
         self,
         *,
-        repository: WorkspaceRepository,
+        repository: ProjectRepository,
         tenant_service: TenantService,
         linked_service_service: LinkedServiceService,
         user_service: UserService,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
     ) -> None:
-        """Store workspace resolution, validation, persistence, and clock."""
+        """Store project persistence and access-validation dependencies."""
 
         self._repository = repository
         self._tenant_service = tenant_service
@@ -38,13 +38,13 @@ class WorkspaceService:
         *,
         user_id: str,
         name: str,
-    ) -> WorkspaceDocument:
-        """Create a workspace owned by an existing user."""
+    ) -> ProjectDocument:
+        """Create a Project owned by an existing User."""
 
         await self._user_service.get(user_id=user_id)
         now = self._clock()
         return await self._repository.create(
-            workspace=WorkspaceDocument(
+            project=ProjectDocument(
                 id=self._id_factory(),
                 name=name,
                 created_at=now,
@@ -53,8 +53,8 @@ class WorkspaceService:
             owner_id=user_id,
         )
 
-    async def list_for_user(self, *, user_id: str) -> list[WorkspaceDocument]:
-        """Return workspaces accessible to an existing user."""
+    async def list_for_user(self, *, user_id: str) -> list[ProjectDocument]:
+        """Return Projects accessible to an existing User."""
 
         await self._user_service.get(user_id=user_id)
         return await self._repository.list_for_user(user_id=user_id)
@@ -63,31 +63,31 @@ class WorkspaceService:
         self,
         *,
         user_id: str,
-        workspace_id: str,
-    ) -> WorkspaceDocument:
-        """Return one Workspace accessible to the requesting User."""
+        project_id: str,
+    ) -> ProjectDocument:
+        """Return one Project accessible to the requesting User."""
 
         await self._tenant_service.require_access(
             user_id=user_id,
-            workspace_id=workspace_id,
+            workspace_id=project_id,
         )
-        return await self._repository.get_workspace(workspace_id=workspace_id)
+        return await self._repository.get_project(project_id=project_id)
 
     async def update(
         self,
         *,
         user_id: str,
-        workspace_id: str,
+        project_id: str,
         name: str,
-    ) -> WorkspaceDocument:
-        """Update the mutable metadata for one accessible Workspace."""
+    ) -> ProjectDocument:
+        """Update the mutable metadata for one accessible Project."""
 
         current = await self.describe(
             user_id=user_id,
-            workspace_id=workspace_id,
+            project_id=project_id,
         )
-        return await self._repository.update_workspace(
-            workspace=replace(
+        return await self._repository.update_project(
+            project=replace(
                 current,
                 name=name,
                 updated_at=self._clock(),

@@ -1,28 +1,28 @@
-"""SQLite persistence for workspaces."""
+"""SQLite persistence for projects."""
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from src.app.models.workspace import WorkspaceDocument
+from src.app.models.project import ProjectDocument
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
 
-class SqliteWorkspaceRepository:
-    """Store workspace-owned configuration in SQLite."""
+class SqliteProjectRepository:
+    """Store project metadata in SQLite."""
 
     def __init__(self, database: SqliteDatabase) -> None:
-        """Initialize the repository with the shared SQLite database."""
+        """Initialize the repository with shared SQLite storage."""
 
         self._database = database
 
     async def create(
         self,
         *,
-        workspace: WorkspaceDocument,
+        project: ProjectDocument,
         owner_id: str,
-    ) -> WorkspaceDocument:
-        """Create a workspace and an owner membership in one transaction."""
+    ) -> ProjectDocument:
+        """Create a Project and an owner membership in one transaction."""
 
         async with self._database.connect() as connection:
             try:
@@ -33,10 +33,10 @@ class SqliteWorkspaceRepository:
                     VALUES (?, ?, ?, ?)
                     ''',
                     (
-                        workspace.id,
-                        workspace.name,
-                        workspace.created_at.isoformat(),
-                        workspace.updated_at.isoformat(),
+                        project.id,
+                        project.name,
+                        project.created_at.isoformat(),
+                        project.updated_at.isoformat(),
                     ),
                 )
                 await connection.execute(
@@ -54,20 +54,20 @@ class SqliteWorkspaceRepository:
                     )
                     ''',
                     (
-                        workspace.id,
+                        project.id,
                         owner_id,
                         owner_id,
-                        workspace.created_at.isoformat(),
+                        project.created_at.isoformat(),
                     ),
                 )
                 await connection.commit()
             except Exception:
                 await connection.rollback()
                 raise
-        return workspace
+        return project
 
-    async def list_for_user(self, *, user_id: str) -> list[WorkspaceDocument]:
-        """Return every workspace available to one user."""
+    async def list_for_user(self, *, user_id: str) -> list[ProjectDocument]:
+        """Return every Project available to one User."""
 
         async with self._database.connect() as connection:
             cursor = await connection.execute(
@@ -85,10 +85,10 @@ class SqliteWorkspaceRepository:
                 rows = await cursor.fetchall()
             finally:
                 await cursor.close()
-        return [self._workspace_from_row(row) for row in rows]
+        return [self._project_from_row(row) for row in rows]
 
-    async def get_workspace(self, *, workspace_id: str) -> WorkspaceDocument:
-        """Return one Workspace known to have an active membership."""
+    async def get_project(self, *, project_id: str) -> ProjectDocument:
+        """Return one Project known to have an active membership."""
 
         async with self._database.connect() as connection:
             cursor = await connection.execute(
@@ -97,22 +97,22 @@ class SqliteWorkspaceRepository:
                 FROM workspaces
                 WHERE id = ?
                 ''',
-                (workspace_id,),
+                (project_id,),
             )
             try:
                 row = await cursor.fetchone()
             finally:
                 await cursor.close()
         if row is None:
-            raise RuntimeError('Workspace membership references no Workspace.')
-        return self._workspace_from_row(row)
+            raise RuntimeError('Project membership references no Project.')
+        return self._project_from_row(row)
 
-    async def update_workspace(
+    async def update_project(
         self,
         *,
-        workspace: WorkspaceDocument,
-    ) -> WorkspaceDocument:
-        """Persist mutable Workspace metadata."""
+        project: ProjectDocument,
+    ) -> ProjectDocument:
+        """Persist mutable Project metadata."""
 
         async with self._database.connect() as connection:
             try:
@@ -125,9 +125,9 @@ class SqliteWorkspaceRepository:
                     RETURNING id, name, created_at, updated_at
                     ''',
                     (
-                        workspace.name,
-                        workspace.updated_at.isoformat(),
-                        workspace.id,
+                        project.name,
+                        project.updated_at.isoformat(),
+                        project.id,
                     ),
                 )
                 try:
@@ -139,15 +139,15 @@ class SqliteWorkspaceRepository:
                 await connection.rollback()
                 raise
         if row is None:
-            raise RuntimeError('Workspace update did not return a Workspace.')
-        return self._workspace_from_row(row)
+            raise RuntimeError('Project update did not return a Project.')
+        return self._project_from_row(row)
 
     @staticmethod
-    def _workspace_from_row(row: object) -> WorkspaceDocument:
-        """Deserialize one SQLite row to a workspace document."""
+    def _project_from_row(row: object) -> ProjectDocument:
+        """Deserialize one SQLite row to a Project document."""
 
         values = dict(row)  # type: ignore[arg-type]
-        return WorkspaceDocument(
+        return ProjectDocument(
             id=str(values['id']),
             name=str(values['name']),
             created_at=datetime.fromisoformat(str(values['created_at'])),
