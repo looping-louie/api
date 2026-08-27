@@ -22,14 +22,14 @@ class PipelineListChangelogController:
         user_id: str,
         pipeline_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineChangelogListResponse:
         """Return one newest-first pipeline changelog page."""
         entries, total = await self._pipeline_service.list_changelog(
             user_id=user_id,
             pipeline_id=pipeline_id,
             offset=offset,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return PipelineChangelogListResponse(
             items=[

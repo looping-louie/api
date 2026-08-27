@@ -22,7 +22,7 @@ class WorkerController:
         *,
         user_id: str,
         payload: WorkerCreateRequest | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> WorkerResponse:
         """Provision one API-owned workspace worker identity."""
 
@@ -40,7 +40,7 @@ class WorkerController:
                 if payload is not None
                 else None
             ),
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         ))
 
     async def heartbeat(
@@ -48,14 +48,14 @@ class WorkerController:
         *,
         user_id: str,
         worker_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> WorkerResponse:
         """Record one liveness heartbeat for a registered worker."""
 
         return self._response(await self._worker_service.heartbeat(
             user_id=user_id,
             worker_id=worker_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         ))
 
     @staticmethod

@@ -2,7 +2,8 @@
 
 Users own Projects. Creating a Project creates an `owner` membership for the
 requesting User. The first Project owned by a User becomes its default;
-later Projects require `X-Workspace-ID` when the User needs to select one.
+later Projects require `X-Project-ID` when the User needs to select one for
+execution placement.
 
 Projects select placement for Pipeline and Activity runs. Model and Harness
 defaults belong to User settings; Pipeline, Activity, and loop-agent

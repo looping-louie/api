@@ -28,7 +28,7 @@ async def test_resolve_requested_workspace() -> None:
 
     context = await service.resolve(
         user_id="user-1",
-        requested_workspace_id="workspace-2",
+        requested_project_id="workspace-2",
     )
 
     assert context.user_id == "user-1"
@@ -98,7 +98,7 @@ async def test_resolve_requires_selection_for_multiple_workspaces() -> None:
     with pytest.raises(TenantSelectionRequiredError) as error:
         await service.resolve(user_id="user-1")
 
-    assert error.value.workspace_ids == (
+    assert error.value.project_ids == (
         "workspace-1",
         "workspace-2",
     )
@@ -119,7 +119,7 @@ async def test_resolve_rejects_inaccessible_workspace() -> None:
     with pytest.raises(TenantAccessDeniedError):
         await service.resolve(
             user_id="user-1",
-            requested_workspace_id="workspace-2",
+            requested_project_id="workspace-2",
         )
 
 

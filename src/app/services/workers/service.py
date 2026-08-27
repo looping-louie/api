@@ -71,13 +71,13 @@ class WorkerService:
         *,
         user_id: str,
         harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Provision one API-owned worker identity in the selected workspace."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         now = self._clock()
         return await self._repository.create(WorkerDocument(
@@ -97,13 +97,13 @@ class WorkerService:
         *,
         user_id: str,
         worker_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Record a liveness signal for an existing workspace worker."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         worker = await self._repository.heartbeat(
             workspace_id=workspace.project_id,

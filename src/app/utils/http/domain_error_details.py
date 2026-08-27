@@ -177,13 +177,13 @@ def _resource_in_use_details(error: Exception) -> ErrorDetails:
     }
 
 
-def _workspace_selection_details(error: Exception) -> ErrorDetails:
-    """Return the workspaces available for explicit selection."""
+def _project_selection_details(error: Exception) -> ErrorDetails:
+    """Return the Projects available for explicit selection."""
 
     assert isinstance(error, TenantSelectionRequiredError)
 
     return {
-        "workspace_ids": list(error.workspace_ids),
+        "project_ids": list(error.project_ids),
     }
 
 

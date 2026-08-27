@@ -25,13 +25,13 @@ class PipelinePatchController:
         user_id: str,
         pipeline_id: str,
         payload: PipelinePatchRequest,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineResponse:
         """Apply supplied mutable pipeline fields."""
         document = await self._pipeline_service.patch(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
             payload=PipelinePatch(
                 provided_fields=frozenset(payload.model_fields_set),
                 name=payload.name,
@@ -53,6 +53,6 @@ class PipelinePatchController:
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=document.id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return pipeline_details_response(details)

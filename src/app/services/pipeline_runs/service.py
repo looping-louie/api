@@ -72,12 +72,12 @@ class PipelineRunService:
         pipeline_id: str,
         input_text: str,
         commit_mode: PipelineRunCommitMode = 'allow',
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Create a frozen Pipeline run awaiting an explicit operator start."""
 
         workspace = await self._tenant_service.resolve(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
+            user_id=user_id, requested_project_id=requested_project_id,
         )
         details = await self._pipeline_service.describe(
             user_id=user_id,
@@ -148,12 +148,12 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Make one prepared run eligible for runtime or human execution."""
 
         workspace = await self._tenant_service.resolve(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
+            user_id=user_id, requested_project_id=requested_project_id,
         )
         details = await self._pipeline_service.describe(
             user_id=user_id,
@@ -189,7 +189,7 @@ class PipelineRunService:
             user_id=user_id,
             pipeline_id=pipeline_id,
             run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
 
     async def list_claimable(
@@ -197,12 +197,12 @@ class PipelineRunService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> list[PipelineRunDocument]:
         """List claimable runs beneath one active Pipeline."""
 
         workspace = await self._tenant_service.resolve(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
+            user_id=user_id, requested_project_id=requested_project_id,
         )
         details = await self._pipeline_service.describe(
             user_id=user_id, pipeline_id=pipeline_id,
@@ -225,13 +225,13 @@ class PipelineRunService:
         worker_id: str,
         if_match: str,
         lease_duration: timedelta,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument, str | None]:
         """Atomically claim one current, claimable Pipeline run."""
 
         normalized_worker_id = self._require_text(worker_id)
         workspace = await self._tenant_service.resolve(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
+            user_id=user_id, requested_project_id=requested_project_id,
         )
         details = await self._pipeline_service.describe(
             user_id=user_id, pipeline_id=pipeline_id,
@@ -325,12 +325,12 @@ class PipelineRunService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Return a pipeline run with its currently selected child, if any."""
 
         workspace = await self._tenant_service.resolve(
-            user_id=user_id, requested_workspace_id=requested_workspace_id,
+            user_id=user_id, requested_project_id=requested_project_id,
         )
         document = await self._repository.get(
             workspace_id=workspace.project_id, pipeline_id=pipeline_id, run_id=run_id,
@@ -392,13 +392,13 @@ class PipelineRunService:
         run_id: str,
         lease_token: str | None,
         lease_duration: timedelta,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunDocument:
         """Extend an active Pipeline worker lease by the configured duration."""
 
         document, _ = await self.get(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         now = self._clock()
         token = self._require_text(lease_token)
@@ -425,13 +425,13 @@ class PipelineRunService:
         pipeline_id: str,
         run_id: str,
         lease_token: str | None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[PipelineRunDocument, ActivityRunDocument | None]:
         """Record the current child outcome and schedule the next eligible step."""
 
         document, child = await self.get(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         document = replace(document, events=())
         now = self._clock()
@@ -471,7 +471,7 @@ class PipelineRunService:
             return selected, next_child
         return await self.get(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
 
     async def _current_child(

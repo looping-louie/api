@@ -180,13 +180,13 @@ class ExecutionInstructionLibraryService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ExecutionInstructionLibrary:
         """Load a fresh immutable snapshot for the resolved workspace."""
 
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         workspace_id = tenant.project_id
         skills = await self._load_type(

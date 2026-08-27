@@ -20,12 +20,12 @@ class PipelineDescribeController:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineResponse:
         """Return one complete pipeline."""
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return pipeline_details_response(details)

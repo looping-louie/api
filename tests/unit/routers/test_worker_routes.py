@@ -111,7 +111,7 @@ def test_create_then_heartbeat_refreshes_one_workspace_worker(
     """API provisioning and heartbeat expose worker lifecycle timestamps."""
 
     client = build_client(tenant_service)
-    headers = {'X-Workspace-ID': 'workspace-1'}
+    headers = {'X-Project-ID': 'workspace-1'}
 
     registered = client.post('/api/v1/workers', headers=headers)
     heartbeated = client.post(
@@ -139,7 +139,7 @@ def test_worker_registration_accepts_codex_cli_harness(
 
     response = build_client(tenant_service).post(
         '/api/v1/workers',
-        headers={'X-Workspace-ID': 'workspace-1'},
+        headers={'X-Project-ID': 'workspace-1'},
         json={
             'harnesses': [
                 {'kind': 'codex_cli', 'version': 'v1', 'config': {}},

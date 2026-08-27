@@ -22,7 +22,7 @@ class PipelineListController:
         offset: int,
         status: str | None,
         search: str | None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineListResponse:
         """Return one filtered pipeline page."""
         details, total = await self._pipeline_service.list_details(
@@ -30,7 +30,7 @@ class PipelineListController:
             offset=offset,
             status=status,
             search=search,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return PipelineListResponse(
             items=[pipeline_details_response(item) for item in details],

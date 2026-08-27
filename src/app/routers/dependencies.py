@@ -27,10 +27,10 @@ ControllerType = TypeVar("ControllerType")
 
 @dataclass(frozen=True, slots=True)
 class RequestContext:
-    """Authenticated user and optional workspace selection."""
+    """Authenticated User and optional Project selection."""
 
     user_id: str
-    requested_workspace_id: str | None = None
+    requested_project_id: str | None = None
 
 
 async def get_request_context(
@@ -42,11 +42,11 @@ async def get_request_context(
             description='Identity acting on the request.',
         ),
     ] = None,
-    requested_workspace_id_header: Annotated[
+    requested_project_id_header: Annotated[
         str | None,
         Header(
-            alias="X-Workspace-ID",
-            description="Workspace selected for the request.",
+            alias="X-Project-ID",
+            description="Project selected for the request.",
         ),
     ] = None,
 ) -> RequestContext:
@@ -69,14 +69,14 @@ async def get_request_context(
             },
         )
 
-    normalized_workspace_id = None
+    normalized_project_id = None
 
-    if requested_workspace_id_header is not None:
-        normalized_workspace_id = requested_workspace_id_header.strip() or None
+    if requested_project_id_header is not None:
+        normalized_project_id = requested_project_id_header.strip() or None
 
     return RequestContext(
         user_id=user_id.strip(),
-        requested_workspace_id=normalized_workspace_id,
+        requested_project_id=normalized_project_id,
     )
 
 

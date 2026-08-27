@@ -18,7 +18,7 @@ operations.
 - [Personas](personas.md) manages persona instructions.
 - [Skills](skills.md) manages skill instructions.
 - [Activities](activities.md) manages User-owned reusable concrete Activity
-  definitions and their Workspace-placed Activity runs.
+  definitions and their Project-placed Activity runs.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
   persists each supplied step as an independent User-owned Activity record.
 
@@ -30,18 +30,18 @@ activity, and pipeline routes use the `/api/v1` prefix.
 These routes require a user identity. Until authentication is implemented,
 clients provide it through `X-User-ID`. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` when the request does not
-already have an identity. A request may select one of the user's workspaces
-with the optional `X-Workspace-ID` header when it targets execution placement,
+already have an identity. A request may select one of the User's Projects
+with the optional `X-Project-ID` header when it targets execution placement,
 such as a Worker, PipelineRun, or ActivityRun. Project management routes
 instead include the Project identifier in their URL. User model routes are
 user-scoped and ignore the header.
-If the user has access to more than one workspace and the header is omitted,
-the API returns `409 workspace_selection_required`.
+If the User has access to more than one Project and the header is omitted, the
+API returns `409 project_selection_required`.
 
 Persona, Skill, Linked Service, standalone Activity, and Pipeline definition
 routes are user-scoped: their custom definitions, enablement settings, provider
 connections, Activity definitions, and Pipeline definitions belong to
-`X-User-ID`, and they ignore `X-Workspace-ID`.
+`X-User-ID`, and they ignore `X-Project-ID`.
 
 Persona, Skill, Activity, Pipeline, User Model, and catalog Model lists
 return an object with `items` and `total`. Catalog provider, built-in Persona,

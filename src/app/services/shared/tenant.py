@@ -65,42 +65,39 @@ class TenantValidationError(TenantServiceError):
 
 
 class TenantNotFoundError(TenantServiceError):
-    """Raised when the user has no accessible workspace."""
+    """Raised when the User has no accessible Project."""
 
     def __init__(self, *, user_id: str) -> None:
-        super().__init__(f"User '{user_id}' has no accessible workspace.")
+        super().__init__(f"User '{user_id}' has no accessible Project.")
         self.user_id = user_id
 
 
 class TenantAccessDeniedError(TenantServiceError):
-    """Raised when the user cannot access a requested workspace."""
+    """Raised when the User cannot access a requested Project."""
 
     def __init__(self, *, user_id: str, workspace_id: str) -> None:
-        message = (
-            f"User '{user_id}' does not have access to workspace "
-            f"'{workspace_id}'."
-        )
+        message = f"User '{user_id}' does not have access to Project '{workspace_id}'."
         super().__init__(message)
         self.user_id = user_id
         self.workspace_id = workspace_id
 
 
 class TenantSelectionRequiredError(TenantServiceError):
-    """Raised when several workspaces exist and none is selected."""
+    """Raised when several Projects exist and none is selected."""
 
     def __init__(
         self,
         *,
         user_id: str,
-        workspace_ids: Sequence[str],
+        project_ids: Sequence[str],
     ) -> None:
         message = (
-            f"User '{user_id}' belongs to multiple workspaces and must select "
+            f"User '{user_id}' belongs to multiple Projects and must select "
             "one explicitly."
         )
         super().__init__(message)
         self.user_id = user_id
-        self.workspace_ids = tuple(workspace_ids)
+        self.project_ids = tuple(project_ids)
 
 
 class TenantService:
@@ -113,25 +110,25 @@ class TenantService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ProjectContext:
         """
-        Resolve the workspace under which an operation must run.
+        Resolve the Project under which an operation must run.
 
-        A requested workspace takes precedence. Otherwise, the user's default
-        workspace is used. When the user only belongs to one enabled workspace,
-        that workspace is selected automatically.
+        A requested Project takes precedence. Otherwise, the User's default
+        Project is used. When the User only belongs to one enabled Project,
+        that Project is selected automatically.
         """
 
         user_id = self._require_text(user_id, "user_id")
-        requested_workspace_id = self._normalize_optional_text(
-            requested_workspace_id,
+        requested_project_id = self._normalize_optional_text(
+            requested_project_id,
         )
 
-        if requested_workspace_id is not None:
+        if requested_project_id is not None:
             return await self._resolve_requested_workspace(
                 user_id=user_id,
-                workspace_id=requested_workspace_id,
+                workspace_id=requested_project_id,
             )
 
         default_membership = await self._repository.get_default_membership(
@@ -154,7 +151,7 @@ class TenantService:
         if len(enabled_memberships) > 1:
             raise TenantSelectionRequiredError(
                 user_id=user_id,
-                workspace_ids=[
+                project_ids=[
                     membership.workspace_id
                     for membership in enabled_memberships
                 ],
@@ -168,11 +165,11 @@ class TenantService:
         user_id: str,
         workspace_id: str,
     ) -> ProjectContext:
-        """Verify access to an explicitly selected workspace."""
+        """Verify access to an explicitly selected Project."""
 
         return await self.resolve(
             user_id=user_id,
-            requested_workspace_id=workspace_id,
+            requested_project_id=workspace_id,
         )
 
     async def _resolve_requested_workspace(

@@ -32,7 +32,7 @@ async def create_worker(
     return await controller.create(
         user_id=context.user_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -51,5 +51,5 @@ async def heartbeat_worker(
     return await controller.heartbeat(
         user_id=context.user_id,
         worker_id=worker_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )

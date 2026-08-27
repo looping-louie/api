@@ -9,7 +9,7 @@ if [[ -f .env ]]; then
 fi
 
 API_ROOT="${API_ROOT:-http://127.0.0.1:8000/api/v1}"
-WORKSPACE_ID="${WORKSPACE_ID:-}"
+PROJECT_ID="${PROJECT_ID:-}"
 
 SMOKE_PROVIDER_ID="${SMOKE_PROVIDER_ID:-together}"
 SMOKE_PROVIDER_BASE_URL="${SMOKE_PROVIDER_BASE_URL:-https://api.together.xyz/v1}"
@@ -36,9 +36,9 @@ CURL_HEADERS=(
     -H "Content-Type: application/json"
 )
 
-if [[ -n "${WORKSPACE_ID}" ]]; then
+if [[ -n "${PROJECT_ID}" ]]; then
     CURL_HEADERS+=(
-        -H "X-Workspace-ID: ${WORKSPACE_ID}"
+        -H "X-Project-ID: ${PROJECT_ID}"
     )
 fi
 

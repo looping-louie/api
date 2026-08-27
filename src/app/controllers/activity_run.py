@@ -27,7 +27,7 @@ class ActivityRunController:
         user_id: str,
         activity_id: str,
         run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunResponse:
         """Return one activity-owned execution."""
 
@@ -35,7 +35,7 @@ class ActivityRunController:
             user_id=user_id,
             activity_id=activity_id,
             run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return activity_run_response(document)
 
@@ -45,7 +45,7 @@ class ActivityRunController:
         user_id: str,
         activity_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunListResponse:
         """Return one page of activity-owned executions."""
 
@@ -53,7 +53,7 @@ class ActivityRunController:
             user_id=user_id,
             activity_id=activity_id,
             offset=offset,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return ActivityRunListResponse(
             items=[activity_run_response(document) for document in documents],
@@ -67,7 +67,7 @@ class ActivityRunController:
         activity_id: str,
         run_id: str,
         payload: ActivityRunContinueRequest,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunResponse:
         """Advance one activity-owned CLI checkpoint."""
 
@@ -97,6 +97,6 @@ class ActivityRunController:
             idempotency_key=payload.idempotency_key,
             action=str(action),
             result=result,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return activity_run_response(document)

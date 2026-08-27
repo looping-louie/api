@@ -32,26 +32,26 @@ class PipelineRunController:
 
     async def create_run(
         self, *, user_id: str, pipeline_id: str, payload: PipelineRunCreateRequest,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunResponse:
         """Create one pipeline run and select its first child activity run."""
 
         document, child = await self._require_service().create(
             user_id=user_id, pipeline_id=pipeline_id, input_text=payload.input,
             commit_mode=payload.commit_mode,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return self._response(document, child)
 
     async def list_claimable_runs(
         self, *, user_id: str, pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunClaimableListResponse:
         """Return current claimable runs beneath one active Pipeline."""
 
         documents = await self._require_service().list_claimable(
             user_id=user_id, pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return PipelineRunClaimableListResponse(
             items=[
@@ -66,20 +66,20 @@ class PipelineRunController:
 
     async def start_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunResponse:
         """Start one prepared Pipeline run for human or runtime execution."""
 
         document, child = await self._require_service().start(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return self._response(document, child)
 
     async def claim_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,
         payload: PipelineRunClaimRequest, if_match: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunClaimResponse:
         """Claim one Pipeline run when the supplied entity tag is current."""
 
@@ -87,7 +87,7 @@ class PipelineRunController:
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
             worker_id=payload.worker_id, if_match=if_match,
             lease_duration=timedelta(minutes=1),
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return PipelineRunClaimResponse(
             run=self._response(document, child), lease_token=lease_token,
@@ -95,26 +95,26 @@ class PipelineRunController:
 
     async def get_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunResponse:
         """Return one pipeline run and its selected activity run."""
 
         document, child = await self._require_service().get(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return self._response(document, child)
 
     async def renew_lease(
         self, *, user_id: str, pipeline_id: str, run_id: str,
-        lease_token: str, requested_workspace_id: str | None = None,
+        lease_token: str, requested_project_id: str | None = None,
     ) -> PipelineRunLeaseResponse:
         """Extend the active worker lease for one Pipeline run by one minute."""
 
         document = await self._require_service().renew_lease(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
             lease_token=lease_token, lease_duration=timedelta(minutes=1),
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         if document.lease_expires_at is None:
             raise RuntimeError('Renewed Pipeline run is missing lease expiration.')
@@ -123,26 +123,26 @@ class PipelineRunController:
     async def continue_run(
         self, *, user_id: str, pipeline_id: str, run_id: str,
         payload: PipelineRunContinueRequest,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunResponse:
         """Schedule after the current child activity run reaches a terminal state."""
 
         document, child = await self._require_service().continue_run(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
             lease_token=payload.lease_token,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return self._response(document, child)
 
     async def list_events(
         self, *, user_id: str, pipeline_id: str, run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineRunEventListResponse:
         """Return the immutable event ledger for one Pipeline run."""
 
         document, _ = await self._require_service().get(
             user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return PipelineRunEventListResponse(
             items=[

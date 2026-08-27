@@ -5,7 +5,7 @@ the execution runtime and for persisting activity-run checkpoints.
 
 The endpoint reference is organized by top-level router:
 
-- [Endpoint overview](endpoints/overview.md) covers authentication, workspace
+- [Endpoint overview](endpoints/overview.md) covers authentication, Project
   selection, pagination, mutation conventions, and error responses.
 - [Catalog](endpoints/catalog.md) exposes static provider, model, built-in
   Persona, and built-in Skill definitions.

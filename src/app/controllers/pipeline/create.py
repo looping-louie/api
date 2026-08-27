@@ -24,12 +24,12 @@ class PipelineCreateController:
         *,
         user_id: str,
         payload: PipelineCreateRequest,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineResponse:
         """Create one enabled pipeline."""
         document = await self._pipeline_service.create(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
             payload=PipelineCreate(
                 name=payload.name,
                 description=payload.description,
@@ -41,6 +41,6 @@ class PipelineCreateController:
         details = await self._pipeline_service.describe(
             user_id=user_id,
             pipeline_id=document.id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return pipeline_details_response(details)

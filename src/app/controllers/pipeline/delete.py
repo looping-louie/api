@@ -18,12 +18,12 @@ class PipelineDeleteController:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> DeleteResponse:
         """Archive one pipeline definition."""
         await self._pipeline_service.archive(
             user_id=user_id,
             pipeline_id=pipeline_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         return DeleteResponse()

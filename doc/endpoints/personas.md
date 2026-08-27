@@ -96,7 +96,7 @@ Example response (`200 OK`):
 ## Create a persona
 
 `POST /api/v1/personas` creates a custom Persona owned by the registered user
-identified by `X-User-ID`. Persona routes do not use `X-Workspace-ID`.
+identified by `X-User-ID`. Persona routes do not use `X-Project-ID`.
 
 | Field | JSON type | Create | Update | Restrictions |
 | ----- | --------- | ------ | ------ | ------------ |

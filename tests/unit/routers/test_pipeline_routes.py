@@ -421,7 +421,7 @@ class _LeaseService:
         run_id: str,
         lease_token: str,
         lease_duration: timedelta,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> object:
         """Return a run-shaped object containing the renewed lease expiry."""
 
@@ -429,7 +429,7 @@ class _LeaseService:
             'user-1', 'pipeline-1', 'run-1', 'lease-1',
         )
         assert lease_duration == timedelta(minutes=1)
-        assert requested_workspace_id is None
+        assert requested_project_id is None
         return type(
             'RenewedRun',
             (),
@@ -450,11 +450,11 @@ class _ClaimableService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> list[PipelineRunDocument]:
         """Record the claimable-list request and return no candidates."""
 
-        assert (user_id, pipeline_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, requested_project_id) == (
             'user-1', 'pipeline-1', None,
         )
         self.was_called = True
@@ -470,11 +470,11 @@ class _EventService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> tuple[PipelineRunDocument, None]:
         """Return one completed Pipeline run with its immutable event ledger."""
 
-        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
             'user-1', 'pipeline-1', 'run-1', None,
         )
         timestamp = datetime(2026, 8, 21, tzinfo=UTC)
@@ -501,11 +501,11 @@ class _StartService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> tuple[PipelineRunDocument, None]:
         """Return a runtime-queued PipelineRun without a local execution payload."""
 
-        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
             'user-1', 'pipeline-1', 'run-1', None,
         )
         timestamp = datetime(2026, 8, 19, tzinfo=UTC)

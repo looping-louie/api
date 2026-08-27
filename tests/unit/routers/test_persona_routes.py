@@ -110,7 +110,7 @@ def test_persona_routes_ignore_workspace_selection_header(
     client = TestClient(build_app(controller=persona_controller))
     response = client.post(
         '/api/v1/personas',
-        headers={'X-Workspace-ID': 'unrelated-workspace'},
+        headers={'X-Project-ID': 'unrelated-workspace'},
         json={
             'name': 'User_scoped_persona',
             'instructions': 'Use user scope only.',

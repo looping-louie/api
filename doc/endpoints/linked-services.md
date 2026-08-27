@@ -23,7 +23,7 @@ models are never stored in the linked-services table.
 
 `GET /api/v1/linked-services` returns every linked service owned by the User
 identified by `X-User-ID` as a JSON array. Linked Service routes ignore
-`X-Workspace-ID`.
+`X-Project-ID`.
 
 ```http
 GET /api/v1/linked-services

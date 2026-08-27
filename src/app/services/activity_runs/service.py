@@ -74,7 +74,7 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         input_text: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Persist a new run from an active Activity definition."""
 
@@ -84,7 +84,7 @@ class ActivityRunService:
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         harness = await self._inherited_harness(
             activity=activity,
@@ -122,13 +122,13 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Return one run after validating activity ownership."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         document = await self._repository.get(
             workspace_id=workspace.project_id,
@@ -148,7 +148,7 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[ActivityRunDocument], int]:
         """Return a page of runs for an active executable activity."""
 
@@ -163,7 +163,7 @@ class ActivityRunService:
             )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         documents, total = await self._repository.list(
             workspace_id=workspace.project_id,
@@ -185,7 +185,7 @@ class ActivityRunService:
         idempotency_key: str,
         action: str,
         result: Mapping[str, object],
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Advance one validated runtime or human execution checkpoint."""
 
@@ -197,11 +197,11 @@ class ActivityRunService:
             user_id=user_id,
             activity_id=activity_id,
             run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         human_execution = document.activity_snapshot.get('executor') == 'human'
         if not human_execution and not await self._repository.has_active_pipeline_lease(
@@ -259,7 +259,7 @@ class ActivityRunService:
                 generated = await self._generation_service.generate_context(
                     loop_snapshot=document.activity_snapshot,
                     user_id=user_id,
-                    requested_workspace_id=requested_workspace_id,
+                    requested_project_id=requested_project_id,
                     input_text=document.input,
                     context=context,
                 )

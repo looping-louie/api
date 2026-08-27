@@ -45,21 +45,21 @@ async def create_activity(payload: ActivityCreateRequest, context: ContextDepend
 async def list_activity_runs(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, offset: OffsetQuery = 0) -> ActivityRunListResponse:
     """Return runs created from the selected loop activity."""
 
-    return await controller.list(user_id=context.user_id, activity_id=activity_id, offset=offset, requested_workspace_id=context.requested_workspace_id)
+    return await controller.list(user_id=context.user_id, activity_id=activity_id, offset=offset, requested_project_id=context.requested_project_id)
 
 
 @router.get('/{activity_id}/runs/{run_id}', response_model=ActivityRunResponse, summary='Get activity run')
 async def get_activity_run(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Return one run beneath the activity that created it."""
 
-    return await controller.get(user_id=context.user_id, activity_id=activity_id, run_id=run_id, requested_workspace_id=context.requested_workspace_id)
+    return await controller.get(user_id=context.user_id, activity_id=activity_id, run_id=run_id, requested_project_id=context.requested_project_id)
 
 
 @router.post('/{activity_id}/runs/{run_id}/continue', response_model=ActivityRunResponse, summary='Continue activity run')
 async def continue_activity_run(payload: ActivityRunContinueRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Advance one activity-owned CLI checkpoint."""
 
-    return await controller.continue_run(user_id=context.user_id, activity_id=activity_id, run_id=run_id, payload=payload, requested_workspace_id=context.requested_workspace_id)
+    return await controller.continue_run(user_id=context.user_id, activity_id=activity_id, run_id=run_id, payload=payload, requested_project_id=context.requested_project_id)
 
 
 @router.get('/{activity_id}', response_model=ActivityResponse, summary='Get activity')
