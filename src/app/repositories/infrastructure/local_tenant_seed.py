@@ -69,13 +69,28 @@ async def ensure_local_tenant(
                     is_default,
                     created_at
                 )
-                VALUES (?, ?, 'owner', 1, ?)
+                VALUES (
+                    ?, ?, 'owner',
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM project_memberships
+                        WHERE user_id = ? AND is_default = 1
+                    ) THEN 0 ELSE 1 END,
+                    ?
+                )
                 ON CONFLICT(project_id, user_id) DO UPDATE SET
                     role = 'owner',
-                    is_default = 1
+                    is_default = CASE WHEN project_memberships.is_default = 1
+                        OR NOT EXISTS (
+                            SELECT 1
+                            FROM project_memberships AS existing
+                            WHERE existing.user_id = excluded.user_id
+                              AND existing.is_default = 1
+                        ) THEN 1 ELSE 0 END
                 """,
                 (
                     project_id,
+                    user_id,
                     user_id,
                     now,
                 ),
