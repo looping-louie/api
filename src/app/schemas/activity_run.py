@@ -41,10 +41,10 @@ ActivityRunActionValue = Literal[
 ]
 
 
-class ActivityRunWorkspaceMetadata(RequestSchema):
+class ActivityRunCheckoutMetadata(RequestSchema):
     """Local repository metadata captured by the CLI."""
 
-    workspace_path: NonEmptyString
+    checkout_path: NonEmptyString
     source_commit_sha: NonEmptyString
 
 
@@ -53,7 +53,7 @@ class ActivityRunCollectSnapshotResult(RequestSchema):
 
     action: Literal['collect_snapshot']
     repo_context: NonEmptyString
-    workspace_metadata: ActivityRunWorkspaceMetadata
+    checkout_metadata: ActivityRunCheckoutMetadata
     constitution: str
     project_profile: ProjectProfile
 

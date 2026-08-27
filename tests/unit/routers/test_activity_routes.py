@@ -572,7 +572,7 @@ def test_activity_run_routes_support_runtime_and_human_executors(tenant_service:
     fetched = client.get(f'/api/v1/activities/{activity_id}/runs/{run_id}')
     continued = client.post(f'/api/v1/activities/{activity_id}/runs/{run_id}/continue', json={
         'continuation_token': created.json()['continuation_token'], 'idempotency_key': 'snapshot-1',
-        'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'workspace_metadata': {'workspace_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
+        'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'checkout_metadata': {'checkout_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
     })
     approval = client.post('/api/v1/activities', json={'name': 'Approval', 'description': '', 'type': 'approval', 'config': {}})
     human_run = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'Approve it.'})
@@ -644,8 +644,8 @@ def test_activity_checkpoint_marks_missing_model_generation_failed(
             'result': {
                 'action': 'collect_snapshot',
                 'repo_context': 'Repository context.',
-                'workspace_metadata': {
-                    'workspace_path': '/project',
+                'checkout_metadata': {
+                    'checkout_path': '/project',
                     'source_commit_sha': 'abc',
                 },
                 'constitution': '',
@@ -712,8 +712,8 @@ def test_forbidden_commit_activity_completes_after_operations(
             'result': {
                 'action': 'collect_snapshot',
                 'repo_context': 'Repository context.',
-                'workspace_metadata': {
-                    'workspace_path': '/project',
+                'checkout_metadata': {
+                    'checkout_path': '/project',
                     'source_commit_sha': 'abc',
                 },
                 'constitution': '',

@@ -299,7 +299,7 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
         result={
             'action': 'collect_snapshot',
             'repo_context': 'Repository context.',
-            'workspace_metadata': {'workspace_path': '/checkout', 'source_commit_sha': 'abc'},
+            'checkout_metadata': {'checkout_path': '/checkout', 'source_commit_sha': 'abc'},
             'constitution': '',
             'project_profile': {},
         },

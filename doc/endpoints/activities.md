@@ -719,8 +719,8 @@ Content-Type: application/json
   "result": {
     "action": "collect_snapshot",
     "repo_context": "Repository context for generation.",
-    "workspace_metadata": {
-      "workspace_path": "/workspace/project",
+    "checkout_metadata": {
+      "checkout_path": "/workspace/project",
       "source_commit_sha": "a1b2c3d4"
     },
     "constitution": "Repository contribution rules.",
