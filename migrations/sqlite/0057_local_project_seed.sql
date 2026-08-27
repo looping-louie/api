@@ -69,5 +69,3 @@ UPDATE projects
 SET id = 'local-project', name = 'Local project'
 WHERE id = 'local-workspace'
   AND NOT EXISTS (SELECT 1 FROM projects WHERE id = 'local-project');
-
-PRAGMA foreign_keys = ON;
