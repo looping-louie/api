@@ -16,7 +16,7 @@ from src.app.services.persona_skills import (
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import (
     TenantService,
-    WorkspaceMembership,
+    ProjectMembership,
 )
 from src.app.services.shared.validation import ValidationService
 from tests.fakes.dependency_checker import FakeDependencyChecker
@@ -78,7 +78,7 @@ def provider_state_repository() -> FakeProviderStateRepository:
 def tenant_repository() -> FakeTenantRepository:
     return FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
                 workspace_id="workspace-1",
                 is_default=True,

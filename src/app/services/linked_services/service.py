@@ -224,7 +224,7 @@ class LinkedServiceService:
     async def _workspace_id(self, user_id: str, requested_workspace_id: str | None) -> str:
         """Resolve the selected workspace for a user operation."""
         tenant = await self._tenant_service.resolve(user_id=user_id, requested_workspace_id=requested_workspace_id)
-        return tenant.workspace_id
+        return tenant.project_id
 
     async def _get_required_for_user(self, user_id: str, service_id: str) -> LinkedService:
         """Load a service or raise the stable not-found error."""

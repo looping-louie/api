@@ -401,7 +401,7 @@ class PipelineService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return tenant.workspace_id
+        return tenant.project_id
 
     def _build_activities(
         self,

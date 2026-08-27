@@ -8,7 +8,7 @@ from typing import Any
 
 import aiosqlite
 
-from src.app.services.shared.tenant import WorkspaceMembership
+from src.app.services.shared.tenant import ProjectMembership
 
 
 class SqliteTenantRepository:
@@ -27,7 +27,7 @@ class SqliteTenantRepository:
         *,
         user_id: str,
         workspace_id: str,
-    ) -> WorkspaceMembership | None:
+    ) -> ProjectMembership | None:
         """Return one membership for a user and workspace."""
 
         row = await self._fetch_one(
@@ -56,7 +56,7 @@ class SqliteTenantRepository:
         self,
         *,
         user_id: str,
-    ) -> WorkspaceMembership | None:
+    ) -> ProjectMembership | None:
         """Return the user's default workspace membership."""
 
         row = await self._fetch_one(
@@ -82,7 +82,7 @@ class SqliteTenantRepository:
         self,
         *,
         user_id: str,
-    ) -> list[WorkspaceMembership]:
+    ) -> list[ProjectMembership]:
         """Return every workspace membership belonging to a user."""
 
         rows = await self._fetch_all(
@@ -157,10 +157,10 @@ class SqliteTenantRepository:
     @staticmethod
     def _to_membership(
         row: aiosqlite.Row,
-    ) -> WorkspaceMembership:
+    ) -> ProjectMembership:
         """Convert a SQLite row into a workspace membership."""
 
-        return WorkspaceMembership(
+        return ProjectMembership(
             user_id=str(row["user_id"]),
             workspace_id=str(row["workspace_id"]),
             is_default=bool(row["is_default"]),

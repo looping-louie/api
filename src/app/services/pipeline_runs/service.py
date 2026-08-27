@@ -109,7 +109,7 @@ class PipelineRunService:
                 activity_run_id=None,
                 activity_snapshot=await self._activity_snapshot(
                     activity,
-                    workspace_id=workspace.workspace_id,
+                    workspace_id=workspace.project_id,
                     user_id=user_id,
                     inherited_model_id=inherited_model_id,
                     inherited_harness=inherited_harness,
@@ -117,7 +117,7 @@ class PipelineRunService:
                 updated_at=now,
             ))
         document = PipelineRunDocument(
-            id=run_id, workspace_id=workspace.workspace_id,
+            id=run_id, workspace_id=workspace.project_id,
             pipeline_id=details.document.id, input=self._require_text(input_text),
             commit_mode=commit_mode,
             status='prepared', worker_id=None, lease_token=None,
@@ -129,7 +129,7 @@ class PipelineRunService:
             steps=tuple(steps),
             events=(
                 self._event(
-                    workspace_id=workspace.workspace_id,
+                    workspace_id=workspace.project_id,
                     run_id=run_id,
                     event_type='pipeline_run_created',
                     activity_id=None,
@@ -165,7 +165,7 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         document = await self._get_required(
-            workspace_id=workspace.workspace_id,
+            workspace_id=workspace.project_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
@@ -211,7 +211,7 @@ class PipelineRunService:
             return []
         now = self._clock()
         return await self._repository.list_claimable(
-            workspace_id=workspace.workspace_id,
+            workspace_id=workspace.project_id,
             pipeline_id=details.document.id,
             claimed_before=now,
         )
@@ -242,18 +242,18 @@ class PipelineRunService:
                 reason=f'status is {details.document.status}',
             )
         candidate = await self._get_required(
-            workspace_id=workspace.workspace_id,
+            workspace_id=workspace.project_id,
             pipeline_id=details.document.id,
             run_id=run_id,
         )
         now = self._clock()
         if self._worker_service is not None:
             await self._worker_service.require_active(
-                workspace_id=workspace.workspace_id,
+                workspace_id=workspace.project_id,
                 worker_id=normalized_worker_id,
             )
             await self._worker_service.require_harness(
-                workspace_id=workspace.workspace_id,
+                workspace_id=workspace.project_id,
                 worker_id=normalized_worker_id,
                 harness=self._harness_snapshot(candidate.pipeline_snapshot),
             )
@@ -333,12 +333,12 @@ class PipelineRunService:
             user_id=user_id, requested_workspace_id=requested_workspace_id,
         )
         document = await self._repository.get(
-            workspace_id=workspace.workspace_id, pipeline_id=pipeline_id, run_id=run_id,
+            workspace_id=workspace.project_id, pipeline_id=pipeline_id, run_id=run_id,
         )
         if document is None:
             raise PipelineRunNotFoundError(pipeline_id=pipeline_id, run_id=run_id)
         events = await self._repository.list_events(
-            workspace_id=workspace.workspace_id,
+            workspace_id=workspace.project_id,
             pipeline_id=pipeline_id,
             run_id=run_id,
         )

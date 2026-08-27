@@ -144,7 +144,7 @@ class ActivityService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-        return context.workspace_id
+        return context.project_id
 
     async def _require(self, user_id: str, activity_id: str) -> ActivityDocument:
         """Return an existing activity or raise a resource-specific error."""

@@ -19,7 +19,7 @@ from src.app.services.execution_instructions import (
 from src.app.services.persona_skills import DefinitionDocument
 from src.app.services.shared.tenant import (
     TenantService,
-    WorkspaceMembership,
+    ProjectMembership,
 )
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.integration.repositories.instructions.test_availability import (
@@ -91,7 +91,7 @@ async def test_execution_library_reads_sql_not_packaged_markdown(
         tenant_service=TenantService(
             repository=FakeTenantRepository(
                 [
-                    WorkspaceMembership(
+                    ProjectMembership(
                         user_id="user-1",
                         workspace_id="workspace-1",
                         is_default=True,

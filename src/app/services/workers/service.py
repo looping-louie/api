@@ -82,7 +82,7 @@ class WorkerService:
         now = self._clock()
         return await self._repository.create(WorkerDocument(
             id=self._id_factory(),
-            workspace_id=workspace.workspace_id,
+            workspace_id=workspace.project_id,
             registered_at=now,
             last_heartbeat_at=now,
             harnesses=(
@@ -106,7 +106,7 @@ class WorkerService:
             requested_workspace_id=requested_workspace_id,
         )
         worker = await self._repository.heartbeat(
-            workspace_id=workspace.workspace_id,
+            workspace_id=workspace.project_id,
             worker_id=_require_text(worker_id),
             occurred_at=self._clock(),
         )

@@ -12,7 +12,7 @@ from src.app.models.user import UserDocument
 from src.app.models.project import ProjectDocument
 from src.app.routers.projects import router
 from src.app.services.shared.tenant import TenantService
-from src.app.services.shared.tenant import WorkspaceMembership
+from src.app.services.shared.tenant import ProjectMembership
 from src.app.services.users import UserService
 from src.app.services.projects.service import ProjectService
 from src.app.utils.http import register_exception_handlers
@@ -117,7 +117,7 @@ def build_client() -> TestClient:
             repository=InMemoryProjectRepository(),
             tenant_service=TenantService(
                 repository=FakeTenantRepository([
-                    WorkspaceMembership(
+                    ProjectMembership(
                         user_id='user-1',
                         workspace_id='project-1',
                         is_default=True,

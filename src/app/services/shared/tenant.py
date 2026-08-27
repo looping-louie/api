@@ -5,15 +5,15 @@ from typing import Protocol, Sequence
 
 
 @dataclass(frozen=True, slots=True)
-class TenantContext:
+class ProjectContext:
     """Workspace context resolved for the authenticated user."""
 
-    workspace_id: str
+    project_id: str
     user_id: str
 
 
 @dataclass(frozen=True, slots=True)
-class WorkspaceMembership:
+class ProjectMembership:
     """Relationship between a user and an accessible workspace."""
 
     user_id: str
@@ -30,7 +30,7 @@ class TenantRepository(Protocol):
         *,
         user_id: str,
         workspace_id: str,
-    ) -> WorkspaceMembership | None:
+    ) -> ProjectMembership | None:
         """Return the membership between a user and a workspace."""
         ...
 
@@ -38,7 +38,7 @@ class TenantRepository(Protocol):
         self,
         *,
         user_id: str,
-    ) -> WorkspaceMembership | None:
+    ) -> ProjectMembership | None:
         """Return the user's default workspace membership."""
         ...
 
@@ -46,7 +46,7 @@ class TenantRepository(Protocol):
         self,
         *,
         user_id: str,
-    ) -> Sequence[WorkspaceMembership]:
+    ) -> Sequence[ProjectMembership]:
         """Return all workspace memberships belonging to the user."""
         ...
 
@@ -114,7 +114,7 @@ class TenantService:
         *,
         user_id: str,
         requested_workspace_id: str | None = None,
-    ) -> TenantContext:
+    ) -> ProjectContext:
         """
         Resolve the workspace under which an operation must run.
 
@@ -167,7 +167,7 @@ class TenantService:
         *,
         user_id: str,
         workspace_id: str,
-    ) -> TenantContext:
+    ) -> ProjectContext:
         """Verify access to an explicitly selected workspace."""
 
         return await self.resolve(
@@ -180,7 +180,7 @@ class TenantService:
         *,
         user_id: str,
         workspace_id: str,
-    ) -> TenantContext:
+    ) -> ProjectContext:
         membership = await self._repository.get_membership(
             user_id=user_id,
             workspace_id=workspace_id,
@@ -195,9 +195,9 @@ class TenantService:
         return self._build_context(membership)
 
     @staticmethod
-    def _build_context(membership: WorkspaceMembership) -> TenantContext:
-        return TenantContext(
-            workspace_id=membership.workspace_id,
+    def _build_context(membership: ProjectMembership) -> ProjectContext:
+        return ProjectContext(
+            project_id=membership.workspace_id,
             user_id=membership.user_id,
         )
 

@@ -9,7 +9,7 @@ import pytest
 from src.app.models.user import UserDocument
 from src.app.models.project import ProjectDocument
 from src.app.services.projects import ProjectService
-from src.app.services.shared.tenant import TenantService, WorkspaceMembership
+from src.app.services.shared.tenant import TenantService, ProjectMembership
 from tests.fakes.tenant_repository import FakeTenantRepository
 
 
@@ -111,7 +111,7 @@ def build_service(
     tenant_service = TenantService(
         repository=FakeTenantRepository(
             [
-                WorkspaceMembership(
+                ProjectMembership(
                     user_id='user-1',
                     workspace_id='project-1',
                     is_default=True,

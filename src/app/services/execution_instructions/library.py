@@ -188,7 +188,7 @@ class ExecutionInstructionLibraryService:
             user_id=user_id,
             requested_workspace_id=requested_workspace_id,
         )
-        workspace_id = tenant.workspace_id
+        workspace_id = tenant.project_id
         skills = await self._load_type(
             repository=self._repository,
             workspace_id=workspace_id,
