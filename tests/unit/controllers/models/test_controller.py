@@ -2,7 +2,7 @@ import pytest
 
 from src.app.catalogs.models import ModelCapability
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.user import UserModelController
+from src.app.controllers.user import UserController
 from src.app.services.models.availability import ProviderConnectionState
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
@@ -11,7 +11,7 @@ from tests.fakes.provider_state_repository import (
 
 @pytest.mark.asyncio
 async def test_controller_lists_models(
-    model_controller: UserModelController,
+    model_controller: UserController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(
@@ -45,7 +45,7 @@ async def test_controller_lists_models(
 
 @pytest.mark.asyncio
 async def test_controller_describes_model(
-    model_controller: UserModelController,
+    model_controller: UserController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     provider_state_repository.seed(

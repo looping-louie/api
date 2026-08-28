@@ -283,10 +283,6 @@ controllers/
 |   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
 |   `-- __init__.py               Composes Linked Service controllers
-|-- model/
-|   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- describe.py               Describes one curated entry
-|   `-- list.py                   Lists curated entries and availability
 |-- persona/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
@@ -320,7 +316,14 @@ controllers/
 |   |-- patch.py                  Applies Project metadata changes
 |   `-- response.py               Translates Project documents to responses
 |-- worker.py                     Coordinates Worker HTTP operations
-`-- user.py                       Coordinates current User HTTP operations
+`-- user/
+  |-- __init__.py               Composes endpoint-specific controllers
+  |-- create.py                 Creates the current User
+  |-- describe_own.py           Retrieves the current User
+  |-- get_own_model.py          Retrieves one model for the current User
+  |-- list_own_models.py        Lists models for the current User
+  |-- patch_own.py              Updates current User settings
+  `-- response.py               Translates User documents to responses
 ```
 
 ### Catalogs

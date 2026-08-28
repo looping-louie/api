@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 from src.app.controllers.user import UserController
 from src.app.models.user import UserDocument
 from src.app.routers.users import router
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.users import UserService
 from src.app.utils.http import register_exception_handlers
 
@@ -48,6 +50,7 @@ def build_client() -> TestClient:
             repository=FakeUserRepository(),
             clock=lambda: datetime(2026, 8, 26, 10, 0, tzinfo=UTC),
         ),
+        model_catalog_service=MagicMock(spec=ModelCatalogService),
     )
     register_exception_handlers(app)
     app.include_router(router, prefix='/api/v1')

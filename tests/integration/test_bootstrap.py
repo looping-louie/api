@@ -21,7 +21,6 @@ from src.app.controllers.persona import PersonaController
 from src.app.controllers.pipeline import PipelineController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.project import ProjectController
-from src.app.controllers.user import UserModelController
 from src.app.controllers.user import UserController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
@@ -124,10 +123,6 @@ def test_bootstrap_configures_application_and_runs_migrations(
         assert isinstance(
             app.state.pipeline_controller,
             PipelineController,
-        )
-        assert isinstance(
-            app.state.user_model_controller,
-            UserModelController,
         )
         assert isinstance(
             app.state.project_controller,

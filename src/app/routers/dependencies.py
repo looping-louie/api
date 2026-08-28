@@ -16,7 +16,7 @@ from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.project import ProjectController
-from src.app.controllers.user import UserController, UserModelController
+from src.app.controllers.user import UserController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -165,18 +165,6 @@ def get_pipeline_controller(
         request,
         attribute_name="pipeline_controller",
         expected_type=PipelineController,
-    )
-
-
-def get_user_model_controller(
-    request: Request,
-) -> UserModelController:
-    """Return the configured current-User model controller."""
-
-    return _get_controller(
-        request,
-        attribute_name="user_model_controller",
-        expected_type=UserModelController,
     )
 
 

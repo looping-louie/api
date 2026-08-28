@@ -18,7 +18,7 @@ from src.app.catalogs.providers import PROVIDER_CATALOG
 from src.app.controllers.persona import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.project import ProjectController
-from src.app.controllers.user import UserController, UserModelController
+from src.app.controllers.user import UserController
 from src.app.controllers.skill import SkillController
 from src.app.controllers.worker import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
@@ -330,9 +330,6 @@ async def configure_application(
         user_service=user_service,
         model_execution_service=model_execution_service,
     )
-    app.state.user_model_controller = UserModelController(
-        model_catalog_service=model_catalog_service,
-    )
     app.state.catalog_controller = catalog_controller
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
@@ -340,7 +337,10 @@ async def configure_application(
     app.state.project_controller = ProjectController(
         service=project_service,
     )
-    app.state.user_controller = UserController(service=user_service)
+    app.state.user_controller = UserController(
+        service=user_service,
+        model_catalog_service=model_catalog_service,
+    )
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database

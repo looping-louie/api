@@ -3,12 +3,14 @@
 from datetime import UTC, datetime, timedelta
 from itertools import count
 from typing import Callable
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.app.controllers.user import UserModelController
+from src.app.controllers.user import UserController
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
+from src.app.services.users import UserService
 from src.app.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
@@ -185,7 +187,8 @@ def model_catalog_service(
 @pytest.fixture
 def model_controller(
     model_catalog_service: ModelCatalogService,
-) -> UserModelController:
-    return UserModelController(
+) -> UserController:
+    return UserController(
+        service=MagicMock(spec=UserService),
         model_catalog_service=model_catalog_service,
     )
