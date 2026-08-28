@@ -315,7 +315,11 @@ controllers/
 |   |-- list.py                   Lists accessible Projects
 |   |-- patch.py                  Applies Project metadata changes
 |   `-- response.py               Translates Project documents to responses
-|-- worker.py                     Coordinates Worker HTTP operations
+|-- worker/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Workers
+|   |-- heartbeat.py              Records Worker heartbeats
+|   `-- response.py               Translates Worker documents to responses
 `-- user/
   |-- __init__.py               Composes endpoint-specific controllers
   |-- create.py                 Creates the current User
