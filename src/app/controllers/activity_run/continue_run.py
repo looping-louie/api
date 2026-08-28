@@ -1,64 +1,19 @@
-"""HTTP controller for activity-owned execution checkpoints."""
+"""Controller for continuing Activity Runs."""
 
 from src.app.schemas.activity_run import (
-    ActivityRunListResponse,
-    ActivityRunResponse,
     ActivityRunCollectSnapshotResult,
     ActivityRunContinueRequest,
     ActivityRunHarnessResult,
     ActivityRunHumanDecisionResult,
+    ActivityRunResponse,
 )
 from src.app.services.activity_runs import ActivityRunService
 
-from .activity_runs.utils import action_result, activity_run_response
+from .utils import action_result, activity_run_response
 
 
-class ActivityRunController:
-    """Translate activity-run HTTP contracts into application service calls."""
-
-    def __init__(self, *, activity_run_service: ActivityRunService) -> None:
-        """Store the activity-run application service."""
-
-        self._activity_run_service = activity_run_service
-
-    async def get(
-        self,
-        *,
-        user_id: str,
-        activity_id: str,
-        run_id: str,
-        requested_project_id: str | None = None,
-    ) -> ActivityRunResponse:
-        """Return one activity-owned execution."""
-
-        document = await self._activity_run_service.get(
-            user_id=user_id,
-            activity_id=activity_id,
-            run_id=run_id,
-            requested_project_id=requested_project_id,
-        )
-        return activity_run_response(document)
-
-    async def list(
-        self,
-        *,
-        user_id: str,
-        activity_id: str,
-        offset: int,
-        requested_project_id: str | None = None,
-    ) -> ActivityRunListResponse:
-        """Return one page of activity-owned executions."""
-
-        documents, total = await self._activity_run_service.list(
-            user_id=user_id,
-            activity_id=activity_id,
-            offset=offset,
-            requested_project_id=requested_project_id,
-        )
-        return ActivityRunListResponse(
-            items=[activity_run_response(document) for document in documents],
-            total=total,
-        )
+class ActivityRunContinueController:
+    """Advance Activity-owned execution checkpoints."""
 
     async def continue_run(
         self,
@@ -69,7 +24,7 @@ class ActivityRunController:
         payload: ActivityRunContinueRequest,
         requested_project_id: str | None = None,
     ) -> ActivityRunResponse:
-        """Advance one activity-owned CLI checkpoint."""
+        """Advance one Activity-owned execution checkpoint."""
 
         action = payload.result.get('action')
         result = (
@@ -100,3 +55,5 @@ class ActivityRunController:
             requested_project_id=requested_project_id,
         )
         return activity_run_response(document)
+
+    _activity_run_service: ActivityRunService

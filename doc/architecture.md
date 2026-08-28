@@ -277,9 +277,11 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- activity_run.py               Coordinates Activity-run HTTP operations
-|-- activity_runs/
-|   |-- __init__.py               Declares the controller package
+|-- activity_run/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- continue_run.py           Advances execution checkpoints
+|   |-- describe.py               Retrieves one execution checkpoint
+|   |-- list.py                   Lists execution checkpoints
 |   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
 |   `-- __init__.py               Composes Linked Service controllers
