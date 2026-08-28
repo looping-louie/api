@@ -312,7 +312,13 @@ controllers/
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
-|-- workspace.py                  Coordinates Workspace resource operations
+|-- project/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Projects
+|   |-- describe.py               Describes one Project
+|   |-- list.py                   Lists accessible Projects
+|   |-- patch.py                  Applies Project metadata changes
+|   `-- response.py               Translates Project documents to responses
 |-- worker.py                     Coordinates Worker HTTP operations
 `-- user.py                       Coordinates current User HTTP operations
 ```
