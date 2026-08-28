@@ -266,8 +266,12 @@ dependency injection, and request extraction.
 controllers/
 |
 |-- catalog/
-|   |-- __init__.py               Defines public controller imports
-|   `-- controller.py             Returns static catalog resources
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- list_models.py            Lists static model definitions
+|   |-- list_personas.py          Lists built-in Persona definitions
+|   |-- list_providers.py         Lists static provider definitions
+|   |-- list_skills.py            Lists built-in Skill definitions
+|   `-- utils.py                  Validates catalog definition versions
 |-- activity/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
