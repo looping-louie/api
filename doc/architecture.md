@@ -288,7 +288,13 @@ controllers/
 |   |-- list.py                   Lists execution checkpoints
 |   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
-|   `-- __init__.py               Composes Linked Service controllers
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Linked Services
+|   |-- delete.py                 Deletes Linked Services
+|   |-- describe.py               Retrieves one Linked Service
+|   |-- list.py                   Lists Linked Services
+|   |-- patch.py                  Updates Linked Services
+|   `-- response.py               Translates Linked Service responses
 |-- persona/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
