@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.routers.personas import router as personas_router
 from src.app.services.persona_skills import (
     PersonaDefinitionService,
@@ -110,7 +110,7 @@ def test_persona_routes_ignore_workspace_selection_header(
     client = TestClient(build_app(controller=persona_controller))
     response = client.post(
         '/api/v1/personas',
-        headers={'X-Workspace-ID': 'unrelated-workspace'},
+        headers={'X-Project-ID': 'unrelated-workspace'},
         json={
             'name': 'User_scoped_persona',
             'instructions': 'Use user scope only.',

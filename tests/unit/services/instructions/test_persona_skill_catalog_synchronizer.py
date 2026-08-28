@@ -92,7 +92,7 @@ def test_synchronization_is_idempotent(
     with sqlite3.connect(catalog_database) as connection:
         rows = connection.execute(
             """
-            SELECT id, owner_workspace_id
+            SELECT id, owner_project_id
             FROM instructions
             WHERE origin = 'builtin'
             """
@@ -104,7 +104,7 @@ def test_synchronization_is_idempotent(
     assert second.updated == 0
     assert second.unchanged == len(catalog.entries)
     assert len(rows) == len(catalog.entries)
-    assert all(owner_workspace_id is None for _, owner_workspace_id in rows)
+    assert all(owner_project_id is None for _, owner_project_id in rows)
 
 
 def test_synchronization_persists_persona_skill_associations(
@@ -142,13 +142,13 @@ def test_synchronization_does_not_modify_custom_instructions(
     with sqlite3.connect(catalog_database) as connection:
         connection.execute(
             """
-            INSERT INTO workspaces (
+            INSERT INTO projects (
                 id,
                 name,
                 created_at,
                 updated_at
             )
-            VALUES ('workspace-1', 'Workspace', ?, ?)
+            VALUES ('workspace-1', 'Project', ?, ?)
             """,
             (
                 timestamp,
@@ -161,7 +161,7 @@ def test_synchronization_does_not_modify_custom_instructions(
                 id,
                 instruction_type,
                 origin,
-                owner_workspace_id,
+                owner_project_id,
                 name,
                 name_key,
                 description,
@@ -206,7 +206,7 @@ def test_synchronization_does_not_modify_custom_instructions(
             """
             SELECT
                 origin,
-                owner_workspace_id,
+                owner_project_id,
                 content,
                 metadata_json,
                 version

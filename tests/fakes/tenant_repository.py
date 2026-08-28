@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from src.app.services.shared.tenant import WorkspaceMembership
+from src.app.services.shared.tenant import ProjectMembership
 
 
 class FakeTenantRepository:
@@ -8,11 +8,11 @@ class FakeTenantRepository:
 
     def __init__(
         self,
-        memberships: Sequence[WorkspaceMembership] | None = None,
+        memberships: Sequence[ProjectMembership] | None = None,
     ) -> None:
         self._memberships = list(memberships or [])
 
-    def add(self, membership: WorkspaceMembership) -> None:
+    def add(self, membership: ProjectMembership) -> None:
         """Add a membership to the repository."""
 
         self._memberships.append(membership)
@@ -21,12 +21,12 @@ class FakeTenantRepository:
         self,
         *,
         user_id: str,
-        workspace_id: str,
-    ) -> WorkspaceMembership | None:
+        project_id: str,
+    ) -> ProjectMembership | None:
         for membership in self._memberships:
             if (
                 membership.user_id == user_id
-                and membership.workspace_id == workspace_id
+                and membership.project_id == project_id
             ):
                 return membership
 
@@ -36,7 +36,7 @@ class FakeTenantRepository:
         self,
         *,
         user_id: str,
-    ) -> WorkspaceMembership | None:
+    ) -> ProjectMembership | None:
         for membership in self._memberships:
             if membership.user_id == user_id and membership.is_default:
                 return membership
@@ -47,7 +47,7 @@ class FakeTenantRepository:
         self,
         *,
         user_id: str,
-    ) -> Sequence[WorkspaceMembership]:
+    ) -> Sequence[ProjectMembership]:
         return [
             membership
             for membership in self._memberships

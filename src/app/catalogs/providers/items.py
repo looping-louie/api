@@ -1,7 +1,7 @@
 """Curated model-provider catalog.
 
 This module is the single source of truth for provider identities and their
-static product metadata. Workspace credentials and enablement state remain
+static product metadata. Project credentials and enablement state remain
 outside the catalog.
 """
 

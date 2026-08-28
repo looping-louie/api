@@ -26,7 +26,7 @@ class SqliteDependencyRepository:
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference
     ) -> list[DependencyUsage]:
         """Return resources currently referencing the target."""
@@ -37,7 +37,7 @@ class SqliteDependencyRepository:
             )
         if target.resource_type == 'linked_service':
             return await self._find_linked_service_usages(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 linked_service_id=target.resource_id,
             )
         return []
@@ -78,12 +78,12 @@ class SqliteDependencyRepository:
     async def _find_linked_service_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         linked_service_id: str,
     ) -> list[DependencyUsage]:
         """Return no definition dependencies for runtime-selected services."""
 
-        del workspace_id, linked_service_id
+        del project_id, linked_service_id
         return []
 
     @asynccontextmanager

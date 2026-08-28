@@ -6,7 +6,7 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
@@ -19,7 +19,7 @@ from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.shared.tenant import TenantService
 from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
-from src.app.services.workspaces import WorkspaceService
+from src.app.services.projects.service import ProjectService
 
 
 def build_pipeline_controller(
@@ -31,7 +31,7 @@ def build_pipeline_controller(
     activity_run_repository: ActivityRunRepository,
     worker_service: WorkerService,
     linked_service_service: LinkedServiceService,
-    workspace_service: WorkspaceService,
+    workspace_service: ProjectService,
     user_service: UserService,
     model_execution_service: ModelExecutionService,
 ) -> PipelineController:

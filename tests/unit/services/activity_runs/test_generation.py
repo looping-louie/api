@@ -173,7 +173,7 @@ async def test_generation_prefers_a_frozen_agent_model_target() -> None:
             'output_contract': {},
         },
         user_id='user-continuing-run',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -219,7 +219,7 @@ def selected_persona_library(
     }
     return StaticInstructionLibraryService(
         ExecutionInstructionLibrary(
-            workspace_id='workspace-1',
+            project_id='workspace-1',
             skills={},
             personas=personas,
             skill_aliases={},
@@ -288,7 +288,7 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     context = await service.generate_context(
         loop_snapshot=snapshot,
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={
             'repo_context': 'Repository context.',
@@ -350,7 +350,7 @@ async def test_roundtable_generation_does_not_execute_reviewers() -> None:
     context = await service.generate_context(
         loop_snapshot=snapshot,
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -389,7 +389,7 @@ async def test_generation_retries_one_invalid_json_response() -> None:
             'output_contract': {},
         },
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -428,7 +428,7 @@ async def test_generation_rejects_agent_without_model_target() -> None:
                 'output_contract': {},
             },
             user_id='user-1',
-            requested_workspace_id=None,
+            requested_project_id=None,
             input_text='Create an output file.',
             context={'repo_context': 'Repository context.'},
         )
@@ -492,7 +492,7 @@ async def test_generation_accepts_a_markdown_fenced_json_response() -> None:
             'output_contract': {},
         },
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -539,7 +539,7 @@ async def test_forbidden_commit_generation_accepts_a_plan_without_commit_message
             'output_contract': {},
         },
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -644,7 +644,7 @@ async def test_generation_retries_an_api_example_response() -> None:
             'output_contract': {},
         },
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -681,7 +681,7 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
             'output_contract': {},
         },
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -750,7 +750,7 @@ async def test_generation_retries_one_plan_without_commit_message() -> None:
             'output_contract': {},
         },
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )

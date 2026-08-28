@@ -62,7 +62,7 @@ class LinkedServiceConfigResponse(ResponseSchema):
 
 
 class LinkedServiceResponse(ResponseSchema):
-    """Workspace-owned linked service returned by the REST API."""
+    """Project-owned linked service returned by the REST API."""
 
     id: str
     name: str

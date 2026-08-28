@@ -94,12 +94,12 @@ class PersonaSelectionDependencyRepository:
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> list[DependencyUsage]:
         """Return a persona usage for the requested linked service."""
 
-        assert workspace_id == 'workspace-1'
+        assert project_id == 'workspace-1'
         assert target == ResourceReference('linked_service', 'linked-service-1')
         return [
             DependencyUsage(

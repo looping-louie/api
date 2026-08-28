@@ -102,7 +102,7 @@ def library_database(
 
         connection.executemany(
             """
-            INSERT INTO workspaces (
+            INSERT INTO projects (
                 id,
                 name,
                 created_at,
@@ -113,13 +113,13 @@ def library_database(
             [
                 (
                     "workspace-1",
-                    "Workspace 1",
+                    "Project 1",
                     TIMESTAMP,
                     TIMESTAMP,
                 ),
                 (
                     "workspace-2",
-                    "Workspace 2",
+                    "Project 2",
                     TIMESTAMP,
                     TIMESTAMP,
                 ),
@@ -128,29 +128,29 @@ def library_database(
         insert_custom(
             connection,
             instruction_id="custom-workspace-1",
-            workspace_id="workspace-1",
-            name="Workspace Needle",
+            project_id="workspace-1",
+            name="Project Needle",
             description="Unique workspace needle description.",
         )
         insert_custom(
             connection,
             instruction_id="custom-workspace-2",
-            workspace_id="workspace-2",
+            project_id="workspace-2",
             name="Private Other Skill",
-            description="Must not leak between workspaces.",
+            description="Must not leak between projects.",
         )
         insert_custom(
             connection,
             instruction_id="custom-percent",
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             name="100% Coverage",
             description="Literal wildcard search.",
         )
         insert_marketplace(connection)
         connection.execute(
             """
-            INSERT INTO workspace_instruction_settings (
-                workspace_id,
+            INSERT INTO project_instruction_settings (
+                project_id,
                 instruction_id,
                 enabled,
                 created_at,
@@ -200,11 +200,11 @@ async def test_workspace_library_combines_visible_origins(
         library_database
     )
     workspace_1 = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
     )
     workspace_2 = await repository.list_available_for_workspace(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
         instruction_type="skill",
     )
     workspace_1_ids = {
@@ -227,7 +227,7 @@ async def test_workspace_library_combines_visible_origins(
     )
     foreign_custom = (
         await repository.get_available_for_workspace(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_type="skill",
             instruction_id="custom-workspace-2",
         )
@@ -257,15 +257,15 @@ async def test_builtin_can_be_described_by_workspace(
     )
 
     builtin = await repository.get_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id="builtin:skill:security",
     )
 
     assert builtin is not None
     assert builtin.origin == InstructionOrigin.BUILTIN
-    assert builtin.owner_workspace_id is None
-    assert builtin.workspace_id == "workspace-1"
+    assert builtin.owner_project_id is None
+    assert builtin.project_id == "workspace-1"
     assert builtin.instructions
     assert builtin.metadata
     assert builtin.enabled is builtin.enabled_by_default
@@ -282,22 +282,22 @@ async def test_explicit_setting_overrides_builtin_default(
     instruction_id = "builtin:skill:security"
 
     assert await repository.is_enabled(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=instruction_id,
     )
     assert await repository.set_enabled(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=instruction_id,
         enabled=False,
     )
 
     disabled = await repository.get_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id=instruction_id,
     )
     listed = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
     )
 
@@ -305,7 +305,7 @@ async def test_explicit_setting_overrides_builtin_default(
     assert disabled.enabled is False
     assert disabled.selectable is False
     assert await repository.is_enabled(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=instruction_id,
     ) is False
     assert instruction_id in {
@@ -337,18 +337,18 @@ async def test_persona_setting_is_scoped_to_its_user(
     instruction_id = 'builtin:persona:tech_lead'
 
     assert await repository.set_enabled(
-        workspace_id='user-1',
+        project_id='user-1',
         instruction_id=instruction_id,
         enabled=False,
     )
 
     disabled = await repository.get_available_for_workspace(
-        workspace_id='user-1',
+        project_id='user-1',
         instruction_type='persona',
         instruction_id=instruction_id,
     )
     other_user = await repository.get_available_for_workspace(
-        workspace_id='user-2',
+        project_id='user-2',
         instruction_type='persona',
         instruction_id=instruction_id,
     )
@@ -380,23 +380,23 @@ async def test_deprecated_builtin_is_only_resolved_historically(
         connection.commit()
 
     current = await repository.get_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id=instruction_id,
     )
     historical = await repository.get_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id=instruction_id,
         include_deprecated=True,
     )
     current_list = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
     )
     historical_list = (
         await repository.list_available_for_workspace(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_type="skill",
             include_deprecated=True,
         )
@@ -407,7 +407,7 @@ async def test_deprecated_builtin_is_only_resolved_historically(
     assert historical.deprecated is True
     assert historical.selectable is False
     assert await repository.is_enabled(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=instruction_id,
     ) is False
     assert instruction_id not in {
@@ -429,22 +429,22 @@ async def test_owned_custom_lookup_is_isolated(
     )
 
     owned = await repository.get_owned_custom(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id="custom-workspace-1",
     )
     foreign = await repository.get_owned_custom(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
         instruction_type="skill",
         instruction_id="custom-workspace-1",
     )
     builtin = await repository.get_owned_custom(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id="builtin:skill:security",
     )
     foreign_override = await repository.set_enabled(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
         instruction_id="custom-workspace-1",
         enabled=False,
     )
@@ -464,19 +464,19 @@ async def test_effective_search_is_literal_and_order_is_stable(
     )
 
     literal = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         search="100%",
     )
     description = (
         await repository.list_available_for_workspace(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_type="skill",
             search="  UNIQUE   WORKSPACE needle ",
         )
     )
     all_skills = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
     )
 

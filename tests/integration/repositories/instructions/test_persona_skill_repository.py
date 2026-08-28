@@ -26,7 +26,7 @@ async def test_repository_replaces_and_orders_persona_skills(
 ) -> None:
     """Replacing associations preserves order and supports clearing."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     instruction_repository = SqliteInstructionRepository(
         sqlite_database_path,
     )
@@ -60,7 +60,7 @@ async def test_repository_replaces_and_orders_persona_skills(
         persona_id=persona.id,
     )
     deleted = await instruction_repository.delete(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id=second_skill.id,
     )

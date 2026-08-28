@@ -3,10 +3,10 @@
 A Pipeline is a User-owned declared sequence of Activity definitions. The API
 creates an independent User-owned Activity record for every supplied step, then
 stores the generated Activity IDs in that display order. Standalone Pipeline
-definition routes use `X-User-ID` and ignore `X-Workspace-ID`. A step can
+definition routes use `X-User-ID` and ignore `X-Project-ID`. A step can
 declare `dependsOn` conditions for other named steps, forming an acyclic
 execution graph that controls execution eligibility. Pipeline run routes use
-`X-Workspace-ID` to select the Workspace where the frozen graph executes and a
+`X-Project-ID` to select the Project where the frozen graph executes and a
 runtime worker claims one eligible Activity run at a time.
 
 ## Pipeline calls
@@ -293,7 +293,7 @@ Example response (`200 OK`):
 ## Create a pipeline
 
 `POST /api/v1/pipelines` creates an enabled Pipeline for the User supplied by
-`X-User-ID` and ignores `X-Workspace-ID`. Supply complete Activity definitions
+`X-User-ID` and ignores `X-Project-ID`. Supply complete Activity definitions
 in execution order. The API validates and persists each Activity in the same
 transaction, assigns each one an ID, and stores those IDs as Pipeline steps. The
 response resolves each stored step to its full persisted Activity.
@@ -770,7 +770,7 @@ uncommitted, and the API never schedules a commit checkpoint for that run.
 
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 Content-Type: application/json
 ```
 
@@ -833,7 +833,7 @@ decision; callers must not infer claimability from a raw persisted status.
 
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review/runs?claimable=true
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 ```
 
 Example response (`200 OK`):
@@ -884,7 +884,7 @@ claimable-run list.
 
 ```http
 PATCH /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 If-Match: "c1e5185f48a77b2f"
 Content-Type: application/json
 ```
@@ -957,7 +957,7 @@ continuation action is `submit_human_decision`.
 
 ```http
 GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 ```
 
 Example response (`200 OK`):
@@ -1025,7 +1025,7 @@ can renew it.
 
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/lease
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 Content-Type: application/json
 ```
 
@@ -1054,7 +1054,7 @@ terminal.
 
 ```http
 POST /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/continue
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 Content-Type: application/json
 ```
 

@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Path, status
 
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.workers import WorkerController
 from src.app.schemas.worker import WorkerCreateRequest, WorkerResponse
 
 from .dependencies import RequestContext, get_request_context, get_worker_controller
@@ -32,7 +32,7 @@ async def create_worker(
     return await controller.create(
         user_id=context.user_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -51,5 +51,5 @@ async def heartbeat_worker(
     return await controller.heartbeat(
         user_id=context.user_id,
         worker_id=worker_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )

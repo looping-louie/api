@@ -9,20 +9,20 @@ provider.
 
 ## Worker provisioning
 
-The API provisions each workspace worker identity. The runtime stores the
-assigned ID in its workspace configuration and refreshes its heartbeat before
+The API provisions each Project worker identity. The runtime stores the
+assigned ID in its Project configuration and refreshes its heartbeat before
 polling. PipelineRun claims require an active worker heartbeat, while the
 existing PipelineRun lease continues to authorize only one claimed run.
 Heartbeat liveness never renews or revokes a lease.
 
 ## Ownership boundaries
 
-The API owns User and Workspace resource management, including User-owned
-Activity and Pipeline definitions, Workspace membership, durable Pipeline and
+The API owns User and Project resource management, including User-owned
+Activity and Pipeline definitions, Project membership, durable Pipeline and
 Activity-run state, prompt generation, model decisions, and checkpoint
 transitions. Pipeline and Activity definitions are independent of execution
-placement; Pipeline and Activity runs remain Workspace-placed. The runtime owns
-workspace lifecycle, repository inspection, filesystem changes, Git
+placement; Pipeline and Activity runs remain Project-placed. The runtime owns
+Project lifecycle, repository inspection, filesystem changes, Git
 operations, and activity execution after it claims a queued pipeline run.
 
 ## Execution defaults
@@ -50,7 +50,7 @@ Service before freezing its identity and owner in a private `model_target`
 snapshot. `codex_cli` does not select API Linked Services or require API
 provider credentials. An agent without an explicit model ID fails generation;
 Personas are instruction-only resources. An unset effective Harness becomes the
-`louie` v1 compatibility default after considering the User default. Workspaces
+`louie` v1 compatibility default after considering the User default. Projects
 continue to select execution placement only.
 
 ## Harnesses
@@ -235,21 +235,21 @@ services/
 |   |-- dependency_checker.py      Prevents deletion of referenced resources
 |   |-- generation.py              Creates resource IDs and UTC timestamps
 |   |-- pagination.py              Defines fixed-size offset pagination rules
-|   |-- reference_resolver.py      Resolves references between workspace resources
+|   |-- reference_resolver.py      Resolves references between Project resources
 |   |-- settings.py                Loads environment-backed application settings
-|   |-- tenant.py                  Resolves workspace tenancy and memberships
+|   |-- tenant.py                  Resolves Project tenancy and memberships
 |   `-- validation.py              Provides reusable domain validations
 |-- skills/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured metadata
-|   |-- service.py                 Manages workspace resources
+|   |-- service.py                 Manages Project resources
 |   `-- types.py                   Defines Skill lifecycle input contracts
 |-- users/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages durable request identities
-|-- workspaces/
+|-- projects/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages User-owned execution-placement Workspaces
+|   `-- service.py                 Manages User-owned execution-placement Projects
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -265,10 +265,14 @@ dependency injection, and request extraction.
 ```text
 controllers/
 |
-|-- catalog/
-|   |-- __init__.py               Defines public controller imports
-|   `-- controller.py             Returns static catalog resources
-|-- activity/
+|-- catalogs/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- list_models.py            Lists static model definitions
+|   |-- list_personas.py          Lists built-in Persona definitions
+|   |-- list_providers.py         Lists static provider definitions
+|   |-- list_skills.py            Lists built-in Skill definitions
+|   `-- utils.py                  Validates catalog definition versions
+|-- activities/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
 |   |-- delete.py                 Deletes definitions
@@ -277,17 +281,21 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- activity_run.py               Coordinates Activity-run HTTP operations
 |-- activity_runs/
-|   |-- __init__.py               Declares the controller package
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- continue_run.py           Advances execution checkpoints
+|   |-- describe.py               Retrieves one execution checkpoint
+|   |-- list.py                   Lists execution checkpoints
 |   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
-|   `-- __init__.py               Composes Linked Service controllers
-|-- model/
 |   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- describe.py               Describes one curated entry
-|   `-- list.py                   Lists curated entries and availability
-|-- persona/
+|   |-- create.py                 Creates Linked Services
+|   |-- delete.py                 Deletes Linked Services
+|   |-- describe.py               Retrieves one Linked Service
+|   |-- list.py                   Lists Linked Services
+|   |-- patch.py                  Updates Linked Services
+|   `-- response.py               Translates Linked Service responses
+|-- personas/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
 |   |-- delete.py                 Deletes resources
@@ -295,7 +303,7 @@ controllers/
 |   |-- list.py                   Lists resources
 |   |-- patch.py                  Applies supplied changes
 |   `-- response.py               Translates Persona documents to responses
-|-- pipeline/
+|-- pipelines/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
 |   |-- delete.py                 Deletes definitions
@@ -305,16 +313,33 @@ controllers/
 |   |-- patch.py                  Applies supplied changes
 |   |-- run.py                    Coordinates Pipeline-run operations
 |   `-- utils.py                  Translates request schemas to service inputs
-|-- skill/
+|-- skills/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
 |   |-- delete.py                 Deletes resources
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
-|-- workspace.py                  Coordinates Workspace resource operations
-|-- worker.py                     Coordinates Worker HTTP operations
-`-- user.py                       Coordinates current User HTTP operations
+|-- projects/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Projects
+|   |-- describe.py               Describes one Project
+|   |-- list.py                   Lists accessible Projects
+|   |-- patch.py                  Applies Project metadata changes
+|   `-- response.py               Translates Project documents to responses
+|-- workers/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Workers
+|   |-- heartbeat.py              Records Worker heartbeats
+|   `-- response.py               Translates Worker documents to responses
+`-- users/
+  |-- __init__.py               Composes endpoint-specific controllers
+  |-- create.py                 Creates the current User
+  |-- describe_own.py           Retrieves the current User
+  |-- get_own_model.py          Retrieves one model for the current User
+  |-- list_own_models.py        Lists models for the current User
+  |-- patch_own.py              Updates current User settings
+  `-- response.py               Translates User documents to responses
 ```
 
 ### Catalogs
@@ -413,12 +438,12 @@ repositories/
 |   |-- dependency_repository.py   Looks up resource dependencies
 |   |-- json_mapping.py            Serializes and deserializes JSON values
 |   |-- reference_repository.py    Resolves instruction and model references
-|   |-- tenant_repository.py       Persists workspace memberships
+|   |-- tenant_repository.py       Persists Project memberships
 |   `-- validation_repository.py   Looks up normalized resource names
-|-- workspaces/
+|-- projects/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists Workspaces
+|   `-- sqlite_repository.py       Persists Projects
 |-- users/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract

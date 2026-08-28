@@ -37,7 +37,7 @@ def to_document(row: aiosqlite.Row) -> DefinitionDocument:
 
     return DefinitionDocument(
         id=str(row["id"]),
-        workspace_id=str(row["workspace_id"]),
+        project_id=str(row["project_id"]),
         instruction_type=cast(
             DefinitionType,
             str(row["instruction_type"]),
@@ -60,21 +60,21 @@ def to_document(row: aiosqlite.Row) -> DefinitionDocument:
 def to_available_summary(
     row: aiosqlite.Row,
     *,
-    workspace_id: str,
+    project_id: str,
 ) -> AvailableDefinitionSummary:
     """Convert a row into a workspace-scoped available summary."""
 
     return AvailableDefinitionSummary(
         id=str(row["id"]),
-        workspace_id=workspace_id,
+        project_id=project_id,
         instruction_type=cast(
             DefinitionType,
             str(row["instruction_type"]),
         ),
         origin=InstructionOrigin(str(row["origin"])),
-        owner_workspace_id=(
-            str(row["owner_workspace_id"])
-            if row["owner_workspace_id"] is not None
+        owner_project_id=(
+            str(row["owner_project_id"])
+            if row["owner_project_id"] is not None
             else None
         ),
         source_instruction_id=(
@@ -106,21 +106,21 @@ def to_available_summary(
 def to_available_document(
     row: aiosqlite.Row,
     *,
-    workspace_id: str,
+    project_id: str,
 ) -> AvailableDefinitionDocument:
     """Convert a row into a workspace-scoped available document."""
 
     return AvailableDefinitionDocument(
         id=str(row["id"]),
-        workspace_id=workspace_id,
+        project_id=project_id,
         instruction_type=cast(
             DefinitionType,
             str(row["instruction_type"]),
         ),
         origin=InstructionOrigin(str(row["origin"])),
-        owner_workspace_id=(
-            str(row["owner_workspace_id"])
-            if row["owner_workspace_id"] is not None
+        owner_project_id=(
+            str(row["owner_project_id"])
+            if row["owner_project_id"] is not None
             else None
         ),
         source_instruction_id=(

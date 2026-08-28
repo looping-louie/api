@@ -18,14 +18,14 @@ class FakeValidationRepository:
     async def find_resource_id_by_name(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         normalized_name: str,
     ) -> str | None:
         for resource_id, resource_workspace, current_type, name in (
             self._iter_resources()
         ):
-            if resource_workspace != workspace_id:
+            if resource_workspace != project_id:
                 continue
 
             if current_type != resource_type:
@@ -45,7 +45,7 @@ class FakeValidationRepository:
             resources.extend(
                 (
                     document.id,
-                    document.workspace_id,
+                    document.project_id,
                     document.instruction_type,
                     document.name,
                 )

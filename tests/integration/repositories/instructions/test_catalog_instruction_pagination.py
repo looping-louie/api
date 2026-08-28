@@ -33,7 +33,7 @@ def build_skill(index: int) -> DefinitionDocument:
     )
     return DefinitionDocument(
         id=f"skill-{index:02d}",
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         name=f"Skill {29 - index:02d}",
         description="SQL pagination fixture.",
@@ -52,14 +52,14 @@ async def test_library_query_filters_sorts_and_pages_in_sql(
 ) -> None:
     """A bounded page retains the total after SQL filters and ordering."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     repository = SqliteInstructionRepository(sqlite_database_path)
 
     for index in range(30):
         await repository.create(build_skill(index))
 
     page = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         categories=(CatalogInstructionCategory.SECURITY_PRIVACY,),
         sort=CatalogInstructionSort.NEWEST,
@@ -67,7 +67,7 @@ async def test_library_query_filters_sorts_and_pages_in_sql(
         limit=5,
     )
     empty_page = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         categories=(CatalogInstructionCategory.SECURITY_PRIVACY,),
         sort=CatalogInstructionSort.NEWEST,
@@ -94,19 +94,19 @@ async def test_library_query_filters_effective_workspace_status(
 ) -> None:
     """Status filtering uses the effective workspace enablement override."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     repository = SqliteInstructionRepository(sqlite_database_path)
 
     for index in range(4):
         await repository.create(build_skill(index))
 
     changed = await repository.set_enabled(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id="skill-02",
         enabled=False,
     )
     page = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         status=CatalogInstructionStatus.DISABLED,
         categories=(CatalogInstructionCategory.SECURITY_PRIVACY,),

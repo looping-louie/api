@@ -54,7 +54,7 @@ class SkillService:
         await self._user_service.get(user_id=user_id)
 
         return await self._skill_definition_service.list(
-            workspace_id=user_id,
+            project_id=user_id,
             search=search,
             status=status,
             categories=categories,
@@ -75,7 +75,7 @@ class SkillService:
         await self._user_service.get(user_id=user_id)
 
         return await self._skill_definition_service.describe(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=skill_id,
             include_deprecated=include_deprecated,
         )
@@ -96,7 +96,7 @@ class SkillService:
             else self._skill_definition_service.disable
         )
         return await operation(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=skill_id,
         )
 
@@ -113,7 +113,7 @@ class SkillService:
         validate_skill_metadata(payload.metadata)
 
         return await self._skill_definition_service.create(
-            workspace_id=user_id,
+            project_id=user_id,
             payload=payload,
         )
 
@@ -132,7 +132,7 @@ class SkillService:
             validate_skill_metadata(payload.metadata)
 
         return await self._skill_definition_service.update(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=skill_id,
             payload=payload,
         )
@@ -148,6 +148,6 @@ class SkillService:
         await self._user_service.get(user_id=user_id)
 
         await self._skill_definition_service.delete(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=skill_id,
         )

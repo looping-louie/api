@@ -10,7 +10,7 @@ class ValidationRepository(Protocol):
     async def find_resource_id_by_name(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         normalized_name: str,
     ) -> str | None:
@@ -42,17 +42,17 @@ class DuplicateResourceError(ValidationServiceError):
     def __init__(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         name: str,
         existing_resource_id: str,
     ) -> None:
         message = (
             f"A {resource_type} named '{name}' already exists in workspace "
-            f"'{workspace_id}'."
+            f"'{project_id}'."
         )
         super().__init__(message)
-        self.workspace_id = workspace_id
+        self.project_id = project_id
         self.resource_type = resource_type
         self.name = name
         self.existing_resource_id = existing_resource_id
@@ -85,14 +85,14 @@ class ValidationService:
     async def require_unique_name(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         name: str,
         exclude_resource_id: str | None = None,
     ) -> None:
         """Ensure that a name is unique inside a workspace."""
 
-        workspace_id = self._require_text(workspace_id, "workspace_id")
+        project_id = self._require_text(project_id, "project_id")
         resource_type = self._require_text(resource_type, "resource_type")
         name = self._require_text(name, "name")
         exclude_resource_id = self._normalize_optional_text(
@@ -101,7 +101,7 @@ class ValidationService:
 
         existing_resource_id = (
             await self._repository.find_resource_id_by_name(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 resource_type=resource_type,
                 normalized_name=self.normalize_name(name),
             )
@@ -114,7 +114,7 @@ class ValidationService:
             return
 
         raise DuplicateResourceError(
-            workspace_id=workspace_id,
+            project_id=project_id,
             resource_type=resource_type,
             name=name,
             existing_resource_id=existing_resource_id,

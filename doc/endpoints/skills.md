@@ -112,7 +112,7 @@ Example response (`200 OK`):
 ## Create a skill
 
 `POST /api/v1/skills` creates a custom skill for the User supplied by
-`X-User-ID`. Skill routes do not use `X-Workspace-ID`.
+`X-User-ID`. Skill routes do not use `X-Project-ID`.
 
 | Field | Description |
 | ----- | ----------- |

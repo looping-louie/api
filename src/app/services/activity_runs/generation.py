@@ -67,7 +67,7 @@ class ActivityRunGenerationService:
         *,
         loop_snapshot: Mapping[str, object],
         user_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
         input_text: str,
         context: dict[str, object],
     ) -> dict[str, object]:
@@ -75,7 +75,7 @@ class ActivityRunGenerationService:
 
         instruction_library = await self._load_instruction_library(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         if loop_snapshot.get('flow') == 'roundtable':
             return await self._generate_roundtable_context(
@@ -306,7 +306,7 @@ class ActivityRunGenerationService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> ExecutionInstructionLibrary | None:
         """Load persona content when the application provides a library."""
 
@@ -314,7 +314,7 @@ class ActivityRunGenerationService:
             return None
         return await self._instruction_library_service.load(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
 
     async def _execute_agent(

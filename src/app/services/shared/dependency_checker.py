@@ -23,7 +23,7 @@ class DependencyRepository(Protocol):
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> Sequence[DependencyUsage]:
         """
@@ -56,7 +56,7 @@ class ResourceInUseError(DependencyCheckerError):
     def __init__(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
         usages: Sequence[DependencyUsage],
     ) -> None:
@@ -76,7 +76,7 @@ class ResourceInUseError(DependencyCheckerError):
         )
 
         super().__init__(message)
-        self.workspace_id = workspace_id
+        self.project_id = project_id
         self.target = target
         self.usages = tuple(usages)
 
@@ -92,14 +92,14 @@ class DependencyChecker:
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> list[DependencyUsage]:
         """Return every resource that currently references the target."""
 
-        workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        project_id = self._require_text(
+            project_id,
+            "project_id",
         )
         target = self._normalize_reference(
             target,
@@ -107,7 +107,7 @@ class DependencyChecker:
         )
 
         usages = await self._repository.find_usages(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
         )
 
@@ -121,14 +121,14 @@ class DependencyChecker:
     async def require_deletable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> None:
         """Ensure that a resource has no blocking dependencies."""
 
-        normalized_workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        normalized_project_id = self._require_text(
+            project_id,
+            "project_id",
         )
         normalized_target = self._normalize_reference(
             target,
@@ -136,7 +136,7 @@ class DependencyChecker:
         )
 
         usages = await self.find_usages(
-            workspace_id=normalized_workspace_id,
+            project_id=normalized_project_id,
             target=normalized_target,
         )
         blocking_usages = [
@@ -147,7 +147,7 @@ class DependencyChecker:
 
         if blocking_usages:
             raise ResourceInUseError(
-                workspace_id=normalized_workspace_id,
+                project_id=normalized_project_id,
                 target=normalized_target,
                 usages=blocking_usages,
             )

@@ -18,20 +18,20 @@ async def test_require_many_preserves_order_and_duplicates(
     """Resolution preserves request order while deduplicating lookups."""
 
     reference_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="skill",
         resource_id="skill-1",
         value={"name": "Security"},
     )
     reference_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="persona",
         resource_id="persona-1",
         value={"name": "Reviewer"},
     )
 
     resolved = await reference_resolver.require_many(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         references=[
             ResourceReference("skill", "skill-1"),
             ResourceReference("persona", "persona-1"),
@@ -76,7 +76,7 @@ async def test_require_many_reports_all_missing_references(
 
     with pytest.raises(ResourceNotFoundError) as error:
         await reference_resolver.require_many(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             references=references,
         )
 
@@ -94,7 +94,7 @@ async def test_resolver_does_not_cross_workspace_boundaries(
     """References cannot resolve resources from another workspace."""
 
     reference_repository.seed(
-        workspace_id="workspace-2",
+        project_id="workspace-2",
         resource_type="persona",
         resource_id="persona-1",
         value={"name": "Other persona"},
@@ -102,7 +102,7 @@ async def test_resolver_does_not_cross_workspace_boundaries(
 
     with pytest.raises(ResourceNotFoundError):
         await reference_resolver.require_many(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             references=[
                 ResourceReference(
                     resource_type="persona",

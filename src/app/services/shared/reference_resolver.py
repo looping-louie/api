@@ -29,7 +29,7 @@ class ReferenceRepository(Protocol):
     async def get_many(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
     ) -> Mapping[str, object]:
@@ -63,7 +63,7 @@ class ResourceNotFoundError(ReferenceResolverError):
     def __init__(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         references: Sequence[ResourceReference],
     ) -> None:
         """Describe every reference missing from the workspace."""
@@ -74,9 +74,9 @@ class ResourceNotFoundError(ReferenceResolverError):
         )
         super().__init__(
             f"Referenced resources were not found in workspace "
-            f"'{workspace_id}': {missing}."
+            f"'{project_id}': {missing}."
         )
-        self.workspace_id = workspace_id
+        self.project_id = project_id
         self.references = tuple(references)
 
 
@@ -91,7 +91,7 @@ class ReferenceResolver:
     async def require_many(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         references: Sequence[ResourceReference],
     ) -> list[ResolvedReference]:
         """
@@ -101,9 +101,9 @@ class ReferenceResolver:
         references are only fetched once.
         """
 
-        workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        project_id = self._require_text(
+            project_id,
+            "project_id",
         )
         normalized_references = [
             self._normalize_reference(reference)
@@ -115,7 +115,7 @@ class ReferenceResolver:
 
         grouped_ids = self._group_reference_ids(normalized_references)
         values_by_reference = await self._load_references(
-            workspace_id=workspace_id,
+            project_id=project_id,
             grouped_ids=grouped_ids,
         )
 
@@ -126,7 +126,7 @@ class ReferenceResolver:
 
         if missing:
             raise ResourceNotFoundError(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 references=missing,
             )
 
@@ -141,7 +141,7 @@ class ReferenceResolver:
     async def _load_references(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         grouped_ids: Mapping[str, Sequence[str]],
     ) -> dict[ResourceReference, object]:
         """Load grouped resource identifiers from their owning adapters."""
@@ -150,7 +150,7 @@ class ReferenceResolver:
 
         for resource_type, resource_ids in grouped_ids.items():
             resources = await self._repository.get_many(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 resource_type=resource_type,
                 resource_ids=resource_ids,
             )

@@ -4,8 +4,8 @@ import sqlite3
 
 from tests.integration.migrations.test_instruction_catalog_migration import (
     apply_migrations,
-    insert_instruction,
-    insert_workspace,
+    insert_project,
+    insert_project_instruction,
 )
 
 
@@ -15,28 +15,28 @@ def test_deleting_skill_cascades_from_all_personas() -> None:
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
     apply_migrations(connection)
-    insert_workspace(connection, "workspace-1")
-    insert_instruction(
+    insert_project(connection, 'project-1')
+    insert_project_instruction(
         connection,
         instruction_id="persona-1",
         instruction_type="persona",
         origin="custom",
-        owner_workspace_id="workspace-1",
+        owner_project_id='project-1',
     )
-    insert_instruction(
+    insert_project_instruction(
         connection,
         instruction_id="persona-2",
         instruction_type="persona",
         origin="custom",
-        owner_workspace_id="workspace-1",
+        owner_project_id='project-1',
         name_key="second persona",
     )
-    insert_instruction(
+    insert_project_instruction(
         connection,
         instruction_id="skill-1",
         instruction_type="skill",
         origin="custom",
-        owner_workspace_id="workspace-1",
+        owner_project_id='project-1',
         name_key="associated skill",
     )
     connection.executemany(

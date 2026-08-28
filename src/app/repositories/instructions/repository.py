@@ -30,9 +30,9 @@ class SqliteInstructionRepository(
 ):
     """Persists persona and skill instruction documents in SQLite."""
 
-    _owner_column = 'owner_workspace_id'
-    _settings_table = 'workspace_instruction_settings'
-    _settings_owner_column = 'workspace_id'
+    _owner_column = 'owner_project_id'
+    _settings_table = 'project_instruction_settings'
+    _settings_owner_column = 'project_id'
 
     def __init__(
         self,
@@ -45,7 +45,7 @@ class SqliteInstructionRepository(
     async def list_summaries(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         search: str | None = None,
     ) -> list[DefinitionSummary]:
@@ -56,7 +56,7 @@ class SqliteInstructionRepository(
                 f"""
                 SELECT
                     id,
-                    {self._owner_column} AS workspace_id,
+                    {self._owner_column} AS project_id,
                     instruction_type,
                     name,
                     description,
@@ -72,7 +72,7 @@ class SqliteInstructionRepository(
                     id ASC
                 """,
                 (
-                    workspace_id,
+                    project_id,
                     instruction_type,
                 ),
             )
@@ -90,14 +90,14 @@ class SqliteInstructionRepository(
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         """Return one custom instruction owned by the workspace."""
 
         return await self.get_owned_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
@@ -105,7 +105,7 @@ class SqliteInstructionRepository(
     async def get_owned_custom(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
@@ -114,7 +114,7 @@ class SqliteInstructionRepository(
         async with self._connect() as connection:
             return await self._get_owned_custom_with_connection(
                 connection=connection,
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -123,7 +123,7 @@ class SqliteInstructionRepository(
         self,
         *,
         connection: aiosqlite.Connection,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
@@ -133,7 +133,7 @@ class SqliteInstructionRepository(
             f"""
             SELECT
                 id,
-                {self._owner_column} AS workspace_id,
+                {self._owner_column} AS project_id,
                 instruction_type,
                 source_instruction_id,
                 name,
@@ -152,7 +152,7 @@ class SqliteInstructionRepository(
             """,
             (
                 instruction_id,
-                workspace_id,
+                project_id,
                 instruction_type,
             ),
         )

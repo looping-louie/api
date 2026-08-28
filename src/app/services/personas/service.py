@@ -1,4 +1,4 @@
-"""Workspace-aware application service for persona resources."""
+"""Project-aware application service for persona resources."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ class PersonaService:
         await self._user_service.get(user_id=user_id)
 
         page = await self._persona_definition_service.list(
-            workspace_id=user_id,
+            project_id=user_id,
             search=search,
             status=status,
             categories=categories,
@@ -101,7 +101,7 @@ class PersonaService:
         await self._user_service.get(user_id=user_id)
 
         document = await self._persona_definition_service.describe(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=persona_id,
             include_deprecated=include_deprecated,
         )
@@ -123,7 +123,7 @@ class PersonaService:
             else self._persona_definition_service.disable
         )
         document = await operation(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=persona_id,
         )
         return await self._with_skill_ids(document)
@@ -142,7 +142,7 @@ class PersonaService:
             skill_ids=payload.skill_ids,
         )
         document = await self._persona_definition_service.create(
-            workspace_id=user_id,
+            project_id=user_id,
             payload=DefinitionCreate(
                 name=payload.name,
                 description=payload.description,
@@ -184,7 +184,7 @@ class PersonaService:
             )
         ):
             document = await self._persona_definition_service.update(
-                workspace_id=user_id,
+                project_id=user_id,
                 instruction_id=persona_id,
                 payload=DefinitionUpdate(
                     expected_version=payload.expected_version,
@@ -196,7 +196,7 @@ class PersonaService:
             )
         else:
             document = await self._persona_definition_service.describe(
-                workspace_id=user_id,
+                project_id=user_id,
                 instruction_id=persona_id,
             )
         if payload.skill_ids is not None:
@@ -217,7 +217,7 @@ class PersonaService:
         await self._user_service.get(user_id=user_id)
 
         await self._persona_definition_service.delete(
-            workspace_id=user_id,
+            project_id=user_id,
             instruction_id=persona_id,
         )
 
@@ -231,7 +231,7 @@ class PersonaService:
 
         for skill_id in skill_ids:
             await self._skill_definition_service.describe(
-                workspace_id=user_id,
+                project_id=user_id,
                 instruction_id=skill_id,
             )
 

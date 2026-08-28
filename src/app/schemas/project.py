@@ -1,6 +1,39 @@
-"""Project profile schemas."""
+"""Project resource and profile schemas."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from src.app.schemas.shared import NonEmptyString, RequestSchema, ResponseSchema
+
+
+class ProjectCreateRequest(RequestSchema):
+    """Fields required to create a User-owned Project."""
+
+    name: NonEmptyString
+
+
+class ProjectResponse(ResponseSchema):
+    """Project identity visible through the current User's collection."""
+
+    id: str
+    name: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectPatchRequest(RequestSchema):
+    """Mutable fields for one Project."""
+
+    name: NonEmptyString | None = None
+
+    @model_validator(mode='after')
+    def require_name(self) -> 'ProjectPatchRequest':
+        """Require an explicit non-null Project name."""
+
+        if 'name' not in self.model_fields_set or self.name is None:
+            raise ValueError('Name must be supplied.')
+        return self
 
 
 class ProjectProfileMarkers(BaseModel):
@@ -27,4 +60,10 @@ class ProjectProfile(BaseModel):
     markers: ProjectProfileMarkers
 
 
-__all__ = ['ProjectProfile', 'ProjectProfileMarkers']
+__all__ = [
+    'ProjectCreateRequest',
+    'ProjectPatchRequest',
+    'ProjectProfile',
+    'ProjectProfileMarkers',
+    'ProjectResponse',
+]

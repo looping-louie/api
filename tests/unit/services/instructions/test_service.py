@@ -32,10 +32,10 @@ def seed_builtin(
     now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
     document = AvailableDefinitionDocument(
         id=f"builtin:{instruction_type}:security",
-        workspace_id="catalog",
+        project_id="catalog",
         instruction_type=instruction_type,
         origin=InstructionOrigin.BUILTIN,
-        owner_workspace_id=None,
+        owner_project_id=None,
         source_instruction_id=None,
         name="Security",
         description="Builtin security definition.",
@@ -61,7 +61,7 @@ async def test_persona_definition_lifecycle_is_independent(
     """Persona definitions can be created without creating any skills."""
 
     created = await persona_definition_service.create(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         payload=DefinitionCreate(
             name="  Tech Lead  ",
             description="  Reviews architecture  ",
@@ -69,7 +69,7 @@ async def test_persona_definition_lifecycle_is_independent(
         ),
     )
     described = await persona_definition_service.describe(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=created.id,
     )
 
@@ -89,10 +89,10 @@ async def test_skill_definition_rejects_duplicate_names(
         description="Security review",
         instructions="Review security.",
     )
-    await skill_definition_service.create(workspace_id="workspace-1", payload=payload)
+    await skill_definition_service.create(project_id="workspace-1", payload=payload)
 
     with pytest.raises(DuplicateResourceError):
-        await skill_definition_service.create(workspace_id="workspace-1", payload=payload)
+        await skill_definition_service.create(project_id="workspace-1", payload=payload)
 
 
 @pytest.mark.asyncio
@@ -104,19 +104,19 @@ async def test_builtin_definition_can_be_toggled_but_not_mutated(
 
     builtin = seed_builtin(instruction_repository, instruction_type="persona")
     disabled = await persona_definition_service.disable(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_id=builtin.id,
     )
 
     assert not disabled.enabled
     with pytest.raises(DefinitionDisabledError):
         await persona_definition_service.resolve_for_selection(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_id=builtin.id,
         )
     with pytest.raises(BuiltinDefinitionImmutableError):
         await persona_definition_service.delete(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_id=builtin.id,
         )
 
@@ -129,7 +129,7 @@ async def test_skill_definition_checks_dependencies_before_deletion(
     """Skill deletion preserves dependency protection."""
 
     created = await skill_definition_service.create(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         payload=DefinitionCreate(
             name="Accessibility",
             description="Accessibility review",
@@ -137,18 +137,18 @@ async def test_skill_definition_checks_dependencies_before_deletion(
         ),
     )
     dependency_checker.block(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=ResourceReference(resource_type="skill", resource_id=created.id),
     )
 
     with pytest.raises(FakeResourceInUseError):
         await skill_definition_service.delete(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_id=created.id,
         )
     with pytest.raises(DefinitionNotOwnedError):
         await skill_definition_service.update(
-            workspace_id="workspace-2",
+            project_id="workspace-2",
             instruction_id=created.id,
             payload=DefinitionUpdate(expected_version=1),
         )

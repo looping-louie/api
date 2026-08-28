@@ -51,11 +51,11 @@ def sqlite_database(
 def create_workspace(
     sqlite_database_path: Path,
 ) -> WorkspaceFactory:
-    """Return a helper that inserts workspaces and memberships."""
+    """Return a helper that inserts projects and memberships."""
 
     async def create(
         *,
-        workspace_id: str,
+        project_id: str,
         name: str | None = None,
         memberships: Sequence[WorkspaceMembershipSeed] = (),
     ) -> None:
@@ -69,7 +69,7 @@ def create_workspace(
             )
             await connection.execute(
                 """
-                INSERT INTO workspaces (
+                INSERT INTO projects (
                     id,
                     name,
                     created_at,
@@ -78,8 +78,8 @@ def create_workspace(
                 VALUES (?, ?, ?, ?)
                 """,
                 (
-                    workspace_id,
-                    name or workspace_id,
+                    project_id,
+                    name or project_id,
                     timestamp,
                     timestamp,
                 ),
@@ -98,8 +98,8 @@ def create_workspace(
                 )
                 await connection.executemany(
                     """
-                    INSERT INTO workspace_memberships (
-                        workspace_id,
+                    INSERT INTO project_memberships (
+                        project_id,
                         user_id,
                         role,
                         is_default,
@@ -109,7 +109,7 @@ def create_workspace(
                     """,
                     [
                         (
-                            workspace_id,
+                            project_id,
                             user_id,
                             role,
                             int(is_default),

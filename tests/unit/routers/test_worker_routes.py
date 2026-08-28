@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.workers import WorkerController
 from src.app.models.worker import WorkerDocument
 from src.app.routers.workers import router
 from src.app.services.shared.tenant import TenantService
@@ -29,51 +29,51 @@ class InMemoryWorkerRepository:
     async def create(self, document: WorkerDocument) -> WorkerDocument:
         """Persist a newly provisioned worker."""
 
-        self.documents[(document.workspace_id, document.id)] = document
+        self.documents[(document.project_id, document.id)] = document
         return document
 
     async def heartbeat(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         occurred_at: datetime,
     ) -> WorkerDocument | None:
         """Update the stored worker heartbeat when it exists."""
 
-        current = self.documents.get((workspace_id, worker_id))
+        current = self.documents.get((project_id, worker_id))
         if current is None:
             return None
         updated = WorkerDocument(
             id=current.id,
-            workspace_id=current.workspace_id,
+            project_id=current.project_id,
             registered_at=current.registered_at,
             last_heartbeat_at=occurred_at,
             harnesses=current.harnesses,
         )
-        self.documents[(workspace_id, worker_id)] = updated
+        self.documents[(project_id, worker_id)] = updated
         return updated
 
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
     ) -> WorkerDocument | None:
         """Return one stored Worker capability registration."""
 
-        return self.documents.get((workspace_id, worker_id))
+        return self.documents.get((project_id, worker_id))
 
     async def is_active(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         active_since: datetime,
     ) -> bool:
         """Return whether a worker has sent a current heartbeat."""
 
-        worker = self.documents.get((workspace_id, worker_id))
+        worker = self.documents.get((project_id, worker_id))
         return worker is not None and worker.last_heartbeat_at >= active_since
 
 
@@ -111,7 +111,7 @@ def test_create_then_heartbeat_refreshes_one_workspace_worker(
     """API provisioning and heartbeat expose worker lifecycle timestamps."""
 
     client = build_client(tenant_service)
-    headers = {'X-Workspace-ID': 'workspace-1'}
+    headers = {'X-Project-ID': 'workspace-1'}
 
     registered = client.post('/api/v1/workers', headers=headers)
     heartbeated = client.post(
@@ -139,7 +139,7 @@ def test_worker_registration_accepts_codex_cli_harness(
 
     response = build_client(tenant_service).post(
         '/api/v1/workers',
-        headers={'X-Workspace-ID': 'workspace-1'},
+        headers={'X-Project-ID': 'workspace-1'},
         json={
             'harnesses': [
                 {'kind': 'codex_cli', 'version': 'v1', 'config': {}},

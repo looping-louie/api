@@ -11,7 +11,7 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.persona import (
     PersonaCreateRequest,

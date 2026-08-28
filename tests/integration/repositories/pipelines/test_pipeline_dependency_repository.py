@@ -29,7 +29,7 @@ async def test_finds_pipeline_usage_of_activity(
 ) -> None:
     """A stored pipeline reports a blocking activity reference."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     await seed_activities(sqlite_database_path)
     document = build_pipeline()
     await SqlitePipelineRepository(sqlite_database_path).create(
@@ -40,7 +40,7 @@ async def test_finds_pipeline_usage_of_activity(
     usages = await SqliteDependencyRepository(
         sqlite_database_path
     ).find_usages(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=ResourceReference("activity", "activity-1"),
     )
 
@@ -59,7 +59,7 @@ async def test_does_not_block_linked_service_deletion_for_definition_models(
 ) -> None:
     """Logical model definitions do not retain linked-service dependencies."""
 
-    await create_workspace(workspace_id="workspace-1")
+    await create_workspace(project_id="workspace-1")
     await seed_activities(sqlite_database_path)
     document = build_pipeline()
     await SqlitePipelineRepository(sqlite_database_path).create(
@@ -91,7 +91,7 @@ async def test_does_not_block_linked_service_deletion_for_definition_models(
     usages = await SqliteDependencyRepository(
         sqlite_database_path
     ).find_usages(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         target=ResourceReference("linked_service", "linked-service-1"),
     )
 

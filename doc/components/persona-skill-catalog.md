@@ -52,7 +52,7 @@ it.
 This pattern is also called seeded reference data, catalog synchronization,
 bootstrap or migration-managed data, or a materialized runtime catalog. It is
 useful when version-controlled reference content must become runtime-queryable
-and workspace-aware data.
+and Project-aware data.
 
 The design is:
 
@@ -93,6 +93,6 @@ construct repositories and services
 ```
 
 Only startup reads packaged Markdown. API, loop resolution, and execution read
-the effective workspace library from SQL. Builtins are globally shared and
-immutable through the API; workspaces can enable, disable, or duplicate them.
-Custom instructions belong to one workspace and remain editable.
+the effective Project library from SQL. Builtins are globally shared and
+immutable through the API; Projects can enable, disable, or duplicate them.
+Custom instructions belong to one Project and remain editable.

@@ -3,7 +3,7 @@
 import pytest
 
 from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.schemas.persona import PersonaCreateRequest, PersonaPatchRequest
 from src.app.services.persona_skills import (
     PersonaDefinitionService,
@@ -53,4 +53,4 @@ async def test_persona_controller_patches_and_creates(
     assert copied.editable is True
     assert copied.duplicable is True
     assert copied.source_instruction_id is None
-    assert 'owner_workspace_id' not in copied.model_dump()
+    assert 'owner_project_id' not in copied.model_dump()

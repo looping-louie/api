@@ -5,7 +5,7 @@ the execution runtime and for persisting activity-run checkpoints.
 
 The endpoint reference is organized by top-level router:
 
-- [Endpoint overview](endpoints/overview.md) covers authentication, workspace
+- [Endpoint overview](endpoints/overview.md) covers authentication, Project
   selection, pagination, mutation conventions, and error responses.
 - [Catalog](endpoints/catalog.md) exposes static provider, model, built-in
   Persona, and built-in Skill definitions.
@@ -13,8 +13,8 @@ The endpoint reference is organized by top-level router:
   and model availability.
 - [Linked Services](endpoints/linked-services.md) manages User-owned
   provider connections.
-- [Workspaces](endpoints/workspaces.md) manages User-owned execution-placement
-  Workspaces.
+- [Projects](endpoints/projects.md) manages User-owned execution-placement
+  Projects.
 - [Personas](endpoints/personas.md) manages persona instructions.
 - [Skills](endpoints/skills.md) manages skill instructions.
 - [Activities](endpoints/activities.md) manages reusable concrete Activity

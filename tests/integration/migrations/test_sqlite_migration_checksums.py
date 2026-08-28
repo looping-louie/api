@@ -63,6 +63,9 @@ EXPECTED_CHECKSUMS = {
     '0053_user_owned_activities.sql': '24d04abb45376976d809a9ec0ece5d180c8118eb5c35a592d74782a8e8da39f4',
     '0054_user_owned_pipelines.sql': '6fe0a047ac9471affff7b6b96f85da71150a67ff0dece380205f1d8469375694',
     '0055_user_execution_defaults.sql': 'c8db17c42ec771b968a032a76a3da7940877a768909d5319eb9a570ebab05adb',
+    '0056_projects.sql': 'ea0fad3638cac32549cf79bc571190073346a0d0bf8006dc144cfda1f21d06ac',
+    '0057_local_project_seed.sql': 'bf684007ba01c18769a692697f651b28c818d36988d217d2ddbe044e6d461fcb',
+    '0058_restore_foreign_keys.sql': '23573e5c663cb6fc2ffdafdbcab47d9afe6e638c0b388a309665c3240afe0c75',
 }
 
 

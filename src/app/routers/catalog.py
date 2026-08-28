@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from src.app.controllers.catalog import CatalogController
+from src.app.controllers.catalogs import CatalogController
 from src.app.schemas.catalog import (
     CatalogModelListResponse,
     CatalogPersonaResponse,

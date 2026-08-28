@@ -16,7 +16,7 @@ class FakeProviderStateRepository:
     def seed(
         self,
         *,
-        workspace_id: str = 'workspace-1',
+        project_id: str = 'workspace-1',
         user_id: str = 'user-1',
         state: object,
     ) -> None:
@@ -27,7 +27,7 @@ class FakeProviderStateRepository:
         enabled = getattr(state, 'enabled')
         now = datetime(2026, 1, 1, tzinfo=UTC)
 
-        self._services[(workspace_id, provider_id)] = LinkedService(
+        self._services[(project_id, provider_id)] = LinkedService(
             id=f'{provider_id.value}-service',
             user_id=user_id,
             name=provider_id.value,
@@ -45,12 +45,12 @@ class FakeProviderStateRepository:
     def remove(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         provider_id: ProviderId,
     ) -> None:
         """Remove a provider state."""
 
-        self._services.pop((workspace_id, provider_id), None)
+        self._services.pop((project_id, provider_id), None)
 
     async def list_for_user(
         self,
@@ -61,6 +61,6 @@ class FakeProviderStateRepository:
         self.calls.append(user_id)
         return [
             service
-            for (service_workspace_id, _), service in self._services.items()
+            for (service_project_id, _), service in self._services.items()
             if service.user_id == user_id
         ]

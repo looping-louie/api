@@ -48,7 +48,7 @@ class FakeInstructionRepository:
         """Insert a document directly into the fake repository."""
 
         key = self._build_key(
-            workspace_id=document.workspace_id,
+            project_id=document.project_id,
             instruction_type=document.instruction_type,
             instruction_id=document.id,
         )
@@ -70,14 +70,14 @@ class FakeInstructionRepository:
     async def list_summaries(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         search: str | None = None,
     ) -> Sequence[DefinitionSummary]:
         documents = [
             document
             for document in self._documents.values()
-            if document.workspace_id == workspace_id
+            if document.project_id == project_id
             and document.instruction_type == instruction_type
         ]
 
@@ -107,12 +107,12 @@ class FakeInstructionRepository:
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
@@ -126,7 +126,7 @@ class FakeInstructionRepository:
     async def list_available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
@@ -139,7 +139,7 @@ class FakeInstructionRepository:
         """Return a filtered catalog page matching SQLite persistence."""
 
         documents = self._available_for_workspace(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             include_deprecated=include_deprecated,
         )
@@ -196,10 +196,10 @@ class FakeInstructionRepository:
         summaries = tuple(
             AvailableDefinitionSummary(
                 id=document.id,
-                workspace_id=document.workspace_id,
+                project_id=document.project_id,
                 instruction_type=document.instruction_type,
                 origin=document.origin,
-                owner_workspace_id=document.owner_workspace_id,
+                owner_project_id=document.owner_project_id,
                 source_instruction_id=document.source_instruction_id,
                 name=document.name,
                 description=document.description,
@@ -243,7 +243,7 @@ class FakeInstructionRepository:
     async def get_available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
@@ -251,7 +251,7 @@ class FakeInstructionRepository:
         matches = [
             document
             for document in self._available_for_workspace(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=instruction_type,
                 include_deprecated=include_deprecated,
             )
@@ -266,12 +266,12 @@ class FakeInstructionRepository:
     async def get_owned_custom(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:
         return await self.get(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
@@ -279,7 +279,7 @@ class FakeInstructionRepository:
     async def set_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         enabled: bool,
     ) -> bool:
@@ -287,7 +287,7 @@ class FakeInstructionRepository:
             document
             for instruction_type in ("persona", "skill")
             for document in self._available_for_workspace(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=instruction_type,
                 include_deprecated=False,
             )
@@ -299,7 +299,7 @@ class FakeInstructionRepository:
 
         self._enabled_settings[
             (
-                workspace_id,
+                project_id,
                 instruction_id,
             )
         ] = enabled
@@ -308,12 +308,12 @@ class FakeInstructionRepository:
     async def is_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> bool:
         for instruction_type in ("persona", "skill"):
             document = await self.get_available_for_workspace(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )
@@ -329,7 +329,7 @@ class FakeInstructionRepository:
         document: DefinitionDocument,
     ) -> DefinitionDocument:
         key = self._build_key(
-            workspace_id=document.workspace_id,
+            project_id=document.project_id,
             instruction_type=document.instruction_type,
             instruction_id=document.id,
         )
@@ -347,7 +347,7 @@ class FakeInstructionRepository:
         expected_version: int,
     ) -> DefinitionDocument | None:
         key = self._build_key(
-            workspace_id=document.workspace_id,
+            project_id=document.project_id,
             instruction_type=document.instruction_type,
             instruction_id=document.id,
         )
@@ -362,12 +362,12 @@ class FakeInstructionRepository:
     async def delete(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
@@ -381,18 +381,18 @@ class FakeInstructionRepository:
     def _available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         include_deprecated: bool,
     ) -> list[AvailableDefinitionDocument]:
         documents = [
             self._custom_to_available(
                 document,
-                workspace_id=workspace_id,
+                project_id=project_id,
             )
             for document in self._documents.values()
             if (
-                document.workspace_id == workspace_id
+                document.project_id == project_id
                 and document.instruction_type == instruction_type
             )
         ]
@@ -402,14 +402,14 @@ class FakeInstructionRepository:
                 continue
 
             setting_key = (
-                workspace_id,
+                project_id,
                 document.id,
             )
             visible = (
                 document.origin == InstructionOrigin.BUILTIN
                 or (
                     document.origin == InstructionOrigin.CUSTOM
-                    and document.owner_workspace_id == workspace_id
+                    and document.owner_project_id == project_id
                 )
                 or (
                     document.origin == InstructionOrigin.MARKETPLACE
@@ -423,7 +423,7 @@ class FakeInstructionRepository:
             documents.append(
                 replace(
                     deepcopy(document),
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                     enabled=self._enabled_settings.get(
                         setting_key,
                         document.enabled_by_default,
@@ -444,22 +444,22 @@ class FakeInstructionRepository:
         self,
         document: DefinitionDocument,
         *,
-        workspace_id: str,
+        project_id: str,
     ) -> AvailableDefinitionDocument:
         enabled_by_default = True
         enabled = self._enabled_settings.get(
             (
-                workspace_id,
+                project_id,
                 document.id,
             ),
             enabled_by_default,
         )
         return AvailableDefinitionDocument(
             id=document.id,
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=document.instruction_type,
             origin=InstructionOrigin.CUSTOM,
-            owner_workspace_id=document.workspace_id,
+            owner_project_id=document.project_id,
             source_instruction_id=document.source_instruction_id,
             name=document.name,
             description=document.description,
@@ -478,8 +478,8 @@ class FakeInstructionRepository:
     @staticmethod
     def _build_key(
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> tuple[str, DefinitionType, str]:
-        return workspace_id, instruction_type, instruction_id
+        return project_id, instruction_type, instruction_id

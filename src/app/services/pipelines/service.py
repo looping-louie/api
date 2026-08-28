@@ -81,11 +81,11 @@ class PipelineService:
         offset: int,
         status: str | None = None,
         search: str | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[PipelineDocument], int]:
         """Return one filtered fixed-size pipeline page."""
 
-        del requested_workspace_id
+        del requested_project_id
         documents, total = await self._repository.list(
             user_id=user_id,
             offset=normalize_offset(offset),
@@ -104,11 +104,11 @@ class PipelineService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDocument:
         """Return one complete pipeline."""
 
-        del requested_workspace_id
+        del requested_project_id
         return await require_pipeline(
             self._repository,
             user_id=user_id,
@@ -122,11 +122,11 @@ class PipelineService:
         offset: int,
         status: str | None = None,
         search: str | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[PipelineDetails], int]:
         """Return one filtered page with Activity definitions resolved."""
 
-        del requested_workspace_id
+        del requested_project_id
         documents, total = await self.list(
             user_id=user_id,
             offset=offset,
@@ -147,11 +147,11 @@ class PipelineService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDetails:
         """Return one pipeline with its ordered Activity definitions."""
 
-        del requested_workspace_id
+        del requested_project_id
         return await self._pipeline_details(
             user_id=user_id,
             pipeline_id=pipeline_id,
@@ -178,11 +178,11 @@ class PipelineService:
         *,
         user_id: str,
         payload: PipelineCreate,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDocument:
         """Create an enabled validated pipeline and its initial changelog."""
 
-        del requested_workspace_id
+        del requested_project_id
         actor_id = require_text(user_id, "user_id")
         now = self._clock()
         document = PipelineDocument(
@@ -230,11 +230,11 @@ class PipelineService:
         user_id: str,
         pipeline_id: str,
         payload: PipelinePatch,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDocument:
         """Apply a partial update after validating the resulting pipeline."""
 
-        del requested_workspace_id
+        del requested_project_id
         current = await require_pipeline(
             self._repository,
             user_id=user_id,
@@ -330,11 +330,11 @@ class PipelineService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> None:
         """Archive a pipeline instead of physically deleting it."""
 
-        del requested_workspace_id
+        del requested_project_id
         current = await require_pipeline(
             self._repository,
             user_id=user_id,
@@ -374,11 +374,11 @@ class PipelineService:
         user_id: str,
         pipeline_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[PipelineChangelogEntry], int]:
         """Return newest-first pipeline changelog entries."""
 
-        del requested_workspace_id
+        del requested_project_id
         normalized_id = require_text(pipeline_id, "pipeline_id")
         entries, total = await self._repository.list_changelog(
             user_id=user_id,
@@ -390,18 +390,18 @@ class PipelineService:
             raise PipelineNotFoundError(pipeline_id=normalized_id)
         return list(entries), total
 
-    async def _workspace_id(
+    async def _project_id(
         self,
         user_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> str:
         """Resolve the workspace available to the authenticated user."""
 
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
-        return tenant.workspace_id
+        return tenant.project_id
 
     def _build_activities(
         self,

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Path, Query, status
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,
@@ -83,7 +83,7 @@ async def list_pipelines(
         offset=offset,
         status=status_filter,
         search=search,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -103,7 +103,7 @@ async def create_pipeline(
     return await controller.create(
         user_id=context.user_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -122,7 +122,7 @@ async def get_pipeline(
     return await controller.get(
         user_id=context.user_id,
         pipeline_id=pipeline_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -142,7 +142,7 @@ async def create_pipeline_run(
 
     return await controller.create_run(
         user_id=context.user_id, pipeline_id=pipeline_id, payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -166,7 +166,7 @@ async def list_claimable_pipeline_runs(
         )
     return await controller.list_claimable_runs(
         user_id=context.user_id, pipeline_id=pipeline_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -187,7 +187,7 @@ async def start_pipeline_run(
         user_id=context.user_id,
         pipeline_id=pipeline_id,
         run_id=run_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -209,7 +209,7 @@ async def claim_pipeline_run(
     return await controller.claim_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
         payload=payload, if_match=if_match,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -228,7 +228,7 @@ async def get_pipeline_run(
 
     return await controller.get_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -247,7 +247,7 @@ async def list_pipeline_run_events(
 
     return await controller.list_events(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -268,7 +268,7 @@ async def renew_pipeline_run_lease(
     return await controller.renew_lease(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
         lease_token=payload.lease_token,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -289,7 +289,7 @@ async def continue_pipeline_run(
     return await controller.continue_run(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -310,7 +310,7 @@ async def patch_pipeline(
         user_id=context.user_id,
         pipeline_id=pipeline_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -329,7 +329,7 @@ async def delete_pipeline(
     return await controller.delete(
         user_id=context.user_id,
         pipeline_id=pipeline_id,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )
 
 
@@ -350,5 +350,5 @@ async def list_pipeline_changelog(
         user_id=context.user_id,
         pipeline_id=pipeline_id,
         offset=offset,
-        requested_workspace_id=context.requested_workspace_id,
+        requested_project_id=context.requested_project_id,
     )

@@ -378,7 +378,7 @@ class SqlitePipelineRepository:
             raise ValueError("Activity documents and changelog entries must align.")
         for document, entry in zip(documents, entries, strict=True):
             await connection.execute(
-                "INSERT INTO activities (id, user_id, workspace_id, name, description, "
+                "INSERT INTO activities (id, user_id, project_id, name, description, "
                 "status, activity_type, config_json, model_id, "
                 "harness_json, created_at, created_by, updated_at, updated_by) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

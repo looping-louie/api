@@ -9,9 +9,9 @@ responses. Direct, refinement, and roundtable loop activities can create
 persisted runs. Refinement runs add reviewer approval and retry checkpoints
 after local application. Approval and quiz execution are reserved for future
 pipeline orchestration. Standalone Activity routes use `X-User-ID` and ignore
-`X-Workspace-ID`. Pipeline creation creates internal Activity definitions with
+`X-Project-ID`. Pipeline creation creates internal Activity definitions with
 the owning User. Nested Activity-run routes remain
-Workspace-selected because execution occurs in a concrete Workspace.
+Project-selected because execution occurs in a concrete Project.
 
 ## Resource endpoints
 
@@ -610,7 +610,7 @@ optional non-negative `offset`.
 
 ```http
 GET /api/v1/activities/activity-implementation/runs?offset=0
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 ```
 
 Example response (`200 OK`):
@@ -646,7 +646,7 @@ owned by the selected Activity.
 
 ```http
 GET /api/v1/activities/activity-implementation/runs/run-implementation-001
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 ```
 
 Example response (`200 OK`):
@@ -708,7 +708,7 @@ idempotent CLI checkpoint result. Every request requires the current
 
 ```http
 POST /api/v1/activities/activity-implementation/runs/run-implementation-001/continue
-X-Workspace-ID: workspace-acme
+X-Project-ID: project-acme
 Content-Type: application/json
 ```
 
@@ -719,8 +719,8 @@ Content-Type: application/json
   "result": {
     "action": "collect_snapshot",
     "repo_context": "Repository context for generation.",
-    "workspace_metadata": {
-      "workspace_path": "/workspace/project",
+    "checkout_metadata": {
+      "checkout_path": "/workspace/project",
       "source_commit_sha": "a1b2c3d4"
     },
     "constitution": "Repository contribution rules.",

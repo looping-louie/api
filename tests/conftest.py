@@ -3,12 +3,14 @@
 from datetime import UTC, datetime, timedelta
 from itertools import count
 from typing import Callable
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.app.controllers.user import UserModelController
+from src.app.controllers.users import UserController
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
+from src.app.services.users import UserService
 from src.app.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
@@ -16,7 +18,7 @@ from src.app.services.persona_skills import (
 from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import (
     TenantService,
-    WorkspaceMembership,
+    ProjectMembership,
 )
 from src.app.services.shared.validation import ValidationService
 from tests.fakes.dependency_checker import FakeDependencyChecker
@@ -78,9 +80,9 @@ def provider_state_repository() -> FakeProviderStateRepository:
 def tenant_repository() -> FakeTenantRepository:
     return FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
                 is_default=True,
             ),
         ]
@@ -185,7 +187,8 @@ def model_catalog_service(
 @pytest.fixture
 def model_controller(
     model_catalog_service: ModelCatalogService,
-) -> UserModelController:
-    return UserModelController(
+) -> UserController:
+    return UserController(
+        service=MagicMock(spec=UserService),
         model_catalog_service=model_catalog_service,
     )

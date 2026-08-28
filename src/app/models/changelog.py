@@ -15,7 +15,7 @@ class ChangelogMetadata:
     """Generated fields shared by every changelog entry."""
 
     id: str
-    workspace_id: str
+    project_id: str
     actor_id: str
     changed_at: datetime
     diff: JsonObject | None

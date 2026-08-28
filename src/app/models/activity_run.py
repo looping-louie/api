@@ -33,7 +33,7 @@ class ActivityRunDocument:
     """One workspace-scoped execution owned by an activity definition."""
 
     id: str
-    workspace_id: str
+    project_id: str
     activity_id: str
     input: str
     status: ActivityRunStatus

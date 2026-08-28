@@ -83,7 +83,7 @@ async def test_persona_crud_flow(
     )
 
     assert created.instruction_type == "persona"
-    assert created.workspace_id == "user-1"
+    assert created.project_id == "user-1"
 
     summaries = await service.list(user_id="user-1")
 
@@ -153,7 +153,7 @@ async def test_persona_service_sets_enabled_and_creates_content(
     created = await service.create(
         user_id="user-1",
         payload=PersonaCreate(
-            name="Workspace Lead",
+            name="Project Lead",
             description=builtin.description,
             instructions=builtin.instructions,
             metadata=builtin.metadata,
@@ -290,7 +290,7 @@ async def test_persona_rejects_skill_owned_by_another_user(
         skill_definition_service,
     )
     foreign_skill = await skill_definition_service.create(
-        workspace_id='user-2',
+        project_id='user-2',
             payload=DefinitionCreate(
             name='Foreign_skill',
                 description='Foreign user Skill.',

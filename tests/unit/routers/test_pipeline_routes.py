@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
 from src.app.routers.pipelines import router as pipelines_router
 from src.app.services.shared.tenant import TenantService
@@ -421,7 +421,7 @@ class _LeaseService:
         run_id: str,
         lease_token: str,
         lease_duration: timedelta,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> object:
         """Return a run-shaped object containing the renewed lease expiry."""
 
@@ -429,7 +429,7 @@ class _LeaseService:
             'user-1', 'pipeline-1', 'run-1', 'lease-1',
         )
         assert lease_duration == timedelta(minutes=1)
-        assert requested_workspace_id is None
+        assert requested_project_id is None
         return type(
             'RenewedRun',
             (),
@@ -450,11 +450,11 @@ class _ClaimableService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> list[PipelineRunDocument]:
         """Record the claimable-list request and return no candidates."""
 
-        assert (user_id, pipeline_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, requested_project_id) == (
             'user-1', 'pipeline-1', None,
         )
         self.was_called = True
@@ -470,22 +470,22 @@ class _EventService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> tuple[PipelineRunDocument, None]:
         """Return one completed Pipeline run with its immutable event ledger."""
 
-        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
             'user-1', 'pipeline-1', 'run-1', None,
         )
         timestamp = datetime(2026, 8, 21, tzinfo=UTC)
         return PipelineRunDocument(
-            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            id='run-1', project_id='workspace-1', pipeline_id='pipeline-1',
             input='Implement.', commit_mode='forbid', status='completed',
             worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
             current_activity_run_id=None, pipeline_snapshot={'steps': []}, steps=(),
             created_at=timestamp, created_by='user-1', updated_at=timestamp,
             events=(PipelineRunEventDocument(
-                id='event-1', workspace_id='workspace-1', pipeline_run_id='run-1',
+                id='event-1', project_id='workspace-1', pipeline_run_id='run-1',
                 event_type='pipeline_run_created', activity_id=None, actor_id='user-1',
                 payload={'commit_mode': 'forbid'}, created_at=timestamp,
             ),),
@@ -501,16 +501,16 @@ class _StartService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> tuple[PipelineRunDocument, None]:
         """Return a runtime-queued PipelineRun without a local execution payload."""
 
-        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
             'user-1', 'pipeline-1', 'run-1', None,
         )
         timestamp = datetime(2026, 8, 19, tzinfo=UTC)
         return PipelineRunDocument(
-            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            id='run-1', project_id='workspace-1', pipeline_id='pipeline-1',
             input='Implement.', commit_mode='allow', status='queued',
             worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
             current_activity_run_id=None, pipeline_snapshot={'steps': []},

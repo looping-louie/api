@@ -11,7 +11,7 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.controllers.skill import SkillController
+from src.app.controllers.skills import SkillController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.skill import (
     SkillCreateRequest,

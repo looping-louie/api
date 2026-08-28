@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.catalog import CatalogController
+from src.app.controllers.catalogs import CatalogController
 from src.app.routers.catalog import router as catalog_router
 from src.app.services.catalogs import StaticCatalogService
 from src.app.utils.http import register_exception_handlers

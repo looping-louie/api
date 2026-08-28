@@ -58,7 +58,7 @@ async def test_workspace_persona_is_available_to_execution(
     skill = await skill_service.create(
         user_id="user-1",
         payload=DefinitionCreate(
-            name="Workspace Security",
+            name="Project Security",
             description="Custom security checks.",
             instructions="SQL skill content version one.",
         ),
@@ -66,7 +66,7 @@ async def test_workspace_persona_is_available_to_execution(
     persona = await persona_service.create(
         user_id="user-1",
         payload=PersonaCreate(
-            name="Workspace Lead",
+            name="Project Lead",
             description="Custom technical lead.",
             instructions="SQL persona content.",
             skill_ids=(),

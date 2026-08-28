@@ -27,7 +27,7 @@ class PipelineRunRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> PipelineRunDocument | None:
@@ -47,7 +47,7 @@ class PipelineRunRepository(Protocol):
     async def list_claimable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         claimed_before: datetime,
     ) -> list[PipelineRunDocument]:
@@ -90,7 +90,7 @@ class PipelineRunRepository(Protocol):
     async def list_events(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> list[PipelineRunEventDocument]:

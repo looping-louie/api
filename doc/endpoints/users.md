@@ -133,7 +133,7 @@ Example response (`200 OK`):
 
 `GET /api/v1/users/me/models` exposes the curated provider-independent model
 catalog. Each offering is joined with the current User's configured Linked
-Services and model availability policy. `X-Workspace-ID` is ignored.
+Services and model availability policy. `X-Project-ID` is ignored.
 
 `available=true` or `available=false` filters by effective availability. A
 model must be enabled by the User's settings and offered by an enabled,

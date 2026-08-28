@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.catalogs.models import ModelCapability, ModelLab, ModelSort, ModelStatus
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.user import UserController, UserModelController
+from src.app.controllers.users import UserController
 from src.app.schemas.model import ModelListResponse, ModelResponse
 from src.app.schemas.user import UserResponse, UserSettingsRequest
 
@@ -14,17 +14,12 @@ from .dependencies import (
     RequestContext,
     get_request_context,
     get_user_controller,
-    get_user_model_controller,
 )
 
 
 router = APIRouter(prefix='/users', tags=['Users'])
 ContextDependency = Annotated[RequestContext, Depends(get_request_context)]
 ControllerDependency = Annotated[UserController, Depends(get_user_controller)]
-ModelControllerDependency = Annotated[
-    UserModelController,
-    Depends(get_user_model_controller),
-]
 
 
 @router.get('/me', response_model=UserResponse, summary='Get current user')
@@ -69,7 +64,7 @@ async def update_current_user_settings(
 @router.get('/me/models', response_model=ModelListResponse, summary='List user models')
 async def list_user_models(
     context: ContextDependency,
-    controller: ModelControllerDependency,
+    controller: ControllerDependency,
     provider_id: Annotated[ProviderId | None, Query(description='Filter models by provider.')] = None,
     capability: Annotated[ModelCapability | None, Query(description='Filter models by capability.')] = None,
     model_status: Annotated[ModelStatus | None, Query(alias='status', description='Filter models by catalog status.')] = None,
@@ -100,7 +95,7 @@ async def list_user_models(
 async def describe_user_model(
     model_id: Annotated[str, Path(min_length=1, description='Logical model identifier.')],
     context: ContextDependency,
-    controller: ModelControllerDependency,
+    controller: ControllerDependency,
 ) -> ModelResponse:
     """Return one catalog model and its availability for the current User."""
 

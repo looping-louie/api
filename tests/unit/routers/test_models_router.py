@@ -11,7 +11,7 @@ from src.app.catalogs.models import (
     ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.user import UserModelController
+from src.app.controllers.users import UserController
 from src.app.routers.users import router as users_router
 from src.app.services.models.availability import ProviderConnectionState
 from src.app.utils.http import register_exception_handlers
@@ -22,13 +22,13 @@ from tests.fakes.provider_state_repository import (
 
 def build_app(
     *,
-    controller: UserModelController,
+    controller: UserController,
     authenticated: bool = True,
 ) -> FastAPI:
     """Build a minimal FastAPI application for router tests."""
 
     app = FastAPI()
-    app.state.user_model_controller = controller
+    app.state.user_controller = controller
 
     if authenticated:
 
@@ -52,13 +52,13 @@ def build_app(
 
 
 def test_list_models_route(
-    model_controller: UserModelController,
+    model_controller: UserController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     """List responses honor provider and effective availability filters."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -100,7 +100,7 @@ def test_list_models_route(
 
 
 def test_list_models_filters_sorts_and_paginates(
-    model_controller: UserModelController,
+    model_controller: UserController,
 ) -> None:
     """The route composes repeated labs, date sorting, and fixed pages."""
 
@@ -154,13 +154,13 @@ def test_list_models_filters_sorts_and_paginates(
 
 
 def test_describe_model_route(
-    model_controller: UserModelController,
+    model_controller: UserController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     """Describe exposes the selected model and User availability."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -189,7 +189,7 @@ def test_describe_model_route(
 
 
 def test_describe_missing_model_returns_404(
-    model_controller: UserModelController,
+    model_controller: UserController,
 ) -> None:
     """Unknown model identifiers produce the public not-found error."""
 
@@ -208,7 +208,7 @@ def test_describe_missing_model_returns_404(
 
 
 def test_models_routes_require_authentication(
-    model_controller: UserModelController,
+    model_controller: UserController,
 ) -> None:
     """Every model route rejects requests without an authenticated user."""
 
@@ -230,7 +230,7 @@ def test_models_routes_require_authentication(
 
 
 def test_list_models_validates_query_values(
-    model_controller: UserModelController,
+    model_controller: UserController,
 ) -> None:
     """Invalid enum, range, and text filters are rejected before dispatch."""
 

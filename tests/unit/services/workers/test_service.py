@@ -26,41 +26,41 @@ class InMemoryWorkerRepository:
     async def create(self, document: WorkerDocument) -> WorkerDocument:
         """Insert one newly provisioned worker registration."""
 
-        self.documents[(document.workspace_id, document.id)] = document
+        self.documents[(document.project_id, document.id)] = document
         return document
 
     async def heartbeat(
-        self, *, workspace_id: str, worker_id: str, occurred_at: datetime,
+        self, *, project_id: str, worker_id: str, occurred_at: datetime,
     ) -> WorkerDocument | None:
         """Update one registered worker heartbeat."""
 
-        current = self.documents.get((workspace_id, worker_id))
+        current = self.documents.get((project_id, worker_id))
         if current is None:
             return None
         updated = WorkerDocument(
-            id=current.id, workspace_id=current.workspace_id,
+            id=current.id, project_id=current.project_id,
             registered_at=current.registered_at, last_heartbeat_at=occurred_at,
             harnesses=current.harnesses,
         )
-        self.documents[(workspace_id, worker_id)] = updated
+        self.documents[(project_id, worker_id)] = updated
         return updated
 
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
     ) -> WorkerDocument | None:
         """Return one stored Worker capability registration."""
 
-        return self.documents.get((workspace_id, worker_id))
+        return self.documents.get((project_id, worker_id))
 
     async def is_active(
-        self, *, workspace_id: str, worker_id: str, active_since: datetime,
+        self, *, project_id: str, worker_id: str, active_since: datetime,
     ) -> bool:
         """Return whether the stored worker heartbeat satisfies the cutoff."""
 
-        worker = self.documents.get((workspace_id, worker_id))
+        worker = self.documents.get((project_id, worker_id))
         return worker is not None and worker.last_heartbeat_at >= active_since
 
 
@@ -81,7 +81,7 @@ async def test_registered_worker_heartbeat_admits_claims(
 
     registered = await service.create(user_id='user-1')
     heartbeated = await service.heartbeat(user_id='user-1', worker_id='worker-1')
-    await service.require_active(workspace_id='workspace-1', worker_id='worker-1')
+    await service.require_active(project_id='workspace-1', worker_id='worker-1')
 
     assert registered == heartbeated
 
@@ -103,7 +103,7 @@ async def test_worker_harness_admission_requires_an_advertised_capability(
     registered = await service.create(user_id='user-1')
 
     await service.require_harness(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         worker_id=registered.id,
         harness={'kind': 'louie', 'version': 'v1', 'config': {}},
     )
@@ -121,7 +121,7 @@ async def test_worker_harness_admission_requires_an_advertised_capability(
 
     with pytest.raises(WorkerHarnessUnavailableError):
         await empty_capability_service.require_harness(
-            workspace_id='workspace-1',
+            project_id='workspace-1',
             worker_id=empty_worker.id,
             harness={'kind': 'louie', 'version': 'v1', 'config': {}},
         )
@@ -139,4 +139,4 @@ async def test_missing_worker_cannot_claim(tenant_service: TenantService) -> Non
     )
 
     with pytest.raises(WorkerUnavailableError):
-        await service.require_active(workspace_id='workspace-1', worker_id='worker-1')
+        await service.require_active(project_id='workspace-1', worker_id='worker-1')

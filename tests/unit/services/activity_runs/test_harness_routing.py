@@ -95,13 +95,13 @@ class _ModelExecutionService:
     async def select_linked_service(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         model_id: str,
         user_id: str,
     ) -> SimpleNamespace:
         """Record and return the linked service selected for a logical model."""
 
-        self.calls.append((workspace_id, model_id, user_id))
+        self.calls.append((project_id, model_id, user_id))
         return SimpleNamespace(
             id='linked-service-selected',
             user_id=user_id,
@@ -121,7 +121,7 @@ async def test_create_inherits_user_default_harness(
         config={}, created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )
     repository = _ActivityRunRepository(ActivityRunDocument(
-        id='existing', workspace_id='workspace-1', activity_id=activity.id,
+        id='existing', project_id='workspace-1', activity_id=activity.id,
         input='Ignored.', status='in_progress', state='awaiting_snapshot',
         next_action='collect_snapshot', iteration=1, token_revision=0,
         continuation_token='token', activity_snapshot={}, execution_context={},
@@ -161,7 +161,7 @@ async def test_create_louie_freezes_selected_service_for_effective_model(
     selector = _ModelExecutionService()
     service = ActivityRunService(
         repository=_ActivityRunRepository(ActivityRunDocument(
-            id='existing', workspace_id='workspace-1', activity_id=activity.id,
+            id='existing', project_id='workspace-1', activity_id=activity.id,
             input='Ignored.', status='in_progress', state='awaiting_snapshot',
             next_action='collect_snapshot', iteration=1, token_revision=0,
             continuation_token='token', activity_snapshot={}, execution_context={},
@@ -203,7 +203,7 @@ async def test_create_rejects_louie_activity_without_effective_model(
     )
     service = ActivityRunService(
         repository=_ActivityRunRepository(ActivityRunDocument(
-            id='existing', workspace_id='workspace-1', activity_id=activity.id,
+            id='existing', project_id='workspace-1', activity_id=activity.id,
             input='Ignored.', status='in_progress', state='awaiting_snapshot',
             next_action='collect_snapshot', iteration=1, token_revision=0,
             continuation_token='token', activity_snapshot={}, execution_context={},
@@ -240,7 +240,7 @@ async def test_create_codex_activity_does_not_select_api_managed_model(
     selector = _ModelExecutionService()
     service = ActivityRunService(
         repository=_ActivityRunRepository(ActivityRunDocument(
-            id='existing', workspace_id='workspace-1', activity_id=activity.id,
+            id='existing', project_id='workspace-1', activity_id=activity.id,
             input='Ignored.', status='in_progress', state='awaiting_snapshot',
             next_action='collect_snapshot', iteration=1, token_revision=0,
             continuation_token='token', activity_snapshot={}, execution_context={},
@@ -273,7 +273,7 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
         config={}, created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )
     document = ActivityRunDocument(
-        id='run-1', workspace_id='workspace-1', activity_id=activity.id,
+        id='run-1', project_id='workspace-1', activity_id=activity.id,
         input='Create a file.', status='in_progress', state='awaiting_snapshot',
         next_action='collect_snapshot', iteration=1, token_revision=0,
         continuation_token='token-1',
@@ -299,7 +299,7 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
         result={
             'action': 'collect_snapshot',
             'repo_context': 'Repository context.',
-            'workspace_metadata': {'workspace_path': '/checkout', 'source_commit_sha': 'abc'},
+            'checkout_metadata': {'checkout_path': '/checkout', 'source_commit_sha': 'abc'},
             'constitution': '',
             'project_profile': {},
         },

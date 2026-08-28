@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.skill import SkillController
+from src.app.controllers.skills import SkillController
 from src.app.routers.skills import router as skills_router
 from src.app.services.persona_skills import SkillDefinitionService
 from src.app.utils.http import register_exception_handlers
@@ -122,7 +122,7 @@ def test_skills_ignore_workspace_selection(
     client = TestClient(build_app(controller=skill_controller))
     created = client.post(
         '/api/v1/skills',
-        headers={'X-Workspace-ID': 'workspace-a'},
+        headers={'X-Project-ID': 'workspace-a'},
         json={
             'name': 'User-owned Skill',
             'instructions': 'Review the supplied work.',
@@ -130,7 +130,7 @@ def test_skills_ignore_workspace_selection(
     )
     listed = client.get(
         '/api/v1/skills',
-        headers={'X-Workspace-ID': 'workspace-b'},
+        headers={'X-Project-ID': 'workspace-b'},
     )
 
     assert created.status_code == 201

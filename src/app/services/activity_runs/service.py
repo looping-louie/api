@@ -27,7 +27,7 @@ from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
 from src.app.services.users import UserService
-from src.app.services.workspaces import WorkspaceService
+from src.app.services.projects.service import ProjectService
 
 
 class ActivityRunService:
@@ -43,7 +43,7 @@ class ActivityRunService:
         clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
-        workspace_service: WorkspaceService | None = None,
+        workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
     ) -> None:
@@ -74,7 +74,7 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         input_text: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Persist a new run from an active Activity definition."""
 
@@ -84,7 +84,7 @@ class ActivityRunService:
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         harness = await self._inherited_harness(
             activity=activity,
@@ -94,7 +94,7 @@ class ActivityRunService:
         return await self._repository.create(
             document=ActivityRunDocument(
                 id=self._id_factory(),
-                workspace_id=workspace.workspace_id,
+                project_id=workspace.project_id,
                 activity_id=activity.id,
                 input=self._require_text(input_text, 'input'),
                 status='in_progress',
@@ -105,7 +105,7 @@ class ActivityRunService:
                 continuation_token=self._token_factory(),
                 activity_snapshot=await self._snapshot(
                     activity,
-                    workspace_id=workspace.workspace_id,
+                    project_id=workspace.project_id,
                     user_id=user_id,
                     harness=harness,
                 ),
@@ -122,16 +122,16 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Return one run after validating activity ownership."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         document = await self._repository.get(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             activity_id=activity_id,
             run_id=run_id,
         )
@@ -148,7 +148,7 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[ActivityRunDocument], int]:
         """Return a page of runs for an active executable activity."""
 
@@ -163,10 +163,10 @@ class ActivityRunService:
             )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         documents, total = await self._repository.list(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             activity_id=activity_id,
             offset=offset,
             limit=PAGE_SIZE,
@@ -185,7 +185,7 @@ class ActivityRunService:
         idempotency_key: str,
         action: str,
         result: Mapping[str, object],
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Advance one validated runtime or human execution checkpoint."""
 
@@ -197,15 +197,15 @@ class ActivityRunService:
             user_id=user_id,
             activity_id=activity_id,
             run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         human_execution = document.activity_snapshot.get('executor') == 'human'
         if not human_execution and not await self._repository.has_active_pipeline_lease(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             activity_run_id=document.id,
             pipeline_run_id=pipeline_run_id,
             lease_token=lease_token,
@@ -216,7 +216,7 @@ class ActivityRunService:
             decision = str(result.get('decision'))
             return await self._transition(
                 document=document,
-                workspace_id=workspace.workspace_id,
+                project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id,
                 lease_token=lease_token,
                 continuation_token=continuation_token,
@@ -240,7 +240,7 @@ class ActivityRunService:
                 context['review_result'] = dict(previous_review)
             if self._uses_codex_cli(document.activity_snapshot):
                 return await self._transition(
-                    document=document, workspace_id=workspace.workspace_id,
+                    document=document, project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                     continuation_token=continuation_token, idempotency_key=idempotency_key,
                     action=action, status='in_progress', state='awaiting_harness',
@@ -249,7 +249,7 @@ class ActivityRunService:
                 )
             if self._generation_service is None:
                 return await self._transition(
-                    document=document, workspace_id=workspace.workspace_id,
+                    document=document, project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                     continuation_token=continuation_token, idempotency_key=idempotency_key,
                     action=action, status='in_progress', state='awaiting_generation',
@@ -259,14 +259,14 @@ class ActivityRunService:
                 generated = await self._generation_service.generate_context(
                     loop_snapshot=document.activity_snapshot,
                     user_id=user_id,
-                    requested_workspace_id=requested_workspace_id,
+                    requested_project_id=requested_project_id,
                     input_text=document.input,
                     context=context,
                 )
             except ModelServiceError as error:
                 return await self._generation_failure_transition(
                     document=document,
-                    workspace_id=workspace.workspace_id,
+                    project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id,
                     lease_token=lease_token,
                     continuation_token=continuation_token,
@@ -276,7 +276,7 @@ class ActivityRunService:
                     error=error,
                 )
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='in_progress', state='awaiting_apply',
@@ -288,7 +288,7 @@ class ActivityRunService:
             applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action,
@@ -327,7 +327,7 @@ class ActivityRunService:
             retry = not approved and document.iteration < self._max_iterations(document.activity_snapshot)
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action,
@@ -349,7 +349,7 @@ class ActivityRunService:
         if action == 'commit_if_allowed':
             committed = result.get('committed') is True
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='completed' if committed else 'failed',
@@ -365,7 +365,7 @@ class ActivityRunService:
         self,
         *,
         document: ActivityRunDocument,
-        workspace_id: str,
+        project_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
         continuation_token: str,
@@ -381,7 +381,7 @@ class ActivityRunService:
         """Persist a token-guarded activity-run state transition."""
 
         return await self._repository.transition(
-            workspace_id=workspace_id, activity_id=document.activity_id,
+            project_id=project_id, activity_id=document.activity_id,
             run_id=document.id, pipeline_run_id=pipeline_run_id,
             lease_token=lease_token, continuation_token=continuation_token,
             idempotency_key=idempotency_key, expected_action=action, status=status,
@@ -393,7 +393,7 @@ class ActivityRunService:
         self,
         *,
         document: ActivityRunDocument,
-        workspace_id: str,
+        project_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
         continuation_token: str,
@@ -406,7 +406,7 @@ class ActivityRunService:
 
         return await self._transition(
             document=document,
-            workspace_id=workspace_id,
+            project_id=project_id,
             pipeline_run_id=pipeline_run_id,
             lease_token=lease_token,
             continuation_token=continuation_token,
@@ -473,7 +473,7 @@ class ActivityRunService:
         self,
         activity: object,
         *,
-        workspace_id: str,
+        project_id: str,
         user_id: str,
         harness: Mapping[str, object],
     ) -> dict[str, object]:
@@ -496,7 +496,7 @@ class ActivityRunService:
                     await self._louie_agent_snapshot(
                         agent=agent,
                         activity_id=str(getattr(activity, 'id')),
-                        workspace_id=workspace_id,
+                        project_id=project_id,
                         user_id=user_id,
                         inherited_model_id=inherited_model_id,
                     )
@@ -536,7 +536,7 @@ class ActivityRunService:
         *,
         agent: dict[str, object],
         activity_id: str,
-        workspace_id: str,
+        project_id: str,
         user_id: str,
         inherited_model_id: str | None,
     ) -> dict[str, object]:
@@ -554,7 +554,7 @@ class ActivityRunService:
         if self._model_execution_service is None:
             raise RuntimeError('Louie model execution is not configured.')
         linked_service = await self._model_execution_service.select_linked_service(
-            workspace_id=workspace_id,
+            project_id=project_id,
             model_id=model_id,
             user_id=user_id,
         )

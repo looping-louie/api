@@ -34,7 +34,7 @@ def seed_persona(
     repository.seed(
         DefinitionDocument(
             id=persona_id,
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             instruction_type="persona",
             name=name,
             description="Description",
@@ -55,7 +55,7 @@ async def test_require_unique_name_rejects_normalized_duplicate() -> None:
 
     with pytest.raises(DuplicateResourceError):
         await service.require_unique_name(
-            workspace_id="workspace-1",
+            project_id="workspace-1",
             resource_type="persona",
             name=" tech lead ",
         )
@@ -68,7 +68,7 @@ async def test_require_unique_name_allows_current_resource() -> None:
     service = build_service(repository)
 
     await service.require_unique_name(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         resource_type="persona",
         name="Tech Lead",
         exclude_resource_id="persona-1",

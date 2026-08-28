@@ -7,20 +7,20 @@ import logging
 from fastapi import FastAPI
 
 from src.app.bootstrap.pipeline import build_pipeline_controller
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.catalog import CatalogController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
+from src.app.controllers.catalogs import CatalogController
 from src.app.catalogs.persona_skills.loader import (
     PersonaSkillCatalog,
     load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
-from src.app.controllers.workspace import WorkspaceController
-from src.app.controllers.user import UserController, UserModelController
-from src.app.controllers.skill import SkillController
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.projects import ProjectController
+from src.app.controllers.users import UserController
+from src.app.controllers.skills import SkillController
+from src.app.controllers.workers import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
 )
@@ -46,7 +46,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 )
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
-from src.app.repositories.workspaces import SqliteWorkspaceRepository
+from src.app.repositories.projects import SqliteProjectRepository
 from src.app.repositories.users import SqliteUserRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
@@ -92,7 +92,7 @@ from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
 from src.app.services.workers import WorkerService
-from src.app.services.workspaces import WorkspaceService
+from src.app.services.projects.service import ProjectService
 from src.app.services.users import UserService
 
 
@@ -144,8 +144,8 @@ async def configure_application(
 
     await ensure_local_tenant(
         database_path=resolved_settings.database_path,
-        workspace_id="local-workspace",
-        workspace_name="Local workspace",
+        project_id='local-project',
+        project_name='Local project',
         user_id="local-user",
     )
 
@@ -180,7 +180,7 @@ async def configure_application(
     )
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
-    workspace_repository = SqliteWorkspaceRepository(database)
+    project_repository = SqliteProjectRepository(database)
     user_repository = SqliteUserRepository(database)
     user_service = UserService(
         repository=user_repository,
@@ -257,8 +257,8 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
-    workspace_service = WorkspaceService(
-        repository=workspace_repository,
+    project_service = ProjectService(
+        repository=project_repository,
         tenant_service=tenant_service,
         linked_service_service=linked_service_service,
         user_service=user_service,
@@ -297,7 +297,7 @@ async def configure_application(
         clock=utc_now,
         model_execution_service=model_execution_service,
         instruction_library_service=execution_instruction_library_service,
-        workspace_service=workspace_service,
+        workspace_service=project_service,
         user_service=user_service,
     )
     worker_service = WorkerService(
@@ -326,21 +326,21 @@ async def configure_application(
         activity_run_repository=activity_run_repository,
         worker_service=worker_service,
         linked_service_service=linked_service_service,
-        workspace_service=workspace_service,
+        workspace_service=project_service,
         user_service=user_service,
         model_execution_service=model_execution_service,
-    )
-    app.state.user_model_controller = UserModelController(
-        model_catalog_service=model_catalog_service,
     )
     app.state.catalog_controller = catalog_controller
     app.state.linked_service_controller = LinkedServiceController(
         linked_service_service=linked_service_service,
     )
-    app.state.workspace_controller = WorkspaceController(
-        service=workspace_service,
+    app.state.project_controller = ProjectController(
+        service=project_service,
     )
-    app.state.user_controller = UserController(service=user_service)
+    app.state.user_controller = UserController(
+        service=user_service,
+        model_catalog_service=model_catalog_service,
+    )
     app.state.worker_controller = WorkerController(worker_service=worker_service)
 
     app.state.database = database
