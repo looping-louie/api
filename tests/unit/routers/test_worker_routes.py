@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.workers import WorkerController
 from src.app.models.worker import WorkerDocument
 from src.app.routers.workers import router
 from src.app.services.shared.tenant import TenantService

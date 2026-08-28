@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, status
 
-from src.app.controllers.project import ProjectController
+from src.app.controllers.projects import ProjectController
 from src.app.schemas.project import (
     ProjectCreateRequest,
     ProjectPatchRequest,

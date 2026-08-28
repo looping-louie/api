@@ -11,7 +11,7 @@ from src.app.catalogs.models import (
     ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.user import UserController
+from src.app.controllers.users import UserController
 from src.app.routers.users import router as users_router
 from src.app.services.models.availability import ProviderConnectionState
 from src.app.utils.http import register_exception_handlers

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.app.controllers.project import ProjectController
+from src.app.controllers.projects import ProjectController
 from src.app.models.user import UserDocument
 from src.app.models.project import ProjectDocument
 from src.app.routers.projects import router

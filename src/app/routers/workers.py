@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Path, status
 
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.workers import WorkerController
 from src.app.schemas.worker import WorkerCreateRequest, WorkerResponse
 
 from .dependencies import RequestContext, get_request_context, get_worker_controller

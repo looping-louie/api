@@ -6,8 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
 from src.app.schemas.activity_run import (
     ActivityRunContinueRequest,
     ActivityRunListResponse,

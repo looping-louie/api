@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Path, Query, status
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.pipeline import (
     PipelineChangelogListResponse,

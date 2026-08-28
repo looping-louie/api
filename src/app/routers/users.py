@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from src.app.catalogs.models import ModelCapability, ModelLab, ModelSort, ModelStatus
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.user import UserController
+from src.app.controllers.users import UserController
 from src.app.schemas.model import ModelListResponse, ModelResponse
 from src.app.schemas.user import UserResponse, UserSettingsRequest
 

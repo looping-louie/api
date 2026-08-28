@@ -15,13 +15,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.persona import PersonaController
-from src.app.controllers.pipeline import PipelineController
-from src.app.controllers.skill import SkillController
-from src.app.controllers.project import ProjectController
-from src.app.controllers.user import UserController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
+from src.app.controllers.personas import PersonaController
+from src.app.controllers.pipelines import PipelineController
+from src.app.controllers.skills import SkillController
+from src.app.controllers.projects import ProjectController
+from src.app.controllers.users import UserController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )

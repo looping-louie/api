@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
 from src.app.routers.pipelines import router as pipelines_router
 from src.app.services.shared.tenant import TenantService

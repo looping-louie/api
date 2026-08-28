@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.app.controllers.user import UserController
+from src.app.controllers.users import UserController
 from src.app.models.user import UserDocument
 from src.app.routers.users import router
 from src.app.services.models.catalog import ModelCatalogService

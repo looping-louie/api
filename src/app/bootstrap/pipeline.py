@@ -6,7 +6,7 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.app.controllers.user import UserController
+from src.app.controllers.users import UserController
 from src.app.services.models.availability import ModelAvailabilityService
 from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.users import UserService

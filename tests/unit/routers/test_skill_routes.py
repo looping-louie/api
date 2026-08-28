@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.skill import SkillController
+from src.app.controllers.skills import SkillController
 from src.app.routers.skills import router as skills_router
 from src.app.services.persona_skills import SkillDefinitionService
 from src.app.utils.http import register_exception_handlers

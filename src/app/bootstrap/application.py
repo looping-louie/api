@@ -7,20 +7,20 @@ import logging
 from fastapi import FastAPI
 
 from src.app.bootstrap.pipeline import build_pipeline_controller
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.catalog import CatalogController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
+from src.app.controllers.catalogs import CatalogController
 from src.app.catalogs.persona_skills.loader import (
     PersonaSkillCatalog,
     load_persona_skill_catalog,
 )
 from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.controllers.linked_services import LinkedServiceController
-from src.app.controllers.project import ProjectController
-from src.app.controllers.user import UserController
-from src.app.controllers.skill import SkillController
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.projects import ProjectController
+from src.app.controllers.users import UserController
+from src.app.controllers.skills import SkillController
+from src.app.controllers.workers import WorkerController
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
 )

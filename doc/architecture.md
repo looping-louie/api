@@ -265,14 +265,14 @@ dependency injection, and request extraction.
 ```text
 controllers/
 |
-|-- catalog/
+|-- catalogs/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- list_models.py            Lists static model definitions
 |   |-- list_personas.py          Lists built-in Persona definitions
 |   |-- list_providers.py         Lists static provider definitions
 |   |-- list_skills.py            Lists built-in Skill definitions
 |   `-- utils.py                  Validates catalog definition versions
-|-- activity/
+|-- activities/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
 |   |-- delete.py                 Deletes definitions
@@ -281,7 +281,7 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- activity_run/
+|-- activity_runs/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- continue_run.py           Advances execution checkpoints
 |   |-- describe.py               Retrieves one execution checkpoint
@@ -295,7 +295,7 @@ controllers/
 |   |-- list.py                   Lists Linked Services
 |   |-- patch.py                  Updates Linked Services
 |   `-- response.py               Translates Linked Service responses
-|-- persona/
+|-- personas/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
 |   |-- delete.py                 Deletes resources
@@ -303,7 +303,7 @@ controllers/
 |   |-- list.py                   Lists resources
 |   |-- patch.py                  Applies supplied changes
 |   `-- response.py               Translates Persona documents to responses
-|-- pipeline/
+|-- pipelines/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
 |   |-- delete.py                 Deletes definitions
@@ -313,26 +313,26 @@ controllers/
 |   |-- patch.py                  Applies supplied changes
 |   |-- run.py                    Coordinates Pipeline-run operations
 |   `-- utils.py                  Translates request schemas to service inputs
-|-- skill/
+|-- skills/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
 |   |-- delete.py                 Deletes resources
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
-|-- project/
+|-- projects/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates Projects
 |   |-- describe.py               Describes one Project
 |   |-- list.py                   Lists accessible Projects
 |   |-- patch.py                  Applies Project metadata changes
 |   `-- response.py               Translates Project documents to responses
-|-- worker/
+|-- workers/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates Workers
 |   |-- heartbeat.py              Records Worker heartbeats
 |   `-- response.py               Translates Worker documents to responses
-`-- user/
+`-- users/
   |-- __init__.py               Composes endpoint-specific controllers
   |-- create.py                 Creates the current User
   |-- describe_own.py           Retrieves the current User

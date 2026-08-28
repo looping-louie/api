@@ -13,8 +13,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService

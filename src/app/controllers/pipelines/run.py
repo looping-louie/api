@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from src.app.controllers.activity_run.utils import activity_run_response
+from src.app.controllers.activity_runs.utils import activity_run_response
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline_run import PipelineRunDocument
 from src.app.schemas.pipeline import (
