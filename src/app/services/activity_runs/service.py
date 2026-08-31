@@ -287,6 +287,16 @@ class ActivityRunService:
             context['apply_result' if action == 'apply_operations' else 'harness_result'] = dict(result)
             applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
+            if action == 'run_harness' and applied and not commit_forbidden:
+                commit_message = result.get('commit_message')
+                if not isinstance(commit_message, str) or not commit_message.strip():
+                    raise ActivityRunValidationError(
+                        field_name='result.commit_message',
+                        message='must not be empty',
+                    )
+                context['runtime_artifacts'] = {
+                    'commit_message': commit_message,
+                }
             return await self._transition(
                 document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,

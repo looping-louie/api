@@ -74,6 +74,7 @@ class ActivityRunHarnessResult(RequestSchema):
     action: Literal['run_harness']
     completed: bool
     final_response: str = ''
+    commit_message: str | None = None
     final_diff: str = ''
     changed_files: list[str] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)

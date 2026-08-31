@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import cast
 
-from src.app.controllers.activity_runs.utils import activity_run_response
+from src.app.controllers.activity_runs.utils import action_result, activity_run_response
 from src.app.models.activity_run import ActivityRunDocument
 
 
@@ -24,6 +24,7 @@ def test_run_harness_payload_exposes_frozen_instruction_snapshot() -> None:
         continuation_token='token-1',
         activity_snapshot={
             'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+            'commit_mode': 'allow',
             'instruction_snapshot': instruction_snapshot,
         },
         execution_context={
@@ -37,3 +38,17 @@ def test_run_harness_payload_exposes_frozen_instruction_snapshot() -> None:
     response = activity_run_response(document)
 
     assert response.payload['instruction_snapshot'] == instruction_snapshot
+    assert response.payload['commit_mode'] == 'allow'
+
+
+def test_run_harness_result_accepts_commit_message() -> None:
+    """The HTTP checkpoint contract accepts Codex's proposed commit message."""
+
+    result = action_result({
+        'action': 'run_harness',
+        'completed': True,
+        'final_response': 'Implemented the requested change.',
+        'commit_message': 'feat: implement requested change',
+    })
+
+    assert result.commit_message == 'feat: implement requested change'

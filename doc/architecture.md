@@ -113,7 +113,10 @@ runtime reports the turn's final response, checkout diff, changed files, usage,
 diagnostics, and optional opaque session reference through `run_harness`. The
 payload includes the immutable Persona and Skill snapshot resolved at run
 creation, so the runtime does not query mutable instruction endpoints during
-execution.
+execution. For commit-enabled runs, Codex also proposes a non-empty commit
+message in its normalized Harness result. The API persists that proposal and
+returns it only when the Activity reaches `commit_if_allowed`, preserving the
+same commit-authorization boundary used by the `louie` Harness.
 
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the

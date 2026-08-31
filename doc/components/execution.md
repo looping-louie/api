@@ -32,7 +32,7 @@ The following Harness kinds define the initial compatibility model:
 | ------------ | ------------------------ | ------------------ |
 | `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
 | `human` | `approval`, `quiz` | A person submits a terminal decision. |
-| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn, then reports normalized results through `run_harness`. |
+| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn, then reports normalized results and a commit proposal through `run_harness`. |
 
 ## Execution lifecycle
 
@@ -112,7 +112,10 @@ or maximum iterations are reached.
 ### 10. Finalise
 
 If the run succeeds, the API marks commit handoff as allowed. The runtime performs
-the commit and reports the result.
+the commit and reports the result. A commit-enabled Codex turn must propose a
+non-empty `commit_message`; the API persists it and returns it in the later
+`commit_if_allowed` payload. A `forbid` run neither requires the message nor
+enters the commit checkpoint.
 
 ## Prompt lifecycle
 

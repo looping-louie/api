@@ -750,6 +750,9 @@ The endpoint returns the updated Activity run (`200 OK`). A run selected by a
 Pipeline additionally requires its `pipeline_run_id` and active Pipeline
 `lease_token`. The API rejects a missing, expired, or mismatched lease with
 `409 activity_run_invalid_transition` before persisting a checkpoint result.
+For `run_harness`, a successful commit-enabled Codex result must include a
+non-empty `commit_message`. The API preserves it and returns it later as the
+payload of `commit_if_allowed`; `commit_mode=forbid` does not require it.
 
 Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`. An invalid or stale continuation token returns

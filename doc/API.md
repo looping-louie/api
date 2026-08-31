@@ -46,6 +46,11 @@ Pipeline, then User scope. A missing Louie agent model fails run creation;
 Personas contribute instructions only. When no Harness candidate exists, the
 frozen Harness is the `louie` v1 compatibility default.
 
+A successful `codex_cli` result includes a proposed `commit_message` whenever
+the frozen commit mode allows commits. The API validates and persists that
+message as a runtime artifact, then exposes it only through the later
+`commit_if_allowed` checkpoint. Codex does not authorize or perform the commit.
+
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;
 `settings.configured_models` overrides that status per model ID. A disabled
