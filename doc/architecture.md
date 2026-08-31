@@ -48,10 +48,13 @@ For `louie`, creation requires an effective model ID and selects the first
 deterministically ordered compatible, enabled, configured User-owned Linked
 Service before freezing its identity and owner in a private `model_target`
 snapshot. `codex_cli` does not select API Linked Services or require API
-provider credentials. An agent without an explicit model ID fails generation;
-Personas are instruction-only resources. An unset effective Harness becomes the
-`louie` v1 compatibility default after considering the User default. Projects
-continue to select execution placement only.
+provider credentials. For each Codex Activity, creation resolves the generator
+Persona and its ordered Skills from the User-owned library and freezes their
+versioned content in the Activity snapshot delivered through `run_harness`.
+An agent without an explicit model ID fails generation; Personas are
+instruction-only resources. An unset effective Harness becomes the `louie` v1
+compatibility default after considering the User default. Projects continue to
+select execution placement only.
 
 ## Harnesses
 
@@ -107,7 +110,10 @@ API-directed scheduling, reviewer decisions, lease validation, or commit
 authorization. Workers advertise Harness capabilities during registration, and
 the API requires an exact capability match before a PipelineRun claim. The
 runtime reports the turn's final response, checkout diff, changed files, usage,
-diagnostics, and optional opaque session reference through `run_harness`.
+diagnostics, and optional opaque session reference through `run_harness`. The
+payload includes the immutable Persona and Skill snapshot resolved at run
+creation, so the runtime does not query mutable instruction endpoints during
+execution.
 
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the

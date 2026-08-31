@@ -9,7 +9,7 @@ and commit decisions.
 
 ## Harness Selection
 
-PipelineRun creation resolves Harnesses from Activity, Pipeline, Workspace,
+PipelineRun creation resolves Harnesses from Activity, Pipeline,
 then User scope. It freezes the Pipeline-level effective Harness and each child
 Activity-run's effective Harness independently. Existing configurations use
 `louie` v1 when no Harness candidate exists.
@@ -41,15 +41,19 @@ The following Harness kinds define the initial compatibility model:
 The API persists the activity snapshot, frozen Harness selection, run status,
 checkpoint action, iteration, and continuation revision in SQLite.
 
-The run also persists a versioned `instructions-snapshot.json`. It contains the
-instruction definitions available when the run starts. The same in-memory
-snapshot is used for the entire run; execution services do not resolve those
-definitions again.
+For each `codex_cli` Activity, PipelineRun creation also resolves the generator
+Persona and its ordered Skills from the User-owned instruction library. Their
+IDs, versions, metadata, and content are persisted as a versioned
+`instruction_snapshot` inside the immutable Activity snapshot. The
+`run_harness` checkpoint payload returns that exact snapshot; neither the API
+nor the runtime resolves the mutable Persona or Skill resources again.
 
 ### 2. Receive repository context from the runtime
 
 The runtime sends repository snapshot context in `collect_snapshot`. The API uses
-that context to build iteration prompts.
+that context to build iteration prompts. For `codex_cli`, the runtime also
+injects the frozen Persona instructions into the local turn prompt and exposes
+each frozen Skill as `.agents/skills/<name>/SKILL.md` for that turn.
 
 ### 3. Build prompts
 

@@ -38,6 +38,11 @@ Linked Service offering the effective model. Harnesses resolve
 at Activity, Pipeline, then User scope. It freezes the effective values
 in its Pipeline and Activity snapshots. An unset effective Harness retains the
 legacy `louie` v1 compatibility behavior.
+For every `codex_cli` Activity, creation resolves its generator Persona and the
+Persona's ordered Skills from the current User library. It freezes their IDs,
+versions, metadata, and content in the Activity snapshot returned later in the
+child ActivityRun's `run_harness` payload. Subsequent Persona or Skill edits do
+not alter an existing run.
 Archived pipelines are immutable and omitted from unfiltered listings.
 
 Every Pipeline response includes top-level `model_id` and `harness` keys,

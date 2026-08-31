@@ -122,6 +122,22 @@ class ExecutionInstructionLibrary:
             for instruction_id in instruction_ids
         ]
 
+    def agent_snapshot(self, persona_id: str) -> dict[str, object]:
+        """Serialize one Persona and its ordered Skills for a frozen run."""
+
+        runtime_id = self.normalize_persona_id(persona_id)
+        persona = self.personas[runtime_id]
+        return {
+            "snapshot_version": 1,
+            "persona": self._snapshot_entry(persona),
+            "skills": [
+                self._snapshot_entry(
+                    self.skills[self.normalize_skill_id(skill_id)]
+                )
+                for skill_id in persona.skill_ids
+            ],
+        }
+
     @staticmethod
     def _snapshot_entry(
         instruction: ExecutionInstruction,
@@ -160,6 +176,7 @@ class ExecutionInstructionLibrary:
 
         return runtime_id
 
+
 class ExecutionInstructionLibraryService:
     """Loads the selectable instruction library from SQL per execution."""
 
@@ -171,6 +188,8 @@ class ExecutionInstructionLibraryService:
         tenant_service: TenantService,
         persona_repository: DefinitionRepository | None = None,
     ) -> None:
+        """Store User instruction repositories and Project resolution."""
+
         self._repository = repository
         self._persona_repository = persona_repository or repository
         self._persona_skill_repository = persona_skill_repository
@@ -182,7 +201,7 @@ class ExecutionInstructionLibraryService:
         user_id: str,
         requested_project_id: str | None = None,
     ) -> ExecutionInstructionLibrary:
-        """Load a fresh immutable snapshot for the resolved workspace."""
+        """Load User instructions for one resolved execution Project."""
 
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
@@ -191,7 +210,7 @@ class ExecutionInstructionLibraryService:
         project_id = tenant.project_id
         skills = await self._load_type(
             repository=self._repository,
-            project_id=project_id,
+            project_id=user_id,
             instruction_type="skill",
         )
         personas = await self._load_type(

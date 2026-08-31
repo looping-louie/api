@@ -42,6 +42,7 @@ def activity_run_response(document: object) -> ActivityRunResponse:
         harness = snapshot.get('harness') if isinstance(snapshot, dict) else None
         return response.model_copy(update={'payload': {
             'harness': harness,
+            'instruction_snapshot': snapshot.get('instruction_snapshot', {}),
             'repo_context': context.get('repo_context', ''),
             'constitution': context.get('constitution', ''),
             'project_profile': context.get('project_profile', {}),

@@ -37,8 +37,8 @@ catalog version is rejected. Development may accept it with a warning to make
 iteration easier.
 
 The next application bootstrap updates SQL in a single transaction. Existing
-executions remain reproducible because each run owns an
-`instructions-snapshot.json` containing the exact definitions it used.
+Codex executions remain reproducible because each PipelineRun Activity snapshot
+contains the exact selected Persona and Skill definitions it used.
 
 ## Retire a builtin
 
@@ -93,6 +93,6 @@ construct repositories and services
 ```
 
 Only startup reads packaged Markdown. API, loop resolution, and execution read
-the effective Project library from SQL. Builtins are globally shared and
-immutable through the API; Projects can enable, disable, or duplicate them.
-Custom instructions belong to one Project and remain editable.
+the effective User library from SQL. Builtins are globally shared and
+immutable through the API; Users can enable, disable, or duplicate them.
+Custom instructions belong to one User and remain editable.

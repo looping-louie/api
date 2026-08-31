@@ -37,10 +37,14 @@ Activity, Pipeline, then User scope. For `louie`, run creation requires
 an effective model ID, selects the first deterministically ordered compatible,
 enabled, configured User-owned Linked Service, and freezes its identity and
 owner in a private `model_target` snapshot. `codex_cli` does not select API
-Linked Services or require API provider credentials. Harnesses resolve at
-Activity, Pipeline, then User scope. A missing Louie agent model
-fails run creation; Personas contribute instructions only. When no Harness
-candidate exists, the frozen Harness is the `louie` v1 compatibility default.
+Linked Services or require API provider credentials. Instead, PipelineRun
+creation resolves the selected generator Persona and its ordered Skills from
+the User-owned instruction library and freezes their IDs, versions, metadata,
+and content in the Activity snapshot. The `run_harness` payload exposes that
+same immutable snapshot to the runtime. Harnesses resolve at Activity,
+Pipeline, then User scope. A missing Louie agent model fails run creation;
+Personas contribute instructions only. When no Harness candidate exists, the
+frozen Harness is the `louie` v1 compatibility default.
 
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
 from typing import Callable, Mapping
 
-from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline import PipelineDetails, PipelineHarness
+from src.app.models.pipeline import PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
     PipelineRunDocument,
@@ -21,7 +19,12 @@ from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.models import ModelExecutionService
+from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
+from src.app.services.pipeline_runs.snapshot import (
+    PipelineRunSnapshotBuilder,
+    harness_snapshot,
+)
 from src.app.services.pipeline_runs.types import (
     PipelineRunNotFoundError,
     PipelineRunPreconditionFailedError,
@@ -47,6 +50,7 @@ class PipelineRunService:
         workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         model_execution_service: ModelExecutionService | None = None,
+        instruction_library_service: ExecutionInstructionLibraryService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -60,7 +64,10 @@ class PipelineRunService:
         self._worker_service = worker_service
         self._workspace_service = workspace_service
         self._user_service = user_service
-        self._model_execution_service = model_execution_service
+        self._snapshot_builder = PipelineRunSnapshotBuilder(
+            model_execution_service=model_execution_service,
+            instruction_library_service=instruction_library_service,
+        )
         self._id_factory = id_factory
         self._clock = clock
         self._token_factory = token_factory
@@ -102,18 +109,21 @@ class PipelineRunService:
         )
         now = self._clock()
         run_id = self._id_factory()
+        activity_snapshots = await self._snapshot_builder.activity_snapshots(
+            details.activities,
+            project_id=workspace.project_id,
+            user_id=user_id,
+            inherited_model_id=inherited_model_id,
+            inherited_harness=inherited_harness,
+        )
         steps = []
-        for position, activity in enumerate(details.activities):
+        for position, (activity, activity_snapshot) in enumerate(
+            zip(details.activities, activity_snapshots, strict=True)
+        ):
             steps.append(PipelineRunStepDocument(
                 position=position, activity_id=activity.id, status='pending',
                 activity_run_id=None,
-                activity_snapshot=await self._activity_snapshot(
-                    activity,
-                    project_id=workspace.project_id,
-                    user_id=user_id,
-                    inherited_model_id=inherited_model_id,
-                    inherited_harness=inherited_harness,
-                ),
+                activity_snapshot=activity_snapshot,
                 updated_at=now,
             ))
         document = PipelineRunDocument(
@@ -122,7 +132,7 @@ class PipelineRunService:
             commit_mode=commit_mode,
             status='prepared', worker_id=None, lease_token=None,
             lease_expires_at=None, attempt=0, current_activity_run_id=None,
-            pipeline_snapshot=self._pipeline_snapshot(
+            pipeline_snapshot=self._snapshot_builder.pipeline_snapshot(
                 details,
                 harness=inherited_harness,
             ),
@@ -255,7 +265,7 @@ class PipelineRunService:
             await self._worker_service.require_harness(
                 project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
-                harness=self._harness_snapshot(candidate.pipeline_snapshot),
+                harness=harness_snapshot(candidate.pipeline_snapshot),
             )
         if if_match != pipeline_run_etag(candidate):
             raise PipelineRunPreconditionFailedError(
@@ -550,7 +560,7 @@ class PipelineRunService:
             activity_snapshot={
                 **ready.activity_snapshot,
                 'commit_mode': document.commit_mode,
-                'harness': self._harness_snapshot(ready.activity_snapshot),
+                'harness': harness_snapshot(ready.activity_snapshot),
             },
             execution_context={}, created_at=now, created_by=user_id, updated_at=now,
         )
@@ -687,139 +697,6 @@ class PipelineRunService:
             payload=dict(payload),
             created_at=created_at,
         )
-
-    @staticmethod
-    def _pipeline_snapshot(
-        details: PipelineDetails,
-        *,
-        harness: PipelineHarness,
-    ) -> dict[str, object]:
-        """Capture graph dependencies by immutable activity IDs for scheduling."""
-
-        return {
-            'pipeline_id': details.document.id,
-            'harness': {
-                'kind': harness.kind,
-                'version': harness.version,
-                'config': dict(harness.config),
-            },
-            'steps': [
-                {
-                    'activity_id': step.activity_id,
-                    'depends_on': [
-                        {'activity_id': dependency.activity_id, 'condition': dependency.condition}
-                        for dependency in step.depends_on
-                    ],
-                }
-                for step in details.document.steps
-            ],
-        }
-
-    async def _activity_snapshot(
-        self,
-        activity: ActivityDocument,
-        *,
-        project_id: str,
-        user_id: str,
-        inherited_model_id: str | None,
-        inherited_harness: PipelineHarness,
-    ) -> dict[str, object]:
-        """Freeze an executable activity in the format used by activity runs."""
-
-        model_id = activity.model_id or inherited_model_id
-        harness = activity.harness or inherited_harness
-        config = deepcopy(activity.config)
-        agents = config.get('agents')
-        if isinstance(agents, list):
-            config['agents'] = [
-                await self._agent_snapshot(
-                    agent=agent,
-                    project_id=project_id,
-                    user_id=user_id,
-                    inherited_model_id=model_id,
-                    harness=harness,
-                )
-                if isinstance(agent, dict)
-                else agent
-                for agent in agents
-            ]
-        execution_harness = {
-            'kind': harness.kind,
-            'version': harness.version,
-            'config': dict(harness.config),
-        }
-        if activity.type in ('approval', 'quiz'):
-            return {
-                'id': activity.id,
-                'title': activity.name,
-                'description': activity.description,
-                'type': activity.type,
-                'executor': 'human',
-                'harness': execution_harness,
-                **config,
-            }
-        flows = {
-            'direct_loop': 'direct',
-            'refinement_loop': 'refinement',
-            'roundtable_loop': 'roundtable',
-        }
-        flow = flows.get(activity.type)
-        if flow is None:
-            raise PipelineRunUnavailableError(
-                pipeline_id='unknown', reason=f'activity {activity.id} is not executable',
-            )
-        return {
-            'id': activity.id, 'title': activity.name,
-            'description': activity.description,
-            'harness': execution_harness,
-            **config,
-            'flow': flow,
-        }
-
-    async def _agent_snapshot(
-        self,
-        *,
-        agent: dict[str, object],
-        project_id: str,
-        user_id: str,
-        inherited_model_id: str | None,
-        harness: PipelineHarness,
-    ) -> dict[str, object]:
-        """Freeze Louie provider routing for an effective logical model ID."""
-
-        snapshot = dict(agent)
-        if harness.kind != 'louie':
-            return snapshot
-        model_id = snapshot.get('model_id')
-        if not isinstance(model_id, str):
-            model_id = inherited_model_id
-        if not isinstance(model_id, str):
-            raise PipelineRunUnavailableError(
-                pipeline_id='unknown',
-                reason='louie execution requires a model_id',
-            )
-        if self._model_execution_service is None:
-            raise RuntimeError('Louie model execution is not configured.')
-        linked_service = await self._model_execution_service.select_linked_service(
-            project_id=project_id,
-            model_id=model_id,
-            user_id=user_id,
-        )
-        snapshot['model_target'] = {
-            'linked_service_id': linked_service.id,
-            'linked_service_user_id': linked_service.user_id,
-            'model_id': model_id,
-        }
-        return snapshot
-
-    @staticmethod
-    def _harness_snapshot(snapshot: Mapping[str, object]) -> dict[str, object]:
-        """Return the persisted Harness or the legacy Louie compatibility value."""
-
-        harness = snapshot.get('harness')
-        if isinstance(harness, Mapping):
-            return dict(harness)
-        return {'kind': 'louie', 'version': 'v1', 'config': {}}
 
     @staticmethod
     def _dependencies(snapshot: Mapping[str, object]) -> dict[str, list[dict[str, str]]]:
