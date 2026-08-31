@@ -9,11 +9,13 @@ provider.
 
 ## Worker provisioning
 
-The API provisions each Project worker identity. The runtime stores the
-assigned ID in its Project configuration and refreshes its heartbeat before
-polling. PipelineRun claims require an active worker heartbeat, while the
-existing PipelineRun lease continues to authorize only one claimed run.
-Heartbeat liveness never renews or revokes a lease.
+The API provisions each Project worker identity under the authenticated User.
+On initial provisioning, the runtime submits its locally detected Harnesses,
+stores the assigned ID in its Project configuration, and reuses it on later
+starts. It refreshes the worker heartbeat before polling. PipelineRun claims
+require an active worker heartbeat, while the existing PipelineRun lease
+continues to authorize only one claimed run. Heartbeat liveness never renews or
+revokes a lease.
 
 ## Ownership boundaries
 

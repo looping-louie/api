@@ -15,7 +15,8 @@ extend a lease, and an expired heartbeat does not revoke an existing lease.
 | `POST` | `/api/v1/workers` | Provision a worker identity. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh an existing worker heartbeat. |
 
-Both endpoints use `X-Project-ID` to select the worker's Project.
+Both endpoints require `X-User-ID` and use `X-Project-ID` to select one of that
+User's Projects.
 
 ## Observe Worker Liveness
 
@@ -35,6 +36,7 @@ configuration. Store the returned ID in that Project's runtime configuration.
 
 ```http
 POST /api/v1/workers
+X-User-ID: user-acme
 X-Project-ID: project-acme
 Content-Type: application/json
 ```
@@ -78,5 +80,6 @@ for an existing provisioned worker. An unknown worker returns
 
 ```http
 POST /api/v1/workers/runtime-local-01/heartbeat
+X-User-ID: user-acme
 X-Project-ID: project-acme
 ```

@@ -72,7 +72,8 @@ the `louie` Harness, even when a compatible Linked Service is ready.
 
 Workers advertise their available Harness capabilities during registration. A
 PipelineRun claim requires an active Worker heartbeat and an exact match for
-the frozen Pipeline Harness selection.
+the frozen Pipeline Harness selection. Registration and heartbeat requests
+carry both the acting `X-User-ID` and selected `X-Project-ID`.
 
 User settings use explicit nullable values: an absent `default_model_id` or
 `default_harness` leaves the value unset after narrower Activity and Pipeline
