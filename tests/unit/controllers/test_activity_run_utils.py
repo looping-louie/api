@@ -25,6 +25,7 @@ def test_run_harness_payload_exposes_frozen_instruction_snapshot() -> None:
         activity_snapshot={
             'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
             'commit_mode': 'allow',
+            'requested_model': 'gpt-5-codex',
             'instruction_snapshot': instruction_snapshot,
         },
         execution_context={
@@ -39,6 +40,7 @@ def test_run_harness_payload_exposes_frozen_instruction_snapshot() -> None:
 
     assert response.payload['instruction_snapshot'] == instruction_snapshot
     assert response.payload['commit_mode'] == 'allow'
+    assert response.payload['requested_model'] == 'gpt-5-codex'
 
 
 def test_run_harness_result_accepts_commit_message() -> None:
@@ -49,6 +51,10 @@ def test_run_harness_result_accepts_commit_message() -> None:
         'completed': True,
         'final_response': 'Implemented the requested change.',
         'commit_message': 'feat: implement requested change',
+        'requested_model': 'gpt-5-codex',
+        'actual_model': 'gpt-5-codex',
     })
 
     assert result.commit_message == 'feat: implement requested change'
+    assert result.requested_model == 'gpt-5-codex'
+    assert result.actual_model == 'gpt-5-codex'

@@ -38,11 +38,12 @@ an effective model ID, selects the first deterministically ordered compatible,
 enabled, configured User-owned Linked Service, and freezes its identity and
 owner in a private `model_target` snapshot. `codex_cli` does not select API
 Linked Services or require API provider credentials. Instead, PipelineRun
-creation resolves the selected generator Persona and its ordered Skills from
-the User-owned instruction library and freezes their IDs, versions, metadata,
-and content in the Activity snapshot. The `run_harness` payload exposes that
-same immutable snapshot to the runtime. Harnesses resolve at Activity,
-Pipeline, then User scope. A missing Louie agent model fails run creation;
+creation freezes the effective generator model as `requested_model`, resolves
+the selected generator Persona and its ordered Skills from the User-owned
+instruction library, and freezes their IDs, versions, metadata, and content in
+the Activity snapshot. The `run_harness` payload exposes that same immutable
+model and instruction snapshot to the runtime. Harnesses resolve at Activity,
+Pipeline, then User scope. A missing effective model fails run creation;
 Personas contribute instructions only. When no Harness candidate exists, the
 frozen Harness is the `louie` v1 compatibility default.
 
@@ -50,6 +51,8 @@ A successful `codex_cli` result includes a proposed `commit_message` whenever
 the frozen commit mode allows commits. The API validates and persists that
 message as a runtime artifact, then exposes it only through the later
 `commit_if_allowed` checkpoint. Codex does not authorize or perform the commit.
+The result also records `requested_model` and `actual_model`; the requested
+value must match the immutable Activity snapshot.
 
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;

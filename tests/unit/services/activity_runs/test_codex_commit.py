@@ -39,15 +39,21 @@ async def test_completed_codex_turn_publishes_commit_message(
             'completed': True,
             'final_response': 'Implemented the change.',
             'commit_message': 'feat: implement requested change',
+            'requested_model': 'gpt-5-codex',
+            'actual_model': 'gpt-5.1-codex',
         },
     )
 
     assert result.next_action == 'commit_if_allowed'
     assert result.execution_context['runtime_artifacts'] == {
         'commit_message': 'feat: implement requested change',
+        'requested_model': 'gpt-5-codex',
+        'actual_model': 'gpt-5.1-codex',
     }
     assert activity_run_response(repository.document).payload == {
         'commit_message': 'feat: implement requested change',
+        'requested_model': 'gpt-5-codex',
+        'actual_model': 'gpt-5.1-codex',
     }
 
 
@@ -71,7 +77,44 @@ async def test_completed_codex_turn_requires_commit_message_when_allowed(
             pipeline_run_id='pipeline-run-1', lease_token='lease-1',
             continuation_token='token-1', idempotency_key='harness-1',
             action='run_harness',
-            result={'action': 'run_harness', 'completed': True},
+            result={
+                'action': 'run_harness',
+                'completed': True,
+                'requested_model': 'gpt-5-codex',
+                'actual_model': 'gpt-5-codex',
+            },
+        )
+
+    assert repository.transition_arguments is None
+
+
+@pytest.mark.asyncio
+async def test_completed_codex_turn_rejects_a_different_requested_model(
+    tenant_service: TenantService,
+) -> None:
+    """A worker cannot replace the model frozen by the PipelineRun."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='allow',
+    )
+
+    with pytest.raises(
+        ActivityRunValidationError,
+        match='result.requested_model.*must match the frozen requested model',
+    ):
+        await service.continue_run(
+            user_id='user-1', activity_id=activity.id, run_id='run-1',
+            pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+            continuation_token='token-1', idempotency_key='harness-1',
+            action='run_harness',
+            result={
+                'action': 'run_harness',
+                'completed': True,
+                'commit_message': 'feat: implement requested change',
+                'requested_model': 'worker-local-model',
+                'actual_model': 'worker-local-model',
+            },
         )
 
     assert repository.transition_arguments is None
@@ -93,12 +136,20 @@ async def test_forbidden_codex_commit_does_not_require_message(
         pipeline_run_id='pipeline-run-1', lease_token='lease-1',
         continuation_token='token-1', idempotency_key='harness-1',
         action='run_harness',
-        result={'action': 'run_harness', 'completed': True},
+        result={
+            'action': 'run_harness',
+            'completed': True,
+            'requested_model': 'gpt-5-codex',
+            'actual_model': 'gpt-5-codex',
+        },
     )
 
     assert result.status == 'completed'
     assert result.next_action == 'none'
-    assert 'runtime_artifacts' not in result.execution_context
+    assert result.execution_context['runtime_artifacts'] == {
+        'requested_model': 'gpt-5-codex',
+        'actual_model': 'gpt-5-codex',
+    }
 
 
 def _service(
@@ -122,6 +173,7 @@ def _service(
         activity_snapshot={
             'flow': 'direct',
             'commit_mode': commit_mode,
+            'requested_model': 'gpt-5-codex',
             'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         },
         execution_context={}, created_at=now, created_by='user-1', updated_at=now,

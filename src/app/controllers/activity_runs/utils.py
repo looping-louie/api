@@ -43,6 +43,7 @@ def activity_run_response(document: object) -> ActivityRunResponse:
         return response.model_copy(update={'payload': {
             'harness': harness,
             'commit_mode': snapshot.get('commit_mode', 'allow'),
+            'requested_model': snapshot.get('requested_model'),
             'instruction_snapshot': snapshot.get('instruction_snapshot', {}),
             'repo_context': context.get('repo_context', ''),
             'constitution': context.get('constitution', ''),

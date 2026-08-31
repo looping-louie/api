@@ -72,6 +72,8 @@ Every loop agent requires a `persona_id` and `role`. Its `model_id` is nullable.
 Activity definition validation permits an absent model ID. For `louie`, run
 creation rejects an agent when no effective model ID is available after
 inheritance.
+For `codex_cli`, the same inheritance order is frozen as `requested_model` in
+the child run; API Linked Services are not selected for local Codex execution.
 
 ## Activity runs
 
@@ -752,7 +754,10 @@ Pipeline additionally requires its `pipeline_run_id` and active Pipeline
 `409 activity_run_invalid_transition` before persisting a checkpoint result.
 For `run_harness`, a successful commit-enabled Codex result must include a
 non-empty `commit_message`. The API preserves it and returns it later as the
-payload of `commit_if_allowed`; `commit_mode=forbid` does not require it.
+payload of `commit_if_allowed`; `commit_mode=forbid` does not require it. Every
+successful Codex result must also include `requested_model` and `actual_model`.
+The requested value must equal the model frozen in the Activity snapshot; both
+values are persisted as runtime artifacts.
 
 Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`. An invalid or stale continuation token returns

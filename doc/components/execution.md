@@ -32,7 +32,7 @@ The following Harness kinds define the initial compatibility model:
 | ------------ | ------------------------ | ------------------ |
 | `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
 | `human` | `approval`, `quiz` | A person submits a terminal decision. |
-| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn, then reports normalized results and a commit proposal through `run_harness`. |
+| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn with the API-frozen model, then reports normalized results and a commit proposal through `run_harness`. |
 
 ## Execution lifecycle
 
@@ -41,12 +41,14 @@ The following Harness kinds define the initial compatibility model:
 The API persists the activity snapshot, frozen Harness selection, run status,
 checkpoint action, iteration, and continuation revision in SQLite.
 
-For each `codex_cli` Activity, PipelineRun creation also resolves the generator
-Persona and its ordered Skills from the User-owned instruction library. Their
-IDs, versions, metadata, and content are persisted as a versioned
-`instruction_snapshot` inside the immutable Activity snapshot. The
-`run_harness` checkpoint payload returns that exact snapshot; neither the API
-nor the runtime resolves the mutable Persona or Skill resources again.
+For each `codex_cli` Activity, PipelineRun creation also freezes the effective
+generator model as `requested_model` and resolves the generator Persona and its
+ordered Skills from the User-owned instruction library. Their IDs, versions,
+metadata, and content are persisted as a versioned `instruction_snapshot`
+inside the immutable Activity snapshot. The `run_harness` checkpoint payload
+returns that exact model and instruction snapshot; neither the API nor the
+runtime resolves the mutable resources again. Codex authentication and the
+executable remain local worker concerns; API Linked Services are not used.
 
 ### 2. Receive repository context from the runtime
 
@@ -116,6 +118,9 @@ the commit and reports the result. A commit-enabled Codex turn must propose a
 non-empty `commit_message`; the API persists it and returns it in the later
 `commit_if_allowed` payload. A `forbid` run neither requires the message nor
 enters the commit checkpoint.
+Every successful Codex result also contains `requested_model` and
+`actual_model`. The API validates the requested value against the frozen
+snapshot and persists both as runtime artifacts.
 
 ## Prompt lifecycle
 

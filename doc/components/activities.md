@@ -85,8 +85,9 @@ freezes an effective Harness for every runtime-executable child Activity-run,
 preferring Activity, Pipeline, then User scope. The `louie` Harness is
 the compatibility default. PipelineRun creation also freezes agent model
 selections, preferring agent, Activity, Pipeline, then User scope. Only
-an agent with an explicit `model_id` can generate a model request; Personas
-provide instructions only. Human Activities use the built-in `human`
+an effective model can generate a model request; `codex_cli` stores it as the
+immutable `requested_model`, while Personas provide instructions only. Human
+Activities use the built-in `human`
 execution mode and submit a terminal decision checkpoint; they do not execute
 through a Harness.
 

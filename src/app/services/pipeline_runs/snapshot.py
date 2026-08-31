@@ -130,6 +130,10 @@ class PipelineRunSnapshotBuilder:
                 **config,
             }
         if harness.kind == 'codex_cli':
+            config['requested_model'] = self._codex_requested_model(
+                config=config,
+                inherited_model_id=model_id,
+            )
             config['instruction_snapshot'] = self._instruction_snapshot(
                 config=config,
                 instruction_library=instruction_library,
@@ -189,6 +193,38 @@ class PipelineRunSnapshotBuilder:
             'model_id': model_id,
         }
         return snapshot
+
+    @staticmethod
+    def _codex_requested_model(
+        *,
+        config: Mapping[str, object],
+        inherited_model_id: str | None,
+    ) -> str:
+        """Resolve the generator, Activity, Pipeline, then User Codex model."""
+
+        agents = config.get('agents')
+        generator = (
+            next(
+                (
+                    agent
+                    for agent in agents
+                    if isinstance(agent, Mapping)
+                    and agent.get('role') == 'generator'
+                ),
+                None,
+            )
+            if isinstance(agents, list)
+            else None
+        )
+        model_id = generator.get('model_id') if generator is not None else None
+        if not isinstance(model_id, str):
+            model_id = inherited_model_id
+        if not isinstance(model_id, str):
+            raise PipelineRunUnavailableError(
+                pipeline_id='unknown',
+                reason='codex_cli execution requires a model_id',
+            )
+        return model_id
 
     @staticmethod
     def _instruction_snapshot(

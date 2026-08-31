@@ -75,6 +75,8 @@ class ActivityRunHarnessResult(RequestSchema):
     completed: bool
     final_response: str = ''
     commit_message: str | None = None
+    requested_model: NonEmptyString | None = None
+    actual_model: NonEmptyString | None = None
     final_diff: str = ''
     changed_files: list[str] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)

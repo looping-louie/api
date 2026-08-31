@@ -16,6 +16,7 @@ from src.app.models.pipeline import (
 )
 from src.app.models.user import UserDocument, UserSettings
 from src.app.services.pipeline_runs.service import PipelineRunService
+from src.app.services.pipeline_runs.types import PipelineRunUnavailableError
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.unit.services.pipeline_runs.test_service import (
@@ -164,6 +165,7 @@ async def test_create_freezes_codex_persona_skills_and_execution_defaults(
     second_agent = created.steps[1].activity_snapshot['agents'][0]
     assert created.pipeline_snapshot['harness']['kind'] == 'louie'
     assert first_snapshot['harness']['kind'] == 'codex_cli'
+    assert first_snapshot['requested_model'] == 'model-agent'
     assert first_agent['model_id'] == 'model-agent'
     assert first_snapshot['instruction_snapshot']['persona']['id'] == 'persona-1'
     assert first_snapshot['instruction_snapshot']['persona']['version'] == 2
@@ -223,7 +225,52 @@ async def test_create_freezes_user_execution_defaults_when_unset(
 
     assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
     assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
+    assert created.steps[0].activity_snapshot['requested_model'] == 'model-user'
     assert 'model_id' not in created.steps[0].activity_snapshot['agents'][0]
     assert created.steps[0].activity_snapshot['instruction_snapshot']['persona'][
         'id'
     ] == 'persona-1'
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_codex_without_an_effective_model(
+    tenant_service: TenantService,
+) -> None:
+    """A Codex PipelineRun cannot depend on the worker's local model default."""
+
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    configured_activity = replace(
+        activity('activity-1'),
+        harness=PipelineHarness(kind='codex_cli'),
+        config={
+            **activity('activity-1').config,
+            'agents': [{'persona_id': 'persona-1', 'role': 'generator'}],
+        },
+    )
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', name='Pipeline',
+            description='Run configured steps.', status='active',
+            steps=(PipelineActivityStep(activity_id=configured_activity.id),),
+            created_at=now, created_by='user-1', updated_at=now,
+            updated_by='user-1',
+        ),
+        activities=(configured_activity,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs,
+        activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details),
+        tenant_service=tenant_service,
+        instruction_library_service=StaticInstructionLibraryService(),  # type: ignore[arg-type]
+        id_factory=lambda: 'run-1', clock=IncrementingClock(),
+    )
+
+    with pytest.raises(
+        PipelineRunUnavailableError,
+        match='codex_cli execution requires a model_id',
+    ):
+        await service.create(
+            user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+        )
