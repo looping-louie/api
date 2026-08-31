@@ -138,12 +138,14 @@ run completes after approved operations without emitting a commit checkpoint;
 the runtime's local Git policy may further deny an allowed commit but cannot
 grant one forbidden by the persisted run policy.
 
-Pipeline runs preserve an append-only event ledger. A ready `approval` or
-`quiz` Activity creates a normal child Activity run with a human executor and
-transitions the Pipeline to `waiting` without assigning a worker lease. Users
-submit its decision through the Activity-run continuation API. A rejected
-human Activity run resets frozen predecessor steps for corrective execution;
-the scheduler creates a new human child after those steps complete again.
+Pipeline runs preserve an append-only event ledger. It records run creation,
+each worker claim, step start and terminal state, and the complete normalized
+Codex turn observation. A ready `approval` or `quiz` Activity creates a normal
+child Activity run with a human executor and transitions the Pipeline to
+`waiting` without assigning a worker lease. Users submit its decision through
+the Activity-run continuation API. A rejected human Activity run resets frozen
+predecessor steps for corrective execution; the scheduler creates a new human
+child after those steps complete again.
 
 ## Repository structure
 
@@ -186,6 +188,7 @@ services/
 |-- activity_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for loop Activities
+|   |-- harness_result.py          Normalizes Codex observations and Git outcome
 |   |-- operation_plan.py          Validates model-generated filesystem changes
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints
@@ -233,7 +236,9 @@ services/
 |-- pipeline_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- etag.py                    Creates concurrency entity tags
+|   |-- events.py                  Builds scheduler and Codex ledger events
 |   |-- service.py                 Creates, reads, and advances Pipeline runs
+|   |-- snapshot.py                Freezes models, Harnesses, and instructions
 |   `-- types.py                   Defines execution errors
 |-- providers/
 |   |-- __init__.py                Defines the package's public imports

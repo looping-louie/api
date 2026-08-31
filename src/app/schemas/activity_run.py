@@ -68,20 +68,38 @@ class ActivityRunApplyOperationsResult(RequestSchema):
     error: str | None = None
 
 
+class ActivityRunHarnessSkillResult(RequestSchema):
+    """One versioned Skill actually materialized for a Harness turn."""
+
+    id: NonEmptyString
+    name: NonEmptyString
+    version: PositiveInteger
+
+
 class ActivityRunHarnessResult(RequestSchema):
     """Result of one Worker-owned Harness execution turn."""
 
     action: Literal['run_harness']
     completed: bool
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration_ms: int | None = Field(default=None, ge=0)
     final_response: str = ''
     commit_message: str | None = None
     requested_model: NonEmptyString | None = None
     actual_model: NonEmptyString | None = None
+    reasoning_effort: NonEmptyString | None = None
+    session_reference: NonEmptyString | None = None
+    exit_code: int | None = None
+    materialized_skills: list[ActivityRunHarnessSkillResult] = Field(
+        default_factory=list,
+    )
+    source_commit_sha: NonEmptyString | None = None
+    final_commit_sha: NonEmptyString | None = None
     final_diff: str = ''
     changed_files: list[str] = Field(default_factory=list)
     usage: dict[str, int] = Field(default_factory=dict)
     diagnostics: list[str] = Field(default_factory=list)
-    session_reference: str | None = None
     error: str | None = None
 
 

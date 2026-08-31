@@ -51,8 +51,18 @@ A successful `codex_cli` result includes a proposed `commit_message` whenever
 the frozen commit mode allows commits. The API validates and persists that
 message as a runtime artifact, then exposes it only through the later
 `commit_if_allowed` checkpoint. Codex does not authorize or perform the commit.
-The result also records `requested_model` and `actual_model`; the requested
-value must match the immutable Activity snapshot.
+The normalized result remains available in the ActivityRun `payload` on both
+success and failure. It records timestamps and duration, requested and actual
+model, reasoning effort when observable, session reference, token usage, exit
+code and diagnostics, materialized Skill IDs and versions, source and final Git
+commits, diff, changed files, and final response. The requested model must match
+the immutable Activity snapshot; a later authorized commit updates the final
+commit SHA without discarding the Harness observation.
+
+The PipelineRun event ledger records `pipeline_run_claimed`,
+`pipeline_step_started`, terminal step events, and `codex_turn_completed` or
+`codex_turn_failed` in addition to `pipeline_run_created`. Codex turn events
+contain the same normalized observation exposed by the child ActivityRun.
 
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;

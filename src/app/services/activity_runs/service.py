@@ -22,7 +22,10 @@ from src.app.services.execution_instructions import ExecutionInstructionLibraryS
 from src.app.services.activity_runs.generation import (
     ActivityRunGenerationService,
 )
-from src.app.services.activity_runs.harness_result import codex_runtime_artifacts
+from src.app.services.activity_runs.harness_result import (
+    codex_runtime_artifacts,
+    with_codex_commit_result,
+)
 from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
@@ -288,7 +291,7 @@ class ActivityRunService:
             context['apply_result' if action == 'apply_operations' else 'harness_result'] = dict(result)
             applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
-            if action == 'run_harness' and applied:
+            if action == 'run_harness':
                 context['runtime_artifacts'] = codex_runtime_artifacts(
                     activity_snapshot=document.activity_snapshot,
                     result=result,
@@ -355,13 +358,23 @@ class ActivityRunService:
             )
         if action == 'commit_if_allowed':
             committed = result.get('committed') is True
+            updated_context = {**context, 'commit_result': dict(result)}
+            artifacts = context.get('runtime_artifacts')
+            if self._uses_codex_cli(document.activity_snapshot) and isinstance(
+                artifacts,
+                Mapping,
+            ):
+                updated_context['runtime_artifacts'] = with_codex_commit_result(
+                    artifacts=artifacts,
+                    result=result,
+                )
             return await self._transition(
                 document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='completed' if committed else 'failed',
                 state='completed' if committed else 'failed', next_action='none',
-                next_token=None, context={**context, 'commit_result': dict(result)},
+                next_token=None, context=updated_context,
             )
         raise ActivityRunValidationError(
             field_name='result.action',

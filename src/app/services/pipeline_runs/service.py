@@ -12,7 +12,6 @@ from src.app.models.pipeline import PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
     PipelineRunDocument,
-    PipelineRunEventDocument,
     PipelineRunStepDocument,
 )
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
@@ -21,6 +20,7 @@ from src.app.services.pipelines.service import PipelineService
 from src.app.services.models import ModelExecutionService
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
+from src.app.services.pipeline_runs.events import PipelineRunEventBuilder
 from src.app.services.pipeline_runs.snapshot import (
     PipelineRunSnapshotBuilder,
     harness_snapshot,
@@ -69,6 +69,7 @@ class PipelineRunService:
             instruction_library_service=instruction_library_service,
         )
         self._id_factory = id_factory
+        self._event_builder = PipelineRunEventBuilder(id_factory)
         self._clock = clock
         self._token_factory = token_factory
 
@@ -138,13 +139,11 @@ class PipelineRunService:
             ),
             steps=tuple(steps),
             events=(
-                self._event(
+                self._event_builder.created(
                     project_id=workspace.project_id,
                     run_id=run_id,
-                    event_type='pipeline_run_created',
-                    activity_id=None,
                     actor_id=self._require_text(user_id),
-                    payload={'commit_mode': commit_mode},
+                    commit_mode=commit_mode,
                     created_at=now,
                 ),
             ),
@@ -189,6 +188,16 @@ class PipelineRunService:
             user_id=user_id,
             materialize_runtime=False,
         )
+        if child is not None:
+            selected = replace(
+                selected,
+                events=self._event_builder.started_child(
+                    document=selected,
+                    child=child,
+                    actor_id=user_id,
+                    created_at=selected.updated_at,
+                ),
+            )
         if await self._repository.start(
             document=selected,
             expected_updated_at=document.updated_at,
@@ -313,6 +322,16 @@ class PipelineRunService:
             selected, status='claimed', worker_id=normalized_worker_id,
             lease_token=lease_token, lease_expires_at=now + lease_duration,
             attempt=candidate.attempt + 1, updated_at=now,
+        )
+        claimed = replace(
+            claimed,
+            events=self._event_builder.claimed(
+                document=claimed,
+                child=child,
+                worker_id=normalized_worker_id,
+                created_at=now,
+                step_started=candidate.current_activity_run_id is None,
+            ),
         )
         if not await self._repository.claim(
             document=claimed, expected_updated_at=candidate.updated_at,
@@ -471,6 +490,16 @@ class PipelineRunService:
             next_child = None
         else:
             selected, next_child = self._schedule(document=updated, user_id=user_id)
+        selected = replace(
+            selected,
+            events=self._event_builder.finished_child(
+                document=selected,
+                child=child,
+                actor_id=document.worker_id or user_id,
+                created_at=now,
+                next_child=next_child,
+            ),
+        )
         if await self._repository.transition(
             document=selected,
             expected_current_activity_run_id=child.id,
@@ -672,30 +701,6 @@ class PipelineRunService:
             child.activity_snapshot.get('executor') == 'human'
             and isinstance(decision, Mapping)
             and decision.get('decision') == 'rejected'
-        )
-
-    def _event(
-        self,
-        *,
-        project_id: str,
-        run_id: str,
-        event_type: str,
-        activity_id: str | None,
-        actor_id: str,
-        payload: Mapping[str, object],
-        created_at: datetime,
-    ) -> PipelineRunEventDocument:
-        """Build one immutable event for a durable Pipeline transition."""
-
-        return PipelineRunEventDocument(
-            id=self._id_factory(),
-            project_id=project_id,
-            pipeline_run_id=run_id,
-            event_type=event_type,
-            activity_id=activity_id,
-            actor_id=actor_id,
-            payload=dict(payload),
-            created_at=created_at,
         )
 
     @staticmethod

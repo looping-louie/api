@@ -35,25 +35,55 @@ async def test_completed_codex_turn_publishes_commit_message(
         continuation_token='token-1', idempotency_key='harness-1',
         action='run_harness',
         result={
-            'action': 'run_harness',
-            'completed': True,
-            'final_response': 'Implemented the change.',
+            **_harness_result(),
             'commit_message': 'feat: implement requested change',
-            'requested_model': 'gpt-5-codex',
-            'actual_model': 'gpt-5.1-codex',
         },
     )
 
     assert result.next_action == 'commit_if_allowed'
-    assert result.execution_context['runtime_artifacts'] == {
+    expected_artifacts = {
+        'completed': True,
+        'started_at': '2026-08-31T10:00:00+00:00',
+        'completed_at': '2026-08-31T10:00:02+00:00',
+        'duration_ms': 2000,
         'commit_message': 'feat: implement requested change',
         'requested_model': 'gpt-5-codex',
         'actual_model': 'gpt-5.1-codex',
+        'reasoning_effort': 'high',
+        'session_reference': 'thread-1',
+        'usage': {'input_tokens': 10, 'reasoning_output_tokens': 3},
+        'exit_code': 0,
+        'diagnostics': [],
+        'materialized_skills': [{
+            'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
+        }],
+        'source_commit_sha': 'source-sha',
+        'final_commit_sha': 'source-sha',
+        'final_diff': 'diff --git a/a.py b/a.py',
+        'changed_files': ['a.py'],
+        'final_response': 'Implemented the change.',
+        'error': None,
     }
-    assert activity_run_response(repository.document).payload == {
-        'commit_message': 'feat: implement requested change',
-        'requested_model': 'gpt-5-codex',
-        'actual_model': 'gpt-5.1-codex',
+    assert result.execution_context['runtime_artifacts'] == expected_artifacts
+    assert activity_run_response(repository.document).payload == expected_artifacts
+
+    committed = await service.continue_run(
+        user_id='user-1', activity_id=activity.id, run_id='run-1',
+        pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+        continuation_token='token-2', idempotency_key='commit-1',
+        action='commit_if_allowed',
+        result={
+            'action': 'commit_if_allowed',
+            'committed': True,
+            'commit_sha': 'final-sha',
+            'commit_message': 'feat: implement requested change',
+        },
+    )
+
+    assert committed.execution_context['runtime_artifacts'] == {
+        **expected_artifacts,
+        'committed': True,
+        'final_commit_sha': 'final-sha',
     }
 
 
@@ -77,12 +107,7 @@ async def test_completed_codex_turn_requires_commit_message_when_allowed(
             pipeline_run_id='pipeline-run-1', lease_token='lease-1',
             continuation_token='token-1', idempotency_key='harness-1',
             action='run_harness',
-            result={
-                'action': 'run_harness',
-                'completed': True,
-                'requested_model': 'gpt-5-codex',
-                'actual_model': 'gpt-5-codex',
-            },
+            result=_harness_result(),
         )
 
     assert repository.transition_arguments is None
@@ -109,8 +134,7 @@ async def test_completed_codex_turn_rejects_a_different_requested_model(
             continuation_token='token-1', idempotency_key='harness-1',
             action='run_harness',
             result={
-                'action': 'run_harness',
-                'completed': True,
+                **_harness_result(),
                 'commit_message': 'feat: implement requested change',
                 'requested_model': 'worker-local-model',
                 'actual_model': 'worker-local-model',
@@ -136,20 +160,56 @@ async def test_forbidden_codex_commit_does_not_require_message(
         pipeline_run_id='pipeline-run-1', lease_token='lease-1',
         continuation_token='token-1', idempotency_key='harness-1',
         action='run_harness',
-        result={
-            'action': 'run_harness',
-            'completed': True,
-            'requested_model': 'gpt-5-codex',
-            'actual_model': 'gpt-5-codex',
-        },
+        result=_harness_result(),
     )
 
     assert result.status == 'completed'
     assert result.next_action == 'none'
-    assert result.execution_context['runtime_artifacts'] == {
-        'requested_model': 'gpt-5-codex',
-        'actual_model': 'gpt-5-codex',
+    assert result.execution_context['runtime_artifacts']['completed'] is True
+    assert result.execution_context['runtime_artifacts']['final_response'] == (
+        'Implemented the change.'
+    )
+    assert result.execution_context['runtime_artifacts']['materialized_skills'] == [{
+        'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
+    }]
+
+
+@pytest.mark.asyncio
+async def test_failed_codex_turn_exposes_partial_observations(
+    tenant_service: TenantService,
+) -> None:
+    """A failed Harness result remains available through the ActivityRun GET view."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='allow',
+    )
+    partial = {
+        **_harness_result(),
+        'completed': False,
+        'actual_model': None,
+        'exit_code': 17,
+        'final_response': '',
+        'usage': {'input_tokens': 10},
+        'diagnostics': ['Codex failed.'],
+        'error': 'Codex failed.',
     }
+
+    failed = await service.continue_run(
+        user_id='user-1', activity_id=activity.id, run_id='run-1',
+        pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+        continuation_token='token-1', idempotency_key='harness-1',
+        action='run_harness', result=partial,
+    )
+
+    assert failed.status == 'failed'
+    payload = activity_run_response(repository.document).payload
+    assert payload['completed'] is False
+    assert payload['exit_code'] == 17
+    assert payload['session_reference'] == 'thread-1'
+    assert payload['usage'] == {'input_tokens': 10}
+    assert payload['diagnostics'] == ['Codex failed.']
+    assert payload['error'] == 'Codex failed.'
 
 
 def _service(
@@ -190,3 +250,31 @@ def _service(
         repository,
         activity,
     )
+
+
+def _harness_result() -> dict[str, object]:
+    """Build one complete normalized Codex observation."""
+
+    return {
+        'action': 'run_harness',
+        'completed': True,
+        'started_at': '2026-08-31T10:00:00+00:00',
+        'completed_at': '2026-08-31T10:00:02+00:00',
+        'duration_ms': 2000,
+        'final_response': 'Implemented the change.',
+        'requested_model': 'gpt-5-codex',
+        'actual_model': 'gpt-5.1-codex',
+        'reasoning_effort': 'high',
+        'session_reference': 'thread-1',
+        'usage': {'input_tokens': 10, 'reasoning_output_tokens': 3},
+        'exit_code': 0,
+        'diagnostics': [],
+        'materialized_skills': [{
+            'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
+        }],
+        'source_commit_sha': 'source-sha',
+        'final_commit_sha': 'source-sha',
+        'final_diff': 'diff --git a/a.py b/a.py',
+        'changed_files': ['a.py'],
+        'error': None,
+    }

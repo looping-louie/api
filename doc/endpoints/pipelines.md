@@ -998,8 +998,11 @@ belong to the Pipeline in the selected workspace.
 `GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` returns the
 append-only event ledger in creation order. Each entry has an ID, event type,
 optional Activity ID, actor ID, JSON payload, and creation time. The API emits
-`pipeline_run_created` and scheduler events. Human decisions are regular
-Activity-run checkpoints, not Pipeline-run gate events.
+`pipeline_run_created`, `pipeline_run_claimed`, `pipeline_step_started`,
+`pipeline_step_completed`, and `pipeline_step_failed`. Codex children also emit
+`codex_turn_completed` or `codex_turn_failed` with the normalized Harness
+observation, including partial observations from failed processes. Human
+decisions are regular Activity-run checkpoints, not Pipeline-run gate events.
 
 ## Complete a human Activity run
 

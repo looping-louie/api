@@ -13,28 +13,52 @@ def codex_runtime_artifacts(
     result: Mapping[str, object],
     require_commit_message: bool,
 ) -> dict[str, object]:
-    """Validate Codex model observations and its optional commit proposal."""
+    """Validate and normalize the complete Codex Harness observation."""
 
     expected_model = activity_snapshot.get('requested_model')
     requested_model = result.get('requested_model')
     actual_model = result.get('actual_model')
     if not isinstance(expected_model, str) or not expected_model.strip():
         raise RuntimeError('Codex Activity snapshot is missing requested_model.')
-    if requested_model != expected_model:
+    completed = result.get('completed') is True
+    if requested_model is not None and requested_model != expected_model:
         raise ActivityRunValidationError(
             field_name='result.requested_model',
             message='must match the frozen requested model',
         )
-    if not isinstance(actual_model, str) or not actual_model.strip():
+    if completed and requested_model != expected_model:
+        raise ActivityRunValidationError(
+            field_name='result.requested_model',
+            message='must match the frozen requested model',
+        )
+    if completed and (
+        not isinstance(actual_model, str) or not actual_model.strip()
+    ):
         raise ActivityRunValidationError(
             field_name='result.actual_model',
             message='must not be empty',
         )
     artifacts: dict[str, object] = {
-        'requested_model': requested_model,
+        'completed': completed,
+        'started_at': result.get('started_at'),
+        'completed_at': result.get('completed_at'),
+        'duration_ms': result.get('duration_ms'),
+        'requested_model': requested_model or expected_model,
         'actual_model': actual_model,
+        'reasoning_effort': result.get('reasoning_effort'),
+        'session_reference': result.get('session_reference'),
+        'usage': dict(result.get('usage', {})),
+        'exit_code': result.get('exit_code'),
+        'diagnostics': list(result.get('diagnostics', [])),
+        'materialized_skills': list(result.get('materialized_skills', [])),
+        'source_commit_sha': result.get('source_commit_sha'),
+        'final_commit_sha': result.get('final_commit_sha'),
+        'final_diff': result.get('final_diff', ''),
+        'changed_files': list(result.get('changed_files', [])),
+        'final_response': result.get('final_response', ''),
+        'error': result.get('error'),
     }
-    if require_commit_message:
+    if require_commit_message and completed:
         commit_message = result.get('commit_message')
         if not isinstance(commit_message, str) or not commit_message.strip():
             raise ActivityRunValidationError(
@@ -43,3 +67,22 @@ def codex_runtime_artifacts(
             )
         artifacts['commit_message'] = commit_message
     return artifacts
+
+
+def with_codex_commit_result(
+    *,
+    artifacts: Mapping[str, object],
+    result: Mapping[str, object],
+) -> dict[str, object]:
+    """Complete Codex observability with the authorized Git outcome."""
+
+    updated = dict(artifacts)
+    committed = result.get('committed') is True
+    updated['committed'] = committed
+    commit_sha = result.get('commit_sha')
+    if committed and isinstance(commit_sha, str) and commit_sha.strip():
+        updated['final_commit_sha'] = commit_sha
+    commit_error = result.get('error')
+    if isinstance(commit_error, str) and commit_error.strip():
+        updated['commit_error'] = commit_error
+    return updated
