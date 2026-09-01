@@ -241,6 +241,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
                         "0056_projects",
                         "0057_local_project_seed",
                         "0058_restore_foreign_keys",
+                        "0059_harness_activity_run_checkpoints",
     ]
     assert activity_rows == []
 

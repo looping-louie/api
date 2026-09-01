@@ -65,16 +65,16 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
         project_id='workspace-1', activity_id='activity-1', run_id='run-1',
         continuation_token='token-0', idempotency_key='request-1',
         expected_action='collect_snapshot', status='in_progress',
-        state='awaiting_apply', next_action='apply_operations',
-        next_continuation_token='token-1', execution_context={'operations': []},
+        state='awaiting_harness', next_action='run_harness',
+        next_continuation_token='token-1', execution_context={'turn': {}},
         updated_at=timestamp,
     )
     replayed = await repository.transition(
         project_id='workspace-1', activity_id='activity-1', run_id='run-1',
         continuation_token='token-0', idempotency_key='request-1',
         expected_action='collect_snapshot', status='in_progress',
-        state='awaiting_apply', next_action='apply_operations',
-        next_continuation_token='token-1', execution_context={'operations': []},
+        state='awaiting_harness', next_action='run_harness',
+        next_continuation_token='token-1', execution_context={'turn': {}},
         updated_at=timestamp,
     )
 
@@ -84,7 +84,8 @@ async def test_activity_run_uses_dedicated_tables_and_replays_transition(
         )).fetchone()
 
     assert created == document
-    assert updated.state == 'awaiting_apply'
+    assert updated.state == 'awaiting_harness'
+    assert updated.next_action == 'run_harness'
     assert replayed == updated
     assert activity_count == (1,)
 
