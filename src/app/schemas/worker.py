@@ -1,35 +1,19 @@
 """HTTP schemas for runtime worker registration."""
 
 from datetime import datetime
-from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
+from .execution import HarnessRequest, HarnessResponse
 from .shared import RequestSchema, ResponseSchema
 
 
-class WorkerHarnessCapabilityRequest(RequestSchema):
+class WorkerHarnessCapabilityRequest(HarnessRequest):
     """One Harness capability reported during Worker registration."""
 
-    kind: Literal['louie', 'codex_cli'] = 'louie'
-    version: Literal['v1'] = 'v1'
-    config: dict[str, object] = Field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def require_empty_harness_config(self) -> 'WorkerHarnessCapabilityRequest':
-        """Reject settings not supported by the initial Harness contract."""
-
-        if self.config:
-            raise ValueError(f'{self.kind} harness config must be empty.')
-        return self
-
-
-class WorkerHarnessCapabilityResponse(ResponseSchema):
+class WorkerHarnessCapabilityResponse(HarnessResponse):
     """One persisted Harness capability advertised by a Worker."""
-
-    kind: Literal['louie', 'codex_cli']
-    version: Literal['v1']
-    config: dict[str, object]
 
 
 class WorkerCreateRequest(RequestSchema):

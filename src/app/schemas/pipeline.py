@@ -32,28 +32,12 @@ PipelineChangeTypeValue = Literal[
 ]
 
 
-class PipelineHarnessRequest(RequestSchema):
+class PipelineHarnessRequest(HarnessRequest):
     """One supported Pipeline Harness selection."""
 
-    kind: Literal['louie', 'codex_cli'] = 'louie'
-    version: Literal['v1'] = 'v1'
-    config: dict[str, object] = Field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def require_empty_harness_config(self) -> 'PipelineHarnessRequest':
-        """Reject settings not supported by the initial Harness contract."""
-
-        if self.config:
-            raise ValueError(f'{self.kind} harness config must be empty.')
-        return self
-
-
-class PipelineHarnessResponse(ResponseSchema):
+class PipelineHarnessResponse(HarnessResponse):
     """The persisted Harness selection for a Pipeline."""
-
-    kind: Literal['louie', 'codex_cli']
-    version: Literal['v1']
-    config: dict[str, object]
 
 
 class PipelineStepDependencyRequest(RequestSchema):
