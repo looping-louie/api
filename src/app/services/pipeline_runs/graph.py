@@ -1,6 +1,8 @@
 """Shared readers for frozen Pipeline execution graphs."""
 
-from typing import Mapping
+from collections.abc import Mapping, Sequence
+
+from src.app.models.pipeline_run import PipelineRunStepDocument
 
 
 def snapshot_dependencies(
@@ -22,3 +24,23 @@ def snapshot_dependencies(
         for step in values
         if isinstance(step, dict)
     }
+
+
+def first_dependency_ready_step(
+    steps: Sequence[PipelineRunStepDocument],
+    dependencies: Mapping[str, list[dict[str, str]]],
+) -> PipelineRunStepDocument | None:
+    """Return the first pending step whose frozen dependencies are satisfied."""
+
+    by_activity_id = {step.activity_id: step for step in steps}
+    return next(
+        (
+            step for step in steps
+            if step.status == 'pending'
+            and all(
+                by_activity_id[item['activity_id']].status == item['condition']
+                for item in dependencies[step.activity_id]
+            )
+        ),
+        None,
+    )

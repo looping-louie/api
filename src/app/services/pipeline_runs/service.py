@@ -22,7 +22,10 @@ from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.events import PipelineRunEventBuilder
-from src.app.services.pipeline_runs.graph import snapshot_dependencies
+from src.app.services.pipeline_runs.graph import (
+    first_dependency_ready_step,
+    snapshot_dependencies,
+)
 from src.app.services.pipeline_runs.readiness import (
     PipelineRunReadiness,
     PipelineRunReadinessService,
@@ -580,18 +583,7 @@ class PipelineRunService:
                 for item in requirements
             ):
                 steps[index] = replace(step, status='skipped', updated_at=now)
-        by_activity_id = {step.activity_id: step for step in steps}
-        ready = next(
-            (
-                step for step in steps
-                if step.status == 'pending'
-                and all(
-                    by_activity_id[item['activity_id']].status == item['condition']
-                    for item in dependencies[step.activity_id]
-                )
-            ),
-            None,
-        )
+        ready = first_dependency_ready_step(steps, dependencies)
         if ready is None:
             status = 'completed' if all(
                 step.status in ('completed', 'failed', 'skipped') for step in steps

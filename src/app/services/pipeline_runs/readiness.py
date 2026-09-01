@@ -9,7 +9,10 @@ from typing import Literal, Mapping
 
 from src.app.models.pipeline_run import PipelineRunDocument
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
-from src.app.services.pipeline_runs.graph import snapshot_dependencies
+from src.app.services.pipeline_runs.graph import (
+    first_dependency_ready_step,
+    snapshot_dependencies,
+)
 from src.app.services.pipeline_runs.snapshot import harness_snapshot
 from src.app.services.pipeline_runs.types import PipelineRunNotFoundError
 from src.app.services.shared.tenant import TenantService
@@ -122,18 +125,10 @@ def required_harness(document: PipelineRunDocument) -> dict[str, object]:
             None,
         )
     else:
-        by_activity_id = {step.activity_id: step for step in document.steps}
         dependencies = snapshot_dependencies(document.pipeline_snapshot)
-        step = next(
-            (
-                candidate for candidate in document.steps
-                if candidate.status == 'pending'
-                and all(
-                    by_activity_id[item['activity_id']].status == item['condition']
-                    for item in dependencies[candidate.activity_id]
-                )
-            ),
-            None,
+        step = first_dependency_ready_step(
+            document.steps,
+            dependencies,
         )
     if step is None:
         raise RuntimeError('Pipeline run has no claimable step.')
