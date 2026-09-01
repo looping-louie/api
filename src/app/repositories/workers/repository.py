@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
 
 
 class WorkerRepository(Protocol):
@@ -30,8 +30,9 @@ class WorkerRepository(Protocol):
         project_id: str,
         worker_id: str,
         occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
-        """Refresh a registered worker's liveness timestamp."""
+        """Refresh liveness and optionally replace observed capabilities."""
         raise NotImplementedError
 
     async def is_active(

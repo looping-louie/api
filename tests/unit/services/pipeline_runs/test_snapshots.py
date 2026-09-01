@@ -104,6 +104,20 @@ class StaticInstructionLibraryService:
         return StaticInstructionLibrary()
 
 
+class StaticModelCatalogService:
+    """Return one fixed policy result for Codex model validation."""
+
+    def __init__(self, *, enabled: bool) -> None:
+        """Store whether the requested model is enabled."""
+
+        self._enabled = enabled
+
+    async def describe(self, **_: object) -> SimpleNamespace:
+        """Return an active logical model with the configured User policy."""
+
+        return SimpleNamespace(status='active', enabled=self._enabled)
+
+
 @pytest.mark.asyncio
 async def test_create_freezes_codex_persona_skills_and_execution_defaults(
     tenant_service: TenantService,
@@ -274,3 +288,56 @@ async def test_create_rejects_codex_without_an_effective_model(
         await service.create(
             user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
         )
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_disabled_codex_model_before_persistence(
+    tenant_service: TenantService,
+) -> None:
+    """A disabled requested model prevents any prepared run from being stored."""
+
+    now = datetime(2026, 8, 25, tzinfo=UTC)
+    configured_activity = replace(
+        activity('activity-1'),
+        harness=PipelineHarness(kind='codex_cli'),
+        config={
+            **activity('activity-1').config,
+            'agents': [{
+                'model_id': 'model-disabled',
+                'persona_id': 'persona-1',
+                'role': 'generator',
+            }],
+        },
+    )
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', name='Pipeline', description='Run one step.',
+            status='active',
+            steps=(PipelineActivityStep(activity_id=configured_activity.id),),
+            created_at=now, created_by='user-1', updated_at=now,
+            updated_by='user-1',
+        ),
+        activities=(configured_activity,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    service = PipelineRunService(
+        repository=runs,
+        activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details),
+        tenant_service=tenant_service,
+        model_catalog_service=StaticModelCatalogService(  # type: ignore[arg-type]
+            enabled=False,
+        ),
+        instruction_library_service=StaticInstructionLibraryService(),  # type: ignore[arg-type]
+        id_factory=lambda: 'run-1', clock=IncrementingClock(),
+    )
+
+    with pytest.raises(PipelineRunUnavailableError) as caught:
+        await service.create(
+            user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+        )
+
+    assert caught.value.reason_code == 'model_disabled'
+    assert caught.value.activity_id == 'activity-1'
+    assert caught.value.model_id == 'model-disabled'
+    assert runs.document is None

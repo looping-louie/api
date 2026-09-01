@@ -74,8 +74,9 @@ class SqliteWorkerRepository:
         project_id: str,
         worker_id: str,
         occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
-        """Refresh an existing worker and return its current registration."""
+        """Refresh an existing worker and its currently observed capabilities."""
 
         async with self._database.connect() as connection:
             try:
@@ -83,12 +84,18 @@ class SqliteWorkerRepository:
                 cursor = await connection.execute(
                     '''
                     UPDATE workers
-                    SET last_heartbeat_at = ?
+                    SET last_heartbeat_at = ?,
+                        harnesses_json = COALESCE(?, harnesses_json)
                     WHERE project_id = ? AND id = ?
                     RETURNING id, project_id, registered_at, last_heartbeat_at,
                         harnesses_json
                     ''',
-                    (occurred_at.isoformat(), project_id, worker_id),
+                    (
+                        occurred_at.isoformat(),
+                        _serialize_harnesses(harnesses) if harnesses is not None else None,
+                        project_id,
+                        worker_id,
+                    ),
                 )
                 try:
                     row = await cursor.fetchone()

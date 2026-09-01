@@ -17,6 +17,21 @@ def pipeline_details(error: Exception) -> ErrorDetails:
     }
 
 
+def pipeline_run_unavailable_details(error: Exception) -> ErrorDetails:
+    """Return the actionable reason that prevented PipelineRun creation."""
+
+    details: ErrorDetails = {
+        'resource_type': 'pipeline',
+        'resource_id': getattr(error, 'pipeline_id'),
+        'reason': getattr(error, 'reason_code', None),
+    }
+    for field_name in ('activity_id', 'model_id'):
+        value = getattr(error, field_name, None)
+        if value is not None:
+            details[field_name] = value
+    return details
+
+
 def unsupported_step_details(error: Exception) -> ErrorDetails:
     """Return the rejected pipeline step discriminator."""
 

@@ -18,6 +18,7 @@ from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.models import ModelExecutionService
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.events import PipelineRunEventBuilder
@@ -50,6 +51,7 @@ class PipelineRunService:
         workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         model_execution_service: ModelExecutionService | None = None,
+        model_catalog_service: ModelCatalogService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
         id_factory: Callable[[], str],
         clock: Callable[[], datetime],
@@ -66,6 +68,7 @@ class PipelineRunService:
         self._user_service = user_service
         self._snapshot_builder = PipelineRunSnapshotBuilder(
             model_execution_service=model_execution_service,
+            model_catalog_service=model_catalog_service,
             instruction_library_service=instruction_library_service,
         )
         self._id_factory = id_factory
@@ -112,6 +115,7 @@ class PipelineRunService:
         run_id = self._id_factory()
         activity_snapshots = await self._snapshot_builder.activity_snapshots(
             details.activities,
+            pipeline_id=details.document.id,
             project_id=workspace.project_id,
             user_id=user_id,
             inherited_model_id=inherited_model_id,

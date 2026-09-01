@@ -329,6 +329,7 @@ async def configure_application(
         workspace_service=project_service,
         user_service=user_service,
         model_execution_service=model_execution_service,
+        model_catalog_service=model_catalog_service,
         instruction_library_service=execution_instruction_library_service,
     )
     app.state.catalog_controller = catalog_controller

@@ -67,13 +67,19 @@ contain the same normalized observation exposed by the child ActivityRun.
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;
 `settings.configured_models` overrides that status per model ID. A disabled
-model is unavailable in current-User catalog responses and cannot be resolved by
-the `louie` Harness, even when a compatible Linked Service is ready.
+model cannot be frozen into a new run. Current-User catalog responses expose
+this policy as top-level `enabled`, independently from top-level `available`,
+which additionally requires a usable Linked Service and therefore describes
+`louie` execution readiness. `codex_cli` uses `enabled` because its
+authentication remains local to the worker.
 
-Workers advertise their available Harness capabilities during registration. A
-PipelineRun claim requires an active Worker heartbeat and an exact match for
-the frozen Pipeline Harness selection. Registration and heartbeat requests
-carry both the acting `X-User-ID` and selected `X-Project-ID`.
+Workers advertise their current Harness capabilities during registration and
+may replace them on every heartbeat. A PipelineRun claim requires an active
+Worker heartbeat and an exact match for the frozen Pipeline Harness selection.
+A valid run remains queued when no compatible worker is healthy and becomes
+claimable without a user retry after a later heartbeat advertises that Harness.
+Registration and heartbeat requests carry both the acting `X-User-ID` and
+selected `X-Project-ID`.
 
 User settings use explicit nullable values: an absent `default_model_id` or
 `default_harness` leaves the value unset after narrower Activity and Pipeline

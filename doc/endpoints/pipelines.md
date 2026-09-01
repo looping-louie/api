@@ -44,7 +44,12 @@ versions, metadata, and content in the Activity snapshot returned later in the
 child ActivityRun's `run_harness` payload. Subsequent Persona or Skill edits do
 not alter an existing run. Creation also freezes the effective generator model
 as `requested_model`; a missing effective model rejects the run instead of
-falling back to the worker's local Codex configuration.
+falling back to the worker's local Codex configuration. Unknown, deprecated,
+or User-disabled Codex models also reject creation before any PipelineRun is
+persisted. These failures return `409 pipeline_run_unavailable` with
+`details.reason`, `details.pipeline_id`, `details.activity_id`, and, when
+known, `details.model_id` so clients can present an actionable configuration
+error.
 Archived pipelines are immutable and omitted from unfiltered listings.
 
 Every Pipeline response includes top-level `model_id` and `harness` keys,
@@ -769,6 +774,12 @@ not start repository execution or allocate an ActivityRun. Use the start
 operation to make the run eligible for its assigned executor. `allow` is the
 default mode. `forbid` leaves successfully applied and approved changes
 uncommitted, and the API never schedules a commit checkpoint for that run.
+
+Creation validates every frozen execution dependency before persistence. For
+`codex_cli`, the effective generator model must exist, be active, and be enabled
+by the current User's policy. Worker liveness and local Codex authentication are
+not creation prerequisites: after start, a valid run remains `queued` until an
+active worker heartbeat advertises the frozen Harness.
 
 | Property | JSON type | Required | Restrictions |
 | -------- | --------- | -------- | ------------ |

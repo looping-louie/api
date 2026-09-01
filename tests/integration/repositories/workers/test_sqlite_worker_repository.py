@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 from src.app.repositories.workers.sqlite_repository import SqliteWorkerRepository
 from tests.integration.conftest import WorkspaceFactory
@@ -40,3 +40,33 @@ async def test_worker_repository_preserves_harnesses_across_heartbeat(
     assert heartbeated is not None
     assert heartbeated.harnesses == created.harnesses
     assert heartbeated.last_heartbeat_at > created.last_heartbeat_at
+
+
+@pytest.mark.asyncio
+async def test_worker_repository_heartbeat_replaces_harnesses(
+    sqlite_database: SqliteDatabase,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """The latest observed Harness set replaces stale registration capabilities."""
+
+    await create_workspace(project_id='workspace-1')
+    timestamp = datetime(2026, 8, 24, tzinfo=UTC)
+    repository = SqliteWorkerRepository(sqlite_database)
+    await repository.create(WorkerDocument(
+        id='worker-1', project_id='workspace-1', registered_at=timestamp,
+        last_heartbeat_at=timestamp,
+        harnesses=(
+            WorkerHarnessCapability(),
+            WorkerHarnessCapability(kind='codex_cli'),
+        ),
+    ))
+
+    heartbeated = await repository.heartbeat(
+        project_id='workspace-1',
+        worker_id='worker-1',
+        occurred_at=timestamp + timedelta(seconds=1),
+        harnesses=(WorkerHarnessCapability(),),
+    )
+
+    assert heartbeated is not None
+    assert [harness.kind for harness in heartbeated.harnesses] == ['louie']

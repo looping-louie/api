@@ -154,8 +154,13 @@ async def test_list_applies_default_and_configured_model_availability(
     )
 
     availability = {model.id: model.available for model in models}
+    enabled = {model.id: model.enabled for model in models}
     assert availability['coding-model'] is True
     assert availability['openai-model'] is False
+    assert enabled == {
+        'coding-model': True,
+        'openai-model': False,
+    }
 
 
 @pytest.mark.asyncio
@@ -191,6 +196,7 @@ async def test_describe_marks_configured_disabled_model_unavailable(
     )
 
     assert model.available is False
+    assert model.enabled is False
     assert model.offerings[0].reason == 'model_disabled'
 
 

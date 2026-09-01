@@ -71,6 +71,7 @@ class ModelOfferingAvailability:
 class ModelAvailability:
     """Aggregated availability information for one logical model."""
 
+    enabled: bool
     available: bool
     offerings: tuple[ModelOfferingAvailability, ...]
 
@@ -87,6 +88,7 @@ class ModelSummary:
     released_at: date
     capabilities: frozenset[ModelCapability]
     status: ModelStatus
+    enabled: bool
     available: bool
     offerings: tuple[ModelOfferingAvailability, ...]
     tags: tuple[str, ...]
@@ -107,6 +109,7 @@ class ModelDocument:
     replacement_model_id: str | None
     tags: tuple[str, ...]
     offerings: tuple[ModelOfferingAvailability, ...]
+    enabled: bool
     available: bool
 
 
@@ -173,6 +176,7 @@ class ModelAvailabilityService:
         )
 
         return ModelAvailability(
+            enabled=model_enabled,
             available=any(offering.available for offering in evaluated_offerings),
             offerings=evaluated_offerings,
         )
@@ -219,6 +223,11 @@ class ModelAvailabilityService:
                 for offering in offerings_by_model[model.id]
             )
             results[model.id] = ModelAvailability(
+                enabled=(
+                    model_enabled_by_id.get(model.id, True)
+                    if model_enabled_by_id is not None
+                    else True
+                ),
                 available=any(offering.available for offering in offerings),
                 offerings=offerings,
             )

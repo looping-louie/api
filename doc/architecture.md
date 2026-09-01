@@ -34,9 +34,10 @@ overrides. A missing value explicitly means no User-level default.
 
 User settings also persist model availability policy. Unconfigured logical
 models inherit `default_model_availability`, which defaults to `enabled`, and
-`configured_models` overrides the status per model ID. This policy gates both
-current-User catalog availability and `louie` User-owned Linked Service
-selection; provider readiness remains required for an enabled model.
+`configured_models` overrides the status per model ID. Current-User catalog
+documents expose this independent policy as top-level `enabled`. Top-level
+`available` additionally requires provider readiness and describes whether
+`louie` can resolve a User-owned Linked Service for the model.
 
 The hierarchy persists candidates at User, Pipeline, Activity, and loop-agent
 scopes. Pipeline and Activity store first-class nullable
@@ -54,8 +55,9 @@ provider credentials. For each Codex Activity, creation freezes the effective
 generator model as `requested_model`, resolves the generator Persona and its
 ordered Skills from the User-owned library, and freezes their versioned content
 in the Activity snapshot delivered through `run_harness`. A Codex Activity
-without an effective model ID fails run creation; Personas are instruction-only
-resources. An unset effective Harness becomes the `louie` v1
+without an effective model ID, with an unknown or deprecated model, or with a
+model disabled by User policy fails before the PipelineRun is persisted.
+Personas are instruction-only resources. An unset effective Harness becomes the `louie` v1
 compatibility default after considering the User default. Projects continue to
 select execution placement only.
 
@@ -110,8 +112,11 @@ credentials, and other local settings remain Worker-owned:
 
 `codex_cli` supports a single `direct_loop` turn. It does not replace
 API-directed scheduling, reviewer decisions, lease validation, or commit
-authorization. Workers advertise Harness capabilities during registration, and
-the API requires an exact capability match before a PipelineRun claim. The
+authorization. Workers advertise Harness capabilities during registration and
+replace the currently observed set on heartbeats. The API requires an exact
+capability match before a PipelineRun claim. A valid run remains queued while
+no active worker advertises its frozen Harness and may be claimed after a later
+heartbeat reports that Harness. The
 runtime reports the turn's final response, checkout diff, changed files, usage,
 diagnostics, requested model, actual model, and optional opaque session
 reference through `run_harness`. The payload includes the immutable effective

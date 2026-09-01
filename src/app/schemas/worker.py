@@ -40,6 +40,12 @@ class WorkerCreateRequest(RequestSchema):
     )
 
 
+class WorkerHeartbeatRequest(RequestSchema):
+    """Current Harness capabilities observed by an existing Worker."""
+
+    harnesses: list[WorkerHarnessCapabilityRequest]
+
+
 class WorkerResponse(ResponseSchema):
     """One workspace worker registration and its most recent heartbeat."""
 

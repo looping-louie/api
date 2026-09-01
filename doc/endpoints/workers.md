@@ -75,11 +75,38 @@ Example response (`201 Created`):
 ## Send A Heartbeat
 
 `POST /api/v1/workers/{worker_id}/heartbeat` refreshes the liveness timestamp
-for an existing provisioned worker. An unknown worker returns
-`404 worker_not_found`.
+for an existing provisioned worker. Its optional `harnesses` array atomically
+replaces the worker's currently observed capabilities. Omitting the body keeps
+the previously recorded capabilities for compatibility with older runtimes.
+Workers report Harness health, not a model list: `codex_cli` means that the
+configured executable and local login check currently succeed. An unknown
+worker returns `404 worker_not_found`.
 
 ```http
 POST /api/v1/workers/runtime-local-01/heartbeat
 X-User-ID: user-acme
 X-Project-ID: project-acme
+Content-Type: application/json
 ```
+
+```json
+{
+  "harnesses": [
+    {
+      "kind": "louie",
+      "version": "v1",
+      "config": {}
+    },
+    {
+      "kind": "codex_cli",
+      "version": "v1",
+      "config": {}
+    }
+  ]
+}
+```
+
+A queued PipelineRun is not invalid merely because no active worker currently
+advertises its frozen Harness. It remains queued and can be claimed
+automatically after a later heartbeat replaces the capability set with a
+matching Harness.

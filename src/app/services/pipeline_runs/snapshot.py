@@ -12,6 +12,8 @@ from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
 from src.app.services.models import ModelExecutionService
+from src.app.services.models.availability import ModelNotFoundError
+from src.app.services.models.catalog import ModelCatalogService
 
 from .types import PipelineRunUnavailableError
 
@@ -23,17 +25,20 @@ class PipelineRunSnapshotBuilder:
         self,
         *,
         model_execution_service: ModelExecutionService | None = None,
+        model_catalog_service: ModelCatalogService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
     ) -> None:
         """Store services required by Harness-specific snapshots."""
 
         self._model_execution_service = model_execution_service
+        self._model_catalog_service = model_catalog_service
         self._instruction_library_service = instruction_library_service
 
     async def activity_snapshots(
         self,
         activities: Sequence[ActivityDocument],
         *,
+        pipeline_id: str,
         project_id: str,
         user_id: str,
         inherited_model_id: str | None,
@@ -52,6 +57,7 @@ class PipelineRunSnapshotBuilder:
             snapshots.append(
                 await self._activity_snapshot(
                     activity,
+                    pipeline_id=pipeline_id,
                     project_id=project_id,
                     user_id=user_id,
                     inherited_model_id=inherited_model_id,
@@ -89,6 +95,7 @@ class PipelineRunSnapshotBuilder:
         self,
         activity: ActivityDocument,
         *,
+        pipeline_id: str,
         project_id: str,
         user_id: str,
         inherited_model_id: str | None,
@@ -130,10 +137,19 @@ class PipelineRunSnapshotBuilder:
                 **config,
             }
         if harness.kind == 'codex_cli':
-            config['requested_model'] = self._codex_requested_model(
+            requested_model = self._codex_requested_model(
                 config=config,
                 inherited_model_id=model_id,
+                pipeline_id=pipeline_id,
+                activity_id=activity.id,
             )
+            await self._require_codex_model_enabled(
+                user_id=user_id,
+                pipeline_id=pipeline_id,
+                activity_id=activity.id,
+                model_id=requested_model,
+            )
+            config['requested_model'] = requested_model
             config['instruction_snapshot'] = self._instruction_snapshot(
                 config=config,
                 instruction_library=instruction_library,
@@ -199,6 +215,8 @@ class PipelineRunSnapshotBuilder:
         *,
         config: Mapping[str, object],
         inherited_model_id: str | None,
+        pipeline_id: str,
+        activity_id: str,
     ) -> str:
         """Resolve the generator, Activity, Pipeline, then User Codex model."""
 
@@ -221,10 +239,54 @@ class PipelineRunSnapshotBuilder:
             model_id = inherited_model_id
         if not isinstance(model_id, str):
             raise PipelineRunUnavailableError(
-                pipeline_id='unknown',
+                pipeline_id=pipeline_id,
                 reason='codex_cli execution requires a model_id',
+                reason_code='missing_effective_model',
+                activity_id=activity_id,
             )
         return model_id
+
+    async def _require_codex_model_enabled(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        activity_id: str,
+        model_id: str,
+    ) -> None:
+        """Reject Codex selections absent from or disabled in the User catalog."""
+
+        if self._model_catalog_service is None:
+            return
+        try:
+            model = await self._model_catalog_service.describe(
+                user_id=user_id,
+                model_id=model_id,
+            )
+        except ModelNotFoundError as error:
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f"model '{model_id}' is not in the catalog",
+                reason_code='model_not_found',
+                activity_id=activity_id,
+                model_id=model_id,
+            ) from error
+        if model.status == 'deprecated':
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f"model '{model_id}' is deprecated",
+                reason_code='model_deprecated',
+                activity_id=activity_id,
+                model_id=model_id,
+            )
+        if not model.enabled:
+            raise PipelineRunUnavailableError(
+                pipeline_id=pipeline_id,
+                reason=f"model '{model_id}' is disabled",
+                reason_code='model_disabled',
+                activity_id=activity_id,
+                model_id=model_id,
+            )
 
     @staticmethod
     def _instruction_snapshot(

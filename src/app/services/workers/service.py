@@ -97,6 +97,7 @@ class WorkerService:
         *,
         user_id: str,
         worker_id: str,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
         requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Record a liveness signal for an existing workspace worker."""
@@ -109,6 +110,7 @@ class WorkerService:
             project_id=workspace.project_id,
             worker_id=_require_text(worker_id),
             occurred_at=self._clock(),
+            harnesses=harnesses,
         )
         if worker is None:
             raise WorkerNotFoundError(worker_id)

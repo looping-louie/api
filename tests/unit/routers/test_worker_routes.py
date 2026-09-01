@@ -10,7 +10,7 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from src.app.controllers.workers import WorkerController
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
 from src.app.routers.workers import router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.workers import WorkerService
@@ -38,6 +38,7 @@ class InMemoryWorkerRepository:
         project_id: str,
         worker_id: str,
         occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
         """Update the stored worker heartbeat when it exists."""
 
@@ -49,7 +50,7 @@ class InMemoryWorkerRepository:
             project_id=current.project_id,
             registered_at=current.registered_at,
             last_heartbeat_at=occurred_at,
-            harnesses=current.harnesses,
+            harnesses=harnesses if harnesses is not None else current.harnesses,
         )
         self.documents[(project_id, worker_id)] = updated
         return updated
@@ -130,6 +131,36 @@ def test_create_then_heartbeat_refreshes_one_workspace_worker(
     assert heartbeated.json()['harnesses'] == registered.json()['harnesses']
     assert heartbeated.json()['registered_at'] == registered.json()['registered_at']
     assert heartbeated.json()['last_heartbeat_at'] > registered.json()['last_heartbeat_at']
+
+
+def test_heartbeat_replaces_current_harness_capabilities(
+    tenant_service: TenantService,
+) -> None:
+    """Heartbeat payloads expose only capabilities currently ready to claim."""
+
+    client = build_client(tenant_service)
+    headers = {'X-Project-ID': 'workspace-1'}
+    client.post(
+        '/api/v1/workers',
+        headers=headers,
+        json={'harnesses': [
+            {'kind': 'louie'},
+            {'kind': 'codex_cli'},
+        ]},
+    )
+
+    heartbeated = client.post(
+        '/api/v1/workers/worker-1/heartbeat',
+        headers=headers,
+        json={'harnesses': [{'kind': 'louie'}]},
+    )
+
+    assert heartbeated.status_code == 200
+    assert heartbeated.json()['harnesses'] == [{
+        'kind': 'louie',
+        'version': 'v1',
+        'config': {},
+    }]
 
 
 def test_worker_registration_accepts_codex_cli_harness(

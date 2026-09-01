@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
 from src.app.services.workers import (
     WorkerHarnessUnavailableError,
     WorkerService,
@@ -31,6 +31,7 @@ class InMemoryWorkerRepository:
 
     async def heartbeat(
         self, *, project_id: str, worker_id: str, occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
         """Update one registered worker heartbeat."""
 
@@ -40,7 +41,7 @@ class InMemoryWorkerRepository:
         updated = WorkerDocument(
             id=current.id, project_id=current.project_id,
             registered_at=current.registered_at, last_heartbeat_at=occurred_at,
-            harnesses=current.harnesses,
+            harnesses=harnesses if harnesses is not None else current.harnesses,
         )
         self.documents[(project_id, worker_id)] = updated
         return updated
@@ -84,6 +85,43 @@ async def test_registered_worker_heartbeat_admits_claims(
     await service.require_active(project_id='workspace-1', worker_id='worker-1')
 
     assert registered == heartbeated
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_replaces_observed_harness_capabilities(
+    tenant_service: TenantService,
+) -> None:
+    """A heartbeat removes Codex admission when the local login is unavailable."""
+
+    now = datetime(2026, 8, 21, tzinfo=UTC)
+    repository = InMemoryWorkerRepository()
+    service = WorkerService(
+        repository=repository,
+        tenant_service=tenant_service,
+        id_factory=lambda: 'worker-1',
+        clock=lambda: now,
+    )
+    worker = await service.create(
+        user_id='user-1',
+        harnesses=(
+            WorkerHarnessCapability(),
+            WorkerHarnessCapability(kind='codex_cli'),
+        ),
+    )
+
+    refreshed = await service.heartbeat(
+        user_id='user-1',
+        worker_id=worker.id,
+        harnesses=(WorkerHarnessCapability(),),
+    )
+
+    assert [harness.kind for harness in refreshed.harnesses] == ['louie']
+    with pytest.raises(WorkerHarnessUnavailableError):
+        await service.require_harness(
+            project_id='workspace-1',
+            worker_id=worker.id,
+            harness={'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        )
 
 
 @pytest.mark.asyncio

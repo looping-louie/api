@@ -410,6 +410,35 @@ def test_pipeline_start_requires_no_worker_or_checkout_payload(
     assert response.json()['current_activity_run'] is None
 
 
+def test_pipeline_run_creation_exposes_disabled_model_details(
+    tenant_service: TenantService,
+) -> None:
+    """Run preparation failures identify the model the User must enable."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(
+            PipelineRunService,
+            _UnavailableCreateService(),
+        ),
+    )
+
+    response = client.post(
+        '/api/v1/pipelines/pipeline-1/runs',
+        json={'input': 'Implement.'},
+    )
+
+    assert response.status_code == 409
+    assert response.json()['error']['code'] == 'pipeline_run_unavailable'
+    assert response.json()['error']['details'] == {
+        'resource_type': 'pipeline',
+        'resource_id': 'pipeline-1',
+        'reason': 'model_disabled',
+        'activity_id': 'activity-1',
+        'model_id': 'model-disabled',
+    }
+
+
 class _LeaseService:
     """Provide a deterministic renewal response for the router contract test."""
 
@@ -516,6 +545,23 @@ class _StartService:
             current_activity_run_id=None, pipeline_snapshot={'steps': []},
             steps=(), created_at=timestamp, created_by='user-1', updated_at=timestamp,
         ), None
+
+
+class _UnavailableCreateService:
+    """Reject run creation with one actionable model-policy failure."""
+
+    async def create(self, **_: object) -> tuple[PipelineRunDocument, None]:
+        """Raise the same domain error produced before run persistence."""
+
+        from src.app.services.pipeline_runs import PipelineRunUnavailableError
+
+        raise PipelineRunUnavailableError(
+            pipeline_id='pipeline-1',
+            reason="model 'model-disabled' is disabled",
+            reason_code='model_disabled',
+            activity_id='activity-1',
+            model_id='model-disabled',
+        )
 
 
 def test_pipeline_rejects_retired_dependency_condition(

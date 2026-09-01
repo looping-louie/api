@@ -14,6 +14,7 @@ from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.sqlite_repository import SqlitePipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
 from src.app.services.models import ModelExecutionService
+from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.pipeline_runs import PipelineRunService
@@ -35,6 +36,7 @@ def build_pipeline_controller(
     workspace_service: ProjectService,
     user_service: UserService,
     model_execution_service: ModelExecutionService,
+    model_catalog_service: ModelCatalogService,
     instruction_library_service: ExecutionInstructionLibraryService,
 ) -> PipelineController:
     """Build the pipeline persistence, service, and HTTP layers."""
@@ -58,6 +60,7 @@ def build_pipeline_controller(
             workspace_service=workspace_service,
             user_service=user_service,
             model_execution_service=model_execution_service,
+            model_catalog_service=model_catalog_service,
             instruction_library_service=instruction_library_service,
             id_factory=id_factory,
             clock=clock,
