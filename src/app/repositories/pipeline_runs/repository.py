@@ -21,10 +21,7 @@ class PipelineRunRepository(Protocol):
         project_id: str,
         offset: int,
         limit: int,
-        pipeline_id: str | None,
-        status: str | None,
         created_from: datetime | None,
-        created_to: datetime | None,
     ) -> tuple[list[PipelineRunDocument], int]:
         """Return one filtered Project page and its total."""
         raise NotImplementedError

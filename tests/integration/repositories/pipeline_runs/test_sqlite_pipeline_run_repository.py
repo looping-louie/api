@@ -68,19 +68,13 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         project_id='workspace-1',
         offset=0,
         limit=10,
-        pipeline_id=pipeline.id,
-        status='prepared',
         created_from=timestamp - timedelta(seconds=1),
-        created_to=timestamp + timedelta(seconds=1),
     )
     excluded, excluded_total = await repository.list(
         project_id='workspace-1',
         offset=0,
         limit=10,
-        pipeline_id=None,
-        status='completed',
-        created_from=None,
-        created_to=None,
+        created_from=timestamp + timedelta(seconds=1),
     )
 
     assert listed == [prepared]

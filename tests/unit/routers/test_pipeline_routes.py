@@ -351,7 +351,7 @@ def test_pipeline_claimable_filter_accepts_standard_boolean_query(
     assert false_filter.status_code == 422
 
 
-def test_pipeline_run_catalog_forwards_project_filters(
+def test_pipeline_run_catalog_forwards_project_and_date_filter(
     tenant_service: TenantService,
 ) -> None:
     """Run discovery accepts the web catalog's Project-scoped filters."""
@@ -366,10 +366,7 @@ def test_pipeline_run_catalog_forwards_project_filters(
         '/api/v1/pipeline-runs',
         params={
             'offset': 10,
-            'pipeline_id': 'pipeline-1',
-            'status': 'completed',
             'created_from': '2026-08-20T00:00:00Z',
-            'created_to': '2026-08-22T00:00:00Z',
         },
         headers={'X-Project-ID': 'workspace-1'},
     )
@@ -377,9 +374,8 @@ def test_pipeline_run_catalog_forwards_project_filters(
     assert response.status_code == 200
     assert response.json() == {'items': [], 'total': 0}
     assert service.filters == (
-        'user-1', 10, 'pipeline-1', 'completed',
+        'user-1', 10,
         datetime(2026, 8, 20, tzinfo=UTC),
-        datetime(2026, 8, 22, tzinfo=UTC),
         'workspace-1',
     )
 
@@ -567,8 +563,7 @@ class _RunListService:
         """Record normalized controller arguments and return an empty page."""
 
         self.filters = (
-            filters['user_id'], filters['offset'], filters['pipeline_id'],
-            filters['status'], filters['created_from'], filters['created_to'],
+            filters['user_id'], filters['offset'], filters['created_from'],
             filters['requested_project_id'],
         )
         return [], 0

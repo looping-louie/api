@@ -12,7 +12,6 @@ from src.app.models.pipeline import PipelineHarness
 from src.app.models.pipeline_run import (
     PipelineRunCommitMode,
     PipelineRunDocument,
-    PipelineRunStatus,
     PipelineRunStepDocument,
 )
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
@@ -98,10 +97,7 @@ class PipelineRunService:
         *,
         user_id: str,
         offset: int,
-        pipeline_id: str | None = None,
-        status: PipelineRunStatus | None = None,
         created_from: datetime | None = None,
-        created_to: datetime | None = None,
         requested_project_id: str | None = None,
     ) -> tuple[list[PipelineRunDocument], int]:
         """Return one filtered page from the selected Project's run history."""
@@ -114,10 +110,7 @@ class PipelineRunService:
             project_id=project.project_id,
             offset=require_offset(offset),
             limit=PAGE_SIZE,
-            pipeline_id=pipeline_id,
-            status=status,
             created_from=created_from,
-            created_to=created_to,
         )
         return list(documents), total
 

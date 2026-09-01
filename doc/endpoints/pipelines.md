@@ -763,14 +763,12 @@ worker to accept a claim.
 ## List pipeline runs
 
 `GET /api/v1/pipeline-runs` returns the selected Project's newest Pipeline runs
-in fixed pages of ten. It accepts a non-negative `offset` and optional
-`pipeline_id`, `status`, `created_from`, and `created_to` filters. Timestamp
-filters are inclusive ISO 8601 values. This collection supports run history and
-observability clients; runtime workers continue to use the separate claimable
-listing under each Pipeline.
+in fixed pages of ten. It accepts a non-negative `offset` and an optional,
+inclusive ISO 8601 `created_from` filter. Runtime workers continue to use the
+separate claimable listing under each Pipeline.
 
 ```http
-GET /api/v1/pipeline-runs?offset=0&status=completed&created_from=2026-08-20T00:00:00Z
+GET /api/v1/pipeline-runs?offset=0&created_from=2026-08-20T00:00:00Z
 X-Project-ID: project-acme
 ```
 

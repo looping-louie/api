@@ -37,10 +37,7 @@ class PipelineRunController:
         *,
         user_id: str,
         offset: int,
-        pipeline_id: str | None,
-        status: str | None,
         created_from: datetime | None,
-        created_to: datetime | None,
         requested_project_id: str | None = None,
     ) -> PipelineRunListResponse:
         """Return one filtered page from the selected Project's run history."""
@@ -48,10 +45,7 @@ class PipelineRunController:
         documents, total = await self._require_service().list(
             user_id=user_id,
             offset=offset,
-            pipeline_id=pipeline_id,
-            status=status,
             created_from=created_from,
-            created_to=created_to,
             requested_project_id=requested_project_id,
         )
         return PipelineRunListResponse(

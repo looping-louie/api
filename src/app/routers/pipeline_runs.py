@@ -6,10 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from src.app.controllers.pipelines import PipelineController
-from src.app.schemas.pipeline import (
-    PipelineRunListResponse,
-    PipelineRunStatusValue,
-)
+from src.app.schemas.pipeline import PipelineRunListResponse
 
 from .dependencies import (
     RequestContext,
@@ -31,22 +28,13 @@ async def list_pipeline_runs(
     context: ContextDependency,
     controller: ControllerDependency,
     offset: Annotated[int, Query(ge=0)] = 0,
-    pipeline_id: Annotated[str | None, Query(min_length=1)] = None,
-    status_filter: Annotated[
-        PipelineRunStatusValue | None,
-        Query(alias='status'),
-    ] = None,
     created_from: Annotated[datetime | None, Query()] = None,
-    created_to: Annotated[datetime | None, Query()] = None,
 ) -> PipelineRunListResponse:
     """Return filtered run history from the selected Project."""
 
     return await controller.list_runs(
         user_id=context.user_id,
         offset=offset,
-        pipeline_id=pipeline_id,
-        status=status_filter,
         created_from=created_from,
-        created_to=created_to,
         requested_project_id=context.requested_project_id,
     )

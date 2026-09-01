@@ -32,27 +32,15 @@ class SqlitePipelineRunRepository:
         project_id: str,
         offset: int,
         limit: int,
-        pipeline_id: str | None,
-        status: str | None,
         created_from: datetime | None,
-        created_to: datetime | None,
     ) -> tuple[list[PipelineRunDocument], int]:
         """Return newest filtered Pipeline runs within one Project."""
 
         clauses = ['project_id = ?']
         parameters: list[object] = [project_id]
-        if pipeline_id is not None:
-            clauses.append('pipeline_id = ?')
-            parameters.append(pipeline_id)
-        if status is not None:
-            clauses.append('status = ?')
-            parameters.append(status)
         if created_from is not None:
             clauses.append('julianday(created_at) >= julianday(?)')
             parameters.append(created_from.isoformat())
-        if created_to is not None:
-            clauses.append('julianday(created_at) <= julianday(?)')
-            parameters.append(created_to.isoformat())
         where = ' AND '.join(clauses)
 
         async with self._connect() as connection:
