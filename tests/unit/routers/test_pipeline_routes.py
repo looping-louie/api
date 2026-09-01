@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from src.app.controllers.pipelines import PipelineController
 from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
 from src.app.routers.pipelines import router as pipelines_router
+from src.app.routers.pipeline_runs import router as pipeline_runs_router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.pipeline_runs.readiness import PipelineRunReadiness
@@ -46,6 +47,7 @@ def build_client(
 
     register_exception_handlers(app)
     app.include_router(pipelines_router, prefix='/api/v1')
+    app.include_router(pipeline_runs_router, prefix='/api/v1')
     return TestClient(app)
 
 
@@ -349,6 +351,39 @@ def test_pipeline_claimable_filter_accepts_standard_boolean_query(
     assert false_filter.status_code == 422
 
 
+def test_pipeline_run_catalog_forwards_project_filters(
+    tenant_service: TenantService,
+) -> None:
+    """Run discovery accepts the web catalog's Project-scoped filters."""
+
+    service = _RunListService()
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, service),
+    )
+
+    response = client.get(
+        '/api/v1/pipeline-runs',
+        params={
+            'offset': 10,
+            'pipeline_id': 'pipeline-1',
+            'status': 'completed',
+            'created_from': '2026-08-20T00:00:00Z',
+            'created_to': '2026-08-22T00:00:00Z',
+        },
+        headers={'X-Project-ID': 'workspace-1'},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {'items': [], 'total': 0}
+    assert service.filters == (
+        'user-1', 10, 'pipeline-1', 'completed',
+        datetime(2026, 8, 20, tzinfo=UTC),
+        datetime(2026, 8, 22, tzinfo=UTC),
+        'workspace-1',
+    )
+
+
 def test_pipeline_event_ledger_returns_persisted_events(
     tenant_service: TenantService,
 ) -> None:
@@ -518,6 +553,25 @@ class _ClaimableService:
         )
         self.was_called = True
         return []
+
+
+class _RunListService:
+    """Record filters supplied to the Project run catalog."""
+
+    def __init__(self) -> None:
+        """Initialize the observed filter tuple."""
+
+        self.filters: tuple[object, ...] | None = None
+
+    async def list(self, **filters: object) -> tuple[list[PipelineRunDocument], int]:
+        """Record normalized controller arguments and return an empty page."""
+
+        self.filters = (
+            filters['user_id'], filters['offset'], filters['pipeline_id'],
+            filters['status'], filters['created_from'], filters['created_to'],
+            filters['requested_project_id'],
+        )
+        return [], 0
 
 
 class _EventService:

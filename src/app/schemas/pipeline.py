@@ -196,6 +196,10 @@ class PipelineRunResponse(ResponseSchema):
     updated_at: datetime
 
 
+class PipelineRunListResponse(ListResponse[PipelineRunResponse]):
+    """Fixed-size filtered page of Pipeline runs within one Project."""
+
+
 PipelineRunReadinessStatusValue = Literal[
     'not_applicable',
     'no_registered_workers',

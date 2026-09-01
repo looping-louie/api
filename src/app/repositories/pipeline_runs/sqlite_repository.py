@@ -26,6 +26,60 @@ class SqlitePipelineRunRepository:
 
         self._database_path = Path(database_path)
 
+    async def list(
+        self,
+        *,
+        project_id: str,
+        offset: int,
+        limit: int,
+        pipeline_id: str | None,
+        status: str | None,
+        created_from: datetime | None,
+        created_to: datetime | None,
+    ) -> tuple[list[PipelineRunDocument], int]:
+        """Return newest filtered Pipeline runs within one Project."""
+
+        clauses = ['project_id = ?']
+        parameters: list[object] = [project_id]
+        if pipeline_id is not None:
+            clauses.append('pipeline_id = ?')
+            parameters.append(pipeline_id)
+        if status is not None:
+            clauses.append('status = ?')
+            parameters.append(status)
+        if created_from is not None:
+            clauses.append('julianday(created_at) >= julianday(?)')
+            parameters.append(created_from.isoformat())
+        if created_to is not None:
+            clauses.append('julianday(created_at) <= julianday(?)')
+            parameters.append(created_to.isoformat())
+        where = ' AND '.join(clauses)
+
+        async with self._connect() as connection:
+            count_cursor = await connection.execute(
+                f'SELECT COUNT(*) FROM pipeline_runs WHERE {where}',
+                parameters,
+            )
+            try:
+                total = int((await count_cursor.fetchone())[0])
+            finally:
+                await count_cursor.close()
+            cursor = await connection.execute(
+                f'''
+                SELECT * FROM pipeline_runs
+                WHERE {where}
+                ORDER BY created_at DESC, id ASC
+                LIMIT ? OFFSET ?
+                ''',
+                (*parameters, limit, offset),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+            documents = [await self._to_document(connection, row) for row in rows]
+        return documents, total
+
     async def create(
         self,
         *,

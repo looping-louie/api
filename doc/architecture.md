@@ -156,6 +156,8 @@ each worker claim, step start and terminal state, and the complete normalized
 Harness turn observation. The generic `harness_turn_completed` and
 `harness_turn_failed` event names describe the common outcome; consumers
 identify the concrete implementation by its embedded Harness.
+Project-scoped clients discover run history through a filtered, newest-first
+PipelineRun collection before loading an individual run and its ledger.
 A ready `approval` or `quiz` Activity creates a normal
 child Activity run with a human executor and transitions the Pipeline to
 `waiting` without assigning a worker lease. Users submit its decision through

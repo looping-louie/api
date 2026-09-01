@@ -20,7 +20,8 @@ operations.
 - [Activities](activities.md) manages User-owned reusable concrete Activity
   definitions and their Project-placed Activity runs.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
-  persists each supplied step as an independent User-owned Activity record.
+  persists each supplied step as an independent User-owned Activity record,
+  plus Project-scoped Pipeline-run history.
 
 ## Versioned API conventions
 

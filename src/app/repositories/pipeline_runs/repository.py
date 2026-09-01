@@ -15,6 +15,20 @@ from src.app.models.pipeline_run import (
 class PipelineRunRepository(Protocol):
     """Store pipeline-run state and selected child activity runs atomically."""
 
+    async def list(
+        self,
+        *,
+        project_id: str,
+        offset: int,
+        limit: int,
+        pipeline_id: str | None,
+        status: str | None,
+        created_from: datetime | None,
+        created_to: datetime | None,
+    ) -> tuple[list[PipelineRunDocument], int]:
+        """Return one filtered Project page and its total."""
+        raise NotImplementedError
+
     async def create(
         self,
         *,

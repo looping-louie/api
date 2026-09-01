@@ -19,6 +19,7 @@ runtime worker claims one eligible Activity run at a time.
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
+| `GET` | `/api/v1/pipeline-runs` | Lists ten filtered runs from the selected Project. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a prepared pipeline run. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` | Starts a prepared pipeline run. |
@@ -758,6 +759,25 @@ ll pipelines runs start PIPELINE_ID RUN_ID
 
 Workers remain independent pollers; an operator does not direct a specific
 worker to accept a claim.
+
+## List pipeline runs
+
+`GET /api/v1/pipeline-runs` returns the selected Project's newest Pipeline runs
+in fixed pages of ten. It accepts a non-negative `offset` and optional
+`pipeline_id`, `status`, `created_from`, and `created_to` filters. Timestamp
+filters are inclusive ISO 8601 values. This collection supports run history and
+observability clients; runtime workers continue to use the separate claimable
+listing under each Pipeline.
+
+```http
+GET /api/v1/pipeline-runs?offset=0&status=completed&created_from=2026-08-20T00:00:00Z
+X-Project-ID: project-acme
+```
+
+The response uses the standard `items` and `total` page envelope. Each item has
+the same representation as the individual PipelineRun endpoint, with
+`current_activity_run` omitted as `null`; clients load individual runs when
+they need the current child checkpoint.
 
 Activity definitions remain reusable but are not directly callable. Retrying
 execution is a PipelineRun-level operation because it needs the frozen graph,

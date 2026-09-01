@@ -53,6 +53,28 @@ class InMemoryPipelineRunRepository:
             self.children[activity_run.id] = activity_run
         return document
 
+    async def list(
+        self,
+        *,
+        project_id: str,
+        offset: int,
+        limit: int,
+        pipeline_id: str | None,
+        status: str | None,
+        created_from: datetime | None,
+        created_to: datetime | None,
+    ) -> tuple[list[PipelineRunDocument], int]:
+        """Return the stored run when it matches the supplied filters."""
+
+        document = self.document
+        matches = document is not None and document.project_id == project_id
+        matches = matches and (pipeline_id is None or document.pipeline_id == pipeline_id)
+        matches = matches and (status is None or document.status == status)
+        matches = matches and (created_from is None or document.created_at >= created_from)
+        matches = matches and (created_to is None or document.created_at <= created_to)
+        documents = [document] if matches and document is not None else []
+        return documents[offset:offset + limit], len(documents)
+
     async def get(
         self, *, project_id: str, pipeline_id: str, run_id: str,
     ) -> PipelineRunDocument | None:
@@ -313,6 +335,15 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert [step.status for step in created.steps] == ['pending']
     assert child is None
     assert runs.children == {}
+
+    listed, total = await service.list(
+        user_id='user-1',
+        offset=0,
+        status='prepared',
+        created_from=created.created_at - timedelta(days=1),
+    )
+    assert listed == [created]
+    assert total == 1
 
     candidates = await service.list_claimable(
         user_id='user-1', pipeline_id='pipeline-1',

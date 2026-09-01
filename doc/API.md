@@ -21,7 +21,7 @@ The endpoint reference is organized by top-level router:
   definitions, including Activity runs.
 - [Pipelines](endpoints/pipelines.md) manages ordered Activity definitions and
   persists each supplied step as an independent Activity record, Pipeline-run
-  event ledgers, and human Activity-run decisions.
+  discovery and event ledgers, and human Activity-run decisions.
 - [Workers](endpoints/workers.md) provisions runtime identities and records
   liveness heartbeats required for PipelineRun claims.
 
