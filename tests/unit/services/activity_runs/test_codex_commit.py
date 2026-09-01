@@ -13,6 +13,7 @@ from src.app.services.activity_runs.harness_result import harness_runtime_artifa
 from src.app.services.activity_runs.service import ActivityRunService
 from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.shared.tenant import TenantService
+from tests.contract_fixtures import load_harness_observation
 from tests.unit.services.activity_runs.test_harness_routing import (
     _ActivityRunRepository,
     _ActivityService,
@@ -30,6 +31,31 @@ def test_harness_normalizer_rejects_an_unknown_adapter() -> None:
             result={'completed': True},
             require_commit_message=False,
         )
+
+
+@pytest.mark.parametrize(
+    ('fixture_name', 'require_commit_message'),
+    [
+        ('codex_cli_v1_completed.json', True),
+        ('codex_cli_v1_failed.json', False),
+    ],
+)
+def test_codex_contract_fixtures_normalize_without_loss(
+    fixture_name: str,
+    require_commit_message: bool,
+) -> None:
+    """Published v1 observations preserve every producer contract field."""
+
+    observation = load_harness_observation(fixture_name)
+
+    assert harness_runtime_artifacts(
+        activity_snapshot={
+            'requested_model': 'gpt-5-codex',
+            'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        },
+        result=observation,
+        require_commit_message=require_commit_message,
+    ) == observation
 
 
 @pytest.mark.asyncio
