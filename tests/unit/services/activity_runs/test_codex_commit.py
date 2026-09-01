@@ -69,42 +69,21 @@ async def test_completed_codex_turn_publishes_commit_message(
         commit_mode='allow',
     )
 
+    submitted = {
+        **_harness_result(),
+        'commit_message': 'feat: implement requested change',
+    }
     result = await service.continue_run(
         user_id='user-1', activity_id=activity.id, run_id='run-1',
         pipeline_run_id='pipeline-run-1', lease_token='lease-1',
         continuation_token='token-1', idempotency_key='harness-1',
         action='run_harness',
-        result={
-            **_harness_result(),
-            'commit_message': 'feat: implement requested change',
-        },
+        result=submitted,
     )
 
     assert result.next_action == 'commit_if_allowed'
     expected_artifacts = {
-        'schema_version': 'v1',
-        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
-        'completed': True,
-        'started_at': '2026-08-31T10:00:00+00:00',
-        'completed_at': '2026-08-31T10:00:02+00:00',
-        'duration_ms': 2000,
-        'commit_message': 'feat: implement requested change',
-        'requested_model': 'gpt-5-codex',
-        'actual_model': 'gpt-5.1-codex',
-        'reasoning_effort': 'high',
-        'session_reference': 'thread-1',
-        'usage': {'input_tokens': 10, 'reasoning_output_tokens': 3},
-        'exit_code': 0,
-        'diagnostics': [],
-        'materialized_skills': [{
-            'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
-        }],
-        'source_commit_sha': 'source-sha',
-        'final_commit_sha': 'source-sha',
-        'final_diff': 'diff --git a/a.py b/a.py',
-        'changed_files': ['a.py'],
-        'final_response': 'Implemented the change.',
-        'error': None,
+        key: value for key, value in submitted.items() if key != 'action'
     }
     assert result.execution_context['runtime_artifacts'] == expected_artifacts
     assert activity_run_response(repository.document).payload == expected_artifacts
@@ -237,9 +216,7 @@ async def test_forbidden_codex_commit_does_not_require_message(
     assert result.status == 'completed'
     assert result.next_action == 'none'
     assert result.execution_context['runtime_artifacts']['completed'] is True
-    assert result.execution_context['runtime_artifacts']['final_response'] == (
-        'Implemented the change.'
-    )
+    assert result.execution_context['runtime_artifacts']['final_response'] == 'Done.'
     assert result.execution_context['runtime_artifacts']['materialized_skills'] == [{
         'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
     }]
@@ -256,14 +233,8 @@ async def test_failed_codex_turn_exposes_partial_observations(
         commit_mode='allow',
     )
     partial = {
-        **_harness_result(),
-        'completed': False,
-        'actual_model': None,
-        'exit_code': 17,
-        'final_response': '',
-        'usage': {'input_tokens': 10},
-        'diagnostics': ['Codex failed.'],
-        'error': 'Codex failed.',
+        'action': 'run_harness',
+        **load_harness_observation('codex_cli_v1_failed.json'),
     }
 
     failed = await service.continue_run(
@@ -275,12 +246,7 @@ async def test_failed_codex_turn_exposes_partial_observations(
 
     assert failed.status == 'failed'
     payload = activity_run_response(repository.document).payload
-    assert payload['completed'] is False
-    assert payload['exit_code'] == 17
-    assert payload['session_reference'] == 'thread-1'
-    assert payload['usage'] == {'input_tokens': 10}
-    assert payload['diagnostics'] == ['Codex failed.']
-    assert payload['error'] == 'Codex failed.'
+    assert payload == {key: value for key, value in partial.items() if key != 'action'}
 
 
 def _service(
@@ -326,28 +292,6 @@ def _service(
 def _harness_result() -> dict[str, object]:
     """Build one complete normalized Codex observation."""
 
-    return {
-        'action': 'run_harness',
-        'schema_version': 'v1',
-        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
-        'completed': True,
-        'started_at': '2026-08-31T10:00:00+00:00',
-        'completed_at': '2026-08-31T10:00:02+00:00',
-        'duration_ms': 2000,
-        'final_response': 'Implemented the change.',
-        'requested_model': 'gpt-5-codex',
-        'actual_model': 'gpt-5.1-codex',
-        'reasoning_effort': 'high',
-        'session_reference': 'thread-1',
-        'usage': {'input_tokens': 10, 'reasoning_output_tokens': 3},
-        'exit_code': 0,
-        'diagnostics': [],
-        'materialized_skills': [{
-            'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
-        }],
-        'source_commit_sha': 'source-sha',
-        'final_commit_sha': 'source-sha',
-        'final_diff': 'diff --git a/a.py b/a.py',
-        'changed_files': ['a.py'],
-        'error': None,
-    }
+    observation = load_harness_observation('codex_cli_v1_completed.json')
+    observation.pop('commit_message')
+    return {'action': 'run_harness', **observation}

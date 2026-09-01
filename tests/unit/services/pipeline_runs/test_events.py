@@ -17,6 +17,7 @@ from src.app.models.pipeline import (
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
 from src.app.services.shared.tenant import TenantService
+from tests.contract_fixtures import load_harness_observation
 from tests.conftest import IncrementingClock
 from tests.unit.services.pipeline_runs.test_service import (
     InMemoryActivityRunRepository,
@@ -90,30 +91,10 @@ async def test_harness_pipeline_emits_claim_step_and_turn_events(
         worker_id='worker-1', if_match=pipeline_run_etag(queued),
         lease_duration=timedelta(minutes=1),
     )
-    artifacts = {
-        'schema_version': 'v1',
-        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
-        'completed': turn_completed,
-        'started_at': '2026-08-31T10:00:00+00:00',
-        'completed_at': '2026-08-31T10:00:02+00:00',
-        'duration_ms': 2000,
-        'requested_model': 'gpt-5-codex',
-        'actual_model': 'gpt-5.1-codex',
-        'reasoning_effort': 'high',
-        'session_reference': 'thread-1',
-        'usage': {'input_tokens': 10},
-        'exit_code': 0,
-        'diagnostics': [],
-        'materialized_skills': [{
-            'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
-        }],
-        'source_commit_sha': 'source-sha',
-        'final_commit_sha': 'source-sha',
-        'final_diff': 'diff',
-        'changed_files': ['a.py'],
-        'final_response': 'Done.',
-        'error': None,
-    }
+    artifacts = load_harness_observation(
+        'codex_cli_v1_completed.json'
+        if turn_completed else 'codex_cli_v1_failed.json'
+    )
     runs.children[child.id] = replace(
         child,
         status=child_status,
@@ -140,11 +121,4 @@ async def test_harness_pipeline_emits_claim_step_and_turn_events(
     ]
     harness_event = with_events.events[3]
     assert harness_event.actor_id == 'worker-1'
-    assert harness_event.payload['activity_run_id'] == child.id
-    assert harness_event.payload['schema_version'] == 'v1'
-    assert harness_event.payload['harness'] == {
-        'kind': 'codex_cli', 'version': 'v1', 'config': {},
-    }
-    assert harness_event.payload['actual_model'] == 'gpt-5.1-codex'
-    assert harness_event.payload['usage'] == {'input_tokens': 10}
-    assert harness_event.payload['final_response'] == 'Done.'
+    assert harness_event.payload == {'activity_run_id': child.id, **artifacts}
