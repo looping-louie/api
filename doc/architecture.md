@@ -150,8 +150,9 @@ grant one forbidden by the persisted run policy.
 
 Pipeline runs preserve an append-only event ledger. It records run creation,
 each worker claim, step start and terminal state, and the complete normalized
-Harness turn observation. Current Codex event names remain a compatibility
-transport detail; consumers identify the observation by its embedded Harness.
+Harness turn observation. The generic `harness_turn_completed` and
+`harness_turn_failed` event names describe the common outcome; consumers
+identify the concrete implementation by its embedded Harness.
 A ready `approval` or `quiz` Activity creates a normal
 child Activity run with a human executor and transitions the Pipeline to
 `waiting` without assigning a worker lease. Users submit its decision through
@@ -249,7 +250,7 @@ services/
 |-- pipeline_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- etag.py                    Creates concurrency entity tags
-|   |-- events.py                  Builds scheduler and Codex ledger events
+|   |-- events.py                  Builds scheduler and Harness ledger events
 |   |-- service.py                 Creates, reads, and advances Pipeline runs
 |   |-- snapshot.py                Freezes models, Harnesses, and instructions
 |   `-- types.py                   Defines execution errors

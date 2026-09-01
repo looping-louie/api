@@ -13,7 +13,7 @@ from src.app.models.pipeline_run import (
 
 
 class PipelineRunEventBuilder:
-    """Create normalized scheduler and Codex events with stable ownership."""
+    """Create normalized scheduler and Harness events with stable ownership."""
 
     def __init__(self, id_factory: Callable[[], str]) -> None:
         """Store the identifier source shared with Pipeline runs."""
@@ -105,19 +105,21 @@ class PipelineRunEventBuilder:
         created_at: datetime,
         next_child: ActivityRunDocument | None,
     ) -> tuple[PipelineRunEventDocument, ...]:
-        """Record Codex output, terminal step state, and its successor start."""
+        """Record Harness output, terminal step state, and its successor start."""
 
         events: list[PipelineRunEventDocument] = []
         artifacts = child.execution_context.get('runtime_artifacts')
-        if self._uses_codex(child) and isinstance(artifacts, Mapping):
+        if isinstance(artifacts, Mapping) and self._is_harness_observation(
+            artifacts
+        ):
             payload = {'activity_run_id': child.id, **dict(artifacts)}
             events.append(self._event(
                 project_id=document.project_id,
                 run_id=document.id,
                 event_type=(
-                    'codex_turn_completed'
+                    'harness_turn_completed'
                     if artifacts.get('completed') is True
-                    else 'codex_turn_failed'
+                    else 'harness_turn_failed'
                 ),
                 activity_id=child.activity_id,
                 actor_id=actor_id,
@@ -201,8 +203,11 @@ class PipelineRunEventBuilder:
         )
 
     @staticmethod
-    def _uses_codex(child: ActivityRunDocument) -> bool:
-        """Return whether one child used the local Codex CLI Harness."""
+    def _is_harness_observation(artifacts: Mapping[str, object]) -> bool:
+        """Return whether runtime artifacts use the common Harness envelope."""
 
-        harness = child.activity_snapshot.get('harness')
-        return isinstance(harness, Mapping) and harness.get('kind') == 'codex_cli'
+        return (
+            isinstance(artifacts.get('schema_version'), str)
+            and isinstance(artifacts.get('harness'), Mapping)
+            and isinstance(artifacts.get('completed'), bool)
+        )

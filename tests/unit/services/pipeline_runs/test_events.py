@@ -30,10 +30,21 @@ from tests.unit.services.pipeline_runs.test_snapshots import (
 
 
 @pytest.mark.asyncio
-async def test_codex_pipeline_emits_claim_step_and_turn_events(
+@pytest.mark.parametrize(
+    ('turn_completed', 'child_status', 'turn_event', 'step_event'),
+    [
+        (True, 'completed', 'harness_turn_completed', 'pipeline_step_completed'),
+        (False, 'failed', 'harness_turn_failed', 'pipeline_step_failed'),
+    ],
+)
+async def test_harness_pipeline_emits_claim_step_and_turn_events(
     tenant_service: TenantService,
+    turn_completed: bool,
+    child_status: str,
+    turn_event: str,
+    step_event: str,
 ) -> None:
-    """The ledger captures the scheduler lifecycle and normalized Codex output."""
+    """The ledger captures scheduler state and normalized Harness outcomes."""
 
     now = datetime(2026, 8, 31, tzinfo=UTC)
     configured_activity = replace(
@@ -82,7 +93,7 @@ async def test_codex_pipeline_emits_claim_step_and_turn_events(
     artifacts = {
         'schema_version': 'v1',
         'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
-        'completed': True,
+        'completed': turn_completed,
         'started_at': '2026-08-31T10:00:00+00:00',
         'completed_at': '2026-08-31T10:00:02+00:00',
         'duration_ms': 2000,
@@ -105,8 +116,8 @@ async def test_codex_pipeline_emits_claim_step_and_turn_events(
     }
     runs.children[child.id] = replace(
         child,
-        status='completed',
-        state='completed',
+        status=child_status,
+        state=child_status,
         next_action='none',
         continuation_token=None,
         execution_context={'runtime_artifacts': artifacts},
@@ -124,16 +135,16 @@ async def test_codex_pipeline_emits_claim_step_and_turn_events(
         'pipeline_run_created',
         'pipeline_run_claimed',
         'pipeline_step_started',
-        'codex_turn_completed',
-        'pipeline_step_completed',
+        turn_event,
+        step_event,
     ]
-    codex_event = with_events.events[3]
-    assert codex_event.actor_id == 'worker-1'
-    assert codex_event.payload['activity_run_id'] == child.id
-    assert codex_event.payload['schema_version'] == 'v1'
-    assert codex_event.payload['harness'] == {
+    harness_event = with_events.events[3]
+    assert harness_event.actor_id == 'worker-1'
+    assert harness_event.payload['activity_run_id'] == child.id
+    assert harness_event.payload['schema_version'] == 'v1'
+    assert harness_event.payload['harness'] == {
         'kind': 'codex_cli', 'version': 'v1', 'config': {},
     }
-    assert codex_event.payload['actual_model'] == 'gpt-5.1-codex'
-    assert codex_event.payload['usage'] == {'input_tokens': 10}
-    assert codex_event.payload['final_response'] == 'Done.'
+    assert harness_event.payload['actual_model'] == 'gpt-5.1-codex'
+    assert harness_event.payload['usage'] == {'input_tokens': 10}
+    assert harness_event.payload['final_response'] == 'Done.'

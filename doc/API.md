@@ -61,9 +61,10 @@ must match the immutable Activity snapshot. A later authorized commit updates
 the final commit SHA without discarding the Harness observation.
 
 The PipelineRun event ledger records `pipeline_run_claimed`,
-`pipeline_step_started`, terminal step events, and `codex_turn_completed` or
-`codex_turn_failed` in addition to `pipeline_run_created`. Codex turn events
-contain the same normalized observation exposed by the child ActivityRun.
+`pipeline_step_started`, terminal step events, and `harness_turn_completed` or
+`harness_turn_failed` in addition to `pipeline_run_created`. Harness turn events
+contain the same normalized observation exposed by the child ActivityRun and
+identify the implementation through `payload.harness.kind`.
 
 User settings also gate logical model availability. Unconfigured models inherit
 `settings.default_model_availability`, which defaults to `enabled`;

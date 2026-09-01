@@ -1010,12 +1010,12 @@ belong to the Pipeline in the selected workspace.
 append-only event ledger in creation order. Each entry has an ID, event type,
 optional Activity ID, actor ID, JSON payload, and creation time. The API emits
 `pipeline_run_created`, `pipeline_run_claimed`, `pipeline_step_started`,
-`pipeline_step_completed`, and `pipeline_step_failed`. Codex children also emit
-`codex_turn_completed` or `codex_turn_failed` with the normalized Harness
-observation, including its v1 schema and frozen Harness identity plus partial
-observations from failed processes. The Codex-specific event names are retained
-for compatibility; consumers discriminate the embedded observation by
-`payload.harness.kind`. Human
+`pipeline_step_completed`, and `pipeline_step_failed`. Harness children also
+emit `harness_turn_completed` or `harness_turn_failed` with the normalized
+Harness observation, including its v1 schema and frozen Harness identity plus
+partial observations from failed processes. Consumers discriminate the
+embedded observation by `payload.harness.kind`. Existing ledgers may still
+contain the legacy `codex_turn_completed` and `codex_turn_failed` names. Human
 decisions are regular Activity-run checkpoints, not Pipeline-run gate events.
 
 ## Complete a human Activity run
