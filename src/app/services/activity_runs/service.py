@@ -23,7 +23,7 @@ from src.app.services.activity_runs.generation import (
     ActivityRunGenerationService,
 )
 from src.app.services.activity_runs.harness_result import (
-    codex_runtime_artifacts,
+    harness_runtime_artifacts,
     with_codex_commit_result,
 )
 from src.app.services.models import ModelExecutionService
@@ -292,7 +292,7 @@ class ActivityRunService:
             applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             if action == 'run_harness':
-                context['runtime_artifacts'] = codex_runtime_artifacts(
+                context['runtime_artifacts'] = harness_runtime_artifacts(
                     activity_snapshot=document.activity_snapshot,
                     result=result,
                     require_commit_message=not commit_forbidden,

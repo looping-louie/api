@@ -80,6 +80,8 @@ async def test_codex_pipeline_emits_claim_step_and_turn_events(
         lease_duration=timedelta(minutes=1),
     )
     artifacts = {
+        'schema_version': 'v1',
+        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         'completed': True,
         'started_at': '2026-08-31T10:00:00+00:00',
         'completed_at': '2026-08-31T10:00:02+00:00',
@@ -128,6 +130,10 @@ async def test_codex_pipeline_emits_claim_step_and_turn_events(
     codex_event = with_events.events[3]
     assert codex_event.actor_id == 'worker-1'
     assert codex_event.payload['activity_run_id'] == child.id
+    assert codex_event.payload['schema_version'] == 'v1'
+    assert codex_event.payload['harness'] == {
+        'kind': 'codex_cli', 'version': 'v1', 'config': {},
+    }
     assert codex_event.payload['actual_model'] == 'gpt-5.1-codex'
     assert codex_event.payload['usage'] == {'input_tokens': 10}
     assert codex_event.payload['final_response'] == 'Done.'

@@ -122,12 +122,14 @@ Every successful Codex result also contains `requested_model` and
 `actual_model`. The API validates the requested value against the frozen
 snapshot and persists both as runtime artifacts.
 
-Successful and failed Codex results persist one normalized observation and
-expose it as the ActivityRun `payload`. The observation includes start and end
-timestamps, elapsed milliseconds, model and reasoning settings, session ID,
-all numeric token counters, process exit code, diagnostics, materialized Skill
-versions, source and final Git SHAs, diff, changed files, final response, and
-failure detail. Partial JSONL observations survive a failed process. A later
+Successful and failed Harness results persist one normalized observation and
+expose it as the ActivityRun `payload`. The v1 common envelope identifies its
+`schema_version` and frozen `harness`, then includes start and end timestamps,
+elapsed milliseconds, optional model settings and session reference, numeric
+usage counters, process exit code, diagnostics, source and final Git SHAs,
+diff, changed files, final response, and failure detail. The `codex_cli` v1
+variant additionally includes materialized Skill versions and observed
+reasoning effort. Partial JSONL observations survive a failed process. A later
 successful `commit_if_allowed` replaces the pre-commit final SHA with the
 authorized commit SHA.
 

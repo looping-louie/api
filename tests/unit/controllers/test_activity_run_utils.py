@@ -48,6 +48,8 @@ def test_run_harness_result_accepts_commit_message() -> None:
 
     result = action_result({
         'action': 'run_harness',
+        'schema_version': 'v1',
+        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         'completed': True,
         'final_response': 'Implemented the requested change.',
         'commit_message': 'feat: implement requested change',
@@ -56,5 +58,7 @@ def test_run_harness_result_accepts_commit_message() -> None:
     })
 
     assert result.commit_message == 'feat: implement requested change'
+    assert result.schema_version == 'v1'
+    assert result.harness is not None and result.harness.kind == 'codex_cli'
     assert result.requested_model == 'gpt-5-codex'
     assert result.actual_model == 'gpt-5-codex'

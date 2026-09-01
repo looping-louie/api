@@ -760,6 +760,7 @@ The requested value must equal the model frozen in the Activity snapshot; both
 values are persisted as runtime artifacts. The normalized success or failure
 observation is subsequently returned in the ActivityRun `payload`, including:
 
+- `schema_version` and the frozen `harness` kind, version, and configuration;
 - `started_at`, `completed_at`, and `duration_ms`;
 - `requested_model`, `actual_model`, and nullable `reasoning_effort`;
 - `session_reference`, `usage`, `exit_code`, and `diagnostics`;
@@ -770,6 +771,12 @@ observation is subsequently returned in the ActivityRun `payload`, including:
 If the later commit checkpoint succeeds, `final_commit_sha` is updated to the
 authorized commit SHA. Failed Harness turns retain any observations emitted
 before failure rather than returning an empty payload.
+
+These fields form the v1 common Harness observation envelope. Consumers should
+discriminate variants through `harness.kind`; `materialized_skills` is currently
+specific to the `codex_cli` variant. Older runtimes may omit the two
+discriminants when submitting a checkpoint, but the API always derives and
+publishes them from the frozen Activity snapshot.
 
 Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`. An invalid or stale continuation token returns

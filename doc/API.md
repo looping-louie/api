@@ -52,12 +52,13 @@ the frozen commit mode allows commits. The API validates and persists that
 message as a runtime artifact, then exposes it only through the later
 `commit_if_allowed` checkpoint. Codex does not authorize or perform the commit.
 The normalized result remains available in the ActivityRun `payload` on both
-success and failure. It records timestamps and duration, requested and actual
-model, reasoning effort when observable, session reference, token usage, exit
-code and diagnostics, materialized Skill IDs and versions, source and final Git
-commits, diff, changed files, and final response. The requested model must match
-the immutable Activity snapshot; a later authorized commit updates the final
-commit SHA without discarding the Harness observation.
+success and failure. Every observation carries `schema_version` and the frozen
+Harness identity before the common timing, model, usage, process, Git, response,
+and error fields. Harness-specific fields extend that common envelope; the
+`codex_cli` v1 variant includes reasoning effort, session reference, and
+materialized Skill IDs and versions. The requested model and reported Harness
+must match the immutable Activity snapshot. A later authorized commit updates
+the final commit SHA without discarding the Harness observation.
 
 The PipelineRun event ledger records `pipeline_run_claimed`,
 `pipeline_step_started`, terminal step events, and `codex_turn_completed` or

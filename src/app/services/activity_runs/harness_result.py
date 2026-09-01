@@ -7,6 +7,24 @@ from collections.abc import Mapping
 from src.app.services.activity_runs.types import ActivityRunValidationError
 
 
+def harness_runtime_artifacts(
+    *,
+    activity_snapshot: Mapping[str, object],
+    result: Mapping[str, object],
+    require_commit_message: bool,
+) -> dict[str, object]:
+    """Dispatch one frozen Harness result to its normalizing adapter."""
+
+    harness = activity_snapshot.get('harness')
+    if isinstance(harness, Mapping) and harness.get('kind') == 'codex_cli':
+        return codex_runtime_artifacts(
+            activity_snapshot=activity_snapshot,
+            result=result,
+            require_commit_message=require_commit_message,
+        )
+    raise RuntimeError('Activity snapshot selects an unsupported Harness.')
+
+
 def codex_runtime_artifacts(
     *,
     activity_snapshot: Mapping[str, object],
@@ -15,6 +33,23 @@ def codex_runtime_artifacts(
 ) -> dict[str, object]:
     """Validate and normalize the complete Codex Harness observation."""
 
+    harness = activity_snapshot.get('harness')
+    if not isinstance(harness, Mapping) or (
+        harness.get('kind'), harness.get('version')
+    ) != ('codex_cli', 'v1'):
+        raise RuntimeError('Codex Activity snapshot has an invalid Harness.')
+    schema_version = result.get('schema_version', 'v1')
+    if schema_version != 'v1':
+        raise ActivityRunValidationError(
+            field_name='result.schema_version',
+            message='must be v1',
+        )
+    reported_harness = result.get('harness')
+    if reported_harness is not None and reported_harness != harness:
+        raise ActivityRunValidationError(
+            field_name='result.harness',
+            message='must match the frozen Harness',
+        )
     expected_model = activity_snapshot.get('requested_model')
     requested_model = result.get('requested_model')
     actual_model = result.get('actual_model')
@@ -39,6 +74,8 @@ def codex_runtime_artifacts(
             message='must not be empty',
         )
     artifacts: dict[str, object] = {
+        'schema_version': 'v1',
+        'harness': dict(harness),
         'completed': completed,
         'started_at': result.get('started_at'),
         'completed_at': result.get('completed_at'),

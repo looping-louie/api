@@ -119,10 +119,13 @@ no active worker advertises its frozen Harness and may be claimed after a later
 heartbeat reports that Harness. The
 runtime reports the turn's final response, checkout diff, changed files, usage,
 diagnostics, requested model, actual model, and optional opaque session
-reference through `run_harness`. The payload includes the immutable effective
+reference through `run_harness`. Normalized observations use a versioned common
+envelope identified by `schema_version` and the frozen Harness kind and version;
+Harness-specific adapters add only their own fields. The payload includes the immutable effective
 model and Persona and Skill snapshot resolved at run creation, so the runtime
-does not query mutable resources during execution. The API rejects a successful
-result whose requested model differs from the snapshot. For commit-enabled
+does not query mutable resources during execution. The API rejects a result
+whose reported Harness differs from the snapshot and rejects a successful
+result whose requested model differs from it. For commit-enabled
 runs, Codex also proposes a non-empty commit
 message in its normalized Harness result. The API persists that proposal and
 returns it only when the Activity reaches `commit_if_allowed`, preserving the
@@ -147,7 +150,9 @@ grant one forbidden by the persisted run policy.
 
 Pipeline runs preserve an append-only event ledger. It records run creation,
 each worker claim, step start and terminal state, and the complete normalized
-Codex turn observation. A ready `approval` or `quiz` Activity creates a normal
+Harness turn observation. Current Codex event names remain a compatibility
+transport detail; consumers identify the observation by its embedded Harness.
+A ready `approval` or `quiz` Activity creates a normal
 child Activity run with a human executor and transitions the Pipeline to
 `waiting` without assigning a worker lease. Users submit its decision through
 the Activity-run continuation API. A rejected human Activity run resets frozen
@@ -195,7 +200,8 @@ services/
 |-- activity_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for loop Activities
-|   |-- harness_result.py          Normalizes Codex observations and Git outcome
+|   |-- harness_result.py          Dispatches normalized Harness observations
+|   |                              and merges their Git outcome
 |   |-- operation_plan.py          Validates model-generated filesystem changes
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints

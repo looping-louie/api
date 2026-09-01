@@ -76,10 +76,20 @@ class ActivityRunHarnessSkillResult(RequestSchema):
     version: PositiveInteger
 
 
+class ActivityRunHarnessIdentity(RequestSchema):
+    """Harness implementation that produced one normalized observation."""
+
+    kind: NonEmptyString
+    version: NonEmptyString
+    config: dict[str, object] = Field(default_factory=dict)
+
+
 class ActivityRunHarnessResult(RequestSchema):
     """Result of one Worker-owned Harness execution turn."""
 
     action: Literal['run_harness']
+    schema_version: Literal['v1'] = 'v1'
+    harness: ActivityRunHarnessIdentity | None = None
     completed: bool
     started_at: datetime | None = None
     completed_at: datetime | None = None

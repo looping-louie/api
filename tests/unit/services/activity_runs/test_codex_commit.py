@@ -9,6 +9,7 @@ import pytest
 from src.app.controllers.activity_runs.utils import activity_run_response
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
+from src.app.services.activity_runs.harness_result import harness_runtime_artifacts
 from src.app.services.activity_runs.service import ActivityRunService
 from src.app.services.activity_runs.types import ActivityRunValidationError
 from src.app.services.shared.tenant import TenantService
@@ -16,6 +17,19 @@ from tests.unit.services.activity_runs.test_harness_routing import (
     _ActivityRunRepository,
     _ActivityService,
 )
+
+
+def test_harness_normalizer_rejects_an_unknown_adapter() -> None:
+    """The common normalizer fails explicitly for an unsupported Harness."""
+
+    with pytest.raises(RuntimeError, match='unsupported Harness'):
+        harness_runtime_artifacts(
+            activity_snapshot={
+                'harness': {'kind': 'future_cli', 'version': 'v1', 'config': {}},
+            },
+            result={'completed': True},
+            require_commit_message=False,
+        )
 
 
 @pytest.mark.asyncio
@@ -42,6 +56,8 @@ async def test_completed_codex_turn_publishes_commit_message(
 
     assert result.next_action == 'commit_if_allowed'
     expected_artifacts = {
+        'schema_version': 'v1',
+        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         'completed': True,
         'started_at': '2026-08-31T10:00:00+00:00',
         'completed_at': '2026-08-31T10:00:02+00:00',
@@ -138,6 +154,35 @@ async def test_completed_codex_turn_rejects_a_different_requested_model(
                 'commit_message': 'feat: implement requested change',
                 'requested_model': 'worker-local-model',
                 'actual_model': 'worker-local-model',
+            },
+        )
+
+    assert repository.transition_arguments is None
+
+
+@pytest.mark.asyncio
+async def test_codex_turn_rejects_a_different_reported_harness(
+    tenant_service: TenantService,
+) -> None:
+    """A worker cannot relabel an observation with another Harness."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='forbid',
+    )
+
+    with pytest.raises(
+        ActivityRunValidationError,
+        match='result.harness.*must match the frozen Harness',
+    ):
+        await service.continue_run(
+            user_id='user-1', activity_id=activity.id, run_id='run-1',
+            pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+            continuation_token='token-1', idempotency_key='harness-1',
+            action='run_harness',
+            result={
+                **_harness_result(),
+                'harness': {'kind': 'other', 'version': 'v1', 'config': {}},
             },
         )
 
@@ -257,6 +302,8 @@ def _harness_result() -> dict[str, object]:
 
     return {
         'action': 'run_harness',
+        'schema_version': 'v1',
+        'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         'completed': True,
         'started_at': '2026-08-31T10:00:00+00:00',
         'completed_at': '2026-08-31T10:00:02+00:00',
