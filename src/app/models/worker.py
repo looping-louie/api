@@ -13,6 +13,15 @@ class WorkerHarnessCapability:
     version: Literal['v1'] = 'v1'
     config: Mapping[str, object] = field(default_factory=dict)
 
+    def matches(self, harness: Mapping[str, object]) -> bool:
+        """Return whether this capability exactly matches a frozen Harness."""
+
+        return (
+            self.kind == harness.get('kind')
+            and self.version == harness.get('version')
+            and dict(self.config) == harness.get('config')
+        )
+
 
 def default_worker_harnesses() -> tuple[WorkerHarnessCapability, ...]:
     """Return the compatibility capability set for existing Workers."""

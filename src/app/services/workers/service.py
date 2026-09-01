@@ -136,12 +136,7 @@ class WorkerService:
             or worker.last_heartbeat_at < self._clock() - WORKER_HEARTBEAT_TIMEOUT
         ):
             raise WorkerUnavailableError(normalized_worker_id)
-        if not any(
-            candidate.kind == harness.get('kind')
-            and candidate.version == harness.get('version')
-            and dict(candidate.config) == harness.get('config')
-            for candidate in worker.harnesses
-        ):
+        if not any(candidate.matches(harness) for candidate in worker.harnesses):
             raise WorkerHarnessUnavailableError(normalized_worker_id)
 
     async def readiness(

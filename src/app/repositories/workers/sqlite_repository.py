@@ -142,12 +142,7 @@ class SqliteWorkerRepository:
         ]
         compatible = [
             worker for worker in active
-            if any(
-                capability.kind == harness.get('kind')
-                and capability.version == harness.get('version')
-                and dict(capability.config) == harness.get('config')
-                for capability in worker.harnesses
-            )
+            if any(capability.matches(harness) for capability in worker.harnesses)
         ]
         return WorkerReadinessDocument(
             registered_worker_count=len(workers),
