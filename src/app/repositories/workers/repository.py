@@ -39,16 +39,6 @@ class WorkerRepository(Protocol):
         """Refresh liveness and optionally replace observed capabilities."""
         raise NotImplementedError
 
-    async def is_active(
-        self,
-        *,
-        project_id: str,
-        worker_id: str,
-        active_since: datetime,
-    ) -> bool:
-        """Return whether a worker sent a recent heartbeat."""
-        raise NotImplementedError
-
     async def readiness(
         self,
         *,

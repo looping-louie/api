@@ -112,28 +112,6 @@ class SqliteWorkerRepository:
                 raise
         return _to_document(row) if row is not None else None
 
-    async def is_active(
-        self,
-        *,
-        project_id: str,
-        worker_id: str,
-        active_since: datetime,
-    ) -> bool:
-        """Return whether the worker has heartbeated since the cutoff."""
-
-        async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                '''
-                SELECT 1 FROM workers
-                WHERE project_id = ? AND id = ? AND last_heartbeat_at >= ?
-                ''',
-                (project_id, worker_id, active_since.isoformat()),
-            )
-            try:
-                return await cursor.fetchone() is not None
-            finally:
-                await cursor.close()
-
     async def readiness(
         self,
         *,

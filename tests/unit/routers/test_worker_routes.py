@@ -65,19 +65,6 @@ class InMemoryWorkerRepository:
 
         return self.documents.get((project_id, worker_id))
 
-    async def is_active(
-        self,
-        *,
-        project_id: str,
-        worker_id: str,
-        active_since: datetime,
-    ) -> bool:
-        """Return whether a worker has sent a current heartbeat."""
-
-        worker = self.documents.get((project_id, worker_id))
-        return worker is not None and worker.last_heartbeat_at >= active_since
-
-
 def build_client(tenant_service: TenantService) -> TestClient:
     """Build an authenticated worker registration API application."""
 

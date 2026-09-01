@@ -117,31 +117,26 @@ class WorkerService:
             raise WorkerNotFoundError(worker_id)
         return worker
 
-    async def require_active(self, *, project_id: str, worker_id: str) -> None:
-        """Reject claims from workers without a current registration heartbeat."""
-
-        if not await self._repository.is_active(
-            project_id=project_id,
-            worker_id=_require_text(worker_id),
-            active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
-        ):
-            raise WorkerUnavailableError(worker_id)
-
-    async def require_harness(
+    async def require_capable(
         self,
         *,
         project_id: str,
         worker_id: str,
         harness: Mapping[str, object],
     ) -> None:
-        """Reject active Workers that do not advertise an exact Harness match."""
+        """Reject Workers that are inactive or lack an exact Harness match."""
 
         normalized_worker_id = _require_text(worker_id)
         worker = await self._repository.get(
             project_id=project_id,
             worker_id=normalized_worker_id,
         )
-        if worker is None or not any(
+        if (
+            worker is None
+            or worker.last_heartbeat_at < self._clock() - WORKER_HEARTBEAT_TIMEOUT
+        ):
+            raise WorkerUnavailableError(normalized_worker_id)
+        if not any(
             candidate.kind == harness.get('kind')
             and candidate.version == harness.get('version')
             and dict(candidate.config) == harness.get('config')

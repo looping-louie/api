@@ -283,11 +283,7 @@ class PipelineRunService:
         )
         now = self._clock()
         if self._worker_service is not None:
-            await self._worker_service.require_active(
-                project_id=workspace.project_id,
-                worker_id=normalized_worker_id,
-            )
-            await self._worker_service.require_harness(
+            await self._worker_service.require_capable(
                 project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
                 harness=required_harness(candidate),

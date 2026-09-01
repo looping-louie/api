@@ -204,26 +204,20 @@ class InMemoryWorkerService:
 
         self.active = active
         self.supports_harness = supports_harness
-        self.calls: list[tuple[str, str]] = []
-        self.harness_calls: list[tuple[str, str, dict[str, object]]] = []
+        self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-    async def require_active(self, *, project_id: str, worker_id: str) -> None:
-        """Record one admission check and reject inactive worker identities."""
-
-        self.calls.append((project_id, worker_id))
-        if not self.active:
-            raise WorkerUnavailableError(worker_id)
-
-    async def require_harness(
+    async def require_capable(
         self,
         *,
         project_id: str,
         worker_id: str,
         harness: dict[str, object],
     ) -> None:
-        """Record one capability admission check and reject mismatches."""
+        """Record one combined liveness and capability admission check."""
 
-        self.harness_calls.append((project_id, worker_id, harness))
+        self.calls.append((project_id, worker_id, harness))
+        if not self.active:
+            raise WorkerUnavailableError(worker_id)
         if not self.supports_harness:
             raise WorkerHarnessUnavailableError(worker_id)
 
@@ -356,8 +350,7 @@ async def test_prepared_run_starts_before_runtime_claim(
         'config': {},
     }
     assert lease_token == 'token'
-    assert workers.calls == [('workspace-1', 'worker-1')]
-    assert workers.harness_calls == [(
+    assert workers.calls == [(
         'workspace-1',
         'worker-1',
         {'kind': 'louie', 'version': 'v1', 'config': {}},
