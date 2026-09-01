@@ -22,6 +22,12 @@ from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.events import PipelineRunEventBuilder
+from src.app.services.pipeline_runs.graph import snapshot_dependencies
+from src.app.services.pipeline_runs.readiness import (
+    PipelineRunReadiness,
+    PipelineRunReadinessService,
+    required_harness,
+)
 from src.app.services.pipeline_runs.snapshot import (
     PipelineRunSnapshotBuilder,
     harness_snapshot,
@@ -73,6 +79,12 @@ class PipelineRunService:
         )
         self._id_factory = id_factory
         self._event_builder = PipelineRunEventBuilder(id_factory)
+        self._readiness_service = PipelineRunReadinessService(
+            repository=repository,
+            tenant_service=tenant_service,
+            worker_service=worker_service,
+            clock=clock,
+        )
         self._clock = clock
         self._token_factory = token_factory
 
@@ -278,7 +290,7 @@ class PipelineRunService:
             await self._worker_service.require_harness(
                 project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
-                harness=harness_snapshot(candidate.pipeline_snapshot),
+                harness=required_harness(candidate),
             )
         if if_match != pipeline_run_etag(candidate):
             raise PipelineRunPreconditionFailedError(
@@ -376,6 +388,21 @@ class PipelineRunService:
             run_id=run_id,
         )
         return replace(document, events=tuple(events)), await self._current_child(document)
+
+    async def readiness(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        requested_project_id: str | None = None,
+    ) -> PipelineRunReadiness:
+        """Describe whether a queued run has an active compatible Worker."""
+
+        return await self._readiness_service.get(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_project_id=requested_project_id,
+        )
 
     async def _get_required(
         self,
@@ -547,7 +574,7 @@ class PipelineRunService:
         now = self._clock()
         steps = list(document.steps)
         by_activity_id = {step.activity_id: step for step in steps}
-        dependencies = self._dependencies(document.pipeline_snapshot)
+        dependencies = snapshot_dependencies(document.pipeline_snapshot)
         for index, step in enumerate(steps):
             if step.status != 'pending':
                 continue
@@ -646,7 +673,7 @@ class PipelineRunService:
     ) -> PipelineRunDocument:
         """Reset the rejected gate's dependency path for corrective execution."""
 
-        dependencies = self._dependencies(document.pipeline_snapshot)
+        dependencies = snapshot_dependencies(document.pipeline_snapshot)
         correction_ids = self._ancestors(
             activity_id=activity_id,
             dependencies=dependencies,
@@ -706,29 +733,6 @@ class PipelineRunService:
             and isinstance(decision, Mapping)
             and decision.get('decision') == 'rejected'
         )
-
-    @staticmethod
-    def _dependencies(snapshot: Mapping[str, object]) -> dict[str, list[dict[str, str]]]:
-        """Return validated dependency requirements by activity ID."""
-
-        values = snapshot.get('steps')
-        if not isinstance(values, list):
-            raise RuntimeError('Pipeline run snapshot is invalid.')
-        return {
-            str(step['activity_id']): [
-                {
-                    'activity_id': str(item['activity_id']),
-                    'condition': (
-                        'completed'
-                        if item['condition'] == 'success'
-                        else 'failed'
-                    ),
-                }
-                for item in step['depends_on']
-            ]
-            for step in values
-            if isinstance(step, dict)
-        }
 
     @staticmethod
     def _require_text(value: str) -> str:

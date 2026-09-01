@@ -21,6 +21,7 @@ from src.app.schemas.pipeline import (
     PipelineRunCreateRequest,
     PipelineRunLeaseRenewRequest,
     PipelineRunLeaseResponse,
+    PipelineRunReadinessResponse,
     PipelineRunResponse,
     PipelineResponse,
     PipelineStatusValue,
@@ -227,6 +228,25 @@ async def get_pipeline_run(
     """Return a pipeline execution and its selected child run."""
 
     return await controller.get_run(
+        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        requested_project_id=context.requested_project_id,
+    )
+
+
+@router.get(
+    '/{pipeline_id}/runs/{run_id}/readiness',
+    response_model=PipelineRunReadinessResponse,
+    summary='Describe pipeline run worker readiness',
+)
+async def get_pipeline_run_readiness(
+    context: ContextDependency,
+    controller: ControllerDependency,
+    pipeline_id: PipelineIdPath,
+    run_id: Annotated[str, Path(min_length=1)],
+) -> PipelineRunReadinessResponse:
+    """Return aggregated liveness and Harness compatibility for a queued run."""
+
+    return await controller.get_run_readiness(
         user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
         requested_project_id=context.requested_project_id,
     )

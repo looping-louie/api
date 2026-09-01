@@ -31,3 +31,13 @@ class WorkerDocument:
     harnesses: tuple[WorkerHarnessCapability, ...] = field(
         default_factory=default_worker_harnesses,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class WorkerReadinessDocument:
+    """Aggregated worker liveness and Harness compatibility for a workspace."""
+
+    registered_worker_count: int
+    active_worker_count: int
+    compatible_worker_count: int
+    latest_heartbeat_at: datetime | None

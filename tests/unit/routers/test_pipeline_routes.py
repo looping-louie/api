@@ -15,6 +15,7 @@ from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDoc
 from src.app.routers.pipelines import router as pipelines_router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.pipeline_runs import PipelineRunService
+from src.app.services.pipeline_runs.readiness import PipelineRunReadiness
 from src.app.utils.http import register_exception_handlers
 from tests.unit.services.pipelines.test_service import build_service
 
@@ -374,6 +375,35 @@ def test_pipeline_event_ledger_returns_persisted_events(
     }
 
 
+def test_pipeline_run_readiness_returns_aggregated_worker_state(
+    tenant_service: TenantService,
+) -> None:
+    """Queued-run readiness exposes Harness and workspace worker counts."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, _ReadinessService()),
+    )
+
+    response = client.get(
+        '/api/v1/pipelines/pipeline-1/runs/run-1/readiness',
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'status': 'no_compatible_workers',
+        'project_id': 'workspace-1',
+        'required_harness': {
+            'kind': 'codex_cli', 'version': 'v1', 'config': {},
+        },
+        'registered_worker_count': 2,
+        'active_worker_count': 1,
+        'compatible_worker_count': 0,
+        'latest_heartbeat_at': '2026-08-21T00:00:00Z',
+        'observed_at': '2026-08-21T00:00:30Z',
+    }
+
+
 def test_pipeline_claim_requires_an_if_match_header(
     tenant_service: TenantService,
 ) -> None:
@@ -519,6 +549,34 @@ class _EventService:
                 payload={'commit_mode': 'forbid'}, created_at=timestamp,
             ),),
         ), None
+
+
+class _ReadinessService:
+    """Provide one deterministic queued-run worker diagnostic."""
+
+    async def readiness(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        requested_project_id: str | None,
+    ) -> PipelineRunReadiness:
+        """Return an active Worker set without the required Codex Harness."""
+
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
+            'user-1', 'pipeline-1', 'run-1', None,
+        )
+        return PipelineRunReadiness(
+            status='no_compatible_workers', project_id='workspace-1',
+            required_harness={
+                'kind': 'codex_cli', 'version': 'v1', 'config': {},
+            },
+            registered_worker_count=2, active_worker_count=1,
+            compatible_worker_count=0,
+            latest_heartbeat_at=datetime(2026, 8, 21, tzinfo=UTC),
+            observed_at=datetime(2026, 8, 21, 0, 0, 30, tzinfo=UTC),
+        )
 
 
 class _StartService:

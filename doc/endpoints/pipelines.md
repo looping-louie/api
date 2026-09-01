@@ -24,6 +24,7 @@ runtime worker claims one eligible Activity run at a time.
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` | Starts a prepared pipeline run. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness` | Describes aggregate Worker readiness for a queued run. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
@@ -1003,6 +1004,42 @@ Example response (`200 OK`):
 
 The API returns `404 pipeline_run_not_found` when the supplied run does not
 belong to the Pipeline in the selected workspace.
+
+## Describe pipeline run readiness
+
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness` diagnoses a
+queued run without exposing Worker identities or local configuration. The API
+resolves the next claimable Activity's frozen Harness and applies the same
+two-minute heartbeat window used by claim admission. The response distinguishes
+no registrations, only stale registrations, active incompatible Workers, and
+an active compatible Worker. A later compatible heartbeat changes the result
+to `ready`; no user retry is required for the runtime to claim the run.
+
+```http
+GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/readiness
+X-Project-ID: project-acme
+```
+
+```json
+{
+  "status": "no_compatible_workers",
+  "project_id": "project-acme",
+  "required_harness": {
+    "kind": "codex_cli",
+    "version": "v1",
+    "config": {}
+  },
+  "registered_worker_count": 2,
+  "active_worker_count": 1,
+  "compatible_worker_count": 0,
+  "latest_heartbeat_at": "2026-08-21T10:00:00Z",
+  "observed_at": "2026-08-21T10:00:30Z"
+}
+```
+
+For non-queued runs, `status` is `not_applicable`, `required_harness` is null,
+and the counts are zero. This race-safe response lets a client stop presenting
+queued diagnostics after the run has already been claimed.
 
 ## List pipeline run events
 

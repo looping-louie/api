@@ -77,9 +77,13 @@ authentication remains local to the worker.
 
 Workers advertise their current Harness capabilities during registration and
 may replace them on every heartbeat. A PipelineRun claim requires an active
-Worker heartbeat and an exact match for the frozen Pipeline Harness selection.
+Worker heartbeat and an exact match for the next claimable Activity's frozen
+Harness selection.
 A valid run remains queued when no compatible worker is healthy and becomes
 claimable without a user retry after a later heartbeat advertises that Harness.
+The run-readiness endpoint exposes Project-scoped aggregate counts and the
+required Harness for operator diagnostics without exposing Worker identities or
+local configuration.
 Registration and heartbeat requests carry both the acting `X-User-ID` and
 selected `X-Project-ID`.
 

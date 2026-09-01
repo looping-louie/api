@@ -490,6 +490,7 @@ PIPELINE_RUN_ID="$(printf '%s' "${pipeline_run_response}" | json_field "id")"
 request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" >/dev/null
 request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/events" >/dev/null
 request POST "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/start" '{}' >/dev/null
+request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/readiness" >/dev/null
 pipeline_claimable_response="$(
     request GET "/pipelines/${PIPELINE_ID}/runs?claimable=true"
 )"

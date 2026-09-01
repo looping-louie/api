@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol
+from typing import Mapping, Protocol
 
-from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
+from src.app.models.worker import (
+    WorkerDocument,
+    WorkerHarnessCapability,
+    WorkerReadinessDocument,
+)
 
 
 class WorkerRepository(Protocol):
@@ -43,4 +47,14 @@ class WorkerRepository(Protocol):
         active_since: datetime,
     ) -> bool:
         """Return whether a worker sent a recent heartbeat."""
+        raise NotImplementedError
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        active_since: datetime,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize workspace worker liveness and exact Harness matches."""
         raise NotImplementedError

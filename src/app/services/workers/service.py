@@ -9,6 +9,7 @@ from typing import Mapping
 from src.app.models.worker import (
     WorkerDocument,
     WorkerHarnessCapability,
+    WorkerReadinessDocument,
     default_worker_harnesses,
 )
 from src.app.repositories.workers import WorkerRepository
@@ -147,6 +148,20 @@ class WorkerService:
             for candidate in worker.harnesses
         ):
             raise WorkerHarnessUnavailableError(normalized_worker_id)
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize active workers that advertise one exact Harness."""
+
+        return await self._repository.readiness(
+            project_id=project_id,
+            active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
+            harness=harness,
+        )
 
 
 def _require_text(value: str) -> str:

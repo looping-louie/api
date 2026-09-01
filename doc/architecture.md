@@ -116,7 +116,10 @@ authorization. Workers advertise Harness capabilities during registration and
 replace the currently observed set on heartbeats. The API requires an exact
 capability match before a PipelineRun claim. A valid run remains queued while
 no active worker advertises its frozen Harness and may be claimed after a later
-heartbeat reports that Harness. The
+heartbeat reports that Harness. Readiness queries compare the next claimable
+Activity's frozen Harness with Project-scoped registrations using the same
+two-minute heartbeat window as claim admission. They expose only aggregate
+counts and the latest heartbeat, not Worker identities or local configuration. The
 runtime reports the turn's final response, checkout diff, changed files, usage,
 diagnostics, requested model, actual model, and optional opaque session
 reference through `run_harness`. Normalized observations use a versioned common
@@ -251,6 +254,8 @@ services/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- etag.py                    Creates concurrency entity tags
 |   |-- events.py                  Builds scheduler and Harness ledger events
+|   |-- graph.py                   Reads frozen dependency requirements
+|   |-- readiness.py               Diagnoses queued-run Worker availability
 |   |-- service.py                 Creates, reads, and advances Pipeline runs
 |   |-- snapshot.py                Freezes models, Harnesses, and instructions
 |   `-- types.py                   Defines execution errors

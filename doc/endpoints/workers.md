@@ -20,12 +20,12 @@ User's Projects.
 
 ## Observe Worker Liveness
 
-The API intentionally exposes no `GET` worker list or read endpoint. To verify
-that a configured worker identity remains available before queueing work, send
-its heartbeat request and inspect the returned `last_heartbeat_at` timestamp.
-The successful heartbeat confirms the worker identity belongs to the selected
-Project and refreshes its liveness signal. Pipeline-run claim admission
-remains the authoritative check that an active worker can claim queued work.
+The API intentionally exposes no raw Worker list or identity read endpoint.
+Runtimes verify their own registration by sending a heartbeat and inspecting
+the returned `last_heartbeat_at`. Web clients diagnose queued work through
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness`, which returns
+only Project-scoped aggregate liveness and Harness-compatibility counts.
+Pipeline-run claim admission remains the authoritative mutation-time check.
 
 ## Provision A Worker
 

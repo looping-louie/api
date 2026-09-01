@@ -15,6 +15,7 @@ from src.app.schemas.pipeline import (
     PipelineRunEventListResponse,
     PipelineRunEventResponse,
     PipelineRunLeaseResponse,
+    PipelineRunReadinessResponse,
     PipelineRunResponse,
     PipelineRunStepResponse,
 )
@@ -104,6 +105,18 @@ class PipelineRunController:
             requested_project_id=requested_project_id,
         )
         return self._response(document, child)
+
+    async def get_run_readiness(
+        self, *, user_id: str, pipeline_id: str, run_id: str,
+        requested_project_id: str | None = None,
+    ) -> PipelineRunReadinessResponse:
+        """Return worker liveness and Harness compatibility for one queued run."""
+
+        readiness = await self._require_service().readiness(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_project_id=requested_project_id,
+        )
+        return PipelineRunReadinessResponse.model_validate(readiness)
 
     async def renew_lease(
         self, *, user_id: str, pipeline_id: str, run_id: str,

@@ -70,3 +70,40 @@ async def test_worker_repository_heartbeat_replaces_harnesses(
 
     assert heartbeated is not None
     assert [harness.kind for harness in heartbeated.harnesses] == ['louie']
+
+
+@pytest.mark.asyncio
+async def test_worker_repository_summarizes_active_harness_compatibility(
+    sqlite_database: SqliteDatabase,
+    create_workspace: WorkspaceFactory,
+) -> None:
+    """Readiness distinguishes registered, active, and compatible Workers."""
+
+    await create_workspace(project_id='workspace-1')
+    timestamp = datetime(2026, 8, 24, tzinfo=UTC)
+    repository = SqliteWorkerRepository(sqlite_database)
+    await repository.create(WorkerDocument(
+        id='stale-codex', project_id='workspace-1', registered_at=timestamp,
+        last_heartbeat_at=timestamp,
+        harnesses=(WorkerHarnessCapability(kind='codex_cli'),),
+    ))
+    await repository.create(WorkerDocument(
+        id='active-louie', project_id='workspace-1', registered_at=timestamp,
+        last_heartbeat_at=timestamp + timedelta(minutes=3),
+    ))
+    await repository.create(WorkerDocument(
+        id='active-codex', project_id='workspace-1', registered_at=timestamp,
+        last_heartbeat_at=timestamp + timedelta(minutes=4),
+        harnesses=(WorkerHarnessCapability(kind='codex_cli'),),
+    ))
+
+    readiness = await repository.readiness(
+        project_id='workspace-1',
+        active_since=timestamp + timedelta(minutes=2),
+        harness={'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+    )
+
+    assert readiness.registered_worker_count == 3
+    assert readiness.active_worker_count == 2
+    assert readiness.compatible_worker_count == 1
+    assert readiness.latest_heartbeat_at == timestamp + timedelta(minutes=4)

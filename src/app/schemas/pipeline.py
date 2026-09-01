@@ -212,6 +212,28 @@ class PipelineRunResponse(ResponseSchema):
     updated_at: datetime
 
 
+PipelineRunReadinessStatusValue = Literal[
+    'not_applicable',
+    'no_registered_workers',
+    'no_active_workers',
+    'no_compatible_workers',
+    'ready',
+]
+
+
+class PipelineRunReadinessResponse(ResponseSchema):
+    """Aggregated worker availability for one queued Pipeline run."""
+
+    status: PipelineRunReadinessStatusValue
+    project_id: str
+    required_harness: PipelineHarnessResponse | None
+    registered_worker_count: int
+    active_worker_count: int
+    compatible_worker_count: int
+    latest_heartbeat_at: datetime | None
+    observed_at: datetime
+
+
 class PipelineRunClaimResponse(ResponseSchema):
     """One worker-owned pipeline run and its secret lease token."""
 

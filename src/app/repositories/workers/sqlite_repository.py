@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+from typing import Mapping
 
-from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
+from src.app.models.worker import (
+    WorkerDocument,
+    WorkerHarnessCapability,
+    WorkerReadinessDocument,
+)
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
 
@@ -128,6 +133,53 @@ class SqliteWorkerRepository:
                 return await cursor.fetchone() is not None
             finally:
                 await cursor.close()
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        active_since: datetime,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Aggregate recent workers and exact Harness matches for a workspace."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, project_id, registered_at, last_heartbeat_at,
+                    harnesses_json
+                FROM workers
+                WHERE project_id = ?
+                ''',
+                (project_id,),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        workers = [_to_document(row) for row in rows]
+        active = [
+            worker for worker in workers
+            if worker.last_heartbeat_at >= active_since
+        ]
+        compatible = [
+            worker for worker in active
+            if any(
+                capability.kind == harness.get('kind')
+                and capability.version == harness.get('version')
+                and dict(capability.config) == harness.get('config')
+                for capability in worker.harnesses
+            )
+        ]
+        return WorkerReadinessDocument(
+            registered_worker_count=len(workers),
+            active_worker_count=len(active),
+            compatible_worker_count=len(compatible),
+            latest_heartbeat_at=max(
+                (worker.last_heartbeat_at for worker in workers),
+                default=None,
+            ),
+        )
 
 
 def _to_document(row: object) -> WorkerDocument:
