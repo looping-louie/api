@@ -15,6 +15,7 @@ from src.app.models.pipeline import (
     PipelineHarness,
 )
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
+from src.app.services.pipeline_runs.events import PipelineRunEventBuilder
 from src.app.services.pipeline_runs.service import PipelineRunService
 from src.app.services.shared.tenant import TenantService
 from tests.contract_fixtures import load_harness_observation
@@ -28,6 +29,18 @@ from tests.unit.services.pipeline_runs.test_service import (
 from tests.unit.services.pipeline_runs.test_snapshots import (
     StaticInstructionLibraryService,
 )
+
+
+def test_event_builder_keeps_every_persisted_harness_turn() -> None:
+    """A multi-agent child publishes all observations instead of only its writer."""
+
+    first = load_harness_observation('codex_cli_v1_completed.json')
+    second = {**first, 'turn_id': '1:review:reviewer', 'phase': 'review'}
+
+    assert PipelineRunEventBuilder._harness_observations({
+        'harness_loop': {'turns': [first, second]},
+        'runtime_artifacts': first,
+    }) == (first, second)
 
 
 @pytest.mark.asyncio

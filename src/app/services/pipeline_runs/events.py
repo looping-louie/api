@@ -108,10 +108,7 @@ class PipelineRunEventBuilder:
         """Record Harness output, terminal step state, and its successor start."""
 
         events: list[PipelineRunEventDocument] = []
-        artifacts = child.execution_context.get('runtime_artifacts')
-        if isinstance(artifacts, Mapping) and self._is_harness_observation(
-            artifacts
-        ):
+        for artifacts in self._harness_observations(child.execution_context):
             payload = {'activity_run_id': child.id, **dict(artifacts)}
             events.append(self._event(
                 project_id=document.project_id,
@@ -127,6 +124,10 @@ class PipelineRunEventBuilder:
                 created_at=created_at,
             ))
         step_status = 'completed' if child.status == 'completed' else 'failed'
+        failure = child.execution_context.get('failure')
+        failure_message = (
+            failure.get('message') if isinstance(failure, Mapping) else None
+        )
         events.append(self._event(
             project_id=document.project_id,
             run_id=document.id,
@@ -138,6 +139,11 @@ class PipelineRunEventBuilder:
                 'status': step_status,
                 'started_at': child.created_at.isoformat(),
                 'completed_at': child.updated_at.isoformat(),
+                **(
+                    {'error': failure_message}
+                    if isinstance(failure_message, str) and failure_message
+                    else {}
+                ),
             },
             created_at=created_at,
         ))
@@ -200,6 +206,30 @@ class PipelineRunEventBuilder:
             actor_id=actor_id,
             payload=dict(payload),
             created_at=created_at,
+        )
+
+    @staticmethod
+    def _harness_observations(
+        context: Mapping[str, object],
+    ) -> tuple[Mapping[str, object], ...]:
+        """Return every turn, falling back to the legacy single observation."""
+
+        state = context.get('harness_loop')
+        turns = state.get('turns') if isinstance(state, Mapping) else None
+        if isinstance(turns, list):
+            observations = tuple(
+                turn for turn in turns
+                if isinstance(turn, Mapping)
+                and PipelineRunEventBuilder._is_harness_observation(turn)
+            )
+            if observations:
+                return observations
+        artifacts = context.get('runtime_artifacts')
+        return (
+            (artifacts,)
+            if isinstance(artifacts, Mapping)
+            and PipelineRunEventBuilder._is_harness_observation(artifacts)
+            else ()
         )
 
     @staticmethod

@@ -38,11 +38,14 @@ an effective model ID, selects the first deterministically ordered compatible,
 enabled, configured User-owned Linked Service, and freezes its identity and
 owner in a private `model_target` snapshot. `codex_cli` does not select API
 Linked Services or require API provider credentials. Instead, PipelineRun
-creation freezes the effective generator model as `requested_model`, resolves
-the selected generator Persona and its ordered Skills from the User-owned
+creation freezes every agent's effective model as `requested_model`, resolves
+each selected Persona and its ordered Skills from the User-owned
 instruction library, and freezes their IDs, versions, metadata, and content in
 the Activity snapshot. The `run_harness` payload exposes that same immutable
-model and instruction snapshot to the runtime. Harnesses resolve at Activity,
+model and instruction snapshot for the pending agent turn to the runtime.
+Direct, refinement, and roundtable semantics remain API-owned; `run_harness`
+observations identify the agent, role, phase, and iteration and carry structured
+proposal or review output when applicable. Harnesses resolve at Activity,
 Pipeline, then User scope. A missing effective model fails run creation;
 Personas contribute instructions only. When no Harness candidate exists, the
 frozen Harness is the `louie` v1 compatibility default.
@@ -63,7 +66,7 @@ the final commit SHA without discarding the Harness observation.
 The PipelineRun event ledger records `pipeline_run_claimed`,
 `pipeline_step_started`, terminal step events, and `harness_turn_completed` or
 `harness_turn_failed` in addition to `pipeline_run_created`. Harness turn events
-contain the same normalized observation exposed by the child ActivityRun and
+contain every normalized agent-turn observation collected by the child ActivityRun and
 identify the implementation through `payload.harness.kind`.
 
 User settings also gate logical model availability. Unconfigured models inherit

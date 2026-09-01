@@ -90,6 +90,12 @@ class ActivityRunHarnessResult(RequestSchema):
     action: Literal['run_harness']
     schema_version: Literal['v1'] = 'v1'
     harness: ActivityRunHarnessIdentity | None = None
+    turn_id: NonEmptyString | None = None
+    phase: Literal['execute', 'proposal', 'aggregate', 'review'] | None = None
+    agent_id: NonEmptyString | None = None
+    role: Literal['generator', 'reviewer', 'aggregator'] | None = None
+    iteration: PositiveInteger | None = None
+    output: dict[str, object] = Field(default_factory=dict)
     completed: bool
     started_at: datetime | None = None
     completed_at: datetime | None = None

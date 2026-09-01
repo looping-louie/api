@@ -281,6 +281,12 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
             'flow': 'direct',
             'executor': 'runtime',
             'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+            'agents': [{
+                'id': 'generator-1',
+                'role': 'generator',
+                'requested_model': 'gpt-5-codex',
+                'instruction_snapshot': {'persona': {'id': 'persona-1'}},
+            }],
         },
         execution_context={}, created_at=now, created_by='user-1', updated_at=now,
     )
@@ -309,3 +315,4 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
     assert result.next_action == 'run_harness'
     assert result.continuation_token == 'token-2'
     assert result.execution_context['repo_context'] == 'Repository context.'
+    assert result.execution_context['pending_harness_turn']['phase'] == 'execute'

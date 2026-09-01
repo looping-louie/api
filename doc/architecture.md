@@ -51,10 +51,10 @@ For `louie`, creation requires an effective model ID and selects the first
 deterministically ordered compatible, enabled, configured User-owned Linked
 Service before freezing its identity and owner in a private `model_target`
 snapshot. `codex_cli` does not select API Linked Services or require API
-provider credentials. For each Codex Activity, creation freezes the effective
-generator model as `requested_model`, resolves the generator Persona and its
-ordered Skills from the User-owned library, and freezes their versioned content
-in the Activity snapshot delivered through `run_harness`. A Codex Activity
+provider credentials. For each Codex Activity, creation freezes every agent's
+effective model as `requested_model`, resolves each Persona and its ordered
+Skills from the User-owned library, and freezes their versioned content in the
+Activity snapshot delivered through `run_harness`. A Codex Activity
 without an effective model ID, with an unknown or deprecated model, or with a
 model disabled by User policy fails before the PipelineRun is persisted.
 Personas are instruction-only resources. An unset effective Harness becomes the `louie` v1
@@ -110,9 +110,13 @@ credentials, and other local settings remain Worker-owned:
 }
 ```
 
-`codex_cli` supports a single `direct_loop` turn. It does not replace
-API-directed scheduling, reviewer decisions, lease validation, or commit
-authorization. Workers advertise Harness capabilities during registration and
+`codex_cli` supports `direct_loop`, `refinement_loop`, and `roundtable_loop`.
+The API owns their shared semantics and persists one `run_harness` checkpoint
+per agent turn: writer execution, read-only proposal, read-only review, or
+writer aggregation. This lets another Harness adapter implement the same roles
+without duplicating loop state or commit policy. It does not replace
+API-directed scheduling, lease validation, or commit authorization. Workers
+advertise Harness capabilities during registration and
 replace the currently observed set on heartbeats. The API requires an exact
 capability match before a PipelineRun claim. A valid run remains queued while
 no active worker advertises its frozen Harness and may be claimed after a later
@@ -120,7 +124,8 @@ heartbeat reports that Harness. Readiness queries compare the next claimable
 Activity's frozen Harness with Project-scoped registrations using the same
 two-minute heartbeat window as claim admission. They expose only aggregate
 counts and the latest heartbeat, not Worker identities or local configuration. The
-runtime reports the turn's final response, checkout diff, changed files, usage,
+runtime reports the turn identity, phase, iteration, structured semantic output,
+final response, checkout diff, changed files, usage,
 diagnostics, requested model, actual model, and optional opaque session
 reference through `run_harness`. Normalized observations use a versioned common
 envelope identified by `schema_version` and the frozen Harness kind and version;

@@ -95,6 +95,12 @@ def codex_runtime_artifacts(
         'final_response': result.get('final_response', ''),
         'error': result.get('error'),
     }
+    for key in ('turn_id', 'phase', 'agent_id', 'role', 'iteration'):
+        if result.get(key) is not None:
+            artifacts[key] = result[key]
+    output = result.get('output')
+    if isinstance(output, Mapping) and output:
+        artifacts['output'] = dict(output)
     if require_commit_message and completed:
         commit_message = result.get('commit_message')
         if not isinstance(commit_message, str) or not commit_message.strip():

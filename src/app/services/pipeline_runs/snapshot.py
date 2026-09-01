@@ -112,10 +112,13 @@ class PipelineRunSnapshotBuilder:
             config['agents'] = [
                 await self._agent_snapshot(
                     agent=agent,
+                    pipeline_id=pipeline_id,
+                    activity_id=activity.id,
                     project_id=project_id,
                     user_id=user_id,
                     inherited_model_id=model_id,
                     harness=harness,
+                    instruction_library=instruction_library,
                 )
                 if isinstance(agent, dict)
                 else agent
@@ -143,17 +146,12 @@ class PipelineRunSnapshotBuilder:
                 pipeline_id=pipeline_id,
                 activity_id=activity.id,
             )
-            await self._require_codex_model_enabled(
-                user_id=user_id,
-                pipeline_id=pipeline_id,
-                activity_id=activity.id,
-                model_id=requested_model,
-            )
             config['requested_model'] = requested_model
-            config['instruction_snapshot'] = self._instruction_snapshot(
-                config=config,
-                instruction_library=instruction_library,
+            generator = next(
+                agent for agent in config['agents']
+                if isinstance(agent, Mapping) and agent.get('role') == 'generator'
             )
+            config['instruction_snapshot'] = generator['instruction_snapshot']
         flows = {
             'direct_loop': 'direct',
             'refinement_loop': 'refinement',
@@ -178,24 +176,48 @@ class PipelineRunSnapshotBuilder:
         self,
         *,
         agent: dict[str, object],
+        pipeline_id: str,
+        activity_id: str,
         project_id: str,
         user_id: str,
         inherited_model_id: str | None,
         harness: PipelineHarness,
+        instruction_library: ExecutionInstructionLibrary | None,
     ) -> dict[str, object]:
-        """Freeze Louie provider routing for an effective logical model ID."""
+        """Freeze one agent's model route and Harness instructions."""
 
         snapshot = dict(agent)
-        if harness.kind != 'louie':
-            return snapshot
         model_id = snapshot.get('model_id')
         if not isinstance(model_id, str):
             model_id = inherited_model_id
         if not isinstance(model_id, str):
             raise PipelineRunUnavailableError(
-                pipeline_id='unknown',
-                reason='louie execution requires a model_id',
+                pipeline_id=pipeline_id,
+                reason=f'{harness.kind} execution requires a model_id',
+                reason_code='missing_effective_model',
+                activity_id=activity_id,
             )
+        if harness.kind == 'codex_cli':
+            await self._require_codex_model_enabled(
+                user_id=user_id,
+                pipeline_id=pipeline_id,
+                activity_id=activity_id,
+                model_id=model_id,
+            )
+            persona_id = snapshot.get('persona_id')
+            if not isinstance(persona_id, str) or instruction_library is None:
+                raise PipelineRunUnavailableError(
+                    pipeline_id=pipeline_id,
+                    reason='codex_cli execution requires a Persona for every agent',
+                    activity_id=activity_id,
+                )
+            snapshot['requested_model'] = model_id
+            snapshot['instruction_snapshot'] = instruction_library.agent_snapshot(
+                persona_id,
+            )
+            return snapshot
+        if harness.kind != 'louie':
+            return snapshot
         if self._model_execution_service is None:
             raise RuntimeError('Louie model execution is not configured.')
         linked_service = await self._model_execution_service.select_linked_service(
@@ -287,37 +309,6 @@ class PipelineRunSnapshotBuilder:
                 activity_id=activity_id,
                 model_id=model_id,
             )
-
-    @staticmethod
-    def _instruction_snapshot(
-        *,
-        config: Mapping[str, object],
-        instruction_library: ExecutionInstructionLibrary | None,
-    ) -> dict[str, object]:
-        """Freeze the selected Codex Persona and its ordered Skills."""
-
-        if instruction_library is None:
-            raise RuntimeError('Codex instruction snapshots are not configured.')
-        agents = config.get('agents')
-        if not isinstance(agents, list):
-            raise PipelineRunUnavailableError(
-                pipeline_id='unknown',
-                reason='codex_cli execution requires one generator Persona',
-            )
-        generator = next(
-            (
-                agent
-                for agent in agents
-                if isinstance(agent, Mapping) and agent.get('role') == 'generator'
-            ),
-            None,
-        )
-        if generator is None or not isinstance(generator.get('persona_id'), str):
-            raise PipelineRunUnavailableError(
-                pipeline_id='unknown',
-                reason='codex_cli execution requires one generator Persona',
-            )
-        return instruction_library.agent_snapshot(str(generator['persona_id']))
 
     @staticmethod
     def pipeline_snapshot(

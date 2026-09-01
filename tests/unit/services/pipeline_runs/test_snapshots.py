@@ -127,15 +127,23 @@ async def test_create_freezes_codex_persona_skills_and_execution_defaults(
     now = datetime(2026, 8, 25, tzinfo=UTC)
     first = replace(
         activity('activity-1'),
+        type='refinement_loop',
         model_id='model-activity',
         harness=PipelineHarness(kind='codex_cli'),
         config={
             **activity('activity-1').config,
-            'agents': [{
-                'model_id': 'model-agent',
-                'persona_id': 'persona-1',
-                'role': 'generator',
-            }],
+            'agents': [
+                {
+                    'model_id': 'model-agent',
+                    'persona_id': 'persona-1',
+                    'role': 'generator',
+                },
+                {
+                    'model_id': 'model-reviewer',
+                    'persona_id': 'persona-reviewer',
+                    'role': 'reviewer',
+                },
+            ],
         },
     )
     second = replace(
@@ -176,11 +184,15 @@ async def test_create_freezes_codex_persona_skills_and_execution_defaults(
 
     first_snapshot = created.steps[0].activity_snapshot
     first_agent = first_snapshot['agents'][0]
+    reviewer = first_snapshot['agents'][1]
     second_agent = created.steps[1].activity_snapshot['agents'][0]
     assert created.pipeline_snapshot['harness']['kind'] == 'louie'
     assert first_snapshot['harness']['kind'] == 'codex_cli'
     assert first_snapshot['requested_model'] == 'model-agent'
     assert first_agent['model_id'] == 'model-agent'
+    assert first_agent['requested_model'] == 'model-agent'
+    assert reviewer['requested_model'] == 'model-reviewer'
+    assert reviewer['instruction_snapshot']['persona']['id'] == 'persona-reviewer'
     assert first_snapshot['instruction_snapshot']['persona']['id'] == 'persona-1'
     assert first_snapshot['instruction_snapshot']['persona']['version'] == 2
     assert first_snapshot['instruction_snapshot']['skills'][0]['id'] == 'skill-api'

@@ -26,6 +26,10 @@ from src.app.services.activity_runs.harness_result import (
     harness_runtime_artifacts,
     with_codex_commit_result,
 )
+from src.app.services.activity_runs.harness_loop import (
+    advance_harness_loop,
+    start_harness_loop,
+)
 from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
@@ -243,6 +247,11 @@ class ActivityRunService:
             if isinstance(previous_review, Mapping):
                 context['review_result'] = dict(previous_review)
             if self._uses_codex_cli(document.activity_snapshot):
+                context = start_harness_loop(
+                    snapshot=document.activity_snapshot,
+                    context=context,
+                    iteration=document.iteration,
+                )
                 return await self._transition(
                     document=document, project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id, lease_token=lease_token,
@@ -292,11 +301,46 @@ class ActivityRunService:
             applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             if action == 'run_harness':
-                context['runtime_artifacts'] = harness_runtime_artifacts(
-                    activity_snapshot=document.activity_snapshot,
+                pending = context.get('pending_harness_turn')
+                expected_snapshot = dict(document.activity_snapshot)
+                if isinstance(pending, Mapping):
+                    expected_snapshot['requested_model'] = pending.get('requested_model')
+                artifacts = harness_runtime_artifacts(
+                    activity_snapshot=expected_snapshot,
                     result=result,
-                    require_commit_message=not commit_forbidden,
+                    require_commit_message=(
+                        not commit_forbidden
+                        and (not isinstance(pending, Mapping) or pending.get('phase') in ('execute', 'aggregate'))
+                    ),
                 )
+                if isinstance(pending, Mapping):
+                    try:
+                        advance = advance_harness_loop(
+                            snapshot=document.activity_snapshot,
+                            context=context,
+                            artifacts=artifacts,
+                            iteration=document.iteration,
+                        )
+                    except ValueError as error:
+                        raise ActivityRunValidationError(
+                            field_name='result', message=str(error),
+                        ) from error
+                    if not advance.terminal:
+                        next_iteration = advance.context['pending_harness_turn']['iteration']
+                        return await self._transition(
+                            document=document, project_id=workspace.project_id,
+                            pipeline_run_id=pipeline_run_id, lease_token=lease_token,
+                            continuation_token=continuation_token,
+                            idempotency_key=idempotency_key, action=action,
+                            status='in_progress', state='awaiting_harness',
+                            next_action='run_harness', next_token=self._token_factory(),
+                            context=advance.context,
+                            iteration=next_iteration if isinstance(next_iteration, int) else None,
+                        )
+                    context = advance.context
+                    applied = not advance.failed
+                else:
+                    context['runtime_artifacts'] = artifacts
             return await self._transition(
                 document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
@@ -304,20 +348,20 @@ class ActivityRunService:
                 action=action,
                 status=(
                     'completed' if applied and commit_forbidden
-                    and not self._has_reviewers(document.activity_snapshot)
+                    and (action == 'run_harness' or not self._has_reviewers(document.activity_snapshot))
                     else ('in_progress' if applied else 'failed')
                 ),
                 state=(
-                    'awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    'awaiting_review_input' if action != 'run_harness' and applied and self._has_reviewers(document.activity_snapshot)
                     else ('completed' if applied and commit_forbidden else ('awaiting_commit' if applied else 'failed'))
                 ),
                 next_action=(
-                    'submit_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    'submit_review_input' if action != 'run_harness' and applied and self._has_reviewers(document.activity_snapshot)
                     else ('none' if applied and commit_forbidden else ('commit_if_allowed' if applied else 'none'))
                 ),
                 next_token=(
                     self._token_factory() if applied and (
-                        self._has_reviewers(document.activity_snapshot) or not commit_forbidden
+                        (action != 'run_harness' and self._has_reviewers(document.activity_snapshot)) or not commit_forbidden
                     ) else None
                 ),
                 context=context,
@@ -364,10 +408,25 @@ class ActivityRunService:
                 artifacts,
                 Mapping,
             ):
-                updated_context['runtime_artifacts'] = with_codex_commit_result(
+                committed_artifacts = with_codex_commit_result(
                     artifacts=artifacts,
                     result=result,
                 )
+                updated_context['runtime_artifacts'] = committed_artifacts
+                loop_state = context.get('harness_loop')
+                turns = loop_state.get('turns') if isinstance(loop_state, Mapping) else None
+                if isinstance(turns, list):
+                    writer_turn_id = artifacts.get('turn_id')
+                    updated_context['harness_loop'] = {
+                        **dict(loop_state),
+                        'turns': [
+                            committed_artifacts
+                            if isinstance(turn, Mapping)
+                            and turn.get('turn_id') == writer_turn_id
+                            else turn
+                            for turn in turns
+                        ],
+                    }
             return await self._transition(
                 document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
@@ -617,12 +676,11 @@ class ActivityRunService:
 
     @staticmethod
     def _uses_codex_cli(snapshot: Mapping[str, object]) -> bool:
-        """Return whether this direct-loop snapshot must run through Codex CLI."""
+        """Return whether this snapshot must run through the Codex adapter."""
 
         harness = snapshot.get('harness')
         return (
-            snapshot.get('flow') == 'direct'
-            and isinstance(harness, Mapping)
+            isinstance(harness, Mapping)
             and harness.get('kind') == 'codex_cli'
             and harness.get('version') == 'v1'
             and harness.get('config') == {}
