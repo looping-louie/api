@@ -316,7 +316,7 @@ response resolves each stored step to its full persisted Activity.
 
 | Property | JSON type | Required | Restrictions |
 | -------- | --------- | -------- | ------------ |
-| `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Yes | May be empty. |
 | `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
 | `model_id` | String or null | No | A logical catalog model ID. `null` means inherit. |
@@ -519,7 +519,7 @@ At least one property is required.
 
 | Property | JSON type | Restrictions |
 | -------- | --------- | ------------ |
-| `name` | String | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | May be empty. |
 | `enabled` | Boolean | Enables or disables the Pipeline. |
 | `steps` | Array of Activity definitions | Contains at least one step, uses the [Pipeline Step Schema](#pipeline-step-schema), and replaces the complete ordered step collection. |

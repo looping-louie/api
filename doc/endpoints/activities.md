@@ -49,7 +49,7 @@ accepts the mutable properties marked as optional; it rejects an empty request.
 
 | Property | JSON type | Create | Update | Restrictions |
 | -------- | --------- | ------ | ------ | ------------ |
-| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Required | Optional | May be empty. |
 | `type` | String | Required | Not allowed | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. Immutable after creation. |
 | `config` | Object | Required | Optional | Shape is selected by `type`. Does not contain a nested `type` property. |

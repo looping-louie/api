@@ -15,7 +15,7 @@ from .shared import (
     NonEmptyString,
     PositiveInteger,
     RequestSchema,
-    ResourceName,
+    ResourceTitle,
     ResponseSchema,
 )
 
@@ -191,7 +191,7 @@ def validate_activity_config(
 class ActivityCreateRequest(RequestSchema):
     """Request body for creating an activity."""
 
-    name: ResourceName
+    name: ResourceTitle
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
@@ -219,7 +219,7 @@ class ActivityCreateRequest(RequestSchema):
 class ActivityPatchRequest(RequestSchema):
     """Mutable activity fields accepted by PATCH."""
 
-    name: ResourceName | None = None
+    name: ResourceTitle | None = None
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None

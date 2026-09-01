@@ -380,7 +380,7 @@ def test_direct_loop_requires_a_generator_agent(
         'invalid%name',
         'invalid&name',
         'invalid:name',
-        'invalid name',
+        'invalid\tname',
         'a' * 141,
     ],
 )
@@ -471,13 +471,14 @@ def test_activity_creates_approval_without_a_human_gate_wrapper(
     client = build_client(tenant_service=tenant_service)
 
     created = client.post('/api/v1/activities', json={
-        'name': 'Release_approval',
+        'name': 'Release approval',
         'description': 'Approve the release.',
         'type': 'approval',
         'config': {},
     })
 
     assert created.status_code == 201
+    assert created.json()['name'] == 'Release approval'
     assert created.json()['type'] == 'approval'
     assert created.json()['config'] == {}
 

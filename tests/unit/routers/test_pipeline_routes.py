@@ -185,21 +185,31 @@ def test_pipeline_accepts_one_step_and_rejects_invalid_steps(
         assert response.json()['error']['code'] == 'invalid_pipeline_steps'
 
 
-def test_pipeline_rejects_invalid_pipeline_and_activity_names(
+def test_pipeline_accepts_titles_with_spaces_and_rejects_unsafe_names(
     tenant_service: TenantService,
 ) -> None:
-    """Pipeline and inline Activity names share the resource-name contract."""
+    """Pipeline and inline Activity titles allow spaces but reject unsafe names."""
 
     client = build_client(tenant_service=tenant_service)
+    valid = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(
+            name='Valid pipeline',
+            steps=[activity_payload('Valid activity')],
+        ),
+    )
     invalid_pipeline = client.post(
         '/api/v1/pipelines',
-        json=pipeline_payload(name='Invalid pipeline'),
+        json=pipeline_payload(name='Invalid:pipeline'),
     )
     invalid_activity = client.post(
         '/api/v1/pipelines',
-        json=pipeline_payload(steps=[activity_payload('Invalid activity')]),
+        json=pipeline_payload(steps=[activity_payload('Invalid/activity')]),
     )
 
+    assert valid.status_code == 201
+    assert valid.json()['name'] == 'Valid pipeline'
+    assert valid.json()['steps'][0]['name'] == 'Valid activity'
     assert invalid_pipeline.status_code == 422
     assert invalid_pipeline.json()['error']['code'] == 'request_validation_error'
     assert invalid_activity.status_code == 422
