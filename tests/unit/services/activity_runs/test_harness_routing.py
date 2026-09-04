@@ -260,11 +260,13 @@ async def test_create_codex_activity_does_not_select_api_managed_model(
     assert 'model_target' not in created.activity_snapshot['agents'][0]
 
 
+@pytest.mark.parametrize('harness_kind', ['codex_cli', 'copilot_cli'])
 @pytest.mark.asyncio
 async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
     tenant_service: TenantService,
+    harness_kind: str,
 ) -> None:
-    """A Codex Pipeline child requests a local Harness turn without API generation."""
+    """A CLI Pipeline child requests a local Harness turn without API generation."""
 
     now = datetime(2026, 8, 24, tzinfo=UTC)
     activity = ActivityDocument(
@@ -280,7 +282,7 @@ async def test_collect_snapshot_routes_frozen_codex_direct_loop_to_harness(
         activity_snapshot={
             'flow': 'direct',
             'executor': 'runtime',
-            'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+            'harness': {'kind': harness_kind, 'version': 'v1', 'config': {}},
             'agents': [{
                 'id': 'generator-1',
                 'role': 'generator',

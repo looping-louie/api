@@ -16,7 +16,9 @@ def harness_runtime_artifacts(
     """Dispatch one frozen Harness result to its normalizing adapter."""
 
     harness = activity_snapshot.get('harness')
-    if isinstance(harness, Mapping) and harness.get('kind') == 'codex_cli':
+    if isinstance(harness, Mapping) and harness.get('kind') in (
+        'codex_cli', 'copilot_cli'
+    ):
         return codex_runtime_artifacts(
             activity_snapshot=activity_snapshot,
             result=result,
@@ -35,9 +37,11 @@ def codex_runtime_artifacts(
 
     harness = activity_snapshot.get('harness')
     if not isinstance(harness, Mapping) or (
-        harness.get('kind'), harness.get('version')
-    ) != ('codex_cli', 'v1'):
-        raise RuntimeError('Codex Activity snapshot has an invalid Harness.')
+        harness.get('kind') not in ('codex_cli', 'copilot_cli')
+        or harness.get('version') != 'v1'
+        or harness.get('config') != {}
+    ):
+        raise RuntimeError('Activity snapshot has an invalid CLI Harness.')
     schema_version = result.get('schema_version', 'v1')
     if schema_version != 'v1':
         raise ActivityRunValidationError(
@@ -54,7 +58,7 @@ def codex_runtime_artifacts(
     requested_model = result.get('requested_model')
     actual_model = result.get('actual_model')
     if not isinstance(expected_model, str) or not expected_model.strip():
-        raise RuntimeError('Codex Activity snapshot is missing requested_model.')
+        raise RuntimeError('CLI Activity snapshot is missing requested_model.')
     completed = result.get('completed') is True
     if requested_model is not None and requested_model != expected_model:
         raise ActivityRunValidationError(

@@ -75,11 +75,13 @@ class PipelineRunSnapshotBuilder:
         user_id: str,
         inherited_harness: PipelineHarness,
     ) -> ExecutionInstructionLibrary | None:
-        """Load one shared library only when a runtime Activity uses Codex."""
+        """Load one shared library only when a runtime Activity uses a CLI Harness."""
 
         requires_codex = any(
             activity.type not in ('approval', 'quiz')
-            and (activity.harness or inherited_harness).kind == 'codex_cli'
+            and (activity.harness or inherited_harness).kind in (
+                'codex_cli', 'copilot_cli'
+            )
             for activity in activities
         )
         if not requires_codex:
@@ -139,7 +141,7 @@ class PipelineRunSnapshotBuilder:
                 'harness': execution_harness,
                 **config,
             }
-        if harness.kind == 'codex_cli':
+        if harness.kind in ('codex_cli', 'copilot_cli'):
             requested_model = self._codex_requested_model(
                 config=config,
                 inherited_model_id=model_id,
@@ -197,7 +199,7 @@ class PipelineRunSnapshotBuilder:
                 reason_code='missing_effective_model',
                 activity_id=activity_id,
             )
-        if harness.kind == 'codex_cli':
+        if harness.kind in ('codex_cli', 'copilot_cli'):
             await self._require_codex_model_enabled(
                 user_id=user_id,
                 pipeline_id=pipeline_id,

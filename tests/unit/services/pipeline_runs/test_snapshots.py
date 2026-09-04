@@ -118,18 +118,20 @@ class StaticModelCatalogService:
         return SimpleNamespace(status='active', enabled=self._enabled)
 
 
+@pytest.mark.parametrize('harness_kind', ['codex_cli', 'copilot_cli'])
 @pytest.mark.asyncio
 async def test_create_freezes_codex_persona_skills_and_execution_defaults(
     tenant_service: TenantService,
+    harness_kind: str,
 ) -> None:
-    """Codex instructions and narrower execution values are frozen at creation."""
+    """CLI instructions and narrower execution values are frozen at creation."""
 
     now = datetime(2026, 8, 25, tzinfo=UTC)
     first = replace(
         activity('activity-1'),
         type='refinement_loop',
         model_id='model-activity',
-        harness=PipelineHarness(kind='codex_cli'),
+        harness=PipelineHarness(kind=harness_kind),
         config={
             **activity('activity-1').config,
             'agents': [
@@ -187,7 +189,7 @@ async def test_create_freezes_codex_persona_skills_and_execution_defaults(
     reviewer = first_snapshot['agents'][1]
     second_agent = created.steps[1].activity_snapshot['agents'][0]
     assert created.pipeline_snapshot['harness']['kind'] == 'louie'
-    assert first_snapshot['harness']['kind'] == 'codex_cli'
+    assert first_snapshot['harness']['kind'] == harness_kind
     assert first_snapshot['requested_model'] == 'model-agent'
     assert first_agent['model_id'] == 'model-agent'
     assert first_agent['requested_model'] == 'model-agent'

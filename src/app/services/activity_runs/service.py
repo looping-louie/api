@@ -246,7 +246,7 @@ class ActivityRunService:
             context.pop('action', None)
             if isinstance(previous_review, Mapping):
                 context['review_result'] = dict(previous_review)
-            if self._uses_codex_cli(document.activity_snapshot):
+            if self._uses_cli_harness(document.activity_snapshot):
                 context = start_harness_loop(
                     snapshot=document.activity_snapshot,
                     context=context,
@@ -404,7 +404,7 @@ class ActivityRunService:
             committed = result.get('committed') is True
             updated_context = {**context, 'commit_result': dict(result)}
             artifacts = context.get('runtime_artifacts')
-            if self._uses_codex_cli(document.activity_snapshot) and isinstance(
+            if self._uses_cli_harness(document.activity_snapshot) and isinstance(
                 artifacts,
                 Mapping,
             ):
@@ -675,13 +675,13 @@ class ActivityRunService:
         )
 
     @staticmethod
-    def _uses_codex_cli(snapshot: Mapping[str, object]) -> bool:
-        """Return whether this snapshot must run through the Codex adapter."""
+    def _uses_cli_harness(snapshot: Mapping[str, object]) -> bool:
+        """Return whether this snapshot must run through a CLI Harness adapter."""
 
         harness = snapshot.get('harness')
         return (
             isinstance(harness, Mapping)
-            and harness.get('kind') == 'codex_cli'
+            and harness.get('kind') in ('codex_cli', 'copilot_cli')
             and harness.get('version') == 'v1'
             and harness.get('config') == {}
         )
