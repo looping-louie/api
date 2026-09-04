@@ -24,7 +24,7 @@ from src.app.services.activity_runs.generation import (
 )
 from src.app.services.activity_runs.harness_result import (
     harness_runtime_artifacts,
-    with_codex_commit_result,
+    with_cli_commit_result,
 )
 from src.app.services.activity_runs.harness_loop import (
     advance_harness_loop,
@@ -408,7 +408,7 @@ class ActivityRunService:
                 artifacts,
                 Mapping,
             ):
-                committed_artifacts = with_codex_commit_result(
+                committed_artifacts = with_cli_commit_result(
                     artifacts=artifacts,
                     result=result,
                 )

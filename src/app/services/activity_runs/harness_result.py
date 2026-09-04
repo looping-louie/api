@@ -19,7 +19,7 @@ def harness_runtime_artifacts(
     if isinstance(harness, Mapping) and harness.get('kind') in (
         'codex_cli', 'copilot_cli'
     ):
-        return codex_runtime_artifacts(
+        return cli_runtime_artifacts(
             activity_snapshot=activity_snapshot,
             result=result,
             require_commit_message=require_commit_message,
@@ -27,13 +27,13 @@ def harness_runtime_artifacts(
     raise RuntimeError('Activity snapshot selects an unsupported Harness.')
 
 
-def codex_runtime_artifacts(
+def cli_runtime_artifacts(
     *,
     activity_snapshot: Mapping[str, object],
     result: Mapping[str, object],
     require_commit_message: bool,
 ) -> dict[str, object]:
-    """Validate and normalize the complete Codex Harness observation."""
+    """Validate and normalize the complete CLI Harness observation."""
 
     harness = activity_snapshot.get('harness')
     if not isinstance(harness, Mapping) or (
@@ -116,12 +116,12 @@ def codex_runtime_artifacts(
     return artifacts
 
 
-def with_codex_commit_result(
+def with_cli_commit_result(
     *,
     artifacts: Mapping[str, object],
     result: Mapping[str, object],
 ) -> dict[str, object]:
-    """Complete Codex observability with the authorized Git outcome."""
+    """Complete CLI Harness observability with the authorized Git outcome."""
 
     updated = dict(artifacts)
     committed = result.get('committed') is True
