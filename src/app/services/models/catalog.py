@@ -288,6 +288,7 @@ class ModelCatalogService:
             released_at=model.released_at,
             capabilities=model.capabilities,
             status=model.status,
+            enabled=availability.enabled,
             available=availability.available,
             offerings=availability.offerings,
             tags=model.tags,
@@ -313,6 +314,7 @@ class ModelCatalogService:
             replacement_model_id=model.replacement_model_id,
             tags=model.tags,
             offerings=availability.offerings,
+            enabled=availability.enabled,
             available=availability.available,
         )
 

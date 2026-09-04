@@ -64,6 +64,24 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         commit_mode='forbid',
     )
     await repository.create(document=prepared, activity_run=None)
+    listed, total = await repository.list(
+        project_id='workspace-1',
+        offset=0,
+        limit=10,
+        created_from=timestamp - timedelta(seconds=1),
+    )
+    excluded, excluded_total = await repository.list(
+        project_id='workspace-1',
+        offset=0,
+        limit=10,
+        created_from=timestamp + timedelta(seconds=1),
+    )
+
+    assert listed == [prepared]
+    assert total == 1
+    assert excluded == []
+    assert excluded_total == 0
+
     queued = replace(
         prepared,
         status='queued',

@@ -7,6 +7,7 @@ from src.app.schemas.activity_run import (
     ActivityRunResponse,
     ActivityRunReviewInputResult,
 )
+from src.app.services.activity_runs.harness_loop import pending_harness_payload
 
 
 def action_result(
@@ -40,8 +41,19 @@ def activity_run_response(document: object) -> ActivityRunResponse:
     if getattr(document, 'next_action', None) == 'run_harness':
         snapshot = getattr(document, 'activity_snapshot', {})
         harness = snapshot.get('harness') if isinstance(snapshot, dict) else None
+        turn_payload = (
+            pending_harness_payload(context)
+            if context.get('pending_harness_turn') is not None
+            else {
+                'requested_model': snapshot.get('requested_model'),
+                'instruction_snapshot': snapshot.get('instruction_snapshot', {}),
+            }
+        )
         return response.model_copy(update={'payload': {
             'harness': harness,
+            'commit_mode': snapshot.get('commit_mode', 'allow'),
+            'output_contract': snapshot.get('output_contract', {}),
+            **turn_payload,
             'repo_context': context.get('repo_context', ''),
             'constitution': context.get('constitution', ''),
             'project_profile': context.get('project_profile', {}),

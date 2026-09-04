@@ -9,11 +9,13 @@ provider.
 
 ## Worker provisioning
 
-The API provisions each Project worker identity. The runtime stores the
-assigned ID in its Project configuration and refreshes its heartbeat before
-polling. PipelineRun claims require an active worker heartbeat, while the
-existing PipelineRun lease continues to authorize only one claimed run.
-Heartbeat liveness never renews or revokes a lease.
+The API provisions each Project worker identity under the authenticated User.
+On initial provisioning, the runtime submits its locally detected Harnesses,
+stores the assigned ID in its Project configuration, and reuses it on later
+starts. It refreshes the worker heartbeat before polling. PipelineRun claims
+require an active worker heartbeat, while the existing PipelineRun lease
+continues to authorize only one claimed run. Heartbeat liveness never renews or
+revokes a lease.
 
 ## Ownership boundaries
 
@@ -32,9 +34,10 @@ overrides. A missing value explicitly means no User-level default.
 
 User settings also persist model availability policy. Unconfigured logical
 models inherit `default_model_availability`, which defaults to `enabled`, and
-`configured_models` overrides the status per model ID. This policy gates both
-current-User catalog availability and `louie` User-owned Linked Service
-selection; provider readiness remains required for an enabled model.
+`configured_models` overrides the status per model ID. Current-User catalog
+documents expose this independent policy as top-level `enabled`. Top-level
+`available` additionally requires provider readiness and describes whether
+`louie` can resolve a User-owned Linked Service for the model.
 
 The hierarchy persists candidates at User, Pipeline, Activity, and loop-agent
 scopes. Pipeline and Activity store first-class nullable
@@ -48,10 +51,15 @@ For `louie`, creation requires an effective model ID and selects the first
 deterministically ordered compatible, enabled, configured User-owned Linked
 Service before freezing its identity and owner in a private `model_target`
 snapshot. `codex_cli` does not select API Linked Services or require API
-provider credentials. An agent without an explicit model ID fails generation;
-Personas are instruction-only resources. An unset effective Harness becomes the
-`louie` v1 compatibility default after considering the User default. Projects
-continue to select execution placement only.
+provider credentials. For each Codex Activity, creation freezes every agent's
+effective model as `requested_model`, resolves each Persona and its ordered
+Skills from the User-owned library, and freezes their versioned content in the
+Activity snapshot delivered through `run_harness`. A Codex Activity
+without an effective model ID, with an unknown or deprecated model, or with a
+model disabled by User policy fails before the PipelineRun is persisted.
+Personas are instruction-only resources. An unset effective Harness becomes the `louie` v1
+compatibility default after considering the User default. Projects continue to
+select execution placement only.
 
 ## Harnesses
 
@@ -102,12 +110,34 @@ credentials, and other local settings remain Worker-owned:
 }
 ```
 
-`codex_cli` supports a single `direct_loop` turn. It does not replace
-API-directed scheduling, reviewer decisions, lease validation, or commit
-authorization. Workers advertise Harness capabilities during registration, and
-the API requires an exact capability match before a PipelineRun claim. The
-runtime reports the turn's final response, checkout diff, changed files, usage,
-diagnostics, and optional opaque session reference through `run_harness`.
+`codex_cli` supports `direct_loop`, `refinement_loop`, and `roundtable_loop`.
+The API owns their shared semantics and persists one `run_harness` checkpoint
+per agent turn: writer execution, read-only proposal, read-only review, or
+writer aggregation. This lets another Harness adapter implement the same roles
+without duplicating loop state or commit policy. It does not replace
+API-directed scheduling, lease validation, or commit authorization. Workers
+advertise Harness capabilities during registration and
+replace the currently observed set on heartbeats. The API requires an exact
+capability match before a PipelineRun claim. A valid run remains queued while
+no active worker advertises its frozen Harness and may be claimed after a later
+heartbeat reports that Harness. Readiness queries compare the next claimable
+Activity's frozen Harness with Project-scoped registrations using the same
+two-minute heartbeat window as claim admission. They expose only aggregate
+counts and the latest heartbeat, not Worker identities or local configuration. The
+runtime reports the turn identity, phase, iteration, structured semantic output,
+final response, checkout diff, changed files, usage,
+diagnostics, requested model, actual model, and optional opaque session
+reference through `run_harness`. Normalized observations use a versioned common
+envelope identified by `schema_version` and the frozen Harness kind and version;
+Harness-specific adapters add only their own fields. The payload includes the immutable effective
+model and Persona and Skill snapshot resolved at run creation, so the runtime
+does not query mutable resources during execution. The API rejects a result
+whose reported Harness differs from the snapshot and rejects a successful
+result whose requested model differs from it. For commit-enabled
+runs, Codex also proposes a non-empty commit
+message in its normalized Harness result. The API persists that proposal and
+returns it only when the Activity reaches `commit_if_allowed`, preserving the
+same commit-authorization boundary used by the `louie` Harness.
 
 The API and runtime coordinate through the activity-run checkpoint protocol
 documented in [Execution](components/execution.md). The API never mutates the
@@ -126,12 +156,17 @@ run completes after approved operations without emitting a commit checkpoint;
 the runtime's local Git policy may further deny an allowed commit but cannot
 grant one forbidden by the persisted run policy.
 
-Pipeline runs preserve an append-only event ledger. A ready `approval` or
-`quiz` Activity creates a normal child Activity run with a human executor and
-transitions the Pipeline to `waiting` without assigning a worker lease. Users
-submit its decision through the Activity-run continuation API. A rejected
-human Activity run resets frozen predecessor steps for corrective execution;
-the scheduler creates a new human child after those steps complete again.
+Pipeline runs preserve an append-only event ledger. It records run creation,
+each worker claim, step start and terminal state, and the complete normalized
+Harness turn observation. The generic `harness_turn_completed` and
+`harness_turn_failed` event names describe the common outcome; consumers
+identify the concrete implementation by its embedded Harness.
+A ready `approval` or `quiz` Activity creates a normal
+child Activity run with a human executor and transitions the Pipeline to
+`waiting` without assigning a worker lease. Users submit its decision through
+the Activity-run continuation API. A rejected human Activity run resets frozen
+predecessor steps for corrective execution; the scheduler creates a new human
+child after those steps complete again.
 
 ## Repository structure
 
@@ -174,6 +209,8 @@ services/
 |-- activity_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for loop Activities
+|   |-- harness_result.py          Dispatches normalized Harness observations
+|   |                              and merges their Git outcome
 |   |-- operation_plan.py          Validates model-generated filesystem changes
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints
@@ -221,7 +258,11 @@ services/
 |-- pipeline_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- etag.py                    Creates concurrency entity tags
+|   |-- events.py                  Builds scheduler and Harness ledger events
+|   |-- graph.py                   Reads frozen dependency requirements
+|   |-- readiness.py               Diagnoses queued-run Worker availability
 |   |-- service.py                 Creates, reads, and advances Pipeline runs
+|   |-- snapshot.py                Freezes models, Harnesses, and instructions
 |   `-- types.py                   Defines execution errors
 |-- providers/
 |   |-- __init__.py                Defines the package's public imports

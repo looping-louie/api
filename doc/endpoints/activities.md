@@ -49,7 +49,7 @@ accepts the mutable properties marked as optional; it rejects an empty request.
 
 | Property | JSON type | Create | Update | Restrictions |
 | -------- | --------- | ------ | ------ | ------------ |
-| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Required | Optional | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Required | Optional | May be empty. |
 | `type` | String | Required | Not allowed | One of `approval`, `quiz`, `direct_loop`, `refinement_loop`, or `roundtable_loop`. Immutable after creation. |
 | `config` | Object | Required | Optional | Shape is selected by `type`. Does not contain a nested `type` property. |
@@ -72,6 +72,8 @@ Every loop agent requires a `persona_id` and `role`. Its `model_id` is nullable.
 Activity definition validation permits an absent model ID. For `louie`, run
 creation rejects an agent when no effective model ID is available after
 inheritance.
+For `codex_cli`, the same inheritance order is frozen as `requested_model` in
+the child run; API Linked Services are not selected for local Codex execution.
 
 ## Activity runs
 
@@ -750,6 +752,31 @@ The endpoint returns the updated Activity run (`200 OK`). A run selected by a
 Pipeline additionally requires its `pipeline_run_id` and active Pipeline
 `lease_token`. The API rejects a missing, expired, or mismatched lease with
 `409 activity_run_invalid_transition` before persisting a checkpoint result.
+For `run_harness`, a successful commit-enabled Codex result must include a
+non-empty `commit_message`. The API preserves it and returns it later as the
+payload of `commit_if_allowed`; `commit_mode=forbid` does not require it. Every
+successful Codex result must also include `requested_model` and `actual_model`.
+The requested value must equal the model frozen in the Activity snapshot; both
+values are persisted as runtime artifacts. The normalized success or failure
+observation is subsequently returned in the ActivityRun `payload`, including:
+
+- `schema_version` and the frozen `harness` kind, version, and configuration;
+- `started_at`, `completed_at`, and `duration_ms`;
+- `requested_model`, `actual_model`, and nullable `reasoning_effort`;
+- `session_reference`, `usage`, `exit_code`, and `diagnostics`;
+- `materialized_skills`, each with ID, normalized name, and version;
+- `source_commit_sha`, `final_commit_sha`, `final_diff`, and `changed_files`;
+- `final_response`, `completed`, and nullable `error`.
+
+If the later commit checkpoint succeeds, `final_commit_sha` is updated to the
+authorized commit SHA. Failed Harness turns retain any observations emitted
+before failure rather than returning an empty payload.
+
+These fields form the v1 common Harness observation envelope. Consumers should
+discriminate variants through `harness.kind`; `materialized_skills` is currently
+specific to the `codex_cli` variant. Older runtimes may omit the two
+discriminants when submitting a checkpoint, but the API always derives and
+publishes them from the frozen Activity snapshot.
 
 Requests for inactive or non-executable activities return
 `409 activity_run_unavailable`. An invalid or stale continuation token returns

@@ -1,6 +1,6 @@
 """Controllers for dependency-aware pipeline execution."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from src.app.controllers.activity_runs.utils import activity_run_response
 from src.app.models.activity_run import ActivityRunDocument
@@ -15,6 +15,8 @@ from src.app.schemas.pipeline import (
     PipelineRunEventListResponse,
     PipelineRunEventResponse,
     PipelineRunLeaseResponse,
+    PipelineRunListResponse,
+    PipelineRunReadinessResponse,
     PipelineRunResponse,
     PipelineRunStepResponse,
 )
@@ -29,6 +31,27 @@ class PipelineRunController:
         """Store the optional runtime service used only by run endpoints."""
 
         self._pipeline_run_service = pipeline_run_service
+
+    async def list_runs(
+        self,
+        *,
+        user_id: str,
+        offset: int,
+        created_from: datetime | None,
+        requested_project_id: str | None = None,
+    ) -> PipelineRunListResponse:
+        """Return one filtered page from the selected Project's run history."""
+
+        documents, total = await self._require_service().list(
+            user_id=user_id,
+            offset=offset,
+            created_from=created_from,
+            requested_project_id=requested_project_id,
+        )
+        return PipelineRunListResponse(
+            items=[self._response(document, None) for document in documents],
+            total=total,
+        )
 
     async def create_run(
         self, *, user_id: str, pipeline_id: str, payload: PipelineRunCreateRequest,
@@ -104,6 +127,18 @@ class PipelineRunController:
             requested_project_id=requested_project_id,
         )
         return self._response(document, child)
+
+    async def get_run_readiness(
+        self, *, user_id: str, pipeline_id: str, run_id: str,
+        requested_project_id: str | None = None,
+    ) -> PipelineRunReadinessResponse:
+        """Return worker liveness and Harness compatibility for one queued run."""
+
+        readiness = await self._require_service().readiness(
+            user_id=user_id, pipeline_id=pipeline_id, run_id=run_id,
+            requested_project_id=requested_project_id,
+        )
+        return PipelineRunReadinessResponse.model_validate(readiness)
 
     async def renew_lease(
         self, *, user_id: str, pipeline_id: str, run_id: str,

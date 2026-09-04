@@ -15,12 +15,23 @@ class PipelineRunNotFoundError(Exception):
 class PipelineRunUnavailableError(Exception):
     """Raised when a pipeline cannot start an executable run."""
 
-    def __init__(self, *, pipeline_id: str, reason: str) -> None:
+    def __init__(
+        self,
+        *,
+        pipeline_id: str,
+        reason: str,
+        reason_code: str | None = None,
+        activity_id: str | None = None,
+        model_id: str | None = None,
+    ) -> None:
         """Store the pipeline state that prevents execution."""
 
         super().__init__(f"Pipeline '{pipeline_id}' cannot run: {reason}.")
         self.pipeline_id = pipeline_id
         self.reason = reason
+        self.reason_code = reason_code
+        self.activity_id = activity_id
+        self.model_id = model_id
 
 
 class PipelineRunPreconditionFailedError(Exception):

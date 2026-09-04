@@ -15,16 +15,17 @@ extend a lease, and an expired heartbeat does not revoke an existing lease.
 | `POST` | `/api/v1/workers` | Provision a worker identity. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh an existing worker heartbeat. |
 
-Both endpoints use `X-Project-ID` to select the worker's Project.
+Both endpoints require `X-User-ID` and use `X-Project-ID` to select one of that
+User's Projects.
 
 ## Observe Worker Liveness
 
-The API intentionally exposes no `GET` worker list or read endpoint. To verify
-that a configured worker identity remains available before queueing work, send
-its heartbeat request and inspect the returned `last_heartbeat_at` timestamp.
-The successful heartbeat confirms the worker identity belongs to the selected
-Project and refreshes its liveness signal. Pipeline-run claim admission
-remains the authoritative check that an active worker can claim queued work.
+The API intentionally exposes no raw Worker list or identity read endpoint.
+Runtimes verify their own registration by sending a heartbeat and inspecting
+the returned `last_heartbeat_at`. Web clients diagnose queued work through
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness`, which returns
+only Project-scoped aggregate liveness and Harness-compatibility counts.
+Pipeline-run claim admission remains the authoritative mutation-time check.
 
 ## Provision A Worker
 
@@ -35,6 +36,7 @@ configuration. Store the returned ID in that Project's runtime configuration.
 
 ```http
 POST /api/v1/workers
+X-User-ID: user-acme
 X-Project-ID: project-acme
 Content-Type: application/json
 ```
@@ -73,10 +75,38 @@ Example response (`201 Created`):
 ## Send A Heartbeat
 
 `POST /api/v1/workers/{worker_id}/heartbeat` refreshes the liveness timestamp
-for an existing provisioned worker. An unknown worker returns
-`404 worker_not_found`.
+for an existing provisioned worker. Its optional `harnesses` array atomically
+replaces the worker's currently observed capabilities. Omitting the body keeps
+the previously recorded capabilities for compatibility with older runtimes.
+Workers report Harness health, not a model list: `codex_cli` means that the
+configured executable and local login check currently succeed. An unknown
+worker returns `404 worker_not_found`.
 
 ```http
 POST /api/v1/workers/runtime-local-01/heartbeat
+X-User-ID: user-acme
 X-Project-ID: project-acme
+Content-Type: application/json
 ```
+
+```json
+{
+  "harnesses": [
+    {
+      "kind": "louie",
+      "version": "v1",
+      "config": {}
+    },
+    {
+      "kind": "codex_cli",
+      "version": "v1",
+      "config": {}
+    }
+  ]
+}
+```
+
+A queued PipelineRun is not invalid merely because no active worker currently
+advertises its frozen Harness. It remains queued and can be claimed
+automatically after a later heartbeat replaces the capability set with a
+matching Harness.

@@ -100,6 +100,7 @@ from .domain_error_details import (
 from .error_definition import ErrorDefinition
 from .pipeline_error_details import (
     pipeline_details,
+    pipeline_run_unavailable_details,
     unsupported_gate_details,
     unsupported_step_details,
 )
@@ -208,6 +209,7 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     PipelineRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='pipeline_run_unavailable',
+        details_builder=pipeline_run_unavailable_details,
     ),
     WorkerNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

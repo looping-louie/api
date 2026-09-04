@@ -164,6 +164,7 @@ Example response (`200 OK`):
         "reasoning"
       ],
       "status": "active",
+      "enabled": true,
       "available": true,
       "offerings": [
         {
@@ -197,11 +198,16 @@ Example response (`200 OK`):
 }
 ```
 
+Top-level `enabled` is the independent User policy signal. A `codex_cli`
+selector uses it because the worker authenticates the CLI locally; top-level
+`available` remains the stronger `louie` signal that also requires a configured
+Linked Service.
+
 `GET /api/v1/users/me/models/{model_id}` returns every catalog offering for one
 logical model. Both model-list items and this response expose the same top-level
-`available` boolean and the same offering-level `configured`, `enabled`,
-`available`, and `reason` fields. The single-model response additionally
-includes `replacement_model_id`.
+`enabled` and `available` booleans and the same offering-level `configured`,
+`enabled`, `available`, and `reason` fields. The single-model response
+additionally includes `replacement_model_id`.
 
 ```http
 GET /api/v1/users/me/models/gpt-5
@@ -224,6 +230,7 @@ Example response (`200 OK`):
     "reasoning"
   ],
   "status": "active",
+  "enabled": true,
   "replacement_model_id": null,
   "tags": [
     "coding",

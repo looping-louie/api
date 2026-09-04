@@ -12,6 +12,7 @@ ActivityRunState = Literal[
     'awaiting_snapshot',
     'awaiting_generation',
     'awaiting_apply',
+    'awaiting_harness',
     'awaiting_review_input',
     'awaiting_commit',
     'awaiting_human_decision',
@@ -21,6 +22,7 @@ ActivityRunState = Literal[
 ActivityRunAction = Literal[
     'collect_snapshot',
     'apply_operations',
+    'run_harness',
     'submit_review_input',
     'commit_if_allowed',
     'submit_human_decision',

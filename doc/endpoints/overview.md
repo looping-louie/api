@@ -58,13 +58,13 @@ optimistic concurrency and require the current positive integer
 
 ## Shared Field Formats
 
-The following format applies to every `name` field on Activity, Pipeline, and
-Persona create and update requests, including inline Activity definitions in a
-Pipeline.
+The following format applies to Activity and Pipeline `name` fields, including
+inline Activity definitions. Persona names retain the stricter format described
+in the Persona endpoint reference.
 
 | Field | JSON type | Required | Restrictions |
 | ----- | --------- | -------- | ------------ |
-| `name` | String | Yes on create; no on update | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Yes on create; no on update | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 
 Successful deletes return:
 

@@ -61,6 +61,7 @@ class ModelSummaryResponse(ResponseSchema):
     released_at: date
     capabilities: set[ModelCapability]
     status: ModelStatus
+    enabled: bool
     available: bool
     offerings: list[ModelOfferingResponse]
     tags: list[str]
@@ -80,6 +81,7 @@ class ModelResponse(ResponseSchema):
     replacement_model_id: str | None = None
     tags: list[str]
     offerings: list[ModelOfferingResponse]
+    enabled: bool
     available: bool
 
 

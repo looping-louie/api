@@ -19,11 +19,13 @@ runtime worker claims one eligible Activity run at a time.
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}` | Updates mutable fields or enablement. |
 | `DELETE` | `/api/v1/pipelines/{pipeline_id}` | Archives the pipeline. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/changelog` | Lists ten newest changelog entries. |
+| `GET` | `/api/v1/pipeline-runs` | Lists ten filtered runs from the selected Project. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs?claimable=true` | Lists claimable runs and their entity tags. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs` | Creates a prepared pipeline run. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/start` | Starts a prepared pipeline run. |
 | `PATCH` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Conditionally claims one listed run for a worker. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}` | Describes a pipeline run and selected Activity run. |
+| `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness` | Describes aggregate Worker readiness for a queued run. |
 | `GET` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` | Lists immutable Pipeline-run execution events. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/lease` | Renews an active worker lease for one minute. |
 | `POST` | `/api/v1/pipelines/{pipeline_id}/runs/{run_id}/continue` | Records a terminal Activity result and selects the next eligible step. |
@@ -38,6 +40,18 @@ Linked Service offering the effective model. Harnesses resolve
 at Activity, Pipeline, then User scope. It freezes the effective values
 in its Pipeline and Activity snapshots. An unset effective Harness retains the
 legacy `louie` v1 compatibility behavior.
+For every `codex_cli` Activity, creation resolves its generator Persona and the
+Persona's ordered Skills from the current User library. It freezes their IDs,
+versions, metadata, and content in the Activity snapshot returned later in the
+child ActivityRun's `run_harness` payload. Subsequent Persona or Skill edits do
+not alter an existing run. Creation also freezes the effective generator model
+as `requested_model`; a missing effective model rejects the run instead of
+falling back to the worker's local Codex configuration. Unknown, deprecated,
+or User-disabled Codex models also reject creation before any PipelineRun is
+persisted. These failures return `409 pipeline_run_unavailable` with
+`details.reason`, `details.pipeline_id`, `details.activity_id`, and, when
+known, `details.model_id` so clients can present an actionable configuration
+error.
 Archived pipelines are immutable and omitted from unfiltered listings.
 
 Every Pipeline response includes top-level `model_id` and `harness` keys,
@@ -302,7 +316,7 @@ response resolves each stored step to its full persisted Activity.
 
 | Property | JSON type | Required | Restrictions |
 | -------- | --------- | -------- | ------------ |
-| `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Yes | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | Yes | May be empty. |
 | `steps` | Array of Activity definitions | Yes | Contains at least one step and uses the [Pipeline Step Schema](#pipeline-step-schema). |
 | `model_id` | String or null | No | A logical catalog model ID. `null` means inherit. |
@@ -505,7 +519,7 @@ At least one property is required.
 
 | Property | JSON type | Restrictions |
 | -------- | --------- | ------------ |
-| `name` | String | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. Does not contain whitespace, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
+| `name` | String | Contains 1 to 140 characters. Starts with a Unicode letter, number, or `_`. May contain spaces but not line breaks, tabs, `.`, `+`, `?`, `/`, `<`, `>`, `*`, `%`, `&`, or `:`. |
 | `description` | String | May be empty. |
 | `enabled` | Boolean | Enables or disables the Pipeline. |
 | `steps` | Array of Activity definitions | Contains at least one step, uses the [Pipeline Step Schema](#pipeline-step-schema), and replaces the complete ordered step collection. |
@@ -746,6 +760,23 @@ ll pipelines runs start PIPELINE_ID RUN_ID
 Workers remain independent pollers; an operator does not direct a specific
 worker to accept a claim.
 
+## List pipeline runs
+
+`GET /api/v1/pipeline-runs` returns the selected Project's newest Pipeline runs
+in fixed pages of ten. It accepts a non-negative `offset` and an optional,
+inclusive ISO 8601 `created_from` filter. Runtime workers continue to use the
+separate claimable listing under each Pipeline.
+
+```http
+GET /api/v1/pipeline-runs?offset=0&created_from=2026-08-20T00:00:00Z
+X-Project-ID: project-acme
+```
+
+The response uses the standard `items` and `total` page envelope. Each item has
+the same representation as the individual PipelineRun endpoint, with
+`current_activity_run` omitted as `null`; clients load individual runs when
+they need the current child checkpoint.
+
 Activity definitions remain reusable but are not directly callable. Retrying
 execution is a PipelineRun-level operation because it needs the frozen graph,
 input, commit mode, configured runtime checkout, and correction history. A
@@ -762,6 +793,12 @@ not start repository execution or allocate an ActivityRun. Use the start
 operation to make the run eligible for its assigned executor. `allow` is the
 default mode. `forbid` leaves successfully applied and approved changes
 uncommitted, and the API never schedules a commit checkpoint for that run.
+
+Creation validates every frozen execution dependency before persistence. For
+`codex_cli`, the effective generator model must exist, be active, and be enabled
+by the current User's policy. Worker liveness and local Codex authentication are
+not creation prerequisites: after start, a valid run remains `queued` until an
+active worker heartbeat advertises the frozen Harness.
 
 | Property | JSON type | Required | Restrictions |
 | -------- | --------- | -------- | ------------ |
@@ -986,13 +1023,55 @@ Example response (`200 OK`):
 The API returns `404 pipeline_run_not_found` when the supplied run does not
 belong to the Pipeline in the selected workspace.
 
+## Describe pipeline run readiness
+
+`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness` diagnoses a
+queued run without exposing Worker identities or local configuration. The API
+resolves the next claimable Activity's frozen Harness and applies the same
+two-minute heartbeat window used by claim admission. The response distinguishes
+no registrations, only stale registrations, active incompatible Workers, and
+an active compatible Worker. A later compatible heartbeat changes the result
+to `ready`; no user retry is required for the runtime to claim the run.
+
+```http
+GET /api/v1/pipelines/pipeline-production-release-review/runs/pipeline-run-001/readiness
+X-Project-ID: project-acme
+```
+
+```json
+{
+  "status": "no_compatible_workers",
+  "project_id": "project-acme",
+  "required_harness": {
+    "kind": "codex_cli",
+    "version": "v1",
+    "config": {}
+  },
+  "registered_worker_count": 2,
+  "active_worker_count": 1,
+  "compatible_worker_count": 0,
+  "latest_heartbeat_at": "2026-08-21T10:00:00Z",
+  "observed_at": "2026-08-21T10:00:30Z"
+}
+```
+
+For non-queued runs, `status` is `not_applicable`, `required_harness` is null,
+and the counts are zero. This race-safe response lets a client stop presenting
+queued diagnostics after the run has already been claimed.
+
 ## List pipeline run events
 
 `GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/events` returns the
 append-only event ledger in creation order. Each entry has an ID, event type,
 optional Activity ID, actor ID, JSON payload, and creation time. The API emits
-`pipeline_run_created` and scheduler events. Human decisions are regular
-Activity-run checkpoints, not Pipeline-run gate events.
+`pipeline_run_created`, `pipeline_run_claimed`, `pipeline_step_started`,
+`pipeline_step_completed`, and `pipeline_step_failed`. Harness children also
+emit `harness_turn_completed` or `harness_turn_failed` with the normalized
+Harness observation, including its v1 schema and frozen Harness identity plus
+partial observations from failed processes. Consumers discriminate the
+embedded observation by `payload.harness.kind`. Existing ledgers may still
+contain the legacy `codex_turn_completed` and `codex_turn_failed` names. Human
+decisions are regular Activity-run checkpoints, not Pipeline-run gate events.
 
 ## Complete a human Activity run
 

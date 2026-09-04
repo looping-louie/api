@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
 from src.app.services.workers import (
     WorkerHarnessUnavailableError,
     WorkerService,
@@ -31,6 +31,7 @@ class InMemoryWorkerRepository:
 
     async def heartbeat(
         self, *, project_id: str, worker_id: str, occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
         """Update one registered worker heartbeat."""
 
@@ -40,7 +41,7 @@ class InMemoryWorkerRepository:
         updated = WorkerDocument(
             id=current.id, project_id=current.project_id,
             registered_at=current.registered_at, last_heartbeat_at=occurred_at,
-            harnesses=current.harnesses,
+            harnesses=harnesses if harnesses is not None else current.harnesses,
         )
         self.documents[(project_id, worker_id)] = updated
         return updated
@@ -54,15 +55,6 @@ class InMemoryWorkerRepository:
         """Return one stored Worker capability registration."""
 
         return self.documents.get((project_id, worker_id))
-
-    async def is_active(
-        self, *, project_id: str, worker_id: str, active_since: datetime,
-    ) -> bool:
-        """Return whether the stored worker heartbeat satisfies the cutoff."""
-
-        worker = self.documents.get((project_id, worker_id))
-        return worker is not None and worker.last_heartbeat_at >= active_since
-
 
 @pytest.mark.asyncio
 async def test_registered_worker_heartbeat_admits_claims(
@@ -81,9 +73,49 @@ async def test_registered_worker_heartbeat_admits_claims(
 
     registered = await service.create(user_id='user-1')
     heartbeated = await service.heartbeat(user_id='user-1', worker_id='worker-1')
-    await service.require_active(project_id='workspace-1', worker_id='worker-1')
+    await service.require_capable(
+        project_id='workspace-1', worker_id='worker-1',
+        harness={'kind': 'louie', 'version': 'v1', 'config': {}},
+    )
 
     assert registered == heartbeated
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_replaces_observed_harness_capabilities(
+    tenant_service: TenantService,
+) -> None:
+    """A heartbeat removes Codex admission when the local login is unavailable."""
+
+    now = datetime(2026, 8, 21, tzinfo=UTC)
+    repository = InMemoryWorkerRepository()
+    service = WorkerService(
+        repository=repository,
+        tenant_service=tenant_service,
+        id_factory=lambda: 'worker-1',
+        clock=lambda: now,
+    )
+    worker = await service.create(
+        user_id='user-1',
+        harnesses=(
+            WorkerHarnessCapability(),
+            WorkerHarnessCapability(kind='codex_cli'),
+        ),
+    )
+
+    refreshed = await service.heartbeat(
+        user_id='user-1',
+        worker_id=worker.id,
+        harnesses=(WorkerHarnessCapability(),),
+    )
+
+    assert [harness.kind for harness in refreshed.harnesses] == ['louie']
+    with pytest.raises(WorkerHarnessUnavailableError):
+        await service.require_capable(
+            project_id='workspace-1',
+            worker_id=worker.id,
+            harness={'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        )
 
 
 @pytest.mark.asyncio
@@ -102,7 +134,7 @@ async def test_worker_harness_admission_requires_an_advertised_capability(
     )
     registered = await service.create(user_id='user-1')
 
-    await service.require_harness(
+    await service.require_capable(
         project_id='workspace-1',
         worker_id=registered.id,
         harness={'kind': 'louie', 'version': 'v1', 'config': {}},
@@ -120,7 +152,7 @@ async def test_worker_harness_admission_requires_an_advertised_capability(
     )
 
     with pytest.raises(WorkerHarnessUnavailableError):
-        await empty_capability_service.require_harness(
+        await empty_capability_service.require_capable(
             project_id='workspace-1',
             worker_id=empty_worker.id,
             harness={'kind': 'louie', 'version': 'v1', 'config': {}},
@@ -128,15 +160,29 @@ async def test_worker_harness_admission_requires_an_advertised_capability(
 
 
 @pytest.mark.asyncio
-async def test_missing_worker_cannot_claim(tenant_service: TenantService) -> None:
-    """A worker without registration cannot satisfy claim admission."""
+@pytest.mark.parametrize('registered', [False, True])
+async def test_inactive_worker_cannot_claim(
+    tenant_service: TenantService,
+    registered: bool,
+) -> None:
+    """A missing or stale worker cannot satisfy combined claim admission."""
 
+    now = datetime(2026, 8, 21, tzinfo=UTC)
+    repository = InMemoryWorkerRepository()
+    if registered:
+        await WorkerService(
+            repository=repository, tenant_service=tenant_service,
+            id_factory=lambda: 'worker-1', clock=lambda: now,
+        ).create(user_id='user-1')
     service = WorkerService(
-        repository=InMemoryWorkerRepository(),
+        repository=repository,
         tenant_service=tenant_service,
         id_factory=lambda: 'worker-1',
-        clock=lambda: datetime(2026, 8, 21, tzinfo=UTC) + timedelta(minutes=3),
+        clock=lambda: now + timedelta(minutes=3),
     )
 
     with pytest.raises(WorkerUnavailableError):
-        await service.require_active(project_id='workspace-1', worker_id='worker-1')
+        await service.require_capable(
+            project_id='workspace-1', worker_id='worker-1',
+            harness={'kind': 'louie', 'version': 'v1', 'config': {}},
+        )

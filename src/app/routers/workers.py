@@ -5,7 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, Path, status
 
 from src.app.controllers.workers import WorkerController
-from src.app.schemas.worker import WorkerCreateRequest, WorkerResponse
+from src.app.schemas.worker import (
+    WorkerCreateRequest,
+    WorkerHeartbeatRequest,
+    WorkerResponse,
+)
 
 from .dependencies import RequestContext, get_request_context, get_worker_controller
 
@@ -45,11 +49,13 @@ async def heartbeat_worker(
     worker_id: WorkerIdPath,
     context: ContextDependency,
     controller: ControllerDependency,
+    payload: Annotated[WorkerHeartbeatRequest | None, Body()] = None,
 ) -> WorkerResponse:
     """Refresh one registered runtime worker's liveness signal."""
 
     return await controller.heartbeat(
         user_id=context.user_id,
         worker_id=worker_id,
+        payload=payload,
         requested_project_id=context.requested_project_id,
     )

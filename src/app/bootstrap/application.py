@@ -199,7 +199,7 @@ async def configure_application(
     )
     execution_instruction_library_service = (
         ExecutionInstructionLibraryService(
-            repository=instruction_repository,
+            repository=user_skill_repository,
             persona_repository=user_persona_repository,
             persona_skill_repository=persona_skill_repository,
             tenant_service=tenant_service,
@@ -329,6 +329,8 @@ async def configure_application(
         workspace_service=project_service,
         user_service=user_service,
         model_execution_service=model_execution_service,
+        model_catalog_service=model_catalog_service,
+        instruction_library_service=execution_instruction_library_service,
     )
     app.state.catalog_controller = catalog_controller
     app.state.linked_service_controller = LinkedServiceController(

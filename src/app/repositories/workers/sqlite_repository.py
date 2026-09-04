@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+from typing import Mapping
 
-from src.app.models.worker import WorkerDocument, WorkerHarnessCapability
+from src.app.models.worker import (
+    WorkerDocument,
+    WorkerHarnessCapability,
+    WorkerReadinessDocument,
+)
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
 
 
@@ -74,8 +79,9 @@ class SqliteWorkerRepository:
         project_id: str,
         worker_id: str,
         occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
-        """Refresh an existing worker and return its current registration."""
+        """Refresh an existing worker and its currently observed capabilities."""
 
         async with self._database.connect() as connection:
             try:
@@ -83,12 +89,18 @@ class SqliteWorkerRepository:
                 cursor = await connection.execute(
                     '''
                     UPDATE workers
-                    SET last_heartbeat_at = ?
+                    SET last_heartbeat_at = ?,
+                        harnesses_json = COALESCE(?, harnesses_json)
                     WHERE project_id = ? AND id = ?
                     RETURNING id, project_id, registered_at, last_heartbeat_at,
                         harnesses_json
                     ''',
-                    (occurred_at.isoformat(), project_id, worker_id),
+                    (
+                        occurred_at.isoformat(),
+                        _serialize_harnesses(harnesses) if harnesses is not None else None,
+                        project_id,
+                        worker_id,
+                    ),
                 )
                 try:
                     row = await cursor.fetchone()
@@ -100,27 +112,47 @@ class SqliteWorkerRepository:
                 raise
         return _to_document(row) if row is not None else None
 
-    async def is_active(
+    async def readiness(
         self,
         *,
         project_id: str,
-        worker_id: str,
         active_since: datetime,
-    ) -> bool:
-        """Return whether the worker has heartbeated since the cutoff."""
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Aggregate recent workers and exact Harness matches for a workspace."""
 
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT 1 FROM workers
-                WHERE project_id = ? AND id = ? AND last_heartbeat_at >= ?
+                SELECT id, project_id, registered_at, last_heartbeat_at,
+                    harnesses_json
+                FROM workers
+                WHERE project_id = ?
                 ''',
-                (project_id, worker_id, active_since.isoformat()),
+                (project_id,),
             )
             try:
-                return await cursor.fetchone() is not None
+                rows = await cursor.fetchall()
             finally:
                 await cursor.close()
+        workers = [_to_document(row) for row in rows]
+        active = [
+            worker for worker in workers
+            if worker.last_heartbeat_at >= active_since
+        ]
+        compatible = [
+            worker for worker in active
+            if any(capability.matches(harness) for capability in worker.harnesses)
+        ]
+        return WorkerReadinessDocument(
+            registered_worker_count=len(workers),
+            active_worker_count=len(active),
+            compatible_worker_count=len(compatible),
+            latest_heartbeat_at=max(
+                (worker.last_heartbeat_at for worker in workers),
+                default=None,
+            ),
+        )
 
 
 def _to_document(row: object) -> WorkerDocument:

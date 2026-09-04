@@ -1,3 +1,5 @@
+"""Tests for immutable execution instruction libraries."""
+
 import pytest
 
 from src.app.services.execution_instructions import (
@@ -32,12 +34,14 @@ class RegisteredUserService:
 
 
 @pytest.mark.asyncio
-async def test_workspace_persona_is_available_to_execution(
+async def test_user_persona_and_ordered_skills_are_available_to_execution(
     persona_definition_service: PersonaDefinitionService,
     skill_definition_service: SkillDefinitionService,
     instruction_repository: FakeInstructionRepository,
     tenant_service: TenantService,
 ) -> None:
+    """The execution snapshot resolves a user's Persona and linked Skills."""
+
     persona_skill_repository = FakePersonaSkillRepository()
     skill_service = SkillService(
         user_service=RegisteredUserService(),
@@ -69,7 +73,7 @@ async def test_workspace_persona_is_available_to_execution(
             name="Project Lead",
             description="Custom technical lead.",
             instructions="SQL persona content.",
-            skill_ids=(),
+            skill_ids=(skill.id,),
         ),
     )
 
@@ -84,10 +88,15 @@ async def test_workspace_persona_is_available_to_execution(
     }
     persona_snapshot = snapshot_entries[persona.id]
 
-    assert skill.id not in snapshot_entries
+    agent_snapshot = library.agent_snapshot(persona.id)
+
+    assert snapshot_entries[skill.id]["content"] == "SQL skill content version one."
     assert persona_snapshot["instruction_type"] == "persona"
     assert persona_snapshot["content"] == "SQL persona content."
-    assert persona_snapshot["skill_ids"] == []
+    assert persona_snapshot["skill_ids"] == [skill.id]
+    assert agent_snapshot["persona"]["id"] == persona.id
+    assert [entry["id"] for entry in agent_snapshot["skills"]] == [skill.id]
+    assert agent_snapshot["skills"][0]["version"] == 1
 
 
 @pytest.mark.asyncio
@@ -96,6 +105,8 @@ async def test_user_owned_skill_update_is_visible_to_its_owner(
     instruction_repository: FakeInstructionRepository,
     tenant_service: TenantService,
 ) -> None:
+    """An updated user-owned Skill exposes its current persisted version."""
+
     persona_skill_repository = FakePersonaSkillRepository()
     skill_service = SkillService(
         user_service=RegisteredUserService(),
