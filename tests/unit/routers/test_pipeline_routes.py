@@ -245,6 +245,13 @@ def test_pipeline_persists_nullable_and_supported_harness_overrides(
             'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         },
     )
+    copilot = client.post(
+        '/api/v1/pipelines',
+        json={
+            **pipeline_payload(),
+            'harness': {'kind': 'copilot_cli', 'version': 'v1', 'config': {}},
+        },
+    )
     invalid_config = client.post(
         '/api/v1/pipelines',
         json={
@@ -262,6 +269,12 @@ def test_pipeline_persists_nullable_and_supported_harness_overrides(
     assert codex.status_code == 201
     assert codex.json()['harness'] == {
         'kind': 'codex_cli',
+        'version': 'v1',
+        'config': {},
+    }
+    assert copilot.status_code == 201
+    assert copilot.json()['harness'] == {
+        'kind': 'copilot_cli',
         'version': 'v1',
         'config': {},
     }

@@ -209,7 +209,7 @@ def _to_harness(value: str | None) -> PipelineHarness | None:
     config = parsed.get('config') if parsed is not None else None
     if (
         parsed is None
-        or parsed.get('kind') not in ('louie', 'codex_cli')
+        or parsed.get('kind') not in ('louie', 'codex_cli', 'copilot_cli')
         or parsed.get('version') != 'v1'
         or not isinstance(config, dict)
         or config
