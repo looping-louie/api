@@ -30,7 +30,8 @@ runtime-executable Activity run. When no candidate exists, the API freezes the
 used by an existing run.
 
 A Harness has a stable `kind`, a `version`, and a kind-specific `config`
-object. The API accepts `louie` v1 and `codex_cli` v1 with an empty `config`.
+object. The API accepts `louie` v1, `codex_cli` v1, and `copilot_cli` v1 with
+an empty `config`.
 
 ```json
 {
@@ -56,33 +57,36 @@ the required Harness for operator diagnostics without exposing Worker identities
 or local configuration. Registration and heartbeat requests carry both the
 acting `X-User-ID` and selected `X-Project-ID`.
 
-## Codex CLI Execution
+## CLI Harness Execution
 
-`codex_cli` supports `direct_loop`, `refinement_loop`, and `roundtable_loop`.
+`codex_cli` and `copilot_cli` support `direct_loop`, `refinement_loop`, and
+`roundtable_loop`.
 The API owns their shared semantics and persists one `run_harness` checkpoint
 per agent turn: writer execution, read-only proposal, read-only review, or
 writer aggregation. This lets another Harness adapter implement the same roles
 without duplicating loop state or commit policy.
 
-For each Codex Activity, PipelineRun creation freezes every agent's effective
-model as `requested_model`, resolves each selected Persona and its ordered
-Skills from the User-owned instruction library, and freezes their IDs, versions,
-metadata, and content in the Activity snapshot. The runtime receives that model
-and instruction snapshot with the pending agent turn; neither the API nor the
-runtime resolves mutable instruction resources during execution.
+For each CLI Harness Activity, PipelineRun creation freezes every agent's
+effective model as `requested_model`, resolves each selected Persona and its
+ordered Skills from the User-owned instruction library, and freezes their IDs,
+versions, metadata, and content in the Activity snapshot. The runtime receives
+that model and instruction snapshot with the pending agent turn; neither the API
+nor the runtime resolves mutable instruction resources during execution.
 
-`codex_cli` does not select API Linked Services or require API provider
-credentials. A Codex Activity without an effective model ID, with an unknown or
-deprecated model, or with a model disabled by User policy fails before the
-PipelineRun is persisted. Codex authentication remains local to the worker.
+Neither CLI Harness selects API Linked Services or requires API provider
+credentials. A CLI Harness Activity without an effective model ID, with an
+unknown or deprecated model, or with a model disabled by User policy fails
+before the PipelineRun is persisted. CLI authentication remains local to the
+worker.
 
 ## Result Envelope And Commit Handoff
 
 The runtime reports a normalized, versioned observation through `run_harness`.
 Every observation carries `schema_version` and the frozen Harness identity,
 followed by timing, model, usage, process, Git, response, and error fields.
-Harness-specific fields extend that common envelope; `codex_cli` v1 includes
-reasoning effort, session reference, and materialized Skill IDs and versions.
+Harness-specific fields extend that common envelope. `codex_cli` v1 and
+`copilot_cli` v1 include session reference and materialized Skill IDs and
+versions; Codex additionally reports reasoning effort when available.
 
 The API validates that the reported Harness and requested model match the
 immutable Activity snapshot. It retains observations on both success and
@@ -90,10 +94,10 @@ failure, including partial observations from a failed process. PipelineRun
 events record `harness_turn_completed` or `harness_turn_failed`; consumers
 identify the concrete implementation through `payload.harness.kind`.
 
-For commit-enabled Codex runs, a successful result includes a proposed
+For commit-enabled CLI Harness runs, a successful result includes a proposed
 `commit_message`. The API validates and persists the message as a runtime
 artifact, then returns it only through the later `commit_if_allowed` checkpoint.
-Codex does not authorize or perform the commit. A successful authorized commit
+The CLI does not authorize or perform the commit. A successful authorized commit
 updates the final commit SHA without discarding the Harness observation.
 
 ## Related Documentation

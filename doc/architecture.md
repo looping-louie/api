@@ -50,11 +50,11 @@ User for model IDs; and Activity, Pipeline, then User for Harnesses.
 For `louie`, creation requires an effective model ID and selects the first
 deterministically ordered compatible, enabled, configured User-owned Linked
 Service before freezing its identity and owner in a private `model_target`
-snapshot. `codex_cli` does not select API Linked Services or require API
-provider credentials. For each Codex Activity, creation freezes every agent's
+snapshot. `codex_cli` and `copilot_cli` do not select API Linked Services or
+require API provider credentials. For each CLI Harness Activity, creation freezes every agent's
 effective model as `requested_model`, resolves each Persona and its ordered
 Skills from the User-owned library, and freezes their versioned content in the
-Activity snapshot delivered through `run_harness`. A Codex Activity
+Activity snapshot delivered through `run_harness`. A CLI Harness Activity
 without an effective model ID, with an unknown or deprecated model, or with a
 model disabled by User policy fails before the PipelineRun is persisted.
 Personas are instruction-only resources. An unset effective Harness becomes the `louie` v1
