@@ -173,6 +173,25 @@ def test_worker_registration_accepts_codex_cli_harness(
     }]
 
 
+def test_worker_registration_accepts_copilot_cli_harness(
+    tenant_service: TenantService,
+) -> None:
+    """Registration persists the initial Copilot CLI Harness capability."""
+
+    response = build_client(tenant_service).post(
+        '/api/v1/workers',
+        headers={'X-Project-ID': 'workspace-1'},
+        json={'harnesses': [{'kind': 'copilot_cli', 'version': 'v1', 'config': {}}]},
+    )
+
+    assert response.status_code == 201
+    assert response.json()['harnesses'] == [{
+        'kind': 'copilot_cli',
+        'version': 'v1',
+        'config': {},
+    }]
+
+
 def test_heartbeat_requires_workspace_worker_registration(
     tenant_service: TenantService,
 ) -> None:

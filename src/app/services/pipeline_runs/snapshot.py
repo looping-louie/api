@@ -19,7 +19,7 @@ from .types import PipelineRunUnavailableError
 
 
 class PipelineRunSnapshotBuilder:
-    """Freeze execution routing and Codex instructions when a run is created."""
+    """Freeze execution routing and CLI instructions when a run is created."""
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class PipelineRunSnapshotBuilder:
     ) -> tuple[dict[str, object], ...]:
         """Freeze all Activity snapshots against one instruction-library view."""
 
-        instruction_library = await self._codex_instruction_library(
+        instruction_library = await self._cli_instruction_library(
             activities=activities,
             project_id=project_id,
             user_id=user_id,
@@ -67,7 +67,7 @@ class PipelineRunSnapshotBuilder:
             )
         return tuple(snapshots)
 
-    async def _codex_instruction_library(
+    async def _cli_instruction_library(
         self,
         *,
         activities: Sequence[ActivityDocument],
@@ -75,17 +75,19 @@ class PipelineRunSnapshotBuilder:
         user_id: str,
         inherited_harness: PipelineHarness,
     ) -> ExecutionInstructionLibrary | None:
-        """Load one shared library only when a runtime Activity uses Codex."""
+        """Load one shared library only when a runtime Activity uses a CLI Harness."""
 
-        requires_codex = any(
+        requires_cli = any(
             activity.type not in ('approval', 'quiz')
-            and (activity.harness or inherited_harness).kind == 'codex_cli'
+            and (activity.harness or inherited_harness).kind in (
+                'codex_cli', 'copilot_cli'
+            )
             for activity in activities
         )
-        if not requires_codex:
+        if not requires_cli:
             return None
         if self._instruction_library_service is None:
-            raise RuntimeError('Codex instruction snapshots are not configured.')
+            raise RuntimeError('CLI instruction snapshots are not configured.')
         return await self._instruction_library_service.load(
             user_id=user_id,
             requested_project_id=project_id,
@@ -139,8 +141,8 @@ class PipelineRunSnapshotBuilder:
                 'harness': execution_harness,
                 **config,
             }
-        if harness.kind == 'codex_cli':
-            requested_model = self._codex_requested_model(
+        if harness.kind in ('codex_cli', 'copilot_cli'):
+            requested_model = self._cli_requested_model(
                 config=config,
                 inherited_model_id=model_id,
                 pipeline_id=pipeline_id,
@@ -197,8 +199,8 @@ class PipelineRunSnapshotBuilder:
                 reason_code='missing_effective_model',
                 activity_id=activity_id,
             )
-        if harness.kind == 'codex_cli':
-            await self._require_codex_model_enabled(
+        if harness.kind in ('codex_cli', 'copilot_cli'):
+            await self._require_cli_model_enabled(
                 user_id=user_id,
                 pipeline_id=pipeline_id,
                 activity_id=activity_id,
@@ -208,7 +210,7 @@ class PipelineRunSnapshotBuilder:
             if not isinstance(persona_id, str) or instruction_library is None:
                 raise PipelineRunUnavailableError(
                     pipeline_id=pipeline_id,
-                    reason='codex_cli execution requires a Persona for every agent',
+                    reason='CLI Harness execution requires a Persona for every agent',
                     activity_id=activity_id,
                 )
             snapshot['requested_model'] = model_id
@@ -233,14 +235,14 @@ class PipelineRunSnapshotBuilder:
         return snapshot
 
     @staticmethod
-    def _codex_requested_model(
+    def _cli_requested_model(
         *,
         config: Mapping[str, object],
         inherited_model_id: str | None,
         pipeline_id: str,
         activity_id: str,
     ) -> str:
-        """Resolve the generator, Activity, Pipeline, then User Codex model."""
+        """Resolve the generator, Activity, Pipeline, then User CLI model."""
 
         agents = config.get('agents')
         generator = (
@@ -262,13 +264,13 @@ class PipelineRunSnapshotBuilder:
         if not isinstance(model_id, str):
             raise PipelineRunUnavailableError(
                 pipeline_id=pipeline_id,
-                reason='codex_cli execution requires a model_id',
+                reason='CLI Harness execution requires a model_id',
                 reason_code='missing_effective_model',
                 activity_id=activity_id,
             )
         return model_id
 
-    async def _require_codex_model_enabled(
+    async def _require_cli_model_enabled(
         self,
         *,
         user_id: str,
@@ -276,7 +278,7 @@ class PipelineRunSnapshotBuilder:
         activity_id: str,
         model_id: str,
     ) -> None:
-        """Reject Codex selections absent from or disabled in the User catalog."""
+        """Reject CLI Harness selections absent from or disabled in the User catalog."""
 
         if self._model_catalog_service is None:
             return
