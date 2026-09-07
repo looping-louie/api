@@ -170,7 +170,7 @@ Looping Louie currently exposes these endpoints.
 
 See the complete API documentation:
 
-- [`doc/API.md`](doc/API.md)
+- [`doc/public-api/overview.md`](doc/public-api/overview.md)
 
 ---
 
@@ -213,7 +213,7 @@ Project documentation is organised under `doc/`.
 |---|---|
 | `architecture.md` | Runtime architecture and execution lifecycle. |
 | `roadmap.md` | Planned architectural evolution. |
-| `API.md` | HTTP API reference. |
+| `public-api/` | HTTP API reference. |
 | `development-log.md` | Engineering logbook and execution notes. |
 
 ---
