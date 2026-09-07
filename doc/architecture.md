@@ -369,7 +369,5 @@ models/
   catalog boundary. Linked Services persist independent User-owned provider
   connections and derive their available deployment models from that catalog.
   Legacy provider credentials and Persona model associations are retired.
-- [Philosophy](components/philosophy.md) contains the project principles and
-  long-term direction.
 - [Current limitations](components/limitations.md) records known MVP
   boundaries.

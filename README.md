@@ -212,7 +212,6 @@ Project documentation is organised under `doc/`.
 | Document | Purpose |
 |---|---|
 | `architecture.md` | Runtime architecture and execution lifecycle. |
-| `philosophy.md` | Design principles and engineering philosophy. |
 | `roadmap.md` | Planned architectural evolution. |
 | `API.md` | HTTP API reference. |
 | `development-log.md` | Engineering logbook and execution notes. |
