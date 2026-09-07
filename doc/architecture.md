@@ -361,8 +361,6 @@ models/
 
 - [Execution](components/execution.md) describes persisted runs, checkpoints,
   prompts, review, finalisation, artefacts, and metrics.
-- [Activities](components/activities.md) defines Activity categories, loop
-  roles, and supported Activity-run behavior.
 - [Persona and Skill catalog](components/persona-skill-catalog.md) describes
   builtin Persona and Skill ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records the static provider and model

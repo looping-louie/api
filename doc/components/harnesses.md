@@ -103,8 +103,6 @@ updates the final commit SHA without discarding the Harness observation.
 ## Related Documentation
 
 - [Execution](execution.md) describes the Activity-run checkpoint lifecycle.
-- [Activities](activities.md) describes reusable Activity definitions and run
-  snapshots.
 - [Pipelines endpoint reference](../endpoints/pipelines.md) documents run
   creation, readiness, claims, and events.
 - [Workers endpoint reference](../endpoints/workers.md) documents capability
