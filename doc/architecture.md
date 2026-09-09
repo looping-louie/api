@@ -1,9 +1,10 @@
-# Looping Louie API Architecture
+# Looping Louie API Software Architecture
 
 This document describes the software architecture of the Looping Louie API.
-The temporary cross-repository product architecture is documented in
-[ll-architecture.md](ll-architecture.md). The API and runtime checkpoint
-contract is documented in [Execution](components/execution.md).
+The cross-repository product architecture is documented on the
+[Looping Louie documentation site](https://loopinglouie.ai/docs/architecture/).
+The API and runtime checkpoint contract is documented in
+[Execution](components/execution.md).
 
 ## Repository structure
 
