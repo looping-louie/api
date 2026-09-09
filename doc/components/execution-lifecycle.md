@@ -1,4 +1,4 @@
-# Execution
+# Execution lifecycle
 
 A persisted Activity run coordinates API-owned decisions with a Harness that
 executes repository work in a runtime-owned checkout. The API plans and
@@ -34,7 +34,7 @@ The following Harness kinds define the initial compatibility model:
 | `human` | `approval`, `quiz` | A person submits a terminal decision. |
 | `codex_cli` | `direct_loop` | Runs one local Codex CLI turn with the API-frozen model, then reports normalized results and a commit proposal through `run_harness`. |
 
-## Execution lifecycle
+## Steps
 
 ### 1. Create and persist an activity run
 
