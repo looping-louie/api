@@ -150,9 +150,10 @@ Contains the original task, Git diff, changed file contents, and review skill.
 Workspace lifecycle is runtime-owned. The API persists activity-run
 orchestration state in SQLite.
 
-The API queues a persisted Pipeline run. A Worker claims it, the frozen `louie`
-Harness iterates the `/continue` checkpoint, commits an approved result, and
-reports Activity outcomes so the API can select the next step.
+The API queues a persisted Pipeline run. A Worker claims it, then the frozen
+selected Harness executes each requested checkpoint and reports Activity
+outcomes through `/continue` so the API can select the next step. For
+commit-enabled work, the runtime commits only after API authorization.
 
 Harnesses report normalized execution observations. A report can include a
 final message, diff, changed files, duration, usage, bounded diagnostics, and
