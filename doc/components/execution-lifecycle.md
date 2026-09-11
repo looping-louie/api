@@ -26,124 +26,66 @@ Human Activities do not use the Pipeline Harness. `approval` and `quiz`
 Activities use the built-in `human` execution mode and accept only human
 decision checkpoints.
 
-The following Harness kinds define the initial compatibility model:
+The following Harness kinds define the current compatibility model:
 
 | Harness kind | Supported Activity types | Execution behavior |
 | ------------ | ------------------------ | ------------------ |
 | `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
-| `human` | `approval`, `quiz` | A person submits a terminal decision. |
 | `codex_cli` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Runs one API-selected local CLI agent turn with the frozen model, then reports normalized results and a commit proposal through `run_harness`. |
 | `copilot_cli` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Runs one API-selected local CLI agent turn with the frozen model, then reports normalized results and a commit proposal through `run_harness`. |
 
-## Steps
+## Activity-run lifecycle
 
-### 1. Create and persist an activity run
+### 1. Create and freeze a run
 
 The API persists the activity snapshot, frozen Harness selection, run status,
 checkpoint action, iteration, and continuation revision in SQLite.
 
-For each CLI Harness Activity, PipelineRun creation also freezes the effective
-generator model as `requested_model` and resolves the generator Persona and its
-ordered Skills from the User-owned instruction library. Their IDs, versions,
-metadata, and content are persisted as a versioned `instruction_snapshot`
-inside the immutable Activity snapshot. The `run_harness` checkpoint payload
-returns that exact model and instruction snapshot; neither the API nor the
-runtime resolves the mutable resources again. CLI authentication and executables
-remain local worker concerns; API Linked Services are not used.
+For each CLI Harness agent, PipelineRun creation freezes its effective model as
+`requested_model` and resolves its Persona and ordered Skills from the
+User-owned instruction library. Their IDs, versions, metadata, and content are
+persisted as a versioned `instruction_snapshot` inside the immutable Activity
+snapshot. Each `run_harness` checkpoint returns the scheduled agent's exact
+model and instruction snapshot; neither the API nor the runtime resolves the
+mutable resources again. CLI authentication and executables remain local worker
+concerns; API Linked Services are not used.
 
-### 2. Receive repository context from the runtime
+### 2. Receive context and select the next action
 
 The runtime sends repository snapshot context in `collect_snapshot`. The API uses
-that context to build iteration prompts. For CLI Harnesses, the runtime injects
-the frozen Persona instructions and materializes the frozen Skills for the local
-turn without resolving mutable instruction resources.
+that context and the frozen Activity snapshot to select the next checkpoint.
 
-### 3. Build prompts
+### 3. Advance the selected execution path
 
-The execution generation service creates initial generator, retry generator, and
-reviewer prompts. Prompt construction is centralized so orchestration code
-never builds prompts directly.
+For the API-directed `louie` Harness, the API builds generator and reviewer
+prompts, calls the configured model through its selected Linked Service, and
+validates the resulting filesystem operation plan. It returns that plan through
+the `apply_operations` checkpoint. After local application, the runtime submits
+review input when the Activity has reviewers.
 
-### 4. Generator execution
+For `codex_cli` and `copilot_cli`, the API schedules one `run_harness` turn for
+the selected writer, proposal, review, or aggregation role. It validates the
+reported frozen Harness and requested model, retains the normalized observation,
+and schedules the next turn or finalizes the loop. The runtime constructs the
+local CLI prompt from the API-supplied turn and immutable instructions.
 
-The configured generator model receives the repository snapshot, user task, and
-previous reviewer feedback on retries. The generator returns structured JSON
-describing filesystem operations:
+Human `approval` and `quiz` Activities enter the built-in `human` execution
+mode. A user decision advances the Activity without a runtime Harness.
 
-```json
-{
-  "operations": [
-    {
-      "operation": "replace",
-      "path": "pages/index.vue",
-      "content": "..."
-    }
-  ]
-}
-```
+### 4. Review and advance the run
 
-### 5. Validate and apply the operation contract
+The API applies the configured loop semantics to reported work. It records
+review outcomes, schedules a retry when applicable, advances the Pipeline after
+a terminal Activity outcome, or makes the Pipeline run terminal.
 
-The API validates generator operations and returns them in checkpoint payload.
-The runtime applies operations locally and reports success or failure in
-`apply_operations`.
+### 5. Authorize and record completion
 
-### 6. Receive review input
-
-The runtime sends `final_diff` and changed file contents in
-`submit_review_input`. The API uses this reviewer input as the decision source
-of truth.
-
-### 7. Reviewer execution
-
-Each configured reviewer agent produces one independent review. Reviewers
-receive the original task, Git diff, changed file contents, persona, and skill
-instructions. Reviewers never receive the entire repository snapshot.
-
-### 8. Aggregate review results
-
-Every reviewer returns approval, feedback, and metrics. The aggregator approves
-the iteration only if every reviewer approves. Otherwise, the feedback is
-merged and returned to the generator.
-
-### 9. Retry
-
-If approval fails, repository context is rebuilt, reviewer feedback is appended,
-and the generator runs again. The loop continues until every reviewer approves
-or maximum iterations are reached.
-
-### 10. Finalise
-
-If the run succeeds, the API marks commit handoff as allowed. The runtime performs
-the commit and reports the result. A commit-enabled CLI Harness turn must propose
-a non-empty `commit_message`; the API persists it and returns it in the later
-`commit_if_allowed` payload. A `forbid` run neither requires the message nor
-enters the commit checkpoint.
-Every successful CLI Harness result also contains `requested_model` and
-`actual_model`. The API validates the requested value against the frozen
-snapshot and persists both as runtime artifacts.
-
-Successful and failed Harness results persist one normalized observation and
-expose it as the ActivityRun `payload`. The v1 common envelope identifies its
-`schema_version` and frozen `harness`, then includes start and end timestamps,
-elapsed milliseconds, optional model settings and session reference, numeric
-usage counters, process exit code, diagnostics, source and final Git SHAs,
-diff, changed files, final response, and failure detail. CLI Harness variants
-add materialized Skill versions; `codex_cli` v1 also reports observed reasoning
-effort. Partial JSONL observations survive a failed process. A later successful
-`commit_if_allowed` replaces the pre-commit final SHA with the authorized commit
-SHA.
-
-## Prompt lifecycle
-
-### Generator
-
-Contains the repository snapshot and user task. Retry prompts additionally
-include reviewer feedback.
-
-### Reviewer
-
-Contains the original task, Git diff, changed file contents, and review skill.
+For commit-enabled work, the API authorizes commit handoff only after a
+successful Activity result. A CLI Harness must provide a non-empty
+`commit_message`; the API persists it and returns it only in the later
+`commit_if_allowed` checkpoint. A `forbid` run does not enter that checkpoint.
+The runtime remains responsible for applying local Git policy and reporting the
+commit outcome.
 
 ## Workspace and workflow ownership
 
@@ -160,32 +102,13 @@ final message, diff, changed files, duration, usage, bounded diagnostics, and
 an optional opaque session reference. The API retains ownership of durable
 state transitions, review decisions, retries, and commit authorization.
 
-## Run artefacts
+## Persisted execution data
 
-Every execution persists enough information for complete inspection. Typical
-artefacts include:
-
-- request;
-- effective instruction snapshot;
-- response;
-- prompts;
-- model responses;
-- Git diffs;
-- execution trace;
-- metrics.
-
-This makes every run reproducible and debuggable.
-
-## Metrics
-
-Metrics are collected for the generator, every reviewer, and the complete
-execution. Current metrics include:
-
-- input tokens;
-- output tokens;
-- cached tokens;
-- reasoning tokens;
-- duration;
-- throughput.
-
-Future versions will additionally expose execution cost and historical trends.
+Successful and failed CLI Harness results persist a normalized observation in
+the ActivityRun `payload`. The v1 envelope identifies its `schema_version` and
+frozen `harness`, followed by timestamps, duration, model observations, usage,
+process outcome, Git state, response, diagnostics, and failure detail. CLI
+Harness variants add materialized Skill versions; `codex_cli` v1 also reports
+observed reasoning effort. Partial observations from a failed process remain
+available for inspection. A successful `commit_if_allowed` updates the final
+Git SHA with the authorized commit SHA.
