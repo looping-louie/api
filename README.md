@@ -1,45 +1,9 @@
 # Looping Louie
 
-Looping Louie API is the decision engine for iterative LLM software development.
-
-Instead of relying on a single model, Looping Louie orchestrates a development
-loop where:
-
-1. A generator proposes code changes.
-2. One or more specialised reviewer skills validate those changes.
-3. The generator iterates until every reviewer approves or the maximum number
-   of iterations is reached.
-
-The runtime is provider-independent and designed to be reproducible, observable
-and deployable in SaaS and on-premise environments.
-
----
-
-## Big picture
-
-Lets take a step back and remember: Looping Louie is an app for fast
-AI-driven development, which intends to automate the dev cycle.
-
-Ideally, an user will create a repo (looping-louie-test) and, by means of
-interacting with the lopping-louie CLI (which internally calls to the API),
-will be able to rapidly implement whatever project is in their mind.
-
-## Features
-
-- Iterative generator and reviewer workflow
-- Multiple independent review skills
-- Checkpoint-based API-CLI orchestration
-- Automatic Git diff generation
-- JSON-based file operations
-- API-guided local execution in CLI
-- One commit per approved task (executed by CLI)
-- Complete execution traces
-- Token and latency metrics
-- Provider-independent architecture
-- Encrypted provider credential storage
-- Local SQLite persistence for development and simple on-premise deployments
-
----
+Looping Louie API is the FastAPI control plane for Looping Louie. It manages
+Users, Projects, configuration resources, Pipeline and Activity definitions,
+runtime Workers, and durable execution state. Runtime workers perform local
+checkout actions and report checkpoint outcomes to this service.
 
 ## Installation
 
@@ -61,23 +25,9 @@ The installer never overwrites an existing `.env.local`, because changing
 `LOUIE_ENCRYPTION_KEY` would make previously encrypted provider credentials
 unreadable.
 
-Ensure `requirements.txt` contains the provider feature dependencies:
-
-```text
-aiosqlite
-cryptography
-httpx
-python-dotenv
-```
-
----
-
 ## Configuration
 
-After installation, configure provider credentials through the versioned
-provider API. Credentials are encrypted before SQLite persistence.
-
-The installer also creates these local provider settings:
+`make install` creates `.env.local` with these defaults:
 
 ```text
 LOUIE_ENCRYPTION_KEY=<generated Fernet key>
@@ -93,16 +43,9 @@ or regenerate it while encrypted credentials still exist.
 to `true` in production so a builtin checksum change requires an incremented
 `catalog_version`.
 
-Add these patterns to `.gitignore`:
-
-```gitignore
-.env
-.env.local
-*.db
-*.db-shm
-*.db-wal
-.looping-louie/
-```
+Set `LOUIE_DEV_AUTH=true` to enable local development authentication. Requests
+without `X-User-ID` then use `LOUIE_DEV_USER_ID`, which defaults to
+`local-user`.
 
 To deliberately replace the local configuration and generate a new encryption
 key:
@@ -114,9 +57,7 @@ make reset-config
 This is destructive for existing encrypted provider credentials. Remove or
 reconfigure those credentials after resetting the key.
 
----
-
-## Running the API
+## Execution
 
 Start the development server:
 
@@ -132,12 +73,6 @@ make run
 
 The Makefile always starts Uvicorn with the virtual environment interpreter and
 exports the values from `.env.local`.
-
-Start the development server from a normal VS Code integrated terminal, not a
-sandboxed agent terminal. Sandboxed terminal environments can create empty
-home-configuration placeholders such as `.bashrc`, `.gitconfig`, or `.vscode`
-in the current repository. These files are not created or used by Looping
-Louie and should be removed if they appear.
 
 The local SQLite database at `runtime/db/looping-louie.db` is an
 intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in
@@ -155,37 +90,6 @@ Interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
----
-
-## Usage
-
-Looping Louie currently exposes these endpoints.
-
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/v1/activities` | Manage reusable Activity definitions. |
-| `/api/v1/activities/{activity_id}/runs` | Start one persisted executable Activity run. |
-| `/api/v1/activities/{activity_id}/runs/{run_id}` | Read one persisted Activity run. |
-| `/api/v1/activities/{activity_id}/runs/{run_id}/continue` | Advance one Activity-run checkpoint. |
-
-See the complete API documentation:
-
-- [`doc/public-api/overview.md`](doc/public-api/overview.md)
-
----
-
-## Repository Requirements
-
-Before running Looping Louie against a target repository:
-
-- The target directory must be a Git repository.
-- The repository must have no uncommitted changes.
-
-Looping Louie refuses to execute against a dirty repository to keep runs
-deterministic.
-
----
-
 ## SQLite Migrations
 
 SQLite migration files are immutable once committed. Do not edit an existing
@@ -202,82 +106,3 @@ Every new SQLite migration must be added to the checksum manifest in
 `tests/integration/migrations/test_sqlite_migration_checksums.py`. That test
 protects the exact bytes of committed migrations and must pass before the
 migration is committed.
-
----
-
-## Documentation
-
-Project documentation is organised under `doc/`.
-
-| Document | Purpose |
-|---|---|
-| `architecture.md` | Runtime architecture and execution lifecycle. |
-| `roadmap.md` | Planned architectural evolution. |
-| `public-api/` | HTTP API reference. |
-| `development-log.md` | Engineering logbook and execution notes. |
-
----
-
-## High-Level Execution Flow
-
-```
-activity input
-      │
-      ▼
-/api/v1/activities/{activity_id}/runs
-      │
-      ▼
-CLI builds snapshot and runs local action
-      │
-      ▼
-/api/v1/activities/{activity_id}/runs/{run_id}/continue
-      │
-      ▼
-Planner and reviewer services
-      │
-      ▼
-Generator model
-      │
-      ▼
-JSON file operations
-      │
-      ▼
-Apply operations
-      │
-      ▼
-Git diff
-      │
-      ▼
-Reviewer skills
-      │
-      ▼
-Approved?
- │           │
- │ No        │ Yes
- ▼           ▼
-Retry    Commit allowed
-          (CLI commits)
-```
-
----
-
-## Current Status
-
-Looping Louie is currently an MVP focused on validating the execution runtime.
-
-The current implementation supports:
-
-- persisted Activity-run checkpoint contracts;
-- multi-skill review;
-- automatic commits;
-- execution traces;
-- run persistence;
-- reusable review skills.
-
-Future work is tracked in `docs/roadmap.md`.
-
----
-
-## License
-
-_Not yet defined._
