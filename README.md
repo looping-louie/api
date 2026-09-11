@@ -90,6 +90,10 @@ Interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+## Docker
+
+See [Docker](doc/docker.md) to run the production API image with Docker Compose.
+
 ## SQLite Migrations
 
 SQLite migration files are immutable once committed. Do not edit an existing
