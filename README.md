@@ -110,3 +110,4 @@ Every new SQLite migration must be added to the checksum manifest in
 `tests/integration/migrations/test_sqlite_migration_checksums.py`. That test
 protects the exact bytes of committed migrations and must pass before the
 migration is committed.
+
