@@ -392,7 +392,7 @@ within the configured `max_iterations` limit.
       "type": "files",
       "description": "An updated API guide.",
       "files": [
-        "doc/API.md"
+        "doc/public-api/overview.md"
       ]
     }
   }
@@ -428,7 +428,7 @@ Example response (`201 Created`):
       "type": "files",
       "description": "An updated API guide.",
       "files": [
-        "doc/API.md"
+        "doc/public-api/overview.md"
       ]
     }
   },

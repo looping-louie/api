@@ -1,11 +1,12 @@
-# API Endpoint Overview
+# Public API Overview
 
 Looping Louie API exposes a versioned API for managing the resources used by
-the execution runtime and for persisting loop-run checkpoints.
+the execution runtime and for persisting Activity-run checkpoints.
 
-The API owns planning, generation, and reviewer decisions. The CLI owns local
-repository execution, including filesystem, Git, and workspace lifecycle
-operations.
+The API owns planning, generation, reviewer decisions, Harness selection, and
+durable execution state. The runtime owns local repository execution, including
+filesystem, Git, Project lifecycle operations, and Worker-local Harness
+configuration.
 
 ## Endpoint reference
 
@@ -21,6 +22,8 @@ operations.
   definitions and their Project-placed Activity runs.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
   persists each supplied step as an independent User-owned Activity record.
+- [Workers](workers.md) provisions runtime identities and records liveness
+  heartbeats required for PipelineRun claims.
 
 ## Versioned API conventions
 
