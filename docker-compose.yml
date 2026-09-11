@@ -1,5 +1,6 @@
 services:
   api:
+    image: looping-louie-api:latest
     build:
       context: .
     env_file:
