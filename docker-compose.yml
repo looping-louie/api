@@ -8,6 +8,7 @@ services:
       LOUIE_DB_PATH: /app/runtime/db/looping-louie.db
     ports:
       - '2000:2000'
+    restart: unless-stopped
     volumes:
       - looping-louie-api-runtime:/app/runtime
     healthcheck:
