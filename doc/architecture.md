@@ -4,7 +4,7 @@ This document describes the software architecture of the Looping Louie API.
 The cross-repository product architecture is documented on the
 [Looping Louie documentation site](https://loopinglouie.ai/docs/architecture/).
 The API and runtime checkpoint contract is documented in
-[Execution](components/execution.md).
+[Execution lifecycle](components/execution-lifecycle.md).
 
 ## Repository structure
 
@@ -360,13 +360,8 @@ models/
 
 ## Components
 
-- [Execution](components/execution.md) describes persisted runs, checkpoints,
+- [Execution lifecycle](components/execution-lifecycle.md) describes persisted
+  runs, checkpoints,
   prompts, review, finalisation, artefacts, and metrics.
 - [Persona and Skill catalog](components/persona-skill-catalog.md) describes
   builtin Persona and Skill ownership, synchronization, and maintenance.
-- [Providers](components/providers.md) records the static provider and model
-  catalog boundary. Linked Services persist independent User-owned provider
-  connections and derive their available deployment models from that catalog.
-  Legacy provider credentials and Persona model associations are retired.
-- [Current limitations](components/limitations.md) records known MVP
-  boundaries.

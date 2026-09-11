@@ -3,9 +3,9 @@
 A persisted Activity run coordinates API-owned decisions with a Harness that
 executes repository work in a runtime-owned checkout. The API plans and
 reviews changes; the `louie` Harness collects repository context, applies
-operations, and performs the authorized commit. The `codex_cli` Harness runs
-one local direct-loop turn and reports its result for the same API-owned review
-and commit decisions.
+operations, and performs the authorized commit. The `codex_cli` and
+`copilot_cli` Harnesses run local agent turns and report their results for the
+same API-owned review and commit decisions.
 
 ## Harness Selection
 
@@ -15,8 +15,8 @@ Activity-run's effective Harness independently. Existing configurations use
 `louie` v1 when no Harness candidate exists.
 
 A Harness has a stable `kind`, a `version`, and a kind-specific `config`
-object. The API accepts `louie` v1 and `codex_cli` v1, each with an empty
-`config`.
+object. The API accepts `louie` v1, `codex_cli` v1, and `copilot_cli` v1, each
+with an empty `config`.
 Workers retain ownership of local checkout paths, executable locations,
 credentials, and other machine configuration. Workers advertise Harness
 capabilities at registration, and an active Worker claims a PipelineRun only
@@ -32,7 +32,8 @@ The following Harness kinds define the initial compatibility model:
 | ------------ | ------------------------ | ------------------ |
 | `louie` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Implemented: API generates operation plans; the Harness applies them locally. |
 | `human` | `approval`, `quiz` | A person submits a terminal decision. |
-| `codex_cli` | `direct_loop` | Runs one local Codex CLI turn with the API-frozen model, then reports normalized results and a commit proposal through `run_harness`. |
+| `codex_cli` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Runs one API-selected local CLI agent turn with the frozen model, then reports normalized results and a commit proposal through `run_harness`. |
+| `copilot_cli` | `direct_loop`, `refinement_loop`, `roundtable_loop` | Runs one API-selected local CLI agent turn with the frozen model, then reports normalized results and a commit proposal through `run_harness`. |
 
 ## Steps
 
@@ -41,21 +42,21 @@ The following Harness kinds define the initial compatibility model:
 The API persists the activity snapshot, frozen Harness selection, run status,
 checkpoint action, iteration, and continuation revision in SQLite.
 
-For each `codex_cli` Activity, PipelineRun creation also freezes the effective
+For each CLI Harness Activity, PipelineRun creation also freezes the effective
 generator model as `requested_model` and resolves the generator Persona and its
 ordered Skills from the User-owned instruction library. Their IDs, versions,
 metadata, and content are persisted as a versioned `instruction_snapshot`
 inside the immutable Activity snapshot. The `run_harness` checkpoint payload
 returns that exact model and instruction snapshot; neither the API nor the
-runtime resolves the mutable resources again. Codex authentication and the
-executable remain local worker concerns; API Linked Services are not used.
+runtime resolves the mutable resources again. CLI authentication and executables
+remain local worker concerns; API Linked Services are not used.
 
 ### 2. Receive repository context from the runtime
 
 The runtime sends repository snapshot context in `collect_snapshot`. The API uses
-that context to build iteration prompts. For `codex_cli`, the runtime also
-injects the frozen Persona instructions into the local turn prompt and exposes
-each frozen Skill as `.agents/skills/<name>/SKILL.md` for that turn.
+that context to build iteration prompts. For CLI Harnesses, the runtime injects
+the frozen Persona instructions and materializes the frozen Skills for the local
+turn without resolving mutable instruction resources.
 
 ### 3. Build prompts
 
@@ -114,11 +115,11 @@ or maximum iterations are reached.
 ### 10. Finalise
 
 If the run succeeds, the API marks commit handoff as allowed. The runtime performs
-the commit and reports the result. A commit-enabled Codex turn must propose a
-non-empty `commit_message`; the API persists it and returns it in the later
+the commit and reports the result. A commit-enabled CLI Harness turn must propose
+a non-empty `commit_message`; the API persists it and returns it in the later
 `commit_if_allowed` payload. A `forbid` run neither requires the message nor
 enters the commit checkpoint.
-Every successful Codex result also contains `requested_model` and
+Every successful CLI Harness result also contains `requested_model` and
 `actual_model`. The API validates the requested value against the frozen
 snapshot and persists both as runtime artifacts.
 
@@ -127,11 +128,11 @@ expose it as the ActivityRun `payload`. The v1 common envelope identifies its
 `schema_version` and frozen `harness`, then includes start and end timestamps,
 elapsed milliseconds, optional model settings and session reference, numeric
 usage counters, process exit code, diagnostics, source and final Git SHAs,
-diff, changed files, final response, and failure detail. The `codex_cli` v1
-variant additionally includes materialized Skill versions and observed
-reasoning effort. Partial JSONL observations survive a failed process. A later
-successful `commit_if_allowed` replaces the pre-commit final SHA with the
-authorized commit SHA.
+diff, changed files, final response, and failure detail. CLI Harness variants
+add materialized Skill versions; `codex_cli` v1 also reports observed reasoning
+effort. Partial JSONL observations survive a failed process. A later successful
+`commit_if_allowed` replaces the pre-commit final SHA with the authorized commit
+SHA.
 
 ## Prompt lifecycle
 
