@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: .
+    env_file:
+      - .env.local
+    environment:
+      LOUIE_DB_PATH: /app/runtime/db/looping-louie.db
+    ports:
+      - '2000:2000'
+    volumes:
+      - looping-louie-api-runtime:/app/runtime
+
+volumes:
+  looping-louie-api-runtime:
