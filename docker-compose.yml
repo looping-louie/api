@@ -10,6 +10,12 @@ services:
       - '2000:2000'
     volumes:
       - looping-louie-api-runtime:/app/runtime
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:2000/openapi.json', timeout=3)"]
+      interval: 30s
+      start_period: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   looping-louie-api-runtime:
