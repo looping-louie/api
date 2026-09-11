@@ -63,10 +63,10 @@ def normalize_harness(value: object) -> PipelineHarness | None:
             field_name='harness',
             message='must select a supported Harness',
         )
-    if value.kind not in ('louie', 'codex_cli'):
+    if value.kind not in ('louie', 'codex_cli', 'copilot_cli'):
         raise InvalidPipelineStepsError(
             field_name='harness.kind',
-            message='must be louie or codex_cli',
+            message='must be louie, codex_cli, or copilot_cli',
         )
     if value.version != 'v1':
         raise InvalidPipelineStepsError(
@@ -131,7 +131,7 @@ def normalize_steps(
                 description=normalize_description(value.description),
                 type=require_text(value.type, f"steps.{position}.type"),
                 config=config,
-                model_target=value.model_target,
+                model_id=value.model_id,
                 harness=value.harness,
                 depends_on=_normalize_dependencies(value.depends_on, position),
             )
@@ -273,14 +273,7 @@ def document_content(document: PipelineDocument) -> JsonObject:
         "description": document.description,
         "enabled": document.enabled,
         "status": document.status,
-        'model_target': (
-            {
-                'linked_service_id': document.model_target.linked_service_id,
-                'model_id': document.model_target.model_id,
-            }
-            if document.model_target is not None
-            else None
-        ),
+        'model_id': document.model_id,
         'harness': (
             {
                 'kind': document.harness.kind,

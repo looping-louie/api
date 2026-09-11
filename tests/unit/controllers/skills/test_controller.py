@@ -3,7 +3,7 @@
 import pytest
 
 from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.controllers.skill import SkillController
+from src.app.controllers.skills import SkillController
 from src.app.schemas.skill import SkillCreateRequest, SkillPatchRequest
 from src.app.services.persona_skills import SkillDefinitionService
 from src.app.services.skills import SkillService
@@ -34,7 +34,7 @@ async def test_skill_controller_lists_patches_and_creates(
     copied = await controller.create(
         user_id='user-1',
         payload=SkillCreateRequest(
-            name='Workspace Security',
+            name='Project Security',
             instructions='Review workspace security.',
         ),
     )
@@ -51,5 +51,5 @@ async def test_skill_controller_lists_patches_and_creates(
     assert copied.origin == InstructionOrigin.CUSTOM
     assert copied.editable is True
     assert copied.source_instruction_id is None
-    assert 'owner_workspace_id' not in copied.model_dump()
-    assert 'workspace_id' not in copied.model_dump()
+    assert 'owner_project_id' not in copied.model_dump()
+    assert 'project_id' not in copied.model_dump()

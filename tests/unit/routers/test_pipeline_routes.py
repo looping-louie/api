@@ -10,11 +10,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
 from src.app.routers.pipelines import router as pipelines_router
+from src.app.routers.pipeline_runs import router as pipeline_runs_router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.pipeline_runs import PipelineRunService
+from src.app.services.pipeline_runs.readiness import PipelineRunReadiness
 from src.app.utils.http import register_exception_handlers
 from tests.unit.services.pipelines.test_service import build_service
 
@@ -45,6 +47,7 @@ def build_client(
 
     register_exception_handlers(app)
     app.include_router(pipelines_router, prefix='/api/v1')
+    app.include_router(pipeline_runs_router, prefix='/api/v1')
     return TestClient(app)
 
 
@@ -182,21 +185,31 @@ def test_pipeline_accepts_one_step_and_rejects_invalid_steps(
         assert response.json()['error']['code'] == 'invalid_pipeline_steps'
 
 
-def test_pipeline_rejects_invalid_pipeline_and_activity_names(
+def test_pipeline_accepts_titles_with_spaces_and_rejects_unsafe_names(
     tenant_service: TenantService,
 ) -> None:
-    """Pipeline and inline Activity names share the resource-name contract."""
+    """Pipeline and inline Activity titles allow spaces but reject unsafe names."""
 
     client = build_client(tenant_service=tenant_service)
+    valid = client.post(
+        '/api/v1/pipelines',
+        json=pipeline_payload(
+            name='Valid pipeline',
+            steps=[activity_payload('Valid activity')],
+        ),
+    )
     invalid_pipeline = client.post(
         '/api/v1/pipelines',
-        json=pipeline_payload(name='Invalid pipeline'),
+        json=pipeline_payload(name='Invalid:pipeline'),
     )
     invalid_activity = client.post(
         '/api/v1/pipelines',
-        json=pipeline_payload(steps=[activity_payload('Invalid activity')]),
+        json=pipeline_payload(steps=[activity_payload('Invalid/activity')]),
     )
 
+    assert valid.status_code == 201
+    assert valid.json()['name'] == 'Valid pipeline'
+    assert valid.json()['steps'][0]['name'] == 'Valid activity'
     assert invalid_pipeline.status_code == 422
     assert invalid_pipeline.json()['error']['code'] == 'request_validation_error'
     assert invalid_activity.status_code == 422
@@ -232,6 +245,13 @@ def test_pipeline_persists_nullable_and_supported_harness_overrides(
             'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
         },
     )
+    copilot = client.post(
+        '/api/v1/pipelines',
+        json={
+            **pipeline_payload(),
+            'harness': {'kind': 'copilot_cli', 'version': 'v1', 'config': {}},
+        },
+    )
     invalid_config = client.post(
         '/api/v1/pipelines',
         json={
@@ -252,13 +272,19 @@ def test_pipeline_persists_nullable_and_supported_harness_overrides(
         'version': 'v1',
         'config': {},
     }
+    assert copilot.status_code == 201
+    assert copilot.json()['harness'] == {
+        'kind': 'copilot_cli',
+        'version': 'v1',
+        'config': {},
+    }
     assert invalid_config.status_code == 422
 
 
-def test_pipeline_returns_an_explicit_model_target(
+def test_pipeline_returns_an_explicit_logical_model_id(
     tenant_service: TenantService,
 ) -> None:
-    """A persisted Pipeline model target serializes in its HTTP response."""
+    """A persisted Pipeline model ID serializes in its HTTP response."""
 
     client = build_client(tenant_service=tenant_service)
 
@@ -266,18 +292,12 @@ def test_pipeline_returns_an_explicit_model_target(
         '/api/v1/pipelines',
         json={
             **pipeline_payload(),
-            'model_target': {
-                'linked_service_id': 'linked-service-1',
-                'model_id': 'gpt-5',
-            },
+            'model_id': 'gpt-5',
         },
     )
 
     assert response.status_code == 201
-    assert response.json()['model_target'] == {
-        'linked_service_id': 'linked-service-1',
-        'model_id': 'gpt-5',
-    }
+    assert response.json()['model_id'] == 'gpt-5'
 
 
 def test_pipeline_returns_named_step_dependencies(
@@ -354,6 +374,35 @@ def test_pipeline_claimable_filter_accepts_standard_boolean_query(
     assert false_filter.status_code == 422
 
 
+def test_pipeline_run_catalog_forwards_project_and_date_filter(
+    tenant_service: TenantService,
+) -> None:
+    """Run discovery accepts the web catalog's Project-scoped filters."""
+
+    service = _RunListService()
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, service),
+    )
+
+    response = client.get(
+        '/api/v1/pipeline-runs',
+        params={
+            'offset': 10,
+            'created_from': '2026-08-20T00:00:00Z',
+        },
+        headers={'X-Project-ID': 'workspace-1'},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {'items': [], 'total': 0}
+    assert service.filters == (
+        'user-1', 10,
+        datetime(2026, 8, 20, tzinfo=UTC),
+        'workspace-1',
+    )
+
+
 def test_pipeline_event_ledger_returns_persisted_events(
     tenant_service: TenantService,
 ) -> None:
@@ -377,6 +426,35 @@ def test_pipeline_event_ledger_returns_persisted_events(
             'created_at': '2026-08-21T00:00:00Z',
         }],
         'total': 1,
+    }
+
+
+def test_pipeline_run_readiness_returns_aggregated_worker_state(
+    tenant_service: TenantService,
+) -> None:
+    """Queued-run readiness exposes Harness and workspace worker counts."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(PipelineRunService, _ReadinessService()),
+    )
+
+    response = client.get(
+        '/api/v1/pipelines/pipeline-1/runs/run-1/readiness',
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'status': 'no_compatible_workers',
+        'project_id': 'workspace-1',
+        'required_harness': {
+            'kind': 'codex_cli', 'version': 'v1', 'config': {},
+        },
+        'registered_worker_count': 2,
+        'active_worker_count': 1,
+        'compatible_worker_count': 0,
+        'latest_heartbeat_at': '2026-08-21T00:00:00Z',
+        'observed_at': '2026-08-21T00:00:30Z',
     }
 
 
@@ -416,6 +494,35 @@ def test_pipeline_start_requires_no_worker_or_checkout_payload(
     assert response.json()['current_activity_run'] is None
 
 
+def test_pipeline_run_creation_exposes_disabled_model_details(
+    tenant_service: TenantService,
+) -> None:
+    """Run preparation failures identify the model the User must enable."""
+
+    client = build_client(
+        tenant_service=tenant_service,
+        pipeline_run_service=cast(
+            PipelineRunService,
+            _UnavailableCreateService(),
+        ),
+    )
+
+    response = client.post(
+        '/api/v1/pipelines/pipeline-1/runs',
+        json={'input': 'Implement.'},
+    )
+
+    assert response.status_code == 409
+    assert response.json()['error']['code'] == 'pipeline_run_unavailable'
+    assert response.json()['error']['details'] == {
+        'resource_type': 'pipeline',
+        'resource_id': 'pipeline-1',
+        'reason': 'model_disabled',
+        'activity_id': 'activity-1',
+        'model_id': 'model-disabled',
+    }
+
+
 class _LeaseService:
     """Provide a deterministic renewal response for the router contract test."""
 
@@ -427,7 +534,7 @@ class _LeaseService:
         run_id: str,
         lease_token: str,
         lease_duration: timedelta,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> object:
         """Return a run-shaped object containing the renewed lease expiry."""
 
@@ -435,7 +542,7 @@ class _LeaseService:
             'user-1', 'pipeline-1', 'run-1', 'lease-1',
         )
         assert lease_duration == timedelta(minutes=1)
-        assert requested_workspace_id is None
+        assert requested_project_id is None
         return type(
             'RenewedRun',
             (),
@@ -456,15 +563,33 @@ class _ClaimableService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> list[PipelineRunDocument]:
         """Record the claimable-list request and return no candidates."""
 
-        assert (user_id, pipeline_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, requested_project_id) == (
             'user-1', 'pipeline-1', None,
         )
         self.was_called = True
         return []
+
+
+class _RunListService:
+    """Record filters supplied to the Project run catalog."""
+
+    def __init__(self) -> None:
+        """Initialize the observed filter tuple."""
+
+        self.filters: tuple[object, ...] | None = None
+
+    async def list(self, **filters: object) -> tuple[list[PipelineRunDocument], int]:
+        """Record normalized controller arguments and return an empty page."""
+
+        self.filters = (
+            filters['user_id'], filters['offset'], filters['created_from'],
+            filters['requested_project_id'],
+        )
+        return [], 0
 
 
 class _EventService:
@@ -476,26 +601,54 @@ class _EventService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> tuple[PipelineRunDocument, None]:
         """Return one completed Pipeline run with its immutable event ledger."""
 
-        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
             'user-1', 'pipeline-1', 'run-1', None,
         )
         timestamp = datetime(2026, 8, 21, tzinfo=UTC)
         return PipelineRunDocument(
-            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            id='run-1', project_id='workspace-1', pipeline_id='pipeline-1',
             input='Implement.', commit_mode='forbid', status='completed',
             worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
             current_activity_run_id=None, pipeline_snapshot={'steps': []}, steps=(),
             created_at=timestamp, created_by='user-1', updated_at=timestamp,
             events=(PipelineRunEventDocument(
-                id='event-1', workspace_id='workspace-1', pipeline_run_id='run-1',
+                id='event-1', project_id='workspace-1', pipeline_run_id='run-1',
                 event_type='pipeline_run_created', activity_id=None, actor_id='user-1',
                 payload={'commit_mode': 'forbid'}, created_at=timestamp,
             ),),
         ), None
+
+
+class _ReadinessService:
+    """Provide one deterministic queued-run worker diagnostic."""
+
+    async def readiness(
+        self,
+        *,
+        user_id: str,
+        pipeline_id: str,
+        run_id: str,
+        requested_project_id: str | None,
+    ) -> PipelineRunReadiness:
+        """Return an active Worker set without the required Codex Harness."""
+
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
+            'user-1', 'pipeline-1', 'run-1', None,
+        )
+        return PipelineRunReadiness(
+            status='no_compatible_workers', project_id='workspace-1',
+            required_harness={
+                'kind': 'codex_cli', 'version': 'v1', 'config': {},
+            },
+            registered_worker_count=2, active_worker_count=1,
+            compatible_worker_count=0,
+            latest_heartbeat_at=datetime(2026, 8, 21, tzinfo=UTC),
+            observed_at=datetime(2026, 8, 21, 0, 0, 30, tzinfo=UTC),
+        )
 
 
 class _StartService:
@@ -507,21 +660,38 @@ class _StartService:
         user_id: str,
         pipeline_id: str,
         run_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> tuple[PipelineRunDocument, None]:
         """Return a runtime-queued PipelineRun without a local execution payload."""
 
-        assert (user_id, pipeline_id, run_id, requested_workspace_id) == (
+        assert (user_id, pipeline_id, run_id, requested_project_id) == (
             'user-1', 'pipeline-1', 'run-1', None,
         )
         timestamp = datetime(2026, 8, 19, tzinfo=UTC)
         return PipelineRunDocument(
-            id='run-1', workspace_id='workspace-1', pipeline_id='pipeline-1',
+            id='run-1', project_id='workspace-1', pipeline_id='pipeline-1',
             input='Implement.', commit_mode='allow', status='queued',
             worker_id=None, lease_token=None, lease_expires_at=None, attempt=0,
             current_activity_run_id=None, pipeline_snapshot={'steps': []},
             steps=(), created_at=timestamp, created_by='user-1', updated_at=timestamp,
         ), None
+
+
+class _UnavailableCreateService:
+    """Reject run creation with one actionable model-policy failure."""
+
+    async def create(self, **_: object) -> tuple[PipelineRunDocument, None]:
+        """Raise the same domain error produced before run persistence."""
+
+        from src.app.services.pipeline_runs import PipelineRunUnavailableError
+
+        raise PipelineRunUnavailableError(
+            pipeline_id='pipeline-1',
+            reason="model 'model-disabled' is disabled",
+            reason_code='model_disabled',
+            activity_id='activity-1',
+            model_id='model-disabled',
+        )
 
 
 def test_pipeline_rejects_retired_dependency_condition(

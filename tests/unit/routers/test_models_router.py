@@ -11,8 +11,8 @@ from src.app.catalogs.models import (
     ModelLab,
 )
 from src.app.catalogs.providers import ProviderId
-from src.app.controllers.model import ModelController
-from src.app.routers.models import router as models_router
+from src.app.controllers.users import UserController
+from src.app.routers.users import router as users_router
 from src.app.services.models.availability import ProviderConnectionState
 from src.app.utils.http import register_exception_handlers
 from tests.fakes.provider_state_repository import (
@@ -22,13 +22,13 @@ from tests.fakes.provider_state_repository import (
 
 def build_app(
     *,
-    controller: ModelController,
+    controller: UserController,
     authenticated: bool = True,
 ) -> FastAPI:
     """Build a minimal FastAPI application for router tests."""
 
     app = FastAPI()
-    app.state.model_controller = controller
+    app.state.user_controller = controller
 
     if authenticated:
 
@@ -44,7 +44,7 @@ def build_app(
 
     register_exception_handlers(app)
     app.include_router(
-        models_router,
+        users_router,
         prefix="/api/v1",
     )
 
@@ -52,13 +52,13 @@ def build_app(
 
 
 def test_list_models_route(
-    model_controller: ModelController,
+    model_controller: UserController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
     """List responses honor provider and effective availability filters."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -72,7 +72,7 @@ def test_list_models_route(
     )
 
     response = client.get(
-        "/api/v1/models",
+            "/api/v1/users/me/models",
         params={
             "provider_id": "together",
             "available": "true",
@@ -90,21 +90,24 @@ def test_list_models_route(
         item["available"] is True
         for item in body["items"]
     )
+    assert all(item['offerings'] for item in body['items'])
+    assert all('providers' not in item for item in body['items'])
+    assert all('starting_price' not in item for item in body['items'])
     assert all(
-        "together" in item["providers"]
-        for item in body["items"]
+        any(offering['provider_id'] == 'together' for offering in item['offerings'])
+        for item in body['items']
     )
 
 
 def test_list_models_filters_sorts_and_paginates(
-    model_controller: ModelController,
+    model_controller: UserController,
 ) -> None:
     """The route composes repeated labs, date sorting, and fixed pages."""
 
     client = TestClient(build_app(controller=model_controller))
 
     first_page = client.get(
-        "/api/v1/models",
+            "/api/v1/users/me/models",
         params=[
             ("include_deprecated", "true"),
             ("lab", "openai"),
@@ -126,11 +129,11 @@ def test_list_models_filters_sorts_and_paginates(
     assert release_dates == sorted(release_dates, reverse=True)
 
     all_models = client.get(
-        "/api/v1/models",
+        "/api/v1/users/me/models",
         params={"include_deprecated": "true", "offset": "0"},
     ).json()
     second_page = client.get(
-        "/api/v1/models",
+        "/api/v1/users/me/models",
         params={"include_deprecated": "true", "offset": "24"},
     ).json()
 
@@ -151,13 +154,13 @@ def test_list_models_filters_sorts_and_paginates(
 
 
 def test_describe_model_route(
-    model_controller: ModelController,
+    model_controller: UserController,
     provider_state_repository: FakeProviderStateRepository,
 ) -> None:
-    """Describe exposes the selected model and workspace availability."""
+    """Describe exposes the selected model and User availability."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -171,7 +174,7 @@ def test_describe_model_route(
     )
 
     response = client.get(
-        "/api/v1/models/kimi-k2.6",
+        "/api/v1/users/me/models/kimi-k2.6",
     )
 
     assert response.status_code == 200
@@ -180,11 +183,13 @@ def test_describe_model_route(
 
     assert body["id"] == "kimi-k2.6"
     assert body["available"] is True
-    assert body["availability"][0]["provider_id"] == "together"
+    assert body['offerings'][0]['provider_id'] == 'together'
+    assert 'deployments' not in body
+    assert 'availability' not in body
 
 
 def test_describe_missing_model_returns_404(
-    model_controller: ModelController,
+    model_controller: UserController,
 ) -> None:
     """Unknown model identifiers produce the public not-found error."""
 
@@ -195,7 +200,7 @@ def test_describe_missing_model_returns_404(
     )
 
     response = client.get(
-        "/api/v1/models/missing-model",
+        "/api/v1/users/me/models/missing-model",
     )
 
     assert response.status_code == 404
@@ -203,7 +208,7 @@ def test_describe_missing_model_returns_404(
 
 
 def test_models_routes_require_authentication(
-    model_controller: ModelController,
+    model_controller: UserController,
 ) -> None:
     """Every model route rejects requests without an authenticated user."""
 
@@ -215,7 +220,7 @@ def test_models_routes_require_authentication(
     )
 
     response = client.get(
-        "/api/v1/models",
+        "/api/v1/users/me/models",
     )
 
     assert response.status_code == 401
@@ -225,7 +230,7 @@ def test_models_routes_require_authentication(
 
 
 def test_list_models_validates_query_values(
-    model_controller: ModelController,
+    model_controller: UserController,
 ) -> None:
     """Invalid enum, range, and text filters are rejected before dispatch."""
 
@@ -245,6 +250,9 @@ def test_list_models_validates_query_values(
     )
 
     for params in invalid_queries:
-        response = client.get("/api/v1/models", params=params)
+        response = client.get(
+                "/api/v1/users/me/models",
+            params=params,
+        )
 
         assert response.status_code == 422, params

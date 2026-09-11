@@ -9,7 +9,7 @@ if [[ -f .env ]]; then
 fi
 
 API_ROOT="${API_ROOT:-http://127.0.0.1:8000/api/v1}"
-WORKSPACE_ID="${WORKSPACE_ID:-}"
+PROJECT_ID="${PROJECT_ID:-}"
 
 SMOKE_PROVIDER_ID="${SMOKE_PROVIDER_ID:-together}"
 SMOKE_PROVIDER_BASE_URL="${SMOKE_PROVIDER_BASE_URL:-https://api.together.xyz/v1}"
@@ -36,9 +36,9 @@ CURL_HEADERS=(
     -H "Content-Type: application/json"
 )
 
-if [[ -n "${WORKSPACE_ID}" ]]; then
+if [[ -n "${PROJECT_ID}" ]]; then
     CURL_HEADERS+=(
-        -H "X-Workspace-ID: ${WORKSPACE_ID}"
+        -H "X-Project-ID: ${PROJECT_ID}"
     )
 fi
 
@@ -256,6 +256,32 @@ request GET "/catalog/models" >/dev/null
 request GET "/catalog/personas" >/dev/null
 request GET "/catalog/skills" >/dev/null
 
+log "Checking current user"
+
+request POST "/users" >/dev/null
+request GET "/users/me" >/dev/null
+request PATCH "/users/me" '{"default_harness":null}' >/dev/null
+
+log "Checking projects"
+
+project_response="$(
+    request POST "/projects" "$(
+    cat <<JSON
+{
+    "name": "Smoke Project ${SMOKE_RUN_ID}"
+}
+JSON
+)"
+)"
+PROJECT_ID="$(printf '%s' "${project_response}" | json_field id)"
+request GET "/projects" >/dev/null
+request GET "/projects/${PROJECT_ID}" >/dev/null
+request \
+    PATCH \
+    "/projects/${PROJECT_ID}" \
+    "{\"name\":\"Smoke Project updated ${SMOKE_RUN_ID}\"}" \
+    >/dev/null
+
 log "Checking linked services"
 
 linked_service_response="$(
@@ -279,14 +305,9 @@ request GET "/linked-services/${LINKED_SERVICE_ID}" >/dev/null
 request PATCH "/linked-services/${LINKED_SERVICE_ID}" '{"enabled":false}' >/dev/null
 request GET "/linked-services" >/dev/null
 
-log "Checking workspace defaults"
-
-request GET "/workspaces/defaults" >/dev/null
-request PUT "/workspaces/defaults" '{"model_target":null,"harness":null}' >/dev/null
-
 log "Checking model catalog"
 
-models_response="$(request GET "/models")"
+models_response="$(request GET "/users/me/models")"
 
 if [[ -n "${SMOKE_MODEL_ID}" ]]; then
     model_id="${SMOKE_MODEL_ID}"
@@ -297,7 +318,7 @@ else
     )"
 fi
 
-request GET "/models/${model_id}" >/dev/null
+request GET "/users/me/models/${model_id}" >/dev/null
 
 log "Creating persona"
 
@@ -466,9 +487,11 @@ pipeline_run_response="$(
         '{"input":"Produce a pipeline smoke-test answer."}'
 )"
 PIPELINE_RUN_ID="$(printf '%s' "${pipeline_run_response}" | json_field "id")"
+request GET "/pipeline-runs?offset=0" >/dev/null
 request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}" >/dev/null
 request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/events" >/dev/null
 request POST "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/start" '{}' >/dev/null
+request GET "/pipelines/${PIPELINE_ID}/runs/${PIPELINE_RUN_ID}/readiness" >/dev/null
 pipeline_claimable_response="$(
     request GET "/pipelines/${PIPELINE_ID}/runs?claimable=true"
 )"

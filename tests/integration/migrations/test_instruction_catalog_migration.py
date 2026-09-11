@@ -17,7 +17,8 @@ EXPECTED_INSTRUCTION_COLUMNS = [
     "id",
     "instruction_type",
     "origin",
-    "owner_workspace_id",
+    "owner_user_id",
+    "owner_project_id",
     "source_instruction_id",
     "name",
     "name_key",
@@ -71,6 +72,103 @@ def insert_workspace(
             "2026-07-23T10:00:00+00:00",
         ),
     )
+    users_exists = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'",
+    ).fetchone()
+    if users_exists is not None:
+        user_id = f'user-{workspace_id}'
+        connection.execute(
+            '''
+            INSERT INTO users (id, created_at, updated_at)
+            VALUES (?, ?, ?)
+            ''',
+            (user_id, '2026-07-23T10:00:00+00:00', '2026-07-23T10:00:00+00:00'),
+        )
+        connection.execute(
+            '''
+            INSERT INTO workspace_memberships (
+                workspace_id, user_id, role, is_default, created_at
+            ) VALUES (?, ?, 'owner', 1, ?)
+            ''',
+            (workspace_id, user_id, '2026-07-23T10:00:00+00:00'),
+        )
+
+
+def insert_project(
+    connection: sqlite3.Connection,
+    project_id: str,
+) -> None:
+    """Insert a Project and owner membership into the final schema."""
+
+    connection.execute(
+        '''
+        INSERT INTO projects (id, name, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
+        ''',
+        (
+            project_id,
+            project_id,
+            '2026-07-23T10:00:00+00:00',
+            '2026-07-23T10:00:00+00:00',
+        ),
+    )
+    user_id = f'user-{project_id}'
+    connection.execute(
+        '''
+        INSERT INTO users (id, created_at, updated_at)
+        VALUES (?, ?, ?)
+        ''',
+        (user_id, '2026-07-23T10:00:00+00:00', '2026-07-23T10:00:00+00:00'),
+    )
+    connection.execute(
+        '''
+        INSERT INTO project_memberships (
+            project_id, user_id, role, is_default, created_at
+        ) VALUES (?, ?, 'owner', 1, ?)
+        ''',
+        (project_id, user_id, '2026-07-23T10:00:00+00:00'),
+    )
+
+
+def insert_project_instruction(
+    connection: sqlite3.Connection,
+    *,
+    instruction_id: str,
+    origin: str,
+    owner_project_id: str | None,
+    instruction_type: str = 'skill',
+    name_key: str | None = None,
+    catalog_version: int | None = None,
+    checksum: str | None = None,
+    enabled_by_default: int = 0,
+    deprecated: int = 0,
+    version: int = 1,
+) -> None:
+    """Insert an instruction using the final Project ownership schema."""
+
+    connection.execute(
+        '''
+        INSERT INTO instructions (
+            id, instruction_type, origin, owner_project_id, name, name_key,
+            content, metadata_json, catalog_version, checksum, enabled_by_default,
+            deprecated, version, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, 'now', 'now')
+        ''',
+        (
+            instruction_id,
+            instruction_type,
+            origin,
+            owner_project_id,
+            instruction_id,
+            name_key or instruction_id,
+            'Content',
+            catalog_version,
+            checksum,
+            enabled_by_default,
+            deprecated,
+            version,
+        ),
+    )
 
 
 def test_empty_database_has_catalog_instruction_schema() -> None:
@@ -87,13 +185,13 @@ def test_empty_database_has_catalog_instruction_schema() -> None:
     setting_columns = [
         str(row[1])
         for row in connection.execute(
-            "PRAGMA table_info(workspace_instruction_settings)"
+            "PRAGMA table_info(project_instruction_settings)"
         )
     ]
 
     assert columns == EXPECTED_INSTRUCTION_COLUMNS
     assert setting_columns == [
-        "workspace_id",
+        "project_id",
         "instruction_id",
         "enabled",
         "created_at",
@@ -171,60 +269,100 @@ def test_existing_instruction_is_preserved_as_custom() -> None:
     assert row["version"] == 3
 
 
+def test_user_ownership_migration_uses_the_earliest_workspace_owner() -> None:
+    """Legacy custom definitions receive a deterministic User owner."""
+
+    connection = sqlite3.connect(':memory:')
+    connection.row_factory = sqlite3.Row
+    connection.execute('PRAGMA foreign_keys = ON')
+    apply_migrations(connection, through='0046_users')
+    insert_workspace(connection, 'workspace-1')
+    connection.execute(
+        '''
+        INSERT INTO users (id, created_at, updated_at)
+        VALUES ('user-earlier', '2026-07-22T10:00:00+00:00', '2026-07-22T10:00:00+00:00')
+        ''',
+    )
+    connection.execute(
+        '''
+        INSERT INTO workspace_memberships (
+            workspace_id, user_id, role, is_default, created_at
+        ) VALUES ('workspace-1', 'user-earlier', 'owner', 0, '2026-07-22T10:00:00+00:00')
+        ''',
+    )
+    insert_instruction(
+        connection,
+        instruction_id='legacy-skill',
+        origin='custom',
+        owner_workspace_id='workspace-1',
+    )
+    connection.executescript(
+        (SQLITE_MIGRATIONS / '0047_user_owned_instructions.sql').read_text(
+            encoding='utf-8',
+        ),
+    )
+
+    owner = connection.execute(
+        "SELECT owner_user_id FROM instructions WHERE id = 'legacy-skill'",
+    ).fetchone()
+
+    assert owner is not None
+    assert owner['owner_user_id'] == 'user-earlier'
+
+
 def test_origin_ownership_and_version_checks_are_enforced() -> None:
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
     apply_migrations(connection)
-    insert_workspace(connection, "workspace-1")
+    insert_project(connection, 'project-1')
+
+    insert_project_instruction(
+        connection,
+        instruction_id="legacy-ownerless-custom",
+        origin="custom",
+        owner_project_id=None,
+    )
 
     with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
-            connection,
-            instruction_id="ownerless-custom",
-            origin="custom",
-            owner_workspace_id=None,
-        )
-
-    with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
+        insert_project_instruction(
             connection,
             instruction_id="owned-builtin",
             origin="builtin",
-            owner_workspace_id="workspace-1",
+            owner_project_id='project-1',
             catalog_version=1,
             checksum="a" * 64,
         )
 
     with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
+        insert_project_instruction(
             connection,
             instruction_id="unversioned-builtin",
             origin="builtin",
-            owner_workspace_id=None,
+            owner_project_id=None,
             checksum="a" * 64,
         )
 
     with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
+        insert_project_instruction(
             connection,
             instruction_id="unchecked-builtin",
             origin="builtin",
-            owner_workspace_id=None,
+            owner_project_id=None,
             catalog_version=1,
         )
 
-    insert_instruction(
+    insert_project_instruction(
         connection,
         instruction_id="builtin:skill:security",
         origin="builtin",
-        owner_workspace_id=None,
+        owner_project_id=None,
         catalog_version=1,
         checksum="a" * 64,
     )
 
     assert connection.execute(
         """
-        SELECT owner_workspace_id
+        SELECT owner_project_id
         FROM instructions
         WHERE id = 'builtin:skill:security'
         """
@@ -235,50 +373,50 @@ def test_partial_unique_indexes_scope_names_by_origin() -> None:
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
     apply_migrations(connection)
-    insert_workspace(connection, "workspace-1")
-    insert_workspace(connection, "workspace-2")
+    insert_project(connection, 'project-1')
+    insert_project(connection, 'project-2')
 
-    insert_instruction(
+    insert_project_instruction(
         connection,
         instruction_id="builtin:skill:review",
         origin="builtin",
-        owner_workspace_id=None,
+        owner_project_id=None,
         catalog_version=1,
         checksum="b" * 64,
         name_key="review",
     )
-    insert_instruction(
+    insert_project_instruction(
         connection,
         instruction_id="custom-1",
         origin="custom",
-        owner_workspace_id="workspace-1",
+        owner_project_id='project-1',
         name_key="review",
     )
-    insert_instruction(
+    insert_project_instruction(
         connection,
         instruction_id="custom-2",
         origin="custom",
-        owner_workspace_id="workspace-2",
+        owner_project_id='project-2',
         name_key="review",
     )
 
     with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
+        insert_project_instruction(
             connection,
             instruction_id="duplicate-builtin",
             origin="builtin",
-            owner_workspace_id=None,
+            owner_project_id=None,
             catalog_version=1,
             checksum="c" * 64,
             name_key="review",
         )
 
     with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
+        insert_project_instruction(
             connection,
             instruction_id="duplicate-custom",
             origin="custom",
-            owner_workspace_id="workspace-1",
+            owner_project_id='project-1',
             name_key="review",
         )
 
@@ -299,39 +437,39 @@ def test_boolean_and_resource_version_checks_are_enforced(
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
     apply_migrations(connection)
-    insert_workspace(connection, "workspace-1")
+    insert_project(connection, 'project-1')
 
     with pytest.raises(sqlite3.IntegrityError):
-        insert_instruction(
+        insert_project_instruction(
             connection,
             instruction_id="invalid-custom",
             origin="custom",
-            owner_workspace_id="workspace-1",
+            owner_project_id='project-1',
             enabled_by_default=enabled_by_default,
             deprecated=deprecated,
             version=version,
         )
 
 
-def test_workspace_settings_reference_content_without_copying_it() -> None:
+def test_project_settings_reference_content_without_copying_it() -> None:
     connection = sqlite3.connect(":memory:")
     connection.execute("PRAGMA foreign_keys = ON")
     apply_migrations(connection)
-    insert_workspace(connection, "workspace-1")
-    insert_instruction(
+    insert_project(connection, 'project-1')
+    insert_project_instruction(
         connection,
         instruction_id="builtin:persona:tech_lead",
         instruction_type="persona",
         origin="builtin",
-        owner_workspace_id=None,
+        owner_project_id=None,
         catalog_version=1,
         checksum="d" * 64,
     )
     timestamp = "2026-07-23T10:00:00+00:00"
     connection.execute(
         """
-        INSERT INTO workspace_instruction_settings (
-            workspace_id,
+        INSERT INTO project_instruction_settings (
+            project_id,
             instruction_id,
             enabled,
             created_at,
@@ -340,7 +478,7 @@ def test_workspace_settings_reference_content_without_copying_it() -> None:
         VALUES (?, ?, ?, ?, ?)
         """,
         (
-            "workspace-1",
+            'project-1',
             "builtin:persona:tech_lead",
             1,
             timestamp,
@@ -351,8 +489,8 @@ def test_workspace_settings_reference_content_without_copying_it() -> None:
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute(
             """
-            INSERT INTO workspace_instruction_settings (
-                workspace_id,
+            INSERT INTO project_instruction_settings (
+                project_id,
                 instruction_id,
                 enabled,
                 created_at,
@@ -361,7 +499,7 @@ def test_workspace_settings_reference_content_without_copying_it() -> None:
             VALUES (?, ?, ?, ?, ?)
             """,
             (
-                "workspace-1",
+                'project-1',
                 "builtin:persona:tech_lead",
                 0,
                 timestamp,
@@ -376,6 +514,7 @@ def insert_instruction(
     instruction_id: str,
     origin: str,
     owner_workspace_id: str | None,
+    owner_user_id: str | None = None,
     instruction_type: str = "skill",
     name_key: str = "catalog entry",
     catalog_version: int | None = None,
@@ -384,12 +523,55 @@ def insert_instruction(
     deprecated: int = 0,
     version: int = 1,
 ) -> None:
+    has_owner_user_id = any(
+        row[1] == 'owner_user_id'
+        for row
+        in connection.execute('PRAGMA table_info(instructions)')
+    )
+    resolved_owner_user_id = (
+        owner_user_id
+        if owner_user_id is not None
+        else (
+            f'user-{owner_workspace_id}'
+            if origin == 'custom' and owner_workspace_id is not None
+            else None
+        )
+    )
+    if not has_owner_user_id:
+        connection.execute(
+            '''
+            INSERT INTO instructions (
+                id, instruction_type, origin, owner_workspace_id,
+                source_instruction_id, name, name_key, description, content,
+                metadata_json, catalog_version, checksum, enabled_by_default,
+                deprecated, version, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, NULL, ?, ?, '', ?, '{}', ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                instruction_id,
+                instruction_type,
+                origin,
+                owner_workspace_id,
+                name_key.title(),
+                name_key,
+                'Content.',
+                catalog_version,
+                checksum,
+                enabled_by_default,
+                deprecated,
+                version,
+                '2026-07-23T10:00:00+00:00',
+                '2026-07-23T10:00:00+00:00',
+            ),
+        )
+        return
     connection.execute(
         """
         INSERT INTO instructions (
             id,
             instruction_type,
             origin,
+            owner_user_id,
             owner_workspace_id,
             source_instruction_id,
             name,
@@ -406,13 +588,14 @@ def insert_instruction(
             updated_at
         )
         VALUES (
-            ?, ?, ?, ?, NULL, ?, ?, '', ?, '{}', ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, NULL, ?, ?, '', ?, '{}', ?, ?, ?, ?, ?, ?, ?
         )
         """,
         (
             instruction_id,
             instruction_type,
             origin,
+            resolved_owner_user_id,
             owner_workspace_id,
             name_key.title(),
             name_key,

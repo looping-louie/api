@@ -1,4 +1,4 @@
-"""Workspace-aware application service for persona resources."""
+"""Project-aware application service for persona resources."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from ..persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from ..shared.tenant import TenantService
+from ..users import UserService
 from .types import (
     AvailablePersonaDocument,
     AvailablePersonaSummary,
@@ -40,14 +40,14 @@ class PersonaService:
     def __init__(
         self,
         *,
-        tenant_service: TenantService,
+        user_service: UserService,
         persona_definition_service: PersonaDefinitionService,
         skill_definition_service: SkillDefinitionService,
         persona_skill_repository: PersonaSkillRepository,
     ) -> None:
-        """Initialize workspace resolution and Persona/Skill definitions."""
+        """Initialize registered-user Persona and Skill definitions."""
 
-        self._tenant_service = tenant_service
+        self._user_service = user_service
         self._persona_definition_service = persona_definition_service
         self._skill_definition_service = skill_definition_service
         self._persona_skill_repository = persona_skill_repository
@@ -56,7 +56,6 @@ class PersonaService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
         search: str | None = None,
         status: CatalogInstructionStatus | None = None,
         categories: Sequence[CatalogInstructionCategory] = (),
@@ -64,15 +63,12 @@ class PersonaService:
         offset: int = 0,
         limit: int = CATALOG_INSTRUCTION_PAGE_SIZE,
     ) -> AvailableDefinitionPage:
-        """Return one filtered page of personas in the resolved workspace."""
+        """Return one filtered page of personas for a registered user."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         page = await self._persona_definition_service.list(
-            workspace_id=workspace_id,
+            project_id=user_id,
             search=search,
             status=status,
             categories=categories,
@@ -98,18 +94,14 @@ class PersonaService:
         *,
         user_id: str,
         persona_id: str,
-        requested_workspace_id: str | None = None,
         include_deprecated: bool = False,
     ) -> AvailablePersonaDocument:
         """Return a complete persona."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         document = await self._persona_definition_service.describe(
-            workspace_id=workspace_id,
+            project_id=user_id,
             instruction_id=persona_id,
             include_deprecated=include_deprecated,
         )
@@ -121,21 +113,17 @@ class PersonaService:
         user_id: str,
         persona_id: str,
         enabled: bool,
-        requested_workspace_id: str | None = None,
     ) -> AvailablePersonaDocument:
-        """Set whether a persona is enabled in the resolved workspace."""
+        """Set whether a persona is enabled for a registered user."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
         operation = (
             self._persona_definition_service.enable
             if enabled
             else self._persona_definition_service.disable
         )
         document = await operation(
-            workspace_id=workspace_id,
+            project_id=user_id,
             instruction_id=persona_id,
         )
         return await self._with_skill_ids(document)
@@ -145,20 +133,16 @@ class PersonaService:
         *,
         user_id: str,
         payload: PersonaCreate,
-        requested_workspace_id: str | None = None,
     ) -> PersonaDocument:
-        """Create a persona in the resolved workspace."""
+        """Create a persona owned by a registered user."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
         await self._require_available_skills(
-            workspace_id=workspace_id,
+            user_id=user_id,
             skill_ids=payload.skill_ids,
         )
         document = await self._persona_definition_service.create(
-            workspace_id=workspace_id,
+            project_id=user_id,
             payload=DefinitionCreate(
                 name=payload.name,
                 description=payload.description,
@@ -181,17 +165,13 @@ class PersonaService:
         user_id: str,
         persona_id: str,
         payload: PersonaUpdate,
-        requested_workspace_id: str | None = None,
     ) -> PersonaDocument:
         """Update an existing persona."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
         if payload.skill_ids is not None:
             await self._require_available_skills(
-                workspace_id=workspace_id,
+                user_id=user_id,
                 skill_ids=payload.skill_ids,
             )
         if any(
@@ -204,7 +184,7 @@ class PersonaService:
             )
         ):
             document = await self._persona_definition_service.update(
-                workspace_id=workspace_id,
+                project_id=user_id,
                 instruction_id=persona_id,
                 payload=DefinitionUpdate(
                     expected_version=payload.expected_version,
@@ -216,7 +196,7 @@ class PersonaService:
             )
         else:
             document = await self._persona_definition_service.describe(
-                workspace_id=workspace_id,
+                project_id=user_id,
                 instruction_id=persona_id,
             )
         if payload.skill_ids is not None:
@@ -231,31 +211,27 @@ class PersonaService:
         *,
         user_id: str,
         persona_id: str,
-        requested_workspace_id: str | None = None,
     ) -> None:
         """Delete a persona when it has no blocking dependencies."""
 
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        await self._user_service.get(user_id=user_id)
 
         await self._persona_definition_service.delete(
-            workspace_id=workspace_id,
+            project_id=user_id,
             instruction_id=persona_id,
         )
 
     async def _require_available_skills(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         skill_ids: tuple[str, ...],
     ) -> None:
         """Ensure every associated skill is visible and non-deprecated."""
 
         for skill_id in skill_ids:
             await self._skill_definition_service.describe(
-                workspace_id=workspace_id,
+                project_id=user_id,
                 instruction_id=skill_id,
             )
 
@@ -296,18 +272,3 @@ class PersonaService:
             **values,
             skill_ids=skill_ids,
         )
-
-    async def _resolve_workspace_id(
-        self,
-        *,
-        user_id: str,
-        requested_workspace_id: str | None,
-    ) -> str:
-        """Resolve the workspace selected for a persona operation."""
-
-        tenant = await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-
-        return tenant.workspace_id

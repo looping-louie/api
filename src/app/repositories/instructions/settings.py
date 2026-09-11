@@ -1,4 +1,4 @@
-"""Workspace enablement settings for instruction persistence."""
+"""Project enablement settings for instruction persistence."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ class InstructionSettingsMixin:
     async def set_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         enabled: bool,
     ) -> bool:
@@ -27,19 +27,19 @@ class InstructionSettingsMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 cursor = await connection.execute(
-                    """
+                    f"""
                     SELECT 1
                     FROM instructions AS i
-                    LEFT JOIN workspace_instruction_settings AS settings
+                    LEFT JOIN {self._settings_table} AS settings
                         ON settings.instruction_id = i.id
-                       AND settings.workspace_id = ?
+                       AND settings.{self._settings_owner_column} = ?
                     WHERE i.id = ?
                       AND i.deprecated = 0
                       AND (
                             i.origin = 'builtin'
                             OR (
                                 i.origin = 'custom'
-                                AND i.owner_workspace_id = ?
+                                AND i.{self._owner_column} = ?
                             )
                             OR (
                                 i.origin = 'marketplace'
@@ -49,9 +49,9 @@ class InstructionSettingsMixin:
                     LIMIT 1
                     """,
                     (
-                        workspace_id,
+                        project_id,
                         instruction_id,
-                        workspace_id,
+                        project_id,
                     ),
                 )
 
@@ -65,22 +65,22 @@ class InstructionSettingsMixin:
                     return False
 
                 await connection.execute(
-                    """
-                    INSERT INTO workspace_instruction_settings (
-                        workspace_id,
+                    f"""
+                    INSERT INTO {self._settings_table} (
+                        {self._settings_owner_column},
                         instruction_id,
                         enabled,
                         created_at,
                         updated_at
                     )
                     VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(workspace_id, instruction_id)
+                    ON CONFLICT({self._settings_owner_column}, instruction_id)
                     DO UPDATE SET
                         enabled = excluded.enabled,
                         updated_at = excluded.updated_at
                     """,
                     (
-                        workspace_id,
+                        project_id,
                         instruction_id,
                         int(enabled),
                         timestamp,
@@ -96,30 +96,30 @@ class InstructionSettingsMixin:
     async def is_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> bool:
         """Return whether an active visible instruction is selectable."""
 
         async with self._connect() as connection:
             cursor = await connection.execute(
-                """
+                f"""
                 SELECT
                     COALESCE(
                         settings.enabled,
                         i.enabled_by_default
                     ) AS enabled
                 FROM instructions AS i
-                LEFT JOIN workspace_instruction_settings AS settings
+                     LEFT JOIN {self._settings_table} AS settings
                     ON settings.instruction_id = i.id
-                   AND settings.workspace_id = ?
+                         AND settings.{self._settings_owner_column} = ?
                 WHERE i.id = ?
                   AND i.deprecated = 0
                   AND (
                         i.origin = 'builtin'
                         OR (
                             i.origin = 'custom'
-                            AND i.owner_workspace_id = ?
+                            AND i.{self._owner_column} = ?
                         )
                         OR (
                             i.origin = 'marketplace'
@@ -129,9 +129,9 @@ class InstructionSettingsMixin:
                 LIMIT 1
                 """,
                 (
-                    workspace_id,
+                    project_id,
                     instruction_id,
-                    workspace_id,
+                    project_id,
                 ),
             )
 

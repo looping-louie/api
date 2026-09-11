@@ -68,7 +68,7 @@ class _DefinitionLifecycleService:
     async def list(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         search: str | None = None,
         status: CatalogInstructionStatus | None = None,
         categories: Sequence[CatalogInstructionCategory] = (),
@@ -79,7 +79,7 @@ class _DefinitionLifecycleService:
         """Return a filtered page of the effective instruction catalog."""
 
         summaries = await self._repository.list_available_for_workspace(
-            workspace_id=require_text(workspace_id, "workspace_id"),
+            project_id=require_text(project_id, "project_id"),
             instruction_type=self._instruction_type,
             search=normalize_search(search),
             status=status,
@@ -94,14 +94,14 @@ class _DefinitionLifecycleService:
     async def describe(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         include_deprecated: bool = False,
     ) -> AvailableDefinitionDocument:
         """Return a visible instruction, including disabled definitions."""
 
         document = await self._require_available(
-            workspace_id=require_text(workspace_id, "workspace_id"),
+            project_id=require_text(project_id, "project_id"),
             instruction_type=self._instruction_type,
             instruction_id=require_text(instruction_id, "instruction_id"),
             include_deprecated=include_deprecated,
@@ -112,14 +112,14 @@ class _DefinitionLifecycleService:
     async def create(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         payload: DefinitionCreate,
     ) -> DefinitionDocument:
         """Create a workspace-owned custom instruction."""
 
-        workspace_id = require_text(workspace_id, "workspace_id")
+        project_id = require_text(project_id, "project_id")
         return await self._create_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             payload=payload,
             source_instruction_id=None,
@@ -128,13 +128,13 @@ class _DefinitionLifecycleService:
     async def enable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> AvailableDefinitionDocument:
         """Enable a visible instruction for new compositions."""
 
         return await self._set_enabled(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             instruction_id=instruction_id,
             enabled=True,
@@ -143,13 +143,13 @@ class _DefinitionLifecycleService:
     async def disable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> AvailableDefinitionDocument:
         """Disable a visible instruction without hiding its definition."""
 
         return await self._set_enabled(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             instruction_id=instruction_id,
             enabled=False,
@@ -158,22 +158,22 @@ class _DefinitionLifecycleService:
     async def duplicate(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         name: str | None = None,
     ) -> DefinitionDocument:
         """Fork a visible instruction into a new editable custom copy."""
 
-        workspace_id = require_text(
-            workspace_id,
-            "workspace_id",
+        project_id = require_text(
+            project_id,
+            "project_id",
         )
         instruction_id = require_text(
             instruction_id,
             "instruction_id",
         )
         source = await self._require_available(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             instruction_id=instruction_id,
             include_deprecated=False,
@@ -185,7 +185,7 @@ class _DefinitionLifecycleService:
         )
 
         return await self._create_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             payload=DefinitionCreate(
                 name=duplicate_name,
@@ -199,13 +199,13 @@ class _DefinitionLifecycleService:
     async def resolve_for_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> AvailableDefinitionDocument:
         """Resolve an instruction that may be used in new compositions."""
 
         document = await self.describe(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_id=instruction_id,
             include_deprecated=True,
         )
@@ -221,17 +221,17 @@ class _DefinitionLifecycleService:
     async def update(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
         payload: DefinitionUpdate,
     ) -> DefinitionDocument:
         """Update a persona or skill using optimistic concurrency."""
 
-        workspace_id = require_text(workspace_id, "workspace_id")
+        project_id = require_text(project_id, "project_id")
         instruction_id = require_text(instruction_id, "instruction_id")
 
         current = await self._require_owned_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             instruction_id=instruction_id,
         )
@@ -245,7 +245,7 @@ class _DefinitionLifecycleService:
 
         if normalized.name is not None:
             await self._validation_service.require_unique_name(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 resource_type=self._instruction_type,
                 name=normalized.name,
                 exclude_resource_id=instruction_id,
@@ -280,7 +280,7 @@ class _DefinitionLifecycleService:
 
         if persisted is None:
             await self._raise_update_conflict(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=self._instruction_type,
                 instruction_id=instruction_id,
                 expected_version=payload.expected_version,
@@ -291,22 +291,22 @@ class _DefinitionLifecycleService:
     async def delete(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_id: str,
     ) -> None:
         """Delete a persona or skill after checking its dependencies."""
 
-        workspace_id = require_text(workspace_id, "workspace_id")
+        project_id = require_text(project_id, "project_id")
         instruction_id = require_text(instruction_id, "instruction_id")
 
         await self._require_owned_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             instruction_id=instruction_id,
         )
 
         await self._dependency_checker.require_deletable(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=ResourceReference(
                 resource_type=self._instruction_type,
                 resource_id=instruction_id,
@@ -314,7 +314,7 @@ class _DefinitionLifecycleService:
         )
 
         deleted = await self._repository.delete(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=self._instruction_type,
             instruction_id=instruction_id,
         )
@@ -328,7 +328,7 @@ class _DefinitionLifecycleService:
     async def _create_custom(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         payload: DefinitionCreate,
         source_instruction_id: str | None,
@@ -336,7 +336,7 @@ class _DefinitionLifecycleService:
         normalized = normalize_create(payload)
 
         await self._validation_service.require_unique_name(
-            workspace_id=workspace_id,
+            project_id=project_id,
             resource_type=instruction_type,
             name=normalized.name,
         )
@@ -344,7 +344,7 @@ class _DefinitionLifecycleService:
         now = self._clock()
         document = DefinitionDocument(
             id=self._id_factory(),
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             name=normalized.name,
             description=normalized.description,
@@ -363,22 +363,22 @@ class _DefinitionLifecycleService:
     async def _set_enabled(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
         enabled: bool,
     ) -> AvailableDefinitionDocument:
         require_instruction_type(instruction_type)
-        workspace_id = require_text(
-            workspace_id,
-            "workspace_id",
+        project_id = require_text(
+            project_id,
+            "project_id",
         )
         instruction_id = require_text(
             instruction_id,
             "instruction_id",
         )
         current = await self._require_available(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
             include_deprecated=True,
@@ -391,7 +391,7 @@ class _DefinitionLifecycleService:
             )
 
         persisted = await self._repository.set_enabled(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_id=instruction_id,
             enabled=enabled,
         )
@@ -403,7 +403,7 @@ class _DefinitionLifecycleService:
             )
 
         return await self._require_available(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
             include_deprecated=False,
@@ -412,13 +412,13 @@ class _DefinitionLifecycleService:
     async def _require_available(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool,
     ) -> AvailableDefinitionDocument:
         document = await self._repository.get_available_for_workspace(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
             include_deprecated=include_deprecated,
@@ -435,12 +435,12 @@ class _DefinitionLifecycleService:
     async def _require_owned_custom(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument:
         available = await self._repository.get_available_for_workspace(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
             include_deprecated=True,
@@ -456,7 +456,7 @@ class _DefinitionLifecycleService:
             )
 
         document = await self._repository.get_owned_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )
@@ -472,13 +472,13 @@ class _DefinitionLifecycleService:
     async def _raise_update_conflict(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
         expected_version: int,
     ) -> None:
         current = await self._repository.get_owned_custom(
-            workspace_id=workspace_id,
+            project_id=project_id,
             instruction_type=instruction_type,
             instruction_id=instruction_id,
         )

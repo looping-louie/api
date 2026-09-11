@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.routers.personas import router as personas_router
 from src.app.services.persona_skills import (
     PersonaDefinitionService,
@@ -100,6 +100,24 @@ def test_persona_rest_crud_routes(
     assert patched.json()["enabled"] is False
     assert deleted.status_code == 200
     assert deleted.json() == {"deleted": True}
+
+
+def test_persona_routes_ignore_workspace_selection_header(
+    persona_controller: PersonaController,
+) -> None:
+    """Persona routes use user scope even when a workspace header is supplied."""
+
+    client = TestClient(build_app(controller=persona_controller))
+    response = client.post(
+        '/api/v1/personas',
+        headers={'X-Project-ID': 'unrelated-workspace'},
+        json={
+            'name': 'User_scoped_persona',
+            'instructions': 'Use user scope only.',
+        },
+    )
+
+    assert response.status_code == 201
 
 
 def test_create_persona_rejects_source_identifier(

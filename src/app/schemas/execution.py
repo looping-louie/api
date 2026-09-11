@@ -9,24 +9,10 @@ from pydantic import Field, model_validator
 from .shared import NonEmptyString, RequestSchema, ResponseSchema
 
 
-class ModelTargetRequest(RequestSchema):
-    """One explicit provider connection and logical model selection."""
-
-    linked_service_id: NonEmptyString
-    model_id: NonEmptyString
-
-
-class ModelTargetResponse(ResponseSchema):
-    """One effective provider connection and logical model selection."""
-
-    linked_service_id: str
-    model_id: str
-
-
 class HarnessRequest(RequestSchema):
     """One supported local execution mechanism."""
 
-    kind: Literal['louie', 'codex_cli'] = 'louie'
+    kind: Literal['louie', 'codex_cli', 'copilot_cli'] = 'louie'
     version: Literal['v1'] = 'v1'
     config: dict[str, object] = Field(default_factory=dict)
 
@@ -42,6 +28,6 @@ class HarnessRequest(RequestSchema):
 class HarnessResponse(ResponseSchema):
     """One persisted local execution mechanism."""
 
-    kind: Literal['louie', 'codex_cli']
+    kind: Literal['louie', 'codex_cli', 'copilot_cli']
     version: Literal['v1']
     config: dict[str, object]

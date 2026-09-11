@@ -12,14 +12,12 @@ from src.app.schemas.activity_run import ActivityRunResponse
 from src.app.schemas.execution import (
     HarnessRequest,
     HarnessResponse,
-    ModelTargetRequest,
-    ModelTargetResponse,
 )
 from src.app.schemas.shared import (
     ListResponse,
     NonEmptyString,
     RequestSchema,
-    ResourceName,
+    ResourceTitle,
     ResponseSchema,
 )
 
@@ -34,28 +32,12 @@ PipelineChangeTypeValue = Literal[
 ]
 
 
-class PipelineHarnessRequest(RequestSchema):
+class PipelineHarnessRequest(HarnessRequest):
     """One supported Pipeline Harness selection."""
 
-    kind: Literal['louie', 'codex_cli'] = 'louie'
-    version: Literal['v1'] = 'v1'
-    config: dict[str, object] = Field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def require_empty_harness_config(self) -> 'PipelineHarnessRequest':
-        """Reject settings not supported by the initial Harness contract."""
-
-        if self.config:
-            raise ValueError(f'{self.kind} harness config must be empty.')
-        return self
-
-
-class PipelineHarnessResponse(ResponseSchema):
+class PipelineHarnessResponse(HarnessResponse):
     """The persisted Harness selection for a Pipeline."""
-
-    kind: Literal['louie', 'codex_cli']
-    version: Literal['v1']
-    config: dict[str, object]
 
 
 class PipelineStepDependencyRequest(RequestSchema):
@@ -85,21 +67,21 @@ class PipelineActivityStepRequest(ActivityCreateRequest):
 class PipelineCreateRequest(RequestSchema):
     """Request body for creating an enabled pipeline."""
 
-    name: ResourceName
+    name: ResourceTitle
     description: str
     steps: list[PipelineActivityStepRequest]
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: PipelineHarnessRequest | None = None
 
 
 class PipelinePatchRequest(RequestSchema):
     """Partial mutable pipeline fields accepted by PATCH."""
 
-    name: ResourceName | None = None
+    name: ResourceTitle | None = None
     description: str | None = None
     enabled: bool | None = None
     steps: list[PipelineActivityStepRequest] | None = None
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: PipelineHarnessRequest | None = None
 
     @model_validator(mode="after")
@@ -108,7 +90,7 @@ class PipelinePatchRequest(RequestSchema):
 
         if not self.model_fields_set:
             raise ValueError("At least one pipeline field must be supplied.")
-        for field_name in self.model_fields_set - {'model_target', 'harness'}:
+        for field_name in self.model_fields_set - {'model_id', 'harness'}:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} must not be null.")
         return self
@@ -130,7 +112,7 @@ class PipelineResponse(ResponseSchema):
     name: str
     description: str
     enabled: bool
-    model_target: ModelTargetResponse | None
+    model_id: str | None
     harness: PipelineHarnessResponse | None
     steps: list[PipelineActivityStepResponse]
     created_at: datetime
@@ -212,6 +194,32 @@ class PipelineRunResponse(ResponseSchema):
     created_at: datetime
     created_by: str
     updated_at: datetime
+
+
+class PipelineRunListResponse(ListResponse[PipelineRunResponse]):
+    """Fixed-size filtered page of Pipeline runs within one Project."""
+
+
+PipelineRunReadinessStatusValue = Literal[
+    'not_applicable',
+    'no_registered_workers',
+    'no_active_workers',
+    'no_compatible_workers',
+    'ready',
+]
+
+
+class PipelineRunReadinessResponse(ResponseSchema):
+    """Aggregated worker availability for one queued Pipeline run."""
+
+    status: PipelineRunReadinessStatusValue
+    project_id: str
+    required_harness: PipelineHarnessResponse | None
+    registered_worker_count: int
+    active_worker_count: int
+    compatible_worker_count: int
+    latest_heartbeat_at: datetime | None
+    observed_at: datetime
 
 
 class PipelineRunClaimResponse(ResponseSchema):

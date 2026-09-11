@@ -19,7 +19,7 @@ async def test_get_membership_returns_matching_membership(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         memberships=(
             (
                 "user-1",
@@ -34,12 +34,12 @@ async def test_get_membership_returns_matching_membership(
 
     membership = await repository.get_membership(
         user_id="user-1",
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
 
     assert membership is not None
     assert membership.user_id == "user-1"
-    assert membership.workspace_id == "workspace-1"
+    assert membership.project_id == "workspace-1"
     assert membership.is_default is True
 
 
@@ -49,7 +49,7 @@ async def test_get_membership_isolated_by_user(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         memberships=(
             (
                 "user-1",
@@ -64,7 +64,7 @@ async def test_get_membership_isolated_by_user(
 
     membership = await repository.get_membership(
         user_id="user-2",
-        workspace_id="workspace-1",
+        project_id="workspace-1",
     )
 
     assert membership is None
@@ -76,7 +76,7 @@ async def test_get_default_membership_returns_default_workspace(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-secondary",
+        project_id="workspace-secondary",
         memberships=(
             (
                 "user-1",
@@ -86,7 +86,7 @@ async def test_get_default_membership_returns_default_workspace(
         ),
     )
     await create_workspace(
-        workspace_id="workspace-default",
+        project_id="workspace-default",
         memberships=(
             (
                 "user-1",
@@ -104,7 +104,7 @@ async def test_get_default_membership_returns_default_workspace(
     )
 
     assert membership is not None
-    assert membership.workspace_id == "workspace-default"
+    assert membership.project_id == "workspace-default"
     assert membership.is_default is True
 
 
@@ -114,7 +114,7 @@ async def test_get_default_membership_returns_none_without_default(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         memberships=(
             (
                 "user-1",
@@ -140,7 +140,7 @@ async def test_list_memberships_returns_default_first(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-secondary",
+        project_id="workspace-secondary",
         memberships=(
             (
                 "user-1",
@@ -150,7 +150,7 @@ async def test_list_memberships_returns_default_first(
         ),
     )
     await create_workspace(
-        workspace_id="workspace-default",
+        project_id="workspace-default",
         memberships=(
             (
                 "user-1",
@@ -160,7 +160,7 @@ async def test_list_memberships_returns_default_first(
         ),
     )
     await create_workspace(
-        workspace_id="workspace-other-user",
+        project_id="workspace-other-user",
         memberships=(
             (
                 "user-2",
@@ -178,7 +178,7 @@ async def test_list_memberships_returns_default_first(
     )
 
     assert [
-        membership.workspace_id
+        membership.project_id
         for membership in memberships
     ] == [
         "workspace-default",
@@ -196,7 +196,7 @@ async def test_list_memberships_returns_empty_for_unknown_user(
     create_workspace: WorkspaceFactory,
 ) -> None:
     await create_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         memberships=(
             (
                 "user-1",

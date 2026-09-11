@@ -1,0 +1,42 @@
+"""Controller for creating personas."""
+
+from __future__ import annotations
+
+from src.app.schemas.persona import PersonaCreateRequest, PersonaResponse
+from src.app.services.personas import (
+    PersonaCreate,
+    PersonaService,
+)
+
+from .response import persona_response
+
+
+class PersonaCreateController:
+    """Create one persona."""
+
+    def __init__(self, *, persona_service: PersonaService) -> None:
+        """Store the persona application service."""
+        self._persona_service = persona_service
+
+    async def create(
+        self,
+        *,
+        user_id: str,
+        payload: PersonaCreateRequest,
+    ) -> PersonaResponse:
+        """Create a new persona from the supplied content."""
+        document = await self._persona_service.create(
+            user_id=user_id,
+            payload=PersonaCreate(
+                name=payload.name,
+                description=payload.description,
+                instructions=payload.instructions,
+                metadata=payload.metadata.model_dump(exclude_none=True),
+                skill_ids=tuple(payload.skill_ids),
+            ),
+        )
+        document = await self._persona_service.describe(
+            user_id=user_id,
+            persona_id=document.id,
+        )
+        return persona_response(document)

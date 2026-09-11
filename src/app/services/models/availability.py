@@ -1,4 +1,4 @@
-"""Workspace-specific model availability calculations."""
+"""User-specific model availability calculations."""
 
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ from typing import Sequence
 from src.app.catalogs.models import (
     ModelCapability,
     ModelCatalogEntry,
-    ModelDeployment,
+    ModelEndpoint,
+    ModelOffering,
     ModelPricing,
     ModelStatus,
 )
@@ -23,13 +24,14 @@ class ModelUnavailableReason(StrEnum):
 
     MODEL_DEPRECATED = "model_deprecated"
     DEPLOYMENT_DEPRECATED = "deployment_deprecated"
+    MODEL_DISABLED = "model_disabled"
     PROVIDER_NOT_CONFIGURED = "provider_not_configured"
     PROVIDER_DISABLED = "provider_disabled"
 
 
 @dataclass(frozen=True, slots=True)
 class ProviderConnectionState:
-    """Workspace-specific configuration state for one provider."""
+    """User-specific configuration state for one provider."""
 
     provider_id: ProviderId
     configured: bool
@@ -48,11 +50,30 @@ class ModelProviderAvailability:
 
 
 @dataclass(frozen=True, slots=True)
+class ModelOfferingAvailability:
+    """Provider offering joined with User availability state."""
+
+    provider_id: ProviderId
+    provider_model_id: str
+    endpoint: ModelEndpoint
+    context_window: int | None
+    max_output_tokens: int | None
+    pricing: ModelPricing | None
+    status: ModelStatus
+    deprecated_at: date | None
+    configured: bool
+    enabled: bool
+    available: bool
+    reason: ModelUnavailableReason | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ModelAvailability:
     """Aggregated availability information for one logical model."""
 
+    enabled: bool
     available: bool
-    providers: tuple[ModelProviderAvailability, ...]
+    offerings: tuple[ModelOfferingAvailability, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,9 +88,9 @@ class ModelSummary:
     released_at: date
     capabilities: frozenset[ModelCapability]
     status: ModelStatus
-    providers: tuple[ProviderId, ...]
+    enabled: bool
     available: bool
-    starting_price: ModelPricing | None
+    offerings: tuple[ModelOfferingAvailability, ...]
     tags: tuple[str, ...]
 
 
@@ -87,8 +108,8 @@ class ModelDocument:
     status: ModelStatus
     replacement_model_id: str | None
     tags: tuple[str, ...]
-    deployments: tuple[ModelDeployment, ...]
-    availability: tuple[ModelProviderAvailability, ...]
+    offerings: tuple[ModelOfferingAvailability, ...]
+    enabled: bool
     available: bool
 
 
@@ -114,7 +135,7 @@ class ModelValidationError(ModelServiceError):
 
 
 class ModelAvailabilityService:
-    """Calculates model availability for a workspace."""
+    """Calculates model availability for a User."""
 
     def __init__(
         self,
@@ -126,73 +147,89 @@ class ModelAvailabilityService:
     async def describe(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         model: ModelCatalogEntry,
+        offerings: Sequence[ModelOffering],
+        model_enabled: bool = True,
     ) -> ModelAvailability:
-        """Return availability for every deployment of a model."""
+        """Return availability for every provider offering of a model."""
 
-        workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        user_id = self._require_text(
+            user_id,
+            "user_id",
         )
-        provider_ids = self._get_provider_ids(model.deployments)
+        provider_ids = self._get_provider_ids(offerings)
 
         states = await self._get_provider_states(
-            workspace_id=workspace_id,
+            user_id=user_id,
             provider_ids=provider_ids,
         )
 
-        providers = tuple(
-            self._evaluate_deployment(
+        evaluated_offerings = tuple(
+            self._evaluate_offering(
                 model=model,
-                deployment=deployment,
-                provider_state=states.get(deployment.provider_id),
+                offering=offering,
+                provider_state=states.get(offering.provider_id),
+                model_enabled=model_enabled,
             )
-            for deployment in model.deployments
+            for offering in offerings
         )
 
         return ModelAvailability(
-            available=any(provider.available for provider in providers),
-            providers=providers,
+            enabled=model_enabled,
+            available=any(offering.available for offering in evaluated_offerings),
+            offerings=evaluated_offerings,
         )
 
     async def describe_many(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         models: Sequence[ModelCatalogEntry],
+        offerings_by_model: dict[str, Sequence[ModelOffering]],
+        model_enabled_by_id: dict[str, bool] | None = None,
     ) -> dict[str, ModelAvailability]:
         """Return availability for several models using one provider lookup."""
 
-        workspace_id = self._require_text(
-            workspace_id,
-            "workspace_id",
+        user_id = self._require_text(
+            user_id,
+            "user_id",
         )
         provider_ids = self._get_provider_ids(
-            deployment
+            offering
             for model in models
-            for deployment in model.deployments
+            for offering in offerings_by_model[model.id]
         )
 
         states = await self._get_provider_states(
-            workspace_id=workspace_id,
+            user_id=user_id,
             provider_ids=provider_ids,
         )
 
         results: dict[str, ModelAvailability] = {}
 
         for model in models:
-            providers = tuple(
-                self._evaluate_deployment(
+            offerings = tuple(
+                self._evaluate_offering(
                     model=model,
-                    deployment=deployment,
-                    provider_state=states.get(deployment.provider_id),
+                    offering=offering,
+                    provider_state=states.get(offering.provider_id),
+                    model_enabled=(
+                        model_enabled_by_id.get(model.id, True)
+                        if model_enabled_by_id is not None
+                        else True
+                    ),
                 )
-                for deployment in model.deployments
+                for offering in offerings_by_model[model.id]
             )
             results[model.id] = ModelAvailability(
-                available=any(provider.available for provider in providers),
-                providers=providers,
+                enabled=(
+                    model_enabled_by_id.get(model.id, True)
+                    if model_enabled_by_id is not None
+                    else True
+                ),
+                available=any(offering.available for offering in offerings),
+                offerings=offerings,
             )
 
         return results
@@ -200,15 +237,15 @@ class ModelAvailabilityService:
     async def _get_provider_states(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         provider_ids: Sequence[ProviderId],
     ) -> dict[ProviderId, ProviderConnectionState]:
-        """Aggregate configured workspace services by catalog provider type."""
+        """Aggregate configured User services by catalog provider type."""
 
         requested_provider_ids = set(provider_ids)
         states: dict[ProviderId, ProviderConnectionState] = {}
-        for linked_service in await self._linked_service_repository.list_for_workspace(
-            workspace_id
+        for linked_service in await self._linked_service_repository.list_for_user(
+            user_id
         ):
             try:
                 provider_id = ProviderId(linked_service.provider_type)
@@ -227,14 +264,15 @@ class ModelAvailabilityService:
             )
         return states
 
-    def _evaluate_deployment(
+    def _evaluate_offering(
         self,
         *,
         model: ModelCatalogEntry,
-        deployment: ModelDeployment,
+        offering: ModelOffering,
         provider_state: ProviderConnectionState | None,
-    ) -> ModelProviderAvailability:
-        """Evaluate one deployment against its workspace provider state."""
+        model_enabled: bool,
+    ) -> ModelOfferingAvailability:
+        """Evaluate one provider offering against its workspace state."""
 
         configured = (
             provider_state.configured
@@ -248,13 +286,21 @@ class ModelAvailabilityService:
         )
         reason = self._get_unavailable_reason(
             model=model,
-            deployment=deployment,
+            offering=offering,
+            model_enabled=model_enabled,
             configured=configured,
             enabled=enabled,
         )
 
-        return ModelProviderAvailability(
-            provider_id=deployment.provider_id,
+        return ModelOfferingAvailability(
+            provider_id=offering.provider_id,
+            provider_model_id=offering.provider_model_id,
+            endpoint=offering.endpoint,
+            context_window=offering.context_window,
+            max_output_tokens=offering.max_output_tokens,
+            pricing=offering.pricing,
+            status=offering.status,
+            deprecated_at=offering.deprecated_at,
             configured=configured,
             enabled=enabled,
             available=reason is None,
@@ -265,17 +311,21 @@ class ModelAvailabilityService:
     def _get_unavailable_reason(
         *,
         model: ModelCatalogEntry,
-        deployment: ModelDeployment,
+        offering: ModelOffering,
+        model_enabled: bool,
         configured: bool,
         enabled: bool,
     ) -> ModelUnavailableReason | None:
-        """Return the first reason that makes a deployment unavailable."""
+        """Return the first reason that makes a provider offering unavailable."""
 
         if model.status == ModelStatus.DEPRECATED:
             return ModelUnavailableReason.MODEL_DEPRECATED
 
-        if deployment.status == ModelStatus.DEPRECATED:
+        if offering.status == ModelStatus.DEPRECATED:
             return ModelUnavailableReason.DEPLOYMENT_DEPRECATED
+
+        if not model_enabled:
+            return ModelUnavailableReason.MODEL_DISABLED
 
         if not configured:
             return ModelUnavailableReason.PROVIDER_NOT_CONFIGURED
@@ -287,15 +337,15 @@ class ModelAvailabilityService:
 
     @staticmethod
     def _get_provider_ids(
-        deployments: Sequence[ModelDeployment] | object,
+        offerings: Sequence[ModelOffering] | object,
     ) -> tuple[ProviderId, ...]:
         """Return provider IDs in first-seen order without duplicates."""
 
         seen: set[ProviderId] = set()
         provider_ids: list[ProviderId] = []
 
-        for deployment in deployments:
-            provider_id = deployment.provider_id
+        for offering in offerings:
+            provider_id = offering.provider_id
 
             if provider_id in seen:
                 continue

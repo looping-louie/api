@@ -7,16 +7,16 @@ from typing import Annotated, TypeVar
 
 from fastapi import Header, HTTPException, Request, status
 
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.catalog import CatalogController
-from src.app.controllers.pipeline import PipelineController
-from src.app.controllers.model import ModelController
-from src.app.controllers.persona import PersonaController
-from src.app.controllers.skill import SkillController
-from src.app.controllers.worker import WorkerController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
+from src.app.controllers.catalogs import CatalogController
+from src.app.controllers.pipelines import PipelineController
+from src.app.controllers.personas import PersonaController
+from src.app.controllers.skills import SkillController
+from src.app.controllers.workers import WorkerController
 from src.app.controllers.linked_services import LinkedServiceController
-from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.projects import ProjectController
+from src.app.controllers.users import UserController
 from src.app.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -27,19 +27,26 @@ ControllerType = TypeVar("ControllerType")
 
 @dataclass(frozen=True, slots=True)
 class RequestContext:
-    """Authenticated user and optional workspace selection."""
+    """Authenticated User and optional Project selection."""
 
     user_id: str
-    requested_workspace_id: str | None = None
+    requested_project_id: str | None = None
 
 
 async def get_request_context(
     request: Request,
-    workspace_id: Annotated[
+    request_user_id: Annotated[
         str | None,
         Header(
-            alias="X-Workspace-ID",
-            description="Workspace selected for the request.",
+            alias='X-User-ID',
+            description='Identity acting on the request.',
+        ),
+    ] = None,
+    requested_project_id_header: Annotated[
+        str | None,
+        Header(
+            alias="X-Project-ID",
+            description="Project selected for the request.",
         ),
     ] = None,
 ) -> RequestContext:
@@ -49,7 +56,9 @@ async def get_request_context(
     Authentication middleware must set request.state.user_id.
     """
 
-    user_id = getattr(request.state, "user_id", None)
+    user_id = getattr(request.state, 'user_id', None)
+    if not isinstance(user_id, str) or not user_id.strip():
+        user_id = request_user_id
 
     if not isinstance(user_id, str) or not user_id.strip():
         raise HTTPException(
@@ -60,14 +69,14 @@ async def get_request_context(
             },
         )
 
-    normalized_workspace_id = None
+    normalized_project_id = None
 
-    if workspace_id is not None:
-        normalized_workspace_id = workspace_id.strip() or None
+    if requested_project_id_header is not None:
+        normalized_project_id = requested_project_id_header.strip() or None
 
     return RequestContext(
         user_id=user_id.strip(),
-        requested_workspace_id=normalized_workspace_id,
+        requested_project_id=normalized_project_id,
     )
 
 
@@ -159,18 +168,6 @@ def get_pipeline_controller(
     )
 
 
-def get_model_controller(
-    request: Request,
-) -> ModelController:
-    """Return the configured model controller."""
-
-    return _get_controller(
-        request,
-        attribute_name="model_controller",
-        expected_type=ModelController,
-    )
-
-
 def get_catalog_controller(
     request: Request,
 ) -> CatalogController:
@@ -195,15 +192,25 @@ def get_linked_service_controller(
     )
 
 
-def get_workspace_controller(
+def get_project_controller(
     request: Request,
-) -> WorkspaceController:
-    """Return the configured workspace controller."""
+) -> ProjectController:
+    """Return the configured Project controller."""
 
     return _get_controller(
         request,
-        attribute_name='workspace_controller',
-        expected_type=WorkspaceController,
+        attribute_name='project_controller',
+        expected_type=ProjectController,
+    )
+
+
+def get_user_controller(request: Request) -> UserController:
+    """Return the configured current-user controller."""
+
+    return _get_controller(
+        request,
+        attribute_name='user_controller',
+        expected_type=UserController,
     )
 
 

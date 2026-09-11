@@ -120,18 +120,19 @@ class LinkedServiceModelExecutionService:
     def __init__(self) -> None:
         """Initialize recorded routing requests."""
 
-        self.requests: list[tuple[str, str]] = []
+        self.requests: list[tuple[str, str, str]] = []
 
     async def execute(
         self,
         *,
+        user_id: str,
         linked_service_id: str,
         model_id: str,
         **_: object,
     ) -> ModelExecutionResult:
         """Return a valid plan using the recorded selected route."""
 
-        self.requests.append((linked_service_id, model_id))
+        self.requests.append((user_id, linked_service_id, model_id))
         return ModelExecutionResult(
             text=(
                 '{"operations":[{"operation":"create","path":"output.txt",'
@@ -162,6 +163,7 @@ async def test_generation_prefers_a_frozen_agent_model_target() -> None:
                 {
                     'model_target': {
                         'linked_service_id': 'service-frozen',
+                        'linked_service_user_id': 'user-frozen',
                         'model_id': 'model-frozen',
                     },
                     'persona_id': 'persona-1',
@@ -170,15 +172,14 @@ async def test_generation_prefers_a_frozen_agent_model_target() -> None:
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
-        user_id='user-1',
-        requested_workspace_id=None,
+        user_id='user-continuing-run',
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
 
     assert model_execution_service.requests == [
-        ('service-frozen', 'model-frozen'),
+        ('user-frozen', 'service-frozen', 'model-frozen'),
     ]
 
 
@@ -218,7 +219,7 @@ def selected_persona_library(
     }
     return StaticInstructionLibraryService(
         ExecutionInstructionLibrary(
-            workspace_id='workspace-1',
+            project_id='workspace-1',
             skills={},
             personas=personas,
             skill_aliases={},
@@ -278,17 +279,16 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     snapshot = {
         'flow': 'refinement',
         'agents': [
-            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'generator-model'}, 'persona_id': 'persona-1', 'role': 'generator'},
-            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'reviewer-model'}, 'persona_id': 'persona-2', 'role': 'reviewer'},
+            {'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'generator-model'}, 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'reviewer-model'}, 'persona_id': 'persona-2', 'role': 'reviewer'},
         ],
         'output_contract': {},
     }
 
     context = await service.generate_context(
         loop_snapshot=snapshot,
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={
             'repo_context': 'Repository context.',
@@ -300,7 +300,6 @@ async def test_refinement_generation_uses_reviewer_feedback_on_retry() -> None:
     )
     review = await service.generate_review_context(
         loop_snapshot=snapshot,
-        workspace_id='workspace-1',
         input_text='Create an output file.',
         context=context,
         final_diff='diff --git a/output.txt b/output.txt',
@@ -340,19 +339,18 @@ async def test_roundtable_generation_does_not_execute_reviewers() -> None:
     snapshot = {
         'flow': 'roundtable',
         'agents': [
-            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'generator-1'}, 'persona_id': 'persona-1', 'role': 'generator'},
-            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'generator-2'}, 'persona_id': 'persona-2', 'role': 'generator'},
-            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'reviewer-model'}, 'persona_id': 'persona-3', 'role': 'reviewer'},
-            {'model_target': {'linked_service_id': 'service-1', 'model_id': 'aggregator-model'}, 'persona_id': 'persona-4', 'role': 'aggregator'},
+            {'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'generator-1'}, 'persona_id': 'persona-1', 'role': 'generator'},
+            {'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'generator-2'}, 'persona_id': 'persona-2', 'role': 'generator'},
+            {'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'reviewer-model'}, 'persona_id': 'persona-3', 'role': 'reviewer'},
+            {'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'aggregator-model'}, 'persona_id': 'persona-4', 'role': 'aggregator'},
         ],
         'output_contract': {},
     }
 
     context = await service.generate_context(
         loop_snapshot=snapshot,
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -383,16 +381,15 @@ async def test_generation_retries_one_invalid_json_response() -> None:
             'agents': [
                 {
                     'id': 'agent-1',
-                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
+                    'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -430,9 +427,8 @@ async def test_generation_rejects_agent_without_model_target() -> None:
                 ],
                 'output_contract': {},
             },
-            workspace_id='workspace-1',
             user_id='user-1',
-            requested_workspace_id=None,
+            requested_project_id=None,
             input_text='Create an output file.',
             context={'repo_context': 'Repository context.'},
         )
@@ -488,16 +484,15 @@ async def test_generation_accepts_a_markdown_fenced_json_response() -> None:
             'agents': [
                 {
                     'id': 'agent-1',
-                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
+                    'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -536,16 +531,15 @@ async def test_forbidden_commit_generation_accepts_a_plan_without_commit_message
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
-                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
+                    'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -642,16 +636,15 @@ async def test_generation_retries_an_api_example_response() -> None:
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
-                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
+                    'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -680,16 +673,15 @@ async def test_generation_retries_one_empty_operation_plan() -> None:
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
-                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
+                    'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )
@@ -750,16 +742,15 @@ async def test_generation_retries_one_plan_without_commit_message() -> None:
                 {
                     'id': 'agent-1',
                     'model_id': 'model-1',
-                    'model_target': {'linked_service_id': 'service-1', 'model_id': 'model-1'},
+                    'model_target': {'linked_service_id': 'service-1', 'linked_service_user_id': 'user-1', 'model_id': 'model-1'},
                     'persona_id': 'persona-1',
                     'role': 'generator',
                 },
             ],
             'output_contract': {},
         },
-        workspace_id='workspace-1',
         user_id='user-1',
-        requested_workspace_id=None,
+        requested_project_id=None,
         input_text='Create an output file.',
         context={'repo_context': 'Repository context.'},
     )

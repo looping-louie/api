@@ -17,7 +17,7 @@ class FakePipelineRepository:
     """Store pipeline documents and changelog entries in memory."""
 
     def __init__(self) -> None:
-        """Initialize empty workspace-scoped stores."""
+        """Initialize empty User-owned stores."""
 
         self.documents: dict[tuple[str, str], PipelineDocument] = {}
         self.entries: list[PipelineChangelogEntry] = []
@@ -27,7 +27,7 @@ class FakePipelineRepository:
     async def list(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         offset: int,
         limit: int,
         status: PipelineStatus | None,
@@ -37,8 +37,8 @@ class FakePipelineRepository:
 
         values = [
             deepcopy(document)
-            for (current_workspace, _), document in self.documents.items()
-            if current_workspace == workspace_id
+            for (current_user, _), document in self.documents.items()
+            if current_user == user_id
             and (
                 document.status == status
                 if status is not None
@@ -63,24 +63,24 @@ class FakePipelineRepository:
     async def get(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDocument | None:
         """Return one stored pipeline."""
 
-        document = self.documents.get((workspace_id, pipeline_id))
+        document = self.documents.get((user_id, pipeline_id))
         return deepcopy(document) if document is not None else None
 
     async def get_with_activities(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDetails | None:
         """Return one pipeline and its generated Activities in step order."""
 
         document = await self.get(
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=pipeline_id,
         )
         if document is None:
@@ -88,7 +88,7 @@ class FakePipelineRepository:
         activities_by_id = {
             activity.id: activity
             for activity in self.activity_documents
-            if activity.workspace_id == workspace_id
+            if activity.user_id == user_id
         }
         return PipelineDetails(
             document=document,
@@ -106,7 +106,7 @@ class FakePipelineRepository:
     ) -> PipelineDocument:
         """Create a pipeline and append its first entry."""
 
-        self.documents[(document.workspace_id, document.id)] = deepcopy(
+        self.documents[(document.user_id, document.id)] = deepcopy(
             document
         )
         self.entries.append(deepcopy(changelog_entry))
@@ -149,7 +149,7 @@ class FakePipelineRepository:
     ) -> bool:
         """Replace a pipeline and retain generated Activities in memory."""
 
-        if (document.workspace_id, document.id) not in self.documents:
+        if (document.user_id, document.id) not in self.documents:
             return False
         self.activity_documents.extend(deepcopy(activity_documents))
         self.activity_entries.extend(deepcopy(activity_changelog_entries))
@@ -168,7 +168,7 @@ class FakePipelineRepository:
     async def list_changelog(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
         offset: int,
         limit: int,
@@ -178,7 +178,7 @@ class FakePipelineRepository:
         values = [
             deepcopy(entry)
             for entry in self.entries
-            if entry.workspace_id == workspace_id
+            if entry.user_id == user_id
             and entry.pipeline_id == pipeline_id
         ]
         values.reverse()
@@ -191,7 +191,7 @@ class FakePipelineRepository:
     ) -> bool:
         """Replace one existing document and retain its changelog."""
 
-        key = (document.workspace_id, document.id)
+        key = (document.user_id, document.id)
         if key not in self.documents:
             return False
         self.documents[key] = deepcopy(document)

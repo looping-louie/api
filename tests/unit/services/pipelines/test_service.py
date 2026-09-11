@@ -17,7 +17,6 @@ from src.app.services.pipelines.types import (
     PipelineHarnessInput,
     PipelinePatch,
 )
-from src.app.models.execution import ModelTarget
 from src.app.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.pipeline_repository import FakePipelineRepository
@@ -34,13 +33,13 @@ class RecordingLinkedServiceService:
     async def require_available_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
         """Record one explicit model-target availability request."""
 
-        self.calls.append((workspace_id, service_id, model_id))
+        self.calls.append((project_id, service_id, model_id))
 
 
 def activity_step(
@@ -179,14 +178,8 @@ async def test_create_persists_inline_activity_execution_overrides(
 ) -> None:
     """Inline step model and Harness overrides persist on its Activity."""
 
-    linked_service_service = RecordingLinkedServiceService()
     service, repository = build_service(
         tenant_service=tenant_service,
-        linked_service_service=linked_service_service,
-    )
-    target = ModelTarget(
-        linked_service_id='linked-service-1',
-        model_id='gpt-5',
     )
     created = await service.create(
         user_id='user-1',
@@ -194,7 +187,7 @@ async def test_create_persists_inline_activity_execution_overrides(
             steps=(
                 replace(
                     activity_step(),
-                    model_target=target,
+                    model_id='gpt-5',
                     harness=PipelineHarnessInput(
                         kind='codex_cli',
                         version='v1',
@@ -206,12 +199,9 @@ async def test_create_persists_inline_activity_execution_overrides(
     )
 
     activity = repository.activity_documents[0]
-    assert activity.model_target == target
+    assert activity.model_id == 'gpt-5'
     assert activity.harness is not None
     assert activity.harness.kind == 'codex_cli'
-    assert linked_service_service.calls == [
-        ('workspace-1', 'linked-service-1', 'gpt-5'),
-    ]
 
 
 @pytest.mark.asyncio

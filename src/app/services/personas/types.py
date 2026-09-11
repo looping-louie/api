@@ -38,14 +38,14 @@ class PersonaDocument(DefinitionDocument):
 
 @dataclass(frozen=True, slots=True)
 class AvailablePersonaDocument(AvailableDefinitionDocument):
-    """Workspace-visible persona document with associated skills."""
+    """Project-visible persona document with associated skills."""
 
     skill_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class AvailablePersonaSummary(AvailableDefinitionSummary):
-    """Workspace-visible persona summary."""
+    """Project-visible persona summary."""
 
 
 PersonaBaseDocument = DefinitionDocument | AvailableDefinitionDocument

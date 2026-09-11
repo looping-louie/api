@@ -13,8 +13,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.routers.activities import router as activities_router
 from src.app.services.activity_runs import ActivityRunService
@@ -43,16 +43,16 @@ class FakeActivityRunRepository:
         self.documents[document.id] = document
         return document
 
-    async def get(self, *, workspace_id: str, activity_id: str, run_id: str) -> ActivityRunDocument | None:
+    async def get(self, *, project_id: str, activity_id: str, run_id: str) -> ActivityRunDocument | None:
         """Return a run only for its parent activity."""
 
         document = self.documents.get(run_id)
-        return document if document is not None and document.workspace_id == workspace_id and document.activity_id == activity_id else None
+        return document if document is not None and document.project_id == project_id and document.activity_id == activity_id else None
 
-    async def list(self, *, workspace_id: str, activity_id: str, offset: int, limit: int) -> tuple[list[ActivityRunDocument], int]:
+    async def list(self, *, project_id: str, activity_id: str, offset: int, limit: int) -> tuple[list[ActivityRunDocument], int]:
         """Return a deterministic page for one activity."""
 
-        values = [document for document in self.documents.values() if document.workspace_id == workspace_id and document.activity_id == activity_id]
+        values = [document for document in self.documents.values() if document.project_id == project_id and document.activity_id == activity_id]
         return values[offset:offset + limit], len(values)
 
     async def has_active_pipeline_lease(self, **_: object) -> bool:
@@ -60,14 +60,14 @@ class FakeActivityRunRepository:
 
         return True
 
-    async def transition(self, *, workspace_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None, pipeline_run_id: str | None = None, lease_token: str | None = None) -> ActivityRunDocument:
+    async def transition(self, *, project_id: str, activity_id: str, run_id: str, continuation_token: str, idempotency_key: str, expected_action: str, status: str, state: str, next_action: str, next_continuation_token: str | None, execution_context: dict[str, object], updated_at: datetime, iteration: int | None = None, pipeline_run_id: str | None = None, lease_token: str | None = None) -> ActivityRunDocument:
         """Advance the snapshot checkpoint for the in-memory route fixture."""
 
         del idempotency_key, pipeline_run_id, lease_token
         current = self.documents[run_id]
-        assert current.workspace_id == workspace_id and current.activity_id == activity_id
+        assert current.project_id == project_id and current.activity_id == activity_id
         assert current.continuation_token == continuation_token and current.next_action == expected_action
-        updated = ActivityRunDocument(id=current.id, workspace_id=current.workspace_id, activity_id=current.activity_id, input=current.input, status=cast(object, status), state=cast(object, state), next_action=cast(object, next_action), iteration=iteration or current.iteration, token_revision=current.token_revision + 1, continuation_token=next_continuation_token, activity_snapshot=current.activity_snapshot, execution_context=execution_context, created_at=current.created_at, created_by=current.created_by, updated_at=updated_at)
+        updated = ActivityRunDocument(id=current.id, project_id=current.project_id, activity_id=current.activity_id, input=current.input, status=cast(object, status), state=cast(object, state), next_action=cast(object, next_action), iteration=iteration or current.iteration, token_revision=current.token_revision + 1, continuation_token=next_continuation_token, activity_snapshot=current.activity_snapshot, execution_context=execution_context, created_at=current.created_at, created_by=current.created_by, updated_at=updated_at)
         self.documents[run_id] = updated
         return updated
 
@@ -120,13 +120,13 @@ class RecordingLinkedServiceService:
     async def require_available_selection(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         service_id: str,
         model_id: str,
     ) -> None:
         """Record one availability validation request."""
 
-        self.calls.append((workspace_id, service_id, model_id))
+        self.calls.append((project_id, service_id, model_id))
 
 
 def build_client(
@@ -213,13 +213,10 @@ def roundtable_loop_payload() -> dict[str, object]:
 
 
 def agent(persona_id: str, role: str) -> dict[str, object]:
-    """Build one loop agent with an explicit executable model target."""
+    """Build one loop agent with an explicit logical model override."""
 
     return {
-        'model_target': {
-            'linked_service_id': 'linked-service-1',
-            'model_id': 'model-1',
-        },
+        'model_id': 'model-1',
         'persona_id': persona_id,
         'role': role,
     }
@@ -291,14 +288,14 @@ def test_activity_rest_crud_changelog_and_type_directed_configs(tenant_service: 
     assert 'error' in legacy_config_type.json()
 
 
-def test_activity_allows_agent_without_model_target_or_persona_selection(
+def test_activity_allows_agent_without_model_id_or_persona_selection(
     tenant_service: TenantService,
 ) -> None:
     """Activity validation leaves target enforcement to execution."""
 
     reference_repository = FakeReferenceRepository()
     reference_repository.seed(
-        workspace_id='workspace-1',
+        project_id='workspace-1',
         resource_type='persona',
         resource_id='persona-1',
         value={'id': 'persona-1'},
@@ -308,44 +305,30 @@ def test_activity_allows_agent_without_model_target_or_persona_selection(
         reference_repository=reference_repository,
     )
     payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_target')
+    payload['config']['agents'][0].pop('model_id')
 
     response = client.post('/api/v1/activities', json=payload)
 
     assert response.status_code == 201
 
 
-def test_activity_validates_and_returns_explicit_model_targets(
+def test_activity_returns_explicit_logical_model_ids(
     tenant_service: TenantService,
 ) -> None:
     """Activity and loop-agent targets validate against the selected workspace."""
 
-    linked_services = RecordingLinkedServiceService()
     client = build_client(
         tenant_service=tenant_service,
-        linked_service_service=linked_services,
     )
     payload = direct_loop_payload()
-    payload['model_target'] = {
-        'linked_service_id': 'service-activity',
-        'model_id': 'model-activity',
-    }
-    payload['config']['agents'][0]['model_target'] = {
-        'linked_service_id': 'service-agent',
-        'model_id': 'model-agent',
-    }
+    payload['model_id'] = 'model-activity'
+    payload['config']['agents'][0]['model_id'] = 'model-agent'
 
     response = client.post('/api/v1/activities', json=payload)
 
     assert response.status_code == 201
-    assert response.json()['model_target'] == payload['model_target']
-    assert response.json()['config']['agents'][0]['model_target'] == (
-        payload['config']['agents'][0]['model_target']
-    )
-    assert linked_services.calls == [
-        ('workspace-1', 'service-activity', 'model-activity'),
-        ('workspace-1', 'service-agent', 'model-agent'),
-    ]
+    assert response.json()['model_id'] == payload['model_id']
+    assert response.json()['config']['agents'][0]['model_id'] == 'model-agent'
 
 
 def test_activity_allows_unavailable_persona_without_selection_check(
@@ -355,7 +338,7 @@ def test_activity_allows_unavailable_persona_without_selection_check(
 
     client = build_client(tenant_service=tenant_service)
     payload = direct_loop_payload()
-    payload['config']['agents'][0].pop('model_target')
+    payload['config']['agents'][0].pop('model_id')
 
     response = client.post('/api/v1/activities', json=payload)
 
@@ -397,7 +380,7 @@ def test_direct_loop_requires_a_generator_agent(
         'invalid%name',
         'invalid&name',
         'invalid:name',
-        'invalid name',
+        'invalid\tname',
         'a' * 141,
     ],
 )
@@ -488,13 +471,14 @@ def test_activity_creates_approval_without_a_human_gate_wrapper(
     client = build_client(tenant_service=tenant_service)
 
     created = client.post('/api/v1/activities', json={
-        'name': 'Release_approval',
+        'name': 'Release approval',
         'description': 'Approve the release.',
         'type': 'approval',
         'config': {},
     })
 
     assert created.status_code == 201
+    assert created.json()['name'] == 'Release approval'
     assert created.json()['type'] == 'approval'
     assert created.json()['config'] == {}
 
@@ -589,7 +573,7 @@ def test_activity_run_routes_support_runtime_and_human_executors(tenant_service:
     fetched = client.get(f'/api/v1/activities/{activity_id}/runs/{run_id}')
     continued = client.post(f'/api/v1/activities/{activity_id}/runs/{run_id}/continue', json={
         'continuation_token': created.json()['continuation_token'], 'idempotency_key': 'snapshot-1',
-        'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'workspace_metadata': {'workspace_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
+        'result': {'action': 'collect_snapshot', 'repo_context': 'Repository context.', 'checkout_metadata': {'checkout_path': '/project', 'source_commit_sha': 'abc'}, 'constitution': '', 'project_profile': {'source_file_count': 1, 'approximate_source_chars': 1, 'extension_counts': {}, 'top_level_entries': [], 'markers': {'nuxt': False, 'package_json': False, 'fastapi': True, 'docker': False, 'tests': True}}},
     })
     approval = client.post('/api/v1/activities', json={'name': 'Approval', 'description': '', 'type': 'approval', 'config': {}})
     human_run = client.post(f"/api/v1/activities/{approval.json()['id']}/runs", json={'input': 'Approve it.'})
@@ -661,8 +645,8 @@ def test_activity_checkpoint_marks_missing_model_generation_failed(
             'result': {
                 'action': 'collect_snapshot',
                 'repo_context': 'Repository context.',
-                'workspace_metadata': {
-                    'workspace_path': '/project',
+                'checkout_metadata': {
+                    'checkout_path': '/project',
                     'source_commit_sha': 'abc',
                 },
                 'constitution': '',
@@ -729,8 +713,8 @@ def test_forbidden_commit_activity_completes_after_operations(
             'result': {
                 'action': 'collect_snapshot',
                 'repo_context': 'Repository context.',
-                'workspace_metadata': {
-                    'workspace_path': '/project',
+                'checkout_metadata': {
+                    'checkout_path': '/project',
                     'source_commit_sha': 'abc',
                 },
                 'constitution': '',

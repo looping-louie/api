@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol
+from typing import Mapping, Protocol
 
-from src.app.models.worker import WorkerDocument
+from src.app.models.worker import (
+    WorkerDocument,
+    WorkerHarnessCapability,
+    WorkerReadinessDocument,
+)
 
 
 class WorkerRepository(Protocol):
@@ -18,7 +22,7 @@ class WorkerRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
     ) -> WorkerDocument | None:
         """Return one persisted Worker and its declared capabilities."""
@@ -27,19 +31,20 @@ class WorkerRepository(Protocol):
     async def heartbeat(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
     ) -> WorkerDocument | None:
-        """Refresh a registered worker's liveness timestamp."""
+        """Refresh liveness and optionally replace observed capabilities."""
         raise NotImplementedError
 
-    async def is_active(
+    async def readiness(
         self,
         *,
-        workspace_id: str,
-        worker_id: str,
+        project_id: str,
         active_since: datetime,
-    ) -> bool:
-        """Return whether a worker sent a recent heartbeat."""
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize workspace worker liveness and exact Harness matches."""
         raise NotImplementedError

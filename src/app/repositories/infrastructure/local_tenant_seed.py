@@ -1,4 +1,4 @@
-"""Local workspace seed for development installations."""
+"""Local Project seed for development installations."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ import aiosqlite
 async def ensure_local_tenant(
     *,
     database_path: str | Path,
-    workspace_id: str = "local-workspace",
-    workspace_name: str = "Local workspace",
+    project_id: str = 'local-project',
+    project_name: str = 'Local project',
     user_id: str = "local-user",
 ) -> None:
     """Create the initial local workspace and membership when absent."""
@@ -30,7 +30,20 @@ async def ensure_local_tenant(
         try:
             await connection.execute(
                 """
-                INSERT INTO workspaces (
+                INSERT INTO users (id, created_at, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id) DO NOTHING
+                """,
+                (
+                    user_id,
+                    now,
+                    now,
+                ),
+            )
+
+            await connection.execute(
+                """
+                INSERT INTO projects (
                     id,
                     name,
                     created_at,
@@ -40,8 +53,8 @@ async def ensure_local_tenant(
                 ON CONFLICT(id) DO NOTHING
                 """,
                 (
-                    workspace_id,
-                    workspace_name,
+                    project_id,
+                    project_name,
                     now,
                     now,
                 ),
@@ -49,20 +62,35 @@ async def ensure_local_tenant(
 
             await connection.execute(
                 """
-                INSERT INTO workspace_memberships (
-                    workspace_id,
+                INSERT INTO project_memberships (
+                    project_id,
                     user_id,
                     role,
                     is_default,
                     created_at
                 )
-                VALUES (?, ?, 'owner', 1, ?)
-                ON CONFLICT(workspace_id, user_id) DO UPDATE SET
+                VALUES (
+                    ?, ?, 'owner',
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM project_memberships
+                        WHERE user_id = ? AND is_default = 1
+                    ) THEN 0 ELSE 1 END,
+                    ?
+                )
+                ON CONFLICT(project_id, user_id) DO UPDATE SET
                     role = 'owner',
-                    is_default = 1
+                    is_default = CASE WHEN project_memberships.is_default = 1
+                        OR NOT EXISTS (
+                            SELECT 1
+                            FROM project_memberships AS existing
+                            WHERE existing.user_id = excluded.user_id
+                              AND existing.is_default = 1
+                        ) THEN 1 ELSE 0 END
                 """,
                 (
-                    workspace_id,
+                    project_id,
+                    user_id,
                     user_id,
                     now,
                 ),

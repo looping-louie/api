@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import Sequence
 
 from src.app.catalogs.models import (
+    CATALOG_INDEX,
+    CatalogIndex,
     MODEL_CATALOG,
     ModelCapability,
     ModelCatalogEntry,
     ModelLab,
-    ModelPricing,
+    ModelOffering,
     ModelSort,
     ModelStatus,
 )
@@ -22,7 +24,8 @@ from src.app.services.models.availability import (
     ModelSummary,
     ModelValidationError,
 )
-from src.app.services.shared.tenant import TenantService
+from src.app.models.user import UserSettings
+from src.app.services.users import UserService
 
 
 class ModelCatalogService:
@@ -31,15 +34,17 @@ class ModelCatalogService:
     def __init__(
         self,
         *,
-        tenant_service: TenantService,
+        user_service: UserService | None = None,
         availability_service: ModelAvailabilityService,
         catalog: Sequence[ModelCatalogEntry] = MODEL_CATALOG,
+        catalog_index: CatalogIndex = CATALOG_INDEX,
     ) -> None:
         """Store model catalog dependencies."""
 
-        self._tenant_service = tenant_service
+        self._user_service = user_service
         self._availability_service = availability_service
         self._catalog = tuple(catalog)
+        self._catalog_index = catalog_index
         self._catalog_by_id = {
             model.id: model
             for model in self._catalog
@@ -49,7 +54,6 @@ class ModelCatalogService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
         provider_id: ProviderId | None = None,
         capability: ModelCapability | None = None,
         model_status: ModelStatus | None = None,
@@ -59,12 +63,8 @@ class ModelCatalogService:
         search: str | None = None,
         include_deprecated: bool = False,
     ) -> list[ModelSummary]:
-        """List curated models and their workspace availability."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        """List curated models and their User availability."""
+        settings = await self._user_settings(user_id=user_id)
         normalized_search = self._normalize_search(search)
         selected_labs = frozenset(labs)
 
@@ -83,8 +83,16 @@ class ModelCatalogService:
         ]
 
         availability_by_model = await self._availability_service.describe_many(
-            workspace_id=workspace_id,
+            user_id=user_id,
             models=models,
+            offerings_by_model={
+                model.id: self.offerings_for_model(model)
+                for model in models
+            },
+            model_enabled_by_id={
+                model.id: self._model_enabled(model.id, settings)
+                for model in models
+            },
         )
 
         summaries = [
@@ -112,19 +120,16 @@ class ModelCatalogService:
         *,
         user_id: str,
         model_id: str,
-        requested_workspace_id: str | None = None,
     ) -> ModelDocument:
-        """Return a complete model and its workspace availability."""
-
-        workspace_id = await self._resolve_workspace_id(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
+        """Return a complete model and its User availability."""
+        settings = await self._user_settings(user_id=user_id)
         model = self.require_model(model_id)
 
         availability = await self._availability_service.describe(
-            workspace_id=workspace_id,
+            user_id=user_id,
             model=model,
+            offerings=self.offerings_for_model(model),
+            model_enabled=self._model_enabled(model.id, settings),
         )
 
         return self._to_document(
@@ -147,6 +152,22 @@ class ModelCatalogService:
             )
 
         return model
+
+    @staticmethod
+    def _model_enabled(model_id: str, settings: object) -> bool:
+        """Return the configured model state or the User default policy."""
+
+        for configured_model in getattr(settings, 'configured_models'):
+            if configured_model.id == model_id:
+                return configured_model.status == 'enabled'
+        return getattr(settings, 'default_model_availability') == 'enabled'
+
+    async def _user_settings(self, *, user_id: str) -> UserSettings:
+        """Return the User policy or the enabled default for catalog-only callers."""
+
+        if self._user_service is None:
+            return UserSettings()
+        return (await self._user_service.get(user_id=user_id)).settings
 
     def get_many(
         self,
@@ -217,16 +238,16 @@ class ModelCatalogService:
 
         return True
 
-    @staticmethod
     def _has_provider(
+        self,
         model: ModelCatalogEntry,
         provider_id: ProviderId,
     ) -> bool:
         """Return whether the model has a deployment for a provider."""
 
         return any(
-            deployment.provider_id == provider_id
-            for deployment in model.deployments
+            offering.provider_id == provider_id
+            for offering in self.offerings_for_model(model)
         )
 
     @staticmethod
@@ -267,14 +288,14 @@ class ModelCatalogService:
             released_at=model.released_at,
             capabilities=model.capabilities,
             status=model.status,
-            providers=self._get_model_providers(model),
+            enabled=availability.enabled,
             available=availability.available,
-            starting_price=self._get_starting_price(model),
+            offerings=availability.offerings,
             tags=model.tags,
         )
 
-    @staticmethod
     def _to_document(
+        self,
         *,
         model: ModelCatalogEntry,
         availability: ModelAvailability,
@@ -292,67 +313,18 @@ class ModelCatalogService:
             status=model.status,
             replacement_model_id=model.replacement_model_id,
             tags=model.tags,
-            deployments=model.deployments,
-            availability=availability.providers,
+            offerings=availability.offerings,
+            enabled=availability.enabled,
             available=availability.available,
         )
 
-    @staticmethod
-    def _get_model_providers(
-        model: ModelCatalogEntry,
-    ) -> tuple[ProviderId, ...]:
-        """Return deployment provider IDs in first-seen order."""
-
-        providers: list[ProviderId] = []
-        seen: set[ProviderId] = set()
-
-        for deployment in model.deployments:
-            if deployment.provider_id in seen:
-                continue
-
-            seen.add(deployment.provider_id)
-            providers.append(deployment.provider_id)
-
-        return tuple(providers)
-
-    @staticmethod
-    def _get_starting_price(
-        model: ModelCatalogEntry,
-    ) -> ModelPricing | None:
-        """Return the lowest combined non-deprecated deployment price."""
-
-        prices = [
-            deployment.pricing
-            for deployment in model.deployments
-            if deployment.status != ModelStatus.DEPRECATED
-            and deployment.pricing is not None
-        ]
-
-        if not prices:
-            return None
-
-        return min(
-            prices,
-            key=lambda price: (
-                price.input_per_million_usd
-                + price.output_per_million_usd
-            ),
-        )
-
-    async def _resolve_workspace_id(
+    def offerings_for_model(
         self,
-        *,
-        user_id: str,
-        requested_workspace_id: str | None,
-    ) -> str:
-        """Resolve the selected workspace for a model query."""
+        model: ModelCatalogEntry,
+    ) -> tuple[ModelOffering, ...]:
+        """Return provider-owned offerings for one logical model."""
 
-        tenant = await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
-        )
-
-        return tenant.workspace_id
+        return self._catalog_index.offerings_for_model(model.id)
 
     @staticmethod
     def _normalize_search(search: str | None) -> str | None:

@@ -32,29 +32,32 @@ class InMemoryLinkedServiceRepository:
         """Initialize the in-memory service store."""
         self._services: dict[tuple[str, str], LinkedService] = {}
 
-    async def list_for_workspace(self, workspace_id: str) -> list[LinkedService]:
-        """Return copies of services owned by a workspace."""
+    async def list_for_user(self, user_id: str) -> list[LinkedService]:
+        """Return copies of services owned by a user."""
         return [
             deepcopy(linked_service)
             for linked_service in self._services.values()
-            if linked_service.workspace_id == workspace_id
+            if linked_service.user_id == user_id
         ]
 
-    async def get(self, workspace_id: str, service_id: str) -> LinkedService | None:
-        """Return one service copy when owned by the workspace."""
-        linked_service = self._services.get((workspace_id, service_id))
+    async def get_for_user(
+        self,
+        user_id: str,
+        service_id: str,
+    ) -> LinkedService | None:
+        """Return one service copy when owned by the user."""
+        linked_service = self._services.get((user_id, service_id))
         return deepcopy(linked_service) if linked_service is not None else None
 
     async def get_by_name(
         self,
-        workspace_id: str,
+        user_id: str,
         name: str,
     ) -> LinkedService | None:
-        """Return one service copy matching a workspace-local name."""
-
+        """Return one service copy matching a user-local name."""
         for linked_service in self._services.values():
             if (
-                linked_service.workspace_id == workspace_id
+                linked_service.user_id == user_id
                 and linked_service.name == name
             ):
                 return deepcopy(linked_service)
@@ -62,16 +65,27 @@ class InMemoryLinkedServiceRepository:
 
     async def create(self, linked_service: LinkedService) -> LinkedService:
         """Store and return a service copy."""
-        self._services[(linked_service.workspace_id, linked_service.id)] = deepcopy(linked_service)
+        self._services[(linked_service.user_id, linked_service.id)] = deepcopy(
+            linked_service,
+        )
         return deepcopy(linked_service)
 
     async def update(self, linked_service: LinkedService) -> LinkedService:
         """Replace and return a service copy."""
         return await self.create(linked_service)
 
-    async def delete(self, workspace_id: str, service_id: str) -> bool:
+    async def delete_for_user(self, user_id: str, service_id: str) -> bool:
         """Delete a service and report whether it existed."""
-        return self._services.pop((workspace_id, service_id), None) is not None
+        return self._services.pop((user_id, service_id), None) is not None
+
+
+class RegisteredUserService:
+    """Accept the authenticated user used by linked-service route tests."""
+
+    async def get(self, *, user_id: str) -> object:
+        """Confirm that the route's authenticated identity is registered."""
+        assert user_id == 'user-1'
+        return object()
 
 
 class PersonaSelectionDependencyRepository:
@@ -80,20 +94,19 @@ class PersonaSelectionDependencyRepository:
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> list[DependencyUsage]:
         """Return a persona usage for the requested linked service."""
 
-        assert workspace_id == 'workspace-1'
+        assert project_id == 'workspace-1'
         assert target == ResourceReference('linked_service', 'linked-service-1')
         return [
             DependencyUsage(
                 source=ResourceReference('persona', 'persona-1'),
                 relation='linked_service',
-            )
+            ),
         ]
-
 
 def build_app(controller: LinkedServiceController, authenticated: bool = True) -> FastAPI:
     """Build a minimal authenticated linked-services API application."""
@@ -114,7 +127,9 @@ def build_controller(tenant_service: TenantService, connection_service: FakeProv
     """Build a deterministic linked-service controller for tests."""
     identifier = iter(('linked-service-1', 'linked-service-2'))
     service = LinkedServiceService(
-        repository=InMemoryLinkedServiceRepository(), tenant_service=tenant_service,
+        repository=InMemoryLinkedServiceRepository(),
+        user_service=RegisteredUserService(),  # type: ignore[arg-type]
+        tenant_service=tenant_service,
         secret_service=FakeSecretService(), connection_service=connection_service,
         catalog=PROVIDER_CATALOG, clock=IncrementingClock(), id_factory=lambda: next(identifier),
     )
@@ -201,6 +216,7 @@ def test_linked_service_delete_is_blocked_by_persona_selection(
     repository = InMemoryLinkedServiceRepository()
     service = LinkedServiceService(
         repository=repository,
+        user_service=RegisteredUserService(),  # type: ignore[arg-type]
         tenant_service=tenant_service,
         secret_service=FakeSecretService(),
         connection_service=FakeProviderConnectionService(),

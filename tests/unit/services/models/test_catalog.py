@@ -1,16 +1,22 @@
 """Tests for filtering and describing the curated model catalog."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
 from src.app.catalogs.models import (
+    CatalogIndex,
     ModelCapability,
     ModelLab,
     ModelSort,
     ModelStatus,
 )
 from src.app.catalogs.providers import ProviderId
+from src.app.models.user import (
+    ConfiguredModelAvailability,
+    UserDocument,
+    UserSettings,
+)
 from src.app.services.models.availability import (
     ModelAvailabilityService,
     ModelNotFoundError,
@@ -19,18 +25,40 @@ from src.app.services.models.availability import (
 from src.app.services.models.catalog import ModelCatalogService
 from src.app.services.shared.tenant import TenantService
 from tests.factories.models import (
-    build_deployment,
     build_model,
+    build_offering,
+    build_provider,
 )
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )
 
 
+class _UserService:
+    """Return one User profile with a configured model availability policy."""
+
+    def __init__(self, settings: UserSettings) -> None:
+        """Store the settings returned for catalog queries."""
+
+        self._settings = settings
+
+    async def get(self, *, user_id: str) -> UserDocument:
+        """Return the configured User profile."""
+
+        now = datetime(2026, 8, 26, tzinfo=UTC)
+        return UserDocument(
+            id=user_id,
+            created_at=now,
+            updated_at=now,
+            settings=self._settings,
+        )
+
+
 def build_service(
     *,
     tenant_service: TenantService,
     repository: FakeProviderStateRepository,
+    user_service: _UserService | None = None,
 ) -> ModelCatalogService:
     """Build a catalog service with models that distinguish every filter."""
 
@@ -55,12 +83,6 @@ def build_service(
             vendor="OpenAI",
             lab=ModelLab.OPENAI,
             released_at=date(2026, 3, 1),
-            deployments=(
-                build_deployment(
-                    provider_id=ProviderId.OPENAI,
-                    provider_model_id="openai/model",
-                ),
-            ),
             tags=("reasoning",),
         ),
         build_model(
@@ -72,14 +94,110 @@ def build_service(
             status=ModelStatus.DEPRECATED,
         ),
     )
+    catalog_index = CatalogIndex(
+        models=catalog,
+        providers=(
+            build_provider(
+                build_offering(model_id="coding-model"),
+                build_offering(model_id="deprecated-model"),
+            ),
+            build_provider(
+                build_offering(
+                    model_id="openai-model",
+                    provider_model_id="openai/model",
+                ),
+                provider_id=ProviderId.OPENAI,
+            ),
+        ),
+    )
 
     return ModelCatalogService(
-        tenant_service=tenant_service,
+        user_service=user_service,  # type: ignore[arg-type]
         availability_service=ModelAvailabilityService(
                 linked_service_repository=repository,
         ),
         catalog=catalog,
+        catalog_index=catalog_index,
     )
+
+
+@pytest.mark.asyncio
+async def test_list_applies_default_and_configured_model_availability(
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    """A configured model can override the User's disabled default policy."""
+
+    provider_state_repository.seed(
+        state=ProviderConnectionState(
+            provider_id=ProviderId.TOGETHER,
+            configured=True,
+            enabled=True,
+        ),
+    )
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+        user_service=_UserService(UserSettings(
+            default_model_availability='disabled',
+            configured_models=(
+                ConfiguredModelAvailability(
+                    id='coding-model',
+                    status='enabled',
+                ),
+            ),
+        )),
+    )
+
+    models = await service.list(
+        user_id='user-1',
+    )
+
+    availability = {model.id: model.available for model in models}
+    enabled = {model.id: model.enabled for model in models}
+    assert availability['coding-model'] is True
+    assert availability['openai-model'] is False
+    assert enabled == {
+        'coding-model': True,
+        'openai-model': False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_describe_marks_configured_disabled_model_unavailable(
+    tenant_service: TenantService,
+    provider_state_repository: FakeProviderStateRepository,
+) -> None:
+    """A disabled configured model remains unavailable despite a ready provider."""
+
+    provider_state_repository.seed(
+        state=ProviderConnectionState(
+            provider_id=ProviderId.TOGETHER,
+            configured=True,
+            enabled=True,
+        ),
+    )
+    service = build_service(
+        tenant_service=tenant_service,
+        repository=provider_state_repository,
+        user_service=_UserService(UserSettings(
+            configured_models=(
+                ConfiguredModelAvailability(
+                    id='coding-model',
+                    status='disabled',
+                ),
+            ),
+        )),
+    )
+
+    model = await service.describe(
+        user_id='user-1',
+        model_id='coding-model',
+    )
+
+    assert model.available is False
+    assert model.enabled is False
+    assert model.offerings[0].reason == 'model_disabled'
 
 
 @pytest.mark.asyncio
@@ -257,7 +375,6 @@ async def test_list_filters_by_workspace_availability(
     """Availability filtering uses the selected workspace provider state."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.OPENAI,
             configured=True,
@@ -290,7 +407,6 @@ async def test_describe_returns_complete_model(
     """Describe returns catalog details enriched with availability."""
 
     provider_state_repository.seed(
-        workspace_id="workspace-1",
         state=ProviderConnectionState(
             provider_id=ProviderId.TOGETHER,
             configured=True,
@@ -309,7 +425,7 @@ async def test_describe_returns_complete_model(
 
     assert model.id == "coding-model"
     assert model.available is True
-    assert model.deployments[0].provider_id == ProviderId.TOGETHER
+    assert model.offerings[0].provider_id == ProviderId.TOGETHER
 
 
 @pytest.mark.asyncio

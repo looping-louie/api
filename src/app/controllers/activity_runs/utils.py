@@ -1,12 +1,13 @@
-"""Shared schema translations for Activity-run controllers."""
+"""Shared schema translations for Activity Run controllers."""
 
 from src.app.schemas.activity_run import (
-    ActivityRunResponse,
     ActivityRunApplyOperationsResult,
     ActivityRunCommitResult,
     ActivityRunHarnessResult,
+    ActivityRunResponse,
     ActivityRunReviewInputResult,
 )
+from src.app.services.activity_runs.harness_loop import pending_harness_payload
 
 
 def action_result(
@@ -18,6 +19,7 @@ def action_result(
     | ActivityRunCommitResult
 ):
     """Validate a non-snapshot action using its discriminator."""
+
     schemas = {
         'apply_operations': ActivityRunApplyOperationsResult,
         'run_harness': ActivityRunHarnessResult,
@@ -31,7 +33,7 @@ def action_result(
 
 
 def activity_run_response(document: object) -> ActivityRunResponse:
-    """Expose an activity-owned runtime artifact without its legacy loop alias."""
+    """Expose an Activity-owned runtime artifact without its legacy loop alias."""
 
     response = ActivityRunResponse.model_validate(document)
     context = getattr(document, 'execution_context', {})
@@ -39,8 +41,19 @@ def activity_run_response(document: object) -> ActivityRunResponse:
     if getattr(document, 'next_action', None) == 'run_harness':
         snapshot = getattr(document, 'activity_snapshot', {})
         harness = snapshot.get('harness') if isinstance(snapshot, dict) else None
+        turn_payload = (
+            pending_harness_payload(context)
+            if context.get('pending_harness_turn') is not None
+            else {
+                'requested_model': snapshot.get('requested_model'),
+                'instruction_snapshot': snapshot.get('instruction_snapshot', {}),
+            }
+        )
         return response.model_copy(update={'payload': {
             'harness': harness,
+            'commit_mode': snapshot.get('commit_mode', 'allow'),
+            'output_contract': snapshot.get('output_contract', {}),
+            **turn_payload,
             'repo_context': context.get('repo_context', ''),
             'constitution': context.get('constitution', ''),
             'project_profile': context.get('project_profile', {}),

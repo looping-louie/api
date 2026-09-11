@@ -7,12 +7,7 @@ from src.app.services.persona_skills import (
     DefinitionUpdate,
     SkillDefinitionService,
 )
-from src.app.services.shared.tenant import (
-    TenantService,
-    WorkspaceMembership,
-)
 from src.app.services.skills import SkillService, SkillValidationError
-from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
 )
@@ -22,22 +17,22 @@ from tests.unit.services.instructions.test_service import seed_builtin
 def build_skill_service(
     skill_definition_service: SkillDefinitionService,
 ) -> SkillService:
-    """Build a skill service with one default workspace membership."""
-
-    repository = FakeTenantRepository(
-        [
-            WorkspaceMembership(
-                user_id="user-1",
-                workspace_id="workspace-1",
-                is_default=True,
-            ),
-        ]
-    )
+    """Build a Skill service with a registered user profile."""
 
     return SkillService(
-        tenant_service=TenantService(repository=repository),
+        user_service=RegisteredUserService(),
         skill_definition_service=skill_definition_service,
     )
+
+
+class RegisteredUserService:
+    """Minimal user-profile boundary for user-owned Skill tests."""
+
+    async def get(self, *, user_id: str) -> object:
+        """Accept the registered test identity."""
+
+        assert user_id == 'user-1'
+        return object()
 
 
 @pytest.mark.asyncio
@@ -245,7 +240,7 @@ async def test_skill_service_sets_enabled_and_creates_content(
     created = await service.create(
         user_id="user-1",
         payload=DefinitionCreate(
-            name="Workspace Security",
+            name="Project Security",
             description=builtin.description,
             instructions=builtin.instructions,
             metadata=builtin.metadata,
@@ -253,5 +248,5 @@ async def test_skill_service_sets_enabled_and_creates_content(
     )
 
     assert created.source_instruction_id is None
-    assert created.name == "Workspace Security"
+    assert created.name == "Project Security"
     assert created.metadata == builtin.metadata

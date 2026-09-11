@@ -41,7 +41,7 @@ class CompositeReferenceRepository:
     async def get_many(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         resource_type: str,
         resource_ids: Sequence[str],
     ) -> Mapping[str, Any]:
@@ -56,7 +56,7 @@ class CompositeReferenceRepository:
 
         if resource_type in _INSTRUCTION_TYPES:
             return await self._get_instructions(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=resource_type,
                 instruction_ids=unique_ids,
             )
@@ -68,7 +68,7 @@ class CompositeReferenceRepository:
     async def _get_instructions(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: str,
         instruction_ids: Sequence[str],
     ) -> dict[str, Any]:
@@ -81,7 +81,7 @@ class CompositeReferenceRepository:
 
         for instruction_id in instruction_ids:
             document = await get_available(
-                workspace_id=workspace_id,
+                project_id=project_id,
                 instruction_type=instruction_type,
                 instruction_id=instruction_id,
             )

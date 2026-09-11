@@ -9,6 +9,7 @@ from typing import Mapping
 from src.app.models.worker import (
     WorkerDocument,
     WorkerHarnessCapability,
+    WorkerReadinessDocument,
     default_worker_harnesses,
 )
 from src.app.repositories.workers import WorkerRepository
@@ -71,18 +72,18 @@ class WorkerService:
         *,
         user_id: str,
         harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Provision one API-owned worker identity in the selected workspace."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         now = self._clock()
         return await self._repository.create(WorkerDocument(
             id=self._id_factory(),
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             registered_at=now,
             last_heartbeat_at=now,
             harnesses=(
@@ -97,54 +98,60 @@ class WorkerService:
         *,
         user_id: str,
         worker_id: str,
-        requested_workspace_id: str | None = None,
+        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
+        requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Record a liveness signal for an existing workspace worker."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         worker = await self._repository.heartbeat(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             worker_id=_require_text(worker_id),
             occurred_at=self._clock(),
+            harnesses=harnesses,
         )
         if worker is None:
             raise WorkerNotFoundError(worker_id)
         return worker
 
-    async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
-        """Reject claims from workers without a current registration heartbeat."""
-
-        if not await self._repository.is_active(
-            workspace_id=workspace_id,
-            worker_id=_require_text(worker_id),
-            active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
-        ):
-            raise WorkerUnavailableError(worker_id)
-
-    async def require_harness(
+    async def require_capable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         harness: Mapping[str, object],
     ) -> None:
-        """Reject active Workers that do not advertise an exact Harness match."""
+        """Reject Workers that are inactive or lack an exact Harness match."""
 
         normalized_worker_id = _require_text(worker_id)
         worker = await self._repository.get(
-            workspace_id=workspace_id,
+            project_id=project_id,
             worker_id=normalized_worker_id,
         )
-        if worker is None or not any(
-            candidate.kind == harness.get('kind')
-            and candidate.version == harness.get('version')
-            and dict(candidate.config) == harness.get('config')
-            for candidate in worker.harnesses
+        if (
+            worker is None
+            or worker.last_heartbeat_at < self._clock() - WORKER_HEARTBEAT_TIMEOUT
         ):
+            raise WorkerUnavailableError(normalized_worker_id)
+        if not any(candidate.matches(harness) for candidate in worker.harnesses):
             raise WorkerHarnessUnavailableError(normalized_worker_id)
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize active workers that advertise one exact Harness."""
+
+        return await self._repository.readiness(
+            project_id=project_id,
+            active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
+            harness=harness,
+        )
 
 
 def _require_text(value: str) -> str:

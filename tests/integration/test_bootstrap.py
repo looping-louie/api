@@ -15,13 +15,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.app.bootstrap import configure_application
-from src.app.controllers.activity import ActivityController
-from src.app.controllers.activity_run import ActivityRunController
-from src.app.controllers.model import ModelController
-from src.app.controllers.persona import PersonaController
-from src.app.controllers.pipeline import PipelineController
-from src.app.controllers.skill import SkillController
-from src.app.controllers.workspace import WorkspaceController
+from src.app.controllers.activities import ActivityController
+from src.app.controllers.activity_runs import ActivityRunController
+from src.app.controllers.personas import PersonaController
+from src.app.controllers.pipelines import PipelineController
+from src.app.controllers.skills import SkillController
+from src.app.controllers.projects import ProjectController
+from src.app.controllers.users import UserController
 from src.app.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
@@ -30,8 +30,8 @@ from src.app.services.shared.settings import AppSettings
 
 EXPECTED_TABLES = {
     "schema_migrations",
-    "workspaces",
-    "workspace_memberships",
+    "projects",
+    "project_memberships",
     "instructions",
     "pipelines",
     "pipeline_steps",
@@ -39,7 +39,9 @@ EXPECTED_TABLES = {
     "pipeline_changelog_entries",
     "linked_services",
     "persona_skills",
-    "workspace_instruction_settings",
+    "project_instruction_settings",
+    "user_skill_settings",
+    "user_persona_settings",
     "activities",
     "activity_catalog_installations",
     "activity_changelog_entries",
@@ -50,7 +52,7 @@ EXPECTED_TABLES = {
     "pipeline_run_steps",
     "pipeline_run_events",
     "workers",
-    "workspace_execution_defaults",
+    "users",
 }
 
 
@@ -123,12 +125,12 @@ def test_bootstrap_configures_application_and_runs_migrations(
             PipelineController,
         )
         assert isinstance(
-            app.state.model_controller,
-            ModelController,
+            app.state.project_controller,
+            ProjectController,
         )
         assert isinstance(
-            app.state.workspace_controller,
-            WorkspaceController,
+            app.state.user_controller,
+            UserController,
         )
         assert isinstance(
             app.state.database,
@@ -157,7 +159,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
             """
             SELECT name
             FROM activities
-            WHERE workspace_id = 'local-workspace'
+            WHERE project_id = 'local-project'
             ORDER BY name
             """
         ).fetchall()
@@ -226,6 +228,20 @@ def test_bootstrap_configures_application_and_runs_migrations(
             "0043_workspace_execution_defaults",
             "0044_execution_overrides",
                 "0045_remove_persona_linked_service_selections",
+            "0046_users",
+            "0047_user_owned_instructions",
+            "0048_user_skill_settings",
+                "0049_user_persona_settings",
+                "0050_user_owned_linked_services",
+                "0051_user_execution_settings",
+                    "0052_logical_model_overrides",
+                        "0053_user_owned_activities",
+                        "0054_user_owned_pipelines",
+                        "0055_user_execution_defaults",
+                        "0056_projects",
+                        "0057_local_project_seed",
+                        "0058_restore_foreign_keys",
+                        "0059_harness_activity_run_checkpoints",
     ]
     assert activity_rows == []
 

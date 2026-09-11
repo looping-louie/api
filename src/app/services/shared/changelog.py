@@ -11,7 +11,7 @@ from src.app.models.changelog import ChangelogMetadata, JsonObject
 def build_changelog_metadata(
     *,
     entry_id: str,
-    workspace_id: str,
+    project_id: str,
     actor_id: str,
     changed_at: datetime,
     diff: JsonObject | None = None,
@@ -21,7 +21,7 @@ def build_changelog_metadata(
 
     return ChangelogMetadata(
         id=entry_id,
-        workspace_id=workspace_id,
+        project_id=project_id,
         actor_id=actor_id,
         changed_at=changed_at,
         diff=diff,

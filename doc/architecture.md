@@ -1,125 +1,10 @@
-# Looping Louie Architecture
+# Looping Louie API Software Architecture
 
-Looping Louie API is the decision engine for iterative LLM software
-development. It persists pipeline and activity state while the runtime executes
-repository changes on a worker.
-
-The runtime is independent from any programming language, framework, or LLM
-provider.
-
-## Worker provisioning
-
-The API provisions each workspace worker identity. The runtime stores the
-assigned ID in its workspace configuration and refreshes its heartbeat before
-polling. PipelineRun claims require an active worker heartbeat, while the
-existing PipelineRun lease continues to authorize only one claimed run.
-Heartbeat liveness never renews or revokes a lease.
-
-## Ownership boundaries
-
-The API owns resource management, durable pipeline and activity-run state,
-prompt generation, model decisions, and checkpoint transitions. The runtime
-owns workspace lifecycle, repository inspection, filesystem changes, Git
-operations, and activity execution after it claims a queued pipeline run.
-
-## Execution defaults
-
-Workspace defaults persist optional model-target and Harness overrides. A model
-target always binds a logical catalog `model_id` to a
-workspace-owned `linked_service_id`; a bare model ID cannot deterministically
-select a provider connection. A missing value explicitly means inheritance.
-
-The hierarchy persists candidates at workspace, Pipeline, Activity, and
-loop-agent scopes. Pipeline and Activity store first-class nullable
-`model_target` and `harness` fields; agents store nullable `model_target` in
-their typed loop configuration.
-It is intentionally separate from Personas, which are reusable instructions
-rather than model-routing or provider-connection resources. PipelineRun
-creation resolves and freezes effective values: agent, Activity, Pipeline, then
-Workspace for model targets; and Activity, Pipeline, then Workspace for
-Harnesses. An agent without an explicit target fails generation; Personas are
-instruction-only resources. An unset effective Harness becomes the `louie` v1
-compatibility default.
-
-## Harnesses
-
-A Harness is the local execution mechanism for runtime-executable Activities.
-It is distinct from an Activity agent: an agent is a generator, reviewer, or
-aggregator role backed by a Persona and model selection; a Harness carries out
-the Activity in a worker's configured checkout and reports normalized results.
-
-The API-directed repository executor is the `louie` Harness. It
-collects repository context, applies API-approved file operations, gathers
-review input, and commits only when the API authorizes the handoff. `louie` v1
-is the compatibility default for existing Pipelines.
-
-A Pipeline may select one Harness for its runtime-executable Activities. Human
-Activities (`approval` and `quiz`) remain intrinsically human-executed and do
-not use the selected Harness. PipelineRun creation freezes the effective
-Harness for each Activity, preferring its own override before Pipeline and
-Workspace candidates, then using the `louie` v1 compatibility default. A
-Pipeline edit must not change the Harness used by an existing run.
-
-Harness definitions use a stable kind, a version, and a kind-specific `config`
-object. The implemented `louie` v1 configuration must be empty. The API stores
-only policy that it can validate and audit. Worker-local configuration,
-including checkout paths, executable locations, credentials, and secrets,
-remains outside Pipeline definitions.
-
-```json
-{
-  "harness": {
-    "kind": "louie",
-    "version": "v1",
-    "config": {}
-  }
-}
-```
-
-Harness kinds retain the same configuration shape. `codex_cli` v1 currently
-uses an empty configuration. Its executable, sandbox policy, timeout,
-credentials, and other local settings remain Worker-owned:
-
-```json
-{
-  "harness": {
-    "kind": "codex_cli",
-    "version": "v1",
-    "config": {}
-  }
-}
-```
-
-`codex_cli` supports a single `direct_loop` turn. It does not replace
-API-directed scheduling, reviewer decisions, lease validation, or commit
-authorization. Workers advertise Harness capabilities during registration, and
-the API requires an exact capability match before a PipelineRun claim. The
-runtime reports the turn's final response, checkout diff, changed files, usage,
-diagnostics, and optional opaque session reference through `run_harness`.
-
-The API and runtime coordinate through the activity-run checkpoint protocol
-documented in [Execution](components/execution.md). The API never mutates the
-target repository directly, and the runtime does not make model or reviewer
-decisions. A claimed runtime worker must present its active lease token before
-it checkpoints an Activity child or advances Pipeline scheduling; the API
-rejects stale workers before either durable mutation.
-
-When API-owned generation detects a classified model catalog failure while
-processing a valid checkpoint, the API records a terminal failed Activity with
-a structured failure reason. It does not leave the claimed Pipeline child
-reclaimable after returning the error to the runtime.
-
-Each Pipeline run freezes its `commit_mode` authorization policy. A `forbid`
-run completes after approved operations without emitting a commit checkpoint;
-the runtime's local Git policy may further deny an allowed commit but cannot
-grant one forbidden by the persisted run policy.
-
-Pipeline runs preserve an append-only event ledger. A ready `approval` or
-`quiz` Activity creates a normal child Activity run with a human executor and
-transitions the Pipeline to `waiting` without assigning a worker lease. Users
-submit its decision through the Activity-run continuation API. A rejected
-human Activity run resets frozen predecessor steps for corrective execution;
-the scheduler creates a new human child after those steps complete again.
+This document describes the software architecture of the Looping Louie API.
+The cross-repository product architecture is documented on the
+[Looping Louie documentation site](https://loopinglouie.ai/docs/architecture/).
+The API and runtime checkpoint contract is documented in
+[Execution](components/execution.md).
 
 ## Repository structure
 
@@ -162,6 +47,8 @@ services/
 |-- activity_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- generation.py              Orchestrates model calls for loop Activities
+|   |-- harness_result.py          Dispatches normalized Harness observations
+|   |                              and merges their Git outcome
 |   |-- operation_plan.py          Validates model-generated filesystem changes
 |   |-- service.py                 Creates, reads, and advances activity-owned
 |   |                              execution checkpoints
@@ -188,16 +75,16 @@ services/
 |   `-- validation.py              Normalizes and validates input
 |-- linked_services/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages workspace-owned provider connections
+|   `-- service.py                 Manages User-owned provider connections
 |-- models/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- availability.py            Calculates workspace availability
+|   |-- availability.py            Calculates current-User availability
 |   |-- catalog.py                 Queries the curated model catalog
 |   `-- model_execution.py         Invokes provider-neutral endpoints through
 |                                  an explicit Linked Service
 |-- personas/
 |   |-- __init__.py                Defines the package's public imports
-|   |-- service.py                 Manages workspace resources and skill links
+|   |-- service.py                 Manages user-owned resources and skill links
 |   `-- types.py                   Defines contracts and associations
 |-- pipelines/
 |   |-- __init__.py                Defines the package's public imports
@@ -209,7 +96,11 @@ services/
 |-- pipeline_runs/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- etag.py                    Creates concurrency entity tags
+|   |-- events.py                  Builds scheduler and Harness ledger events
+|   |-- graph.py                   Reads frozen dependency requirements
+|   |-- readiness.py               Diagnoses queued-run Worker availability
 |   |-- service.py                 Creates, reads, and advances Pipeline runs
+|   |-- snapshot.py                Freezes models, Harnesses, and instructions
 |   `-- types.py                   Defines execution errors
 |-- providers/
 |   |-- __init__.py                Defines the package's public imports
@@ -223,18 +114,21 @@ services/
 |   |-- dependency_checker.py      Prevents deletion of referenced resources
 |   |-- generation.py              Creates resource IDs and UTC timestamps
 |   |-- pagination.py              Defines fixed-size offset pagination rules
-|   |-- reference_resolver.py      Resolves references between workspace resources
+|   |-- reference_resolver.py      Resolves references between Project resources
 |   |-- settings.py                Loads environment-backed application settings
-|   |-- tenant.py                  Resolves workspace tenancy and memberships
+|   |-- tenant.py                  Resolves Project tenancy and memberships
 |   `-- validation.py              Provides reusable domain validations
 |-- skills/
 |   |-- __init__.py                Defines the package's public imports
 |   |-- metadata_validator.py      Validates structured metadata
-|   |-- service.py                 Manages workspace resources
+|   |-- service.py                 Manages Project resources
 |   `-- types.py                   Defines Skill lifecycle input contracts
-|-- workspaces/
+|-- users/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages workspace-owned defaults
+|   `-- service.py                 Manages durable request identities
+|-- projects/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Manages User-owned execution-placement Projects
 `-- workers/
     |-- __init__.py                Defines the package's public imports
     `-- service.py                 Manages worker registration and liveness
@@ -250,10 +144,14 @@ dependency injection, and request extraction.
 ```text
 controllers/
 |
-|-- catalog/
-|   |-- __init__.py               Defines public controller imports
-|   `-- controller.py             Returns static catalog resources
-|-- activity/
+|-- catalogs/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- list_models.py            Lists static model definitions
+|   |-- list_personas.py          Lists built-in Persona definitions
+|   |-- list_providers.py         Lists static provider definitions
+|   |-- list_skills.py            Lists built-in Skill definitions
+|   `-- utils.py                  Validates catalog definition versions
+|-- activities/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
 |   |-- delete.py                 Deletes definitions
@@ -262,17 +160,21 @@ controllers/
 |   |-- list_changelog.py         Lists changelog entries
 |   |-- patch.py                  Applies supplied changes
 |   `-- utils.py                  Translates patch schemas to service changes
-|-- activity_run.py               Coordinates Activity-run HTTP operations
 |-- activity_runs/
-|   |-- __init__.py               Declares the controller package
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- continue_run.py           Advances execution checkpoints
+|   |-- describe.py               Retrieves one execution checkpoint
+|   |-- list.py                   Lists execution checkpoints
 |   `-- utils.py                  Translates checkpoint results to responses
 |-- linked_services/
-|   `-- __init__.py               Composes Linked Service controllers
-|-- model/
 |   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- describe.py               Describes one curated entry
-|   `-- list.py                   Lists curated entries and availability
-|-- persona/
+|   |-- create.py                 Creates Linked Services
+|   |-- delete.py                 Deletes Linked Services
+|   |-- describe.py               Retrieves one Linked Service
+|   |-- list.py                   Lists Linked Services
+|   |-- patch.py                  Updates Linked Services
+|   `-- response.py               Translates Linked Service responses
+|-- personas/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
 |   |-- delete.py                 Deletes resources
@@ -280,7 +182,7 @@ controllers/
 |   |-- list.py                   Lists resources
 |   |-- patch.py                  Applies supplied changes
 |   `-- response.py               Translates Persona documents to responses
-|-- pipeline/
+|-- pipelines/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates definitions
 |   |-- delete.py                 Deletes definitions
@@ -290,15 +192,33 @@ controllers/
 |   |-- patch.py                  Applies supplied changes
 |   |-- run.py                    Coordinates Pipeline-run operations
 |   `-- utils.py                  Translates request schemas to service inputs
-|-- skill/
+|-- skills/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Creates resources
 |   |-- delete.py                 Deletes resources
 |   |-- describe.py               Describes one resource
 |   |-- list.py                   Lists resources
 |   `-- patch.py                  Applies supplied changes
-|-- workspace.py                  Coordinates Workspace HTTP operations
-`-- worker.py                     Coordinates Worker HTTP operations
+|-- projects/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Projects
+|   |-- describe.py               Describes one Project
+|   |-- list.py                   Lists accessible Projects
+|   |-- patch.py                  Applies Project metadata changes
+|   `-- response.py               Translates Project documents to responses
+|-- workers/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Creates Workers
+|   |-- heartbeat.py              Records Worker heartbeats
+|   `-- response.py               Translates Worker documents to responses
+`-- users/
+  |-- __init__.py               Composes endpoint-specific controllers
+  |-- create.py                 Creates the current User
+  |-- describe_own.py           Retrieves the current User
+  |-- get_own_model.py          Retrieves one model for the current User
+  |-- list_own_models.py        Lists models for the current User
+  |-- patch_own.py              Updates current User settings
+  `-- response.py               Translates User documents to responses
 ```
 
 ### Catalogs
@@ -364,15 +284,15 @@ repositories/
 |   `-- sqlite_database.py          Manages asynchronous SQLite connections
 |-- instructions/
 |   |-- __init__.py                Declares persona and skill persistence
-|   |-- availability.py            Persists workspace availability settings
+|   |-- availability.py            Resolves scope-specific instruction availability
 |   |-- mapping.py                 Maps SQLite rows and normalizes values
 |   |-- mutations.py               Creates, updates, and deletes records
 |   |-- repository.py              Persists resource definitions
-|   |-- settings.py                Persists workspace enablement settings
+|   |-- settings.py                Persists scope-specific enablement settings
 |   `-- persona_skill_repository.py Persists persona-skill associations
 |-- linked_services/
 |   |-- __init__.py                Declares persistence contracts
-|   `-- repository.py              Persists workspace provider connections
+|   `-- repository.py              Persists User-owned provider connections
 |-- activity_runs/
 |   |-- errors.py                  Defines checkpoint transition conflicts
 |   |-- __init__.py                Declares persistence contracts
@@ -390,23 +310,27 @@ repositories/
 |-- providers/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists workspace provider configuration
+|   `-- sqlite_repository.py       Persists provider configuration
 |-- shared/
 |   |-- __init__.py                Declares reusable persistence adapters
 |   |-- datetime.py                Maps SQLite timestamp values
 |   |-- dependency_repository.py   Looks up resource dependencies
 |   |-- json_mapping.py            Serializes and deserializes JSON values
 |   |-- reference_repository.py    Resolves instruction and model references
-|   |-- tenant_repository.py       Persists workspace memberships
+|   |-- tenant_repository.py       Persists Project memberships
 |   `-- validation_repository.py   Looks up normalized resource names
-|-- workspaces/
+|-- projects/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
-|   `-- sqlite_repository.py       Persists workspace defaults
+|   `-- sqlite_repository.py       Persists Projects
+|-- users/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists User records
 `-- workers/
-    |-- __init__.py                Declares persistence contracts
-    |-- repository.py              Defines the persistence contract
-    `-- sqlite_repository.py       Persists Worker records
+  |-- __init__.py                Declares persistence contracts
+  |-- repository.py              Defines the persistence contract
+  `-- sqlite_repository.py       Persists Worker records
 ```
 
 ### Models
@@ -423,13 +347,14 @@ models/
 |-- activity.py                    Defines definitions and changelog entries
 |-- activity_run.py                Defines Activity execution state and checkpoints
 |-- changelog.py                   Defines shared immutable changelog values
-|-- execution.py                   Defines atomic linked-service model targets
-|-- linked_service.py              Defines workspace-owned provider connections
+|-- execution.py                   Defines private model-selection snapshots
+|-- linked_service.py              Defines User-owned provider connections
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
 |-- tenant.py                      Defines workspace and membership state
-|-- workspace.py                   Defines workspace default values
+|-- user.py                        Defines persisted user identities
+|-- workspace.py                   Defines Workspace documents
 `-- worker.py                      Defines Worker registration and Harness state
 ```
 
@@ -437,15 +362,11 @@ models/
 
 - [Execution](components/execution.md) describes persisted runs, checkpoints,
   prompts, review, finalisation, artefacts, and metrics.
-- [Activities](components/activities.md) defines Activity categories, loop
-  roles, and supported Activity-run behavior.
 - [Persona and Skill catalog](components/persona-skill-catalog.md) describes
   builtin Persona and Skill ownership, synchronization, and maintenance.
 - [Providers](components/providers.md) records the static provider and model
-  catalog boundary. Linked Services persist independent workspace-owned provider
+  catalog boundary. Linked Services persist independent User-owned provider
   connections and derive their available deployment models from that catalog.
   Legacy provider credentials and Persona model associations are retired.
-- [Philosophy](components/philosophy.md) contains the project principles and
-  long-term direction.
 - [Current limitations](components/limitations.md) records known MVP
   boundaries.

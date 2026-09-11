@@ -24,15 +24,18 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     """A started run claim atomically creates and selects its first Activity child."""
 
     timestamp = datetime(2026, 8, 19, tzinfo=UTC)
-    await create_workspace(workspace_id='workspace-1')
+    await create_workspace(
+        project_id='workspace-1',
+        memberships=(('user-1', 'owner', True),),
+    )
     activity = ActivityDocument(
-        id='activity-1', workspace_id='workspace-1', name='Activity',
+        id='activity-1', name='Activity',
         description='Complete one stage.', status='active', type='direct_loop',
         config={'type': 'direct_loop'}, created_at=timestamp, created_by='user-1',
         updated_at=timestamp, updated_by='user-1',
     )
     pipeline = PipelineDocument(
-        id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+        id='pipeline-1', name='Pipeline',
         description='Run one stage.', status='active',
         steps=(PipelineActivityStep(activity_id=activity.id),),
         created_at=timestamp, created_by='user-1', updated_at=timestamp,
@@ -46,7 +49,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     )
     repository = SqlitePipelineRunRepository(sqlite_database_path)
     prepared = PipelineRunDocument(
-        id='run-1', workspace_id='workspace-1', pipeline_id=pipeline.id,
+        id='run-1', project_id='workspace-1', pipeline_id=pipeline.id,
         input='Implement.', status='prepared', worker_id=None, lease_token=None,
         lease_expires_at=None, attempt=0, current_activity_run_id=None,
         pipeline_snapshot={'steps': []},
@@ -61,6 +64,24 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         commit_mode='forbid',
     )
     await repository.create(document=prepared, activity_run=None)
+    listed, total = await repository.list(
+        project_id='workspace-1',
+        offset=0,
+        limit=10,
+        created_from=timestamp - timedelta(seconds=1),
+    )
+    excluded, excluded_total = await repository.list(
+        project_id='workspace-1',
+        offset=0,
+        limit=10,
+        created_from=timestamp + timedelta(seconds=1),
+    )
+
+    assert listed == [prepared]
+    assert total == 1
+    assert excluded == []
+    assert excluded_total == 0
+
     queued = replace(
         prepared,
         status='queued',
@@ -73,7 +94,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
     )
     assert started is True
     child = ActivityRunDocument(
-        id='activity-run-1', workspace_id='workspace-1', activity_id=activity.id,
+        id='activity-run-1', project_id='workspace-1', activity_id=activity.id,
         input='Implement.', status='in_progress', state='awaiting_snapshot',
         next_action='collect_snapshot', iteration=1, token_revision=0,
         continuation_token='token-1', activity_snapshot={'flow': 'direct'},
@@ -94,7 +115,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         activity_run=child,
     )
     fetched = await repository.get(
-        workspace_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
+        project_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
     )
 
     assert persisted is True
@@ -126,7 +147,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         activity_run=successor,
     )
     fetched_successor = await repository.get(
-        workspace_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
+        project_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
     )
 
     assert transitioned is True
@@ -139,7 +160,7 @@ def _pipeline_entry(pipeline: PipelineDocument, timestamp: datetime) -> object:
     from src.app.models.pipeline import PipelineChangelogEntry
 
     return PipelineChangelogEntry(
-        id='pipeline-entry-1', pipeline_id=pipeline.id, workspace_id=pipeline.workspace_id,
+        id='pipeline-entry-1', pipeline_id=pipeline.id,
         change_type='created', actor_id='user-1', changed_at=timestamp, diff=None,
         content={'id': pipeline.id},
     )
@@ -149,7 +170,7 @@ def _activity_entry(activity: ActivityDocument, timestamp: datetime) -> Activity
     """Build the changelog entry required by generated Activity persistence."""
 
     return ActivityChangelogEntry(
-        id='activity-entry-1', activity_id=activity.id, workspace_id=activity.workspace_id,
+        id='activity-entry-1', activity_id=activity.id,
         change_type='created', actor_id='user-1', changed_at=timestamp, diff=None,
         content={'id': activity.id},
     )

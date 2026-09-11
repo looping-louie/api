@@ -15,6 +15,17 @@ from src.app.models.pipeline_run import (
 class PipelineRunRepository(Protocol):
     """Store pipeline-run state and selected child activity runs atomically."""
 
+    async def list(
+        self,
+        *,
+        project_id: str,
+        offset: int,
+        limit: int,
+        created_from: datetime | None,
+    ) -> tuple[list[PipelineRunDocument], int]:
+        """Return one filtered Project page and its total."""
+        raise NotImplementedError
+
     async def create(
         self,
         *,
@@ -27,7 +38,7 @@ class PipelineRunRepository(Protocol):
     async def get(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> PipelineRunDocument | None:
@@ -47,7 +58,7 @@ class PipelineRunRepository(Protocol):
     async def list_claimable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         claimed_before: datetime,
     ) -> list[PipelineRunDocument]:
@@ -90,7 +101,7 @@ class PipelineRunRepository(Protocol):
     async def list_events(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         pipeline_id: str,
         run_id: str,
     ) -> list[PipelineRunEventDocument]:

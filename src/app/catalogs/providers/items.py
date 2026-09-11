@@ -1,7 +1,7 @@
 """Curated model-provider catalog.
 
 This module is the single source of truth for provider identities and their
-static product metadata. Workspace credentials and enablement state remain
+static product metadata. Project credentials and enablement state remain
 outside the catalog.
 """
 
@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+
+from src.app.catalogs.models.types import ProviderModelOffering
 
 
 class ProviderId(StrEnum):
@@ -32,6 +34,10 @@ class ProviderCatalogEntry:
     requires_api_key: bool
     default_base_url: str | None
     model_catalog_note: str | None = None
+    offerings: tuple[ProviderModelOffering, ...] = ()
+
+
+from .offerings import PROVIDER_OFFERINGS
 
 
 PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
@@ -45,6 +51,7 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/anthropic.jpeg",
         requires_api_key=True,
         default_base_url="https://api.anthropic.com/v1",
+        offerings=PROVIDER_OFFERINGS[ProviderId.ANTHROPIC],
     ),
     ProviderCatalogEntry(
         id=ProviderId.NVIDIA,
@@ -55,6 +62,7 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/nvidia.jpeg",
         requires_api_key=True,
         default_base_url="https://integrate.api.nvidia.com/v1",
+        offerings=PROVIDER_OFFERINGS[ProviderId.NVIDIA],
     ),
     ProviderCatalogEntry(
         id=ProviderId.OLLAMA,
@@ -81,6 +89,7 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/openai.jpeg",
         requires_api_key=True,
         default_base_url="https://api.openai.com/v1",
+        offerings=PROVIDER_OFFERINGS[ProviderId.OPENAI],
     ),
     ProviderCatalogEntry(
         id=ProviderId.TOGETHER,
@@ -91,6 +100,7 @@ PROVIDER_CATALOG: tuple[ProviderCatalogEntry, ...] = (
         logo_url="/images/providers/together.jpeg",
         requires_api_key=True,
         default_base_url="https://api.together.xyz/v1",
+        offerings=PROVIDER_OFFERINGS[ProviderId.TOGETHER],
     ),
 )
 

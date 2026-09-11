@@ -80,6 +80,7 @@ from src.app.services.shared.validation import (
     ResourceVersionConflictError,
 )
 from src.app.services.skills import SkillValidationError
+from src.app.services.users import UserNotFoundError
 
 from .domain_error_details import (
     _duplicate_resource_details,
@@ -94,11 +95,12 @@ from .domain_error_details import (
     _unknown_provider_details,
     _validation_details,
     _version_conflict_details,
-    _workspace_selection_details,
+    _project_selection_details,
 )
 from .error_definition import ErrorDefinition
 from .pipeline_error_details import (
     pipeline_details,
+    pipeline_run_unavailable_details,
     unsupported_gate_details,
     unsupported_step_details,
 )
@@ -106,6 +108,10 @@ from .domain_error_details import _linked_service_not_found_details
 
 
 ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
+    UserNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='user_not_found',
+    ),
     TenantValidationError: ErrorDefinition(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         code="tenant_validation_error",
@@ -113,19 +119,19 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     ),
     TenantNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
-        code="workspace_not_found",
-        public_message="No accessible workspace was found.",
+        code="project_not_found",
+        public_message="No accessible Project was found.",
     ),
     TenantAccessDeniedError: ErrorDefinition(
         status_code=status.HTTP_403_FORBIDDEN,
-        code="workspace_access_denied",
-        public_message="You do not have access to the requested workspace.",
+        code="project_access_denied",
+        public_message="You do not have access to the requested Project.",
     ),
     TenantSelectionRequiredError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
-        code="workspace_selection_required",
-        public_message="A workspace must be selected for this request.",
-        details_builder=_workspace_selection_details,
+        code="project_selection_required",
+        public_message="A Project must be selected for this request.",
+        details_builder=_project_selection_details,
     ),
     InvalidDefinitionTypeError: ErrorDefinition(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -203,6 +209,7 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     PipelineRunUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='pipeline_run_unavailable',
+        details_builder=pipeline_run_unavailable_details,
     ),
     WorkerNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,

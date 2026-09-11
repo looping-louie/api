@@ -58,7 +58,7 @@ class ExecutionInstruction:
 class ExecutionInstructionLibrary:
     """Immutable workspace snapshot used throughout one execution."""
 
-    workspace_id: str
+    project_id: str
     skills: Mapping[str, ExecutionInstruction]
     personas: Mapping[str, ExecutionInstruction]
     skill_aliases: Mapping[str, str]
@@ -83,7 +83,7 @@ class ExecutionInstructionLibrary:
 
         return {
             "snapshot_version": 1,
-            "workspace_id": self.workspace_id,
+            "project_id": self.project_id,
             "instructions": instructions,
         }
 
@@ -121,6 +121,22 @@ class ExecutionInstructionLibrary:
             self.skills[self.normalize_skill_id(instruction_id)].content
             for instruction_id in instruction_ids
         ]
+
+    def agent_snapshot(self, persona_id: str) -> dict[str, object]:
+        """Serialize one Persona and its ordered Skills for a frozen run."""
+
+        runtime_id = self.normalize_persona_id(persona_id)
+        persona = self.personas[runtime_id]
+        return {
+            "snapshot_version": 1,
+            "persona": self._snapshot_entry(persona),
+            "skills": [
+                self._snapshot_entry(
+                    self.skills[self.normalize_skill_id(skill_id)]
+                )
+                for skill_id in persona.skill_ids
+            ],
+        }
 
     @staticmethod
     def _snapshot_entry(
@@ -160,6 +176,7 @@ class ExecutionInstructionLibrary:
 
         return runtime_id
 
+
 class ExecutionInstructionLibraryService:
     """Loads the selectable instruction library from SQL per execution."""
 
@@ -169,8 +186,12 @@ class ExecutionInstructionLibraryService:
         repository: DefinitionRepository,
         persona_skill_repository: PersonaSkillRepository,
         tenant_service: TenantService,
+        persona_repository: DefinitionRepository | None = None,
     ) -> None:
+        """Store User instruction repositories and Project resolution."""
+
         self._repository = repository
+        self._persona_repository = persona_repository or repository
         self._persona_skill_repository = persona_skill_repository
         self._tenant_service = tenant_service
 
@@ -178,28 +199,30 @@ class ExecutionInstructionLibraryService:
         self,
         *,
         user_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ExecutionInstructionLibrary:
-        """Load a fresh immutable snapshot for the resolved workspace."""
+        """Load User instructions for one resolved execution Project."""
 
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
-        workspace_id = tenant.workspace_id
+        project_id = tenant.project_id
         skills = await self._load_type(
-            workspace_id=workspace_id,
+            repository=self._repository,
+            project_id=user_id,
             instruction_type="skill",
         )
         personas = await self._load_type(
-            workspace_id=workspace_id,
+            repository=self._persona_repository,
+            project_id=user_id,
             instruction_type="persona",
         )
         skill_aliases = self._build_aliases(skills)
         persona_aliases = self._build_aliases(personas)
 
         return ExecutionInstructionLibrary(
-            workspace_id=workspace_id,
+            project_id=project_id,
             skills=MappingProxyType(
                 {
                     instruction.id: instruction
@@ -219,11 +242,12 @@ class ExecutionInstructionLibraryService:
     async def _load_type(
         self,
         *,
-        workspace_id: str,
+        repository: DefinitionRepository,
+        project_id: str,
         instruction_type: DefinitionType,
     ) -> tuple[ExecutionInstruction, ...]:
-        summaries = await self._repository.list_available_for_workspace(
-            workspace_id=workspace_id,
+        summaries = await repository.list_available_for_workspace(
+            project_id=project_id,
             instruction_type=instruction_type,
         )
         documents: list[AvailableDefinitionDocument] = []
@@ -233,8 +257,8 @@ class ExecutionInstructionLibraryService:
                 continue
 
             document = await (
-                self._repository.get_available_for_workspace(
-                    workspace_id=workspace_id,
+                repository.get_available_for_workspace(
+                    project_id=project_id,
                     instruction_type=instruction_type,
                     instruction_id=summary.id,
                 )

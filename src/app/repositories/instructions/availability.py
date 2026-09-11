@@ -1,4 +1,4 @@
-"""Workspace availability operations for instruction persistence."""
+"""Project availability operations for instruction persistence."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ class InstructionAvailabilityMixin:
     async def list_available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         search: str | None = None,
         include_deprecated: bool = False,
@@ -47,17 +47,17 @@ class InstructionAvailabilityMixin:
         if limit is not None and limit < 1:
             raise ValueError("limit must be positive when supplied.")
 
-        from_where = """
+        from_where = f"""
             FROM instructions AS i
-            LEFT JOIN workspace_instruction_settings AS settings
+            LEFT JOIN {self._settings_table} AS settings
                 ON settings.instruction_id = i.id
-               AND settings.workspace_id = ?
+               AND settings.{self._settings_owner_column} = ?
             WHERE i.instruction_type = ?
               AND (
                     i.origin = 'builtin'
                     OR (
                         i.origin = 'custom'
-                        AND i.owner_workspace_id = ?
+                        AND i.{self._owner_column} = ?
                     )
                     OR (
                         i.origin = 'marketplace'
@@ -66,9 +66,9 @@ class InstructionAvailabilityMixin:
               )
         """
         parameters: list[object] = [
-            workspace_id,
+            project_id,
             instruction_type,
-            workspace_id,
+            project_id,
         ]
 
         if not include_deprecated:
@@ -116,7 +116,7 @@ class InstructionAvailabilityMixin:
                 i.id,
                 i.instruction_type,
                 i.origin,
-                i.owner_workspace_id,
+                i.owner_project_id,
                 i.source_instruction_id,
                 i.name,
                 i.description,
@@ -168,7 +168,7 @@ class InstructionAvailabilityMixin:
             items=tuple(
                 to_available_summary(
                     row,
-                    workspace_id=workspace_id,
+                    project_id=project_id,
                 )
                 for row in rows
             ),
@@ -219,7 +219,7 @@ class InstructionAvailabilityMixin:
     async def get_available_for_workspace(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
         include_deprecated: bool = False,
@@ -236,7 +236,7 @@ class InstructionAvailabilityMixin:
                 i.id,
                 i.instruction_type,
                 i.origin,
-                i.owner_workspace_id,
+            i.{self._owner_column} AS owner_project_id,
                 i.source_instruction_id,
                 i.name,
                 i.description,
@@ -254,16 +254,16 @@ class InstructionAvailabilityMixin:
                 i.created_at,
                 i.updated_at
             FROM instructions AS i
-            LEFT JOIN workspace_instruction_settings AS settings
+                LEFT JOIN {self._settings_table} AS settings
                 ON settings.instruction_id = i.id
-               AND settings.workspace_id = ?
+                    AND settings.{self._settings_owner_column} = ?
             WHERE i.id = ?
               AND i.instruction_type = ?
               AND (
                     i.origin = 'builtin'
                     OR (
                         i.origin = 'custom'
-                        AND i.owner_workspace_id = ?
+                        AND i.{self._owner_column} = ?
                     )
                     OR (
                         i.origin = 'marketplace'
@@ -278,10 +278,10 @@ class InstructionAvailabilityMixin:
             cursor = await connection.execute(
                 query,
                 (
-                    workspace_id,
+                    project_id,
                     instruction_id,
                     instruction_type,
-                    workspace_id,
+                    project_id,
                 ),
             )
 
@@ -295,7 +295,7 @@ class InstructionAvailabilityMixin:
 
         return to_available_document(
             row,
-            workspace_id=workspace_id,
+            project_id=project_id,
         )
 
     def _connect(self) -> Any:

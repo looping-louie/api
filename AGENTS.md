@@ -116,8 +116,9 @@ Use concise, informative documentation in English.
   in prose.
 - doc/backlog operates kind of like a document-based project manager; so, its
   files SHOULD NOT be edited once created, unless strictly necessary.
-- doc/architecture.md and doc/API.md are extremely important files which
-  describe the whole project. So, they MUST be kept continuously up-to-date.
+- doc/architecture.md and doc/public-api/overview.md are extremely important
+  files which describe the whole project. So, they MUST be kept continuously
+  up-to-date.
   Whenever a change is made to some file that might impact on its content, it
   should be updated.
 
@@ -136,7 +137,7 @@ Every behavior change MUST include or update corresponding tests.
   suite pass.
 - MUST NOT make tests depend on execution order, network access, or shared
   mutable state unless the test explicitly covers such an integration.
-- Test code follows the same 300-line and documentation rules as production
+- Test code follows the same documentation rules as production
   code.
 
 ## Development Workflow

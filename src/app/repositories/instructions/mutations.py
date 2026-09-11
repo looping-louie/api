@@ -31,12 +31,12 @@ class InstructionMutationMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 await connection.execute(
-                    """
+                    f"""
                     INSERT INTO instructions (
                         id,
                         instruction_type,
                         origin,
-                        owner_workspace_id,
+                        {self._owner_column},
                         source_instruction_id,
                         name,
                         name_key,
@@ -59,7 +59,7 @@ class InstructionMutationMixin:
                     (
                         document.id,
                         document.instruction_type,
-                        document.workspace_id,
+                        document.project_id,
                         document.source_instruction_id,
                         document.name,
                         normalize_name(document.name),
@@ -94,7 +94,7 @@ class InstructionMutationMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 cursor = await connection.execute(
-                    """
+                    f"""
                     UPDATE instructions
                     SET
                         name = ?,
@@ -106,7 +106,7 @@ class InstructionMutationMixin:
                         updated_at = ?
                     WHERE id = ?
                       AND origin = 'custom'
-                      AND owner_workspace_id = ?
+                                            AND {self._owner_column} = ?
                       AND instruction_type = ?
                       AND version = ?
                     """,
@@ -119,7 +119,7 @@ class InstructionMutationMixin:
                         document.version,
                         serialize_datetime(document.updated_at),
                         document.id,
-                        document.workspace_id,
+                        document.project_id,
                         document.instruction_type,
                         expected_version,
                     ),
@@ -136,7 +136,7 @@ class InstructionMutationMixin:
 
                 stored = await self._get_owned_custom_with_connection(
                     connection=connection,
-                    workspace_id=document.workspace_id,
+                    project_id=document.project_id,
                     instruction_type=document.instruction_type,
                     instruction_id=document.id,
                 )
@@ -150,7 +150,7 @@ class InstructionMutationMixin:
     async def delete(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> bool:
@@ -160,16 +160,16 @@ class InstructionMutationMixin:
             try:
                 await connection.execute("BEGIN IMMEDIATE")
                 cursor = await connection.execute(
-                    """
+                    f"""
                     DELETE FROM instructions
                     WHERE id = ?
                       AND origin = 'custom'
-                      AND owner_workspace_id = ?
+                      AND {self._owner_column} = ?
                       AND instruction_type = ?
                     """,
                     (
                         instruction_id,
-                        workspace_id,
+                        project_id,
                         instruction_type,
                     ),
                 )
@@ -194,7 +194,7 @@ class InstructionMutationMixin:
         self,
         *,
         connection: aiosqlite.Connection,
-        workspace_id: str,
+        project_id: str,
         instruction_type: DefinitionType,
         instruction_id: str,
     ) -> DefinitionDocument | None:

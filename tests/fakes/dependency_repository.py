@@ -16,14 +16,14 @@ class FakeDependencyRepository:
     def add_usage(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
         usage: DependencyUsage,
     ) -> None:
         """Register one dependency usage."""
 
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
         )
         self._usages.setdefault(key, []).append(usage)
@@ -31,11 +31,11 @@ class FakeDependencyRepository:
     async def find_usages(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> Sequence[DependencyUsage]:
         key = self._build_key(
-            workspace_id=workspace_id,
+            project_id=project_id,
             target=target,
         )
 
@@ -44,11 +44,11 @@ class FakeDependencyRepository:
     @staticmethod
     def _build_key(
         *,
-        workspace_id: str,
+        project_id: str,
         target: ResourceReference,
     ) -> tuple[str, str, str]:
         return (
-            workspace_id,
+            project_id,
             target.resource_type.casefold(),
             target.resource_id,
         )

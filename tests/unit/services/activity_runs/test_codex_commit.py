@@ -1,0 +1,297 @@
+"""Tests for Codex commit-message handoff through Activity checkpoints."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+
+from src.app.controllers.activity_runs.utils import activity_run_response
+from src.app.models.activity import ActivityDocument
+from src.app.models.activity_run import ActivityRunDocument
+from src.app.services.activity_runs.harness_result import harness_runtime_artifacts
+from src.app.services.activity_runs.service import ActivityRunService
+from src.app.services.activity_runs.types import ActivityRunValidationError
+from src.app.services.shared.tenant import TenantService
+from tests.contract_fixtures import load_harness_observation
+from tests.unit.services.activity_runs.test_harness_routing import (
+    _ActivityRunRepository,
+    _ActivityService,
+)
+
+
+def test_harness_normalizer_rejects_an_unknown_adapter() -> None:
+    """The common normalizer fails explicitly for an unsupported Harness."""
+
+    with pytest.raises(RuntimeError, match='unsupported Harness'):
+        harness_runtime_artifacts(
+            activity_snapshot={
+                'harness': {'kind': 'future_cli', 'version': 'v1', 'config': {}},
+            },
+            result={'completed': True},
+            require_commit_message=False,
+        )
+
+
+@pytest.mark.parametrize(
+    ('fixture_name', 'require_commit_message'),
+    [
+        ('codex_cli_v1_completed.json', True),
+        ('codex_cli_v1_failed.json', False),
+    ],
+)
+def test_codex_contract_fixtures_normalize_without_loss(
+    fixture_name: str,
+    require_commit_message: bool,
+) -> None:
+    """Published v1 observations preserve every producer contract field."""
+
+    observation = load_harness_observation(fixture_name)
+
+    assert harness_runtime_artifacts(
+        activity_snapshot={
+            'requested_model': 'gpt-5-codex',
+            'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        },
+        result=observation,
+        require_commit_message=require_commit_message,
+    ) == observation
+
+
+@pytest.mark.asyncio
+async def test_completed_codex_turn_publishes_commit_message(
+    tenant_service: TenantService,
+) -> None:
+    """A successful Codex result carries its message into commit authorization."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='allow',
+    )
+
+    submitted = {
+        **_harness_result(),
+        'commit_message': 'feat: implement requested change',
+    }
+    result = await service.continue_run(
+        user_id='user-1', activity_id=activity.id, run_id='run-1',
+        pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+        continuation_token='token-1', idempotency_key='harness-1',
+        action='run_harness',
+        result=submitted,
+    )
+
+    assert result.next_action == 'commit_if_allowed'
+    expected_artifacts = {
+        key: value for key, value in submitted.items() if key != 'action'
+    }
+    assert result.execution_context['runtime_artifacts'] == expected_artifacts
+    assert activity_run_response(repository.document).payload == expected_artifacts
+
+    committed = await service.continue_run(
+        user_id='user-1', activity_id=activity.id, run_id='run-1',
+        pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+        continuation_token='token-2', idempotency_key='commit-1',
+        action='commit_if_allowed',
+        result={
+            'action': 'commit_if_allowed',
+            'committed': True,
+            'commit_sha': 'final-sha',
+            'commit_message': 'feat: implement requested change',
+        },
+    )
+
+    assert committed.execution_context['runtime_artifacts'] == {
+        **expected_artifacts,
+        'committed': True,
+        'final_commit_sha': 'final-sha',
+    }
+
+
+@pytest.mark.asyncio
+async def test_completed_codex_turn_requires_commit_message_when_allowed(
+    tenant_service: TenantService,
+) -> None:
+    """An allowed Codex run cannot advance to commit without a proposed message."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='allow',
+    )
+
+    with pytest.raises(
+        ActivityRunValidationError,
+        match='result.commit_message.*must not be empty',
+    ):
+        await service.continue_run(
+            user_id='user-1', activity_id=activity.id, run_id='run-1',
+            pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+            continuation_token='token-1', idempotency_key='harness-1',
+            action='run_harness',
+            result=_harness_result(),
+        )
+
+    assert repository.transition_arguments is None
+
+
+@pytest.mark.asyncio
+async def test_completed_codex_turn_rejects_a_different_requested_model(
+    tenant_service: TenantService,
+) -> None:
+    """A worker cannot replace the model frozen by the PipelineRun."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='allow',
+    )
+
+    with pytest.raises(
+        ActivityRunValidationError,
+        match='result.requested_model.*must match the frozen requested model',
+    ):
+        await service.continue_run(
+            user_id='user-1', activity_id=activity.id, run_id='run-1',
+            pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+            continuation_token='token-1', idempotency_key='harness-1',
+            action='run_harness',
+            result={
+                **_harness_result(),
+                'commit_message': 'feat: implement requested change',
+                'requested_model': 'worker-local-model',
+                'actual_model': 'worker-local-model',
+            },
+        )
+
+    assert repository.transition_arguments is None
+
+
+@pytest.mark.asyncio
+async def test_codex_turn_rejects_a_different_reported_harness(
+    tenant_service: TenantService,
+) -> None:
+    """A worker cannot relabel an observation with another Harness."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='forbid',
+    )
+
+    with pytest.raises(
+        ActivityRunValidationError,
+        match='result.harness.*must match the frozen Harness',
+    ):
+        await service.continue_run(
+            user_id='user-1', activity_id=activity.id, run_id='run-1',
+            pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+            continuation_token='token-1', idempotency_key='harness-1',
+            action='run_harness',
+            result={
+                **_harness_result(),
+                'harness': {'kind': 'other', 'version': 'v1', 'config': {}},
+            },
+        )
+
+    assert repository.transition_arguments is None
+
+
+@pytest.mark.asyncio
+async def test_forbidden_codex_commit_does_not_require_message(
+    tenant_service: TenantService,
+) -> None:
+    """A commit-forbidden Codex run completes without a commit handoff."""
+
+    service, _, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='forbid',
+    )
+
+    result = await service.continue_run(
+        user_id='user-1', activity_id=activity.id, run_id='run-1',
+        pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+        continuation_token='token-1', idempotency_key='harness-1',
+        action='run_harness',
+        result=_harness_result(),
+    )
+
+    assert result.status == 'completed'
+    assert result.next_action == 'none'
+    assert result.execution_context['runtime_artifacts']['completed'] is True
+    assert result.execution_context['runtime_artifacts']['final_response'] == 'Done.'
+    assert result.execution_context['runtime_artifacts']['materialized_skills'] == [{
+        'id': 'skill-api', 'name': 'api-compatibility', 'version': 3,
+    }]
+
+
+@pytest.mark.asyncio
+async def test_failed_codex_turn_exposes_partial_observations(
+    tenant_service: TenantService,
+) -> None:
+    """A failed Harness result remains available through the ActivityRun GET view."""
+
+    service, repository, activity = _service(
+        tenant_service=tenant_service,
+        commit_mode='allow',
+    )
+    partial = {
+        'action': 'run_harness',
+        **load_harness_observation('codex_cli_v1_failed.json'),
+    }
+
+    failed = await service.continue_run(
+        user_id='user-1', activity_id=activity.id, run_id='run-1',
+        pipeline_run_id='pipeline-run-1', lease_token='lease-1',
+        continuation_token='token-1', idempotency_key='harness-1',
+        action='run_harness', result=partial,
+    )
+
+    assert failed.status == 'failed'
+    payload = activity_run_response(repository.document).payload
+    assert payload == {key: value for key, value in partial.items() if key != 'action'}
+
+
+def _service(
+    *,
+    tenant_service: TenantService,
+    commit_mode: str,
+) -> tuple[ActivityRunService, _ActivityRunRepository, ActivityDocument]:
+    """Build one pending Codex Activity checkpoint with a commit policy."""
+
+    now = datetime(2026, 8, 31, tzinfo=UTC)
+    activity = ActivityDocument(
+        id='activity-1', name='Implement', description='Implement the task.',
+        status='active', type='direct_loop', config={},
+        created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+    )
+    repository = _ActivityRunRepository(ActivityRunDocument(
+        id='run-1', project_id='workspace-1', activity_id=activity.id,
+        input='Implement.', status='in_progress', state='awaiting_harness',
+        next_action='run_harness', iteration=1, token_revision=1,
+        continuation_token='token-1',
+        activity_snapshot={
+            'flow': 'direct',
+            'commit_mode': commit_mode,
+            'requested_model': 'gpt-5-codex',
+            'harness': {'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+        },
+        execution_context={}, created_at=now, created_by='user-1', updated_at=now,
+    ))
+    return (
+        ActivityRunService(
+            repository=repository,
+            activity_service=_ActivityService(activity),
+            tenant_service=tenant_service,
+            id_factory=lambda: 'unused',
+            clock=lambda: now,
+            token_factory=lambda: 'token-2',
+        ),
+        repository,
+        activity,
+    )
+
+
+def _harness_result() -> dict[str, object]:
+    """Build one complete normalized Codex observation."""
+
+    observation = load_harness_observation('codex_cli_v1_completed.json')
+    observation.pop('commit_message')
+    return {'action': 'run_harness', **observation}

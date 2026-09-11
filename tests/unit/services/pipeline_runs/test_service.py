@@ -10,7 +10,6 @@ import pytest
 
 from src.app.models.activity import ActivityDocument
 from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.execution import ModelTarget
 from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
@@ -19,7 +18,6 @@ from src.app.models.pipeline import (
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
-from src.app.models.workspace import WorkspaceDefaults
 from src.app.services.pipeline_runs.etag import pipeline_run_etag
 from src.app.services.pipeline_runs.service import PipelineRunService
 from src.app.services.pipeline_runs.types import (
@@ -56,14 +54,14 @@ class InMemoryPipelineRunRepository:
         return document
 
     async def get(
-        self, *, workspace_id: str, pipeline_id: str, run_id: str,
+        self, *, project_id: str, pipeline_id: str, run_id: str,
     ) -> PipelineRunDocument | None:
         """Return the stored run only when its ownership matches."""
 
         if self.document is None:
             return None
-        if (workspace_id, pipeline_id, run_id) != (
-            self.document.workspace_id, self.document.pipeline_id, self.document.id,
+        if (project_id, pipeline_id, run_id) != (
+            self.document.project_id, self.document.pipeline_id, self.document.id,
         ):
             return None
         return replace(self.document, events=())
@@ -90,12 +88,12 @@ class InMemoryPipelineRunRepository:
         return True
 
     async def list_events(
-        self, *, workspace_id: str, pipeline_id: str, run_id: str,
+        self, *, project_id: str, pipeline_id: str, run_id: str,
     ) -> list[object]:
         """Return immutable events under the run's verified ownership."""
 
-        if self.document is None or (workspace_id, pipeline_id, run_id) != (
-            self.document.workspace_id,
+        if self.document is None or (project_id, pipeline_id, run_id) != (
+            self.document.project_id,
             self.document.pipeline_id,
             self.document.id,
         ):
@@ -103,12 +101,12 @@ class InMemoryPipelineRunRepository:
         return list(self.events)
 
     async def list_claimable(
-        self, *, workspace_id: str, pipeline_id: str, claimed_before: datetime,
+        self, *, project_id: str, pipeline_id: str, claimed_before: datetime,
     ) -> list[PipelineRunDocument]:
         """Return the stored queued or expired run beneath one Pipeline."""
 
-        if self.document is None or (self.document.workspace_id, self.document.pipeline_id) != (
-            workspace_id,
+        if self.document is None or (self.document.project_id, self.document.pipeline_id) != (
+            project_id,
             pipeline_id,
         ):
             return []
@@ -206,26 +204,20 @@ class InMemoryWorkerService:
 
         self.active = active
         self.supports_harness = supports_harness
-        self.calls: list[tuple[str, str]] = []
-        self.harness_calls: list[tuple[str, str, dict[str, object]]] = []
+        self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-    async def require_active(self, *, workspace_id: str, worker_id: str) -> None:
-        """Record one admission check and reject inactive worker identities."""
-
-        self.calls.append((workspace_id, worker_id))
-        if not self.active:
-            raise WorkerUnavailableError(worker_id)
-
-    async def require_harness(
+    async def require_capable(
         self,
         *,
-        workspace_id: str,
+        project_id: str,
         worker_id: str,
         harness: dict[str, object],
     ) -> None:
-        """Record one capability admission check and reject mismatches."""
+        """Record one combined liveness and capability admission check."""
 
-        self.harness_calls.append((workspace_id, worker_id, harness))
+        self.calls.append((project_id, worker_id, harness))
+        if not self.active:
+            raise WorkerUnavailableError(worker_id)
         if not self.supports_harness:
             raise WorkerHarnessUnavailableError(worker_id)
 
@@ -239,12 +231,12 @@ class InMemoryActivityRunRepository:
         self._run_repository = run_repository
 
     async def get(
-        self, *, workspace_id: str, activity_id: str, run_id: str,
+        self, *, project_id: str, activity_id: str, run_id: str,
     ) -> ActivityRunDocument | None:
         """Return the requested child when its activity ownership matches."""
 
         child = self._run_repository.children.get(run_id)
-        if child is None or (child.workspace_id, child.activity_id) != (workspace_id, activity_id):
+        if child is None or (child.project_id, child.activity_id) != (project_id, activity_id):
             return None
         return child
 
@@ -263,20 +255,6 @@ class PipelineDetailsService:
         return self._details
 
 
-class StaticWorkspaceService:
-    """Return fixed workspace execution defaults for scheduler tests."""
-
-    def __init__(self, defaults: WorkspaceDefaults) -> None:
-        """Store the defaults returned during PipelineRun creation."""
-
-        self._defaults = defaults
-
-    async def get_defaults(self, **_: object) -> WorkspaceDefaults:
-        """Return the static workspace-level execution candidates."""
-
-        return self._defaults
-
-
 def activity(
     activity_id: str,
     activity_type: str = 'direct_loop',
@@ -285,157 +263,11 @@ def activity(
 
     now = datetime(2026, 8, 14, tzinfo=UTC)
     return ActivityDocument(
-        id=activity_id, workspace_id='workspace-1', name=activity_id,
+        id=activity_id, name=activity_id,
         description='Complete one pipeline step.', status='active', type=activity_type,
         config={'stop_conditions': {'max_iterations': 1}, 'agents': [], 'output_contract': {'type': 'text', 'description': 'Result.'}},
         created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
     )
-
-
-@pytest.mark.asyncio
-async def test_create_freezes_agent_activity_and_pipeline_execution_defaults(
-    tenant_service: TenantService,
-) -> None:
-    """Narrower agent and Activity values override Pipeline candidates."""
-
-    now = datetime(2026, 8, 25, tzinfo=UTC)
-    agent_target = ModelTarget('service-agent', 'model-agent')
-    activity_target = ModelTarget('service-activity', 'model-activity')
-    pipeline_target = ModelTarget('service-pipeline', 'model-pipeline')
-    first = replace(
-        activity('activity-1'),
-        model_target=activity_target,
-        harness=PipelineHarness(kind='codex_cli'),
-        config={
-            **activity('activity-1').config,
-            'agents': [
-                {
-                    'model_target': {
-                        'linked_service_id': agent_target.linked_service_id,
-                        'model_id': agent_target.model_id,
-                    },
-                    'persona_id': 'persona-1',
-                    'role': 'generator',
-                },
-            ],
-        },
-    )
-    second = replace(
-        activity('activity-2'),
-        config={
-            **activity('activity-2').config,
-            'agents': [
-                {
-                    'persona_id': 'persona-2',
-                    'role': 'generator',
-                },
-            ],
-        },
-    )
-    details = PipelineDetails(
-        document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
-            description='Run configured steps.', status='active',
-            steps=(
-                PipelineActivityStep(activity_id=first.id),
-                PipelineActivityStep(activity_id=second.id),
-            ),
-            model_target=pipeline_target,
-            harness=PipelineHarness(kind='louie'),
-            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
-        ),
-        activities=(first, second),
-    )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1',
-        model_target=ModelTarget('service-workspace', 'model-workspace'),
-        harness=PipelineHarness(kind='codex_cli'),
-        updated_at=now,
-    )
-    runs = InMemoryPipelineRunRepository()
-    service = PipelineRunService(
-        repository=runs,
-        activity_run_repository=InMemoryActivityRunRepository(runs),
-        pipeline_service=PipelineDetailsService(details),
-        tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
-        id_factory=lambda: 'run-1',
-        clock=IncrementingClock(),
-    )
-
-    created, _ = await service.create(
-        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
-    )
-
-    first_agent = created.steps[0].activity_snapshot['agents'][0]
-    second_agent = created.steps[1].activity_snapshot['agents'][0]
-    assert created.pipeline_snapshot['harness']['kind'] == 'louie'
-    assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
-    assert first_agent['model_target'] == {
-        'linked_service_id': 'service-agent',
-        'model_id': 'model-agent',
-    }
-    assert second_agent['model_target'] == {
-        'linked_service_id': 'service-pipeline',
-        'model_id': 'model-pipeline',
-    }
-
-
-@pytest.mark.asyncio
-async def test_create_freezes_workspace_execution_defaults_when_unset(
-    tenant_service: TenantService,
-) -> None:
-    """Workspace candidates supply otherwise unset Pipeline and Activity values."""
-
-    now = datetime(2026, 8, 25, tzinfo=UTC)
-    configured_activity = replace(
-        activity('activity-1'),
-        config={
-            **activity('activity-1').config,
-            'agents': [
-                {
-                    'persona_id': 'persona-1',
-                    'role': 'generator',
-                },
-            ],
-        },
-    )
-    details = PipelineDetails(
-        document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
-            description='Run configured steps.', status='active',
-            steps=(PipelineActivityStep(activity_id=configured_activity.id),),
-            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
-        ),
-        activities=(configured_activity,),
-    )
-    defaults = WorkspaceDefaults(
-        workspace_id='workspace-1',
-        model_target=ModelTarget('service-workspace', 'model-workspace'),
-        harness=PipelineHarness(kind='codex_cli'),
-        updated_at=now,
-    )
-    runs = InMemoryPipelineRunRepository()
-    service = PipelineRunService(
-        repository=runs,
-        activity_run_repository=InMemoryActivityRunRepository(runs),
-        pipeline_service=PipelineDetailsService(details),
-        tenant_service=tenant_service,
-        workspace_service=StaticWorkspaceService(defaults),  # type: ignore[arg-type]
-        id_factory=lambda: 'run-1',
-        clock=IncrementingClock(),
-    )
-
-    created, _ = await service.create(
-        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
-    )
-
-    assert created.pipeline_snapshot['harness']['kind'] == 'codex_cli'
-    assert created.steps[0].activity_snapshot['harness']['kind'] == 'codex_cli'
-    assert created.steps[0].activity_snapshot['agents'][0]['model_target'] == {
-        'linked_service_id': 'service-workspace',
-        'model_id': 'model-workspace',
-    }
 
 
 @pytest.mark.asyncio
@@ -448,7 +280,7 @@ async def test_prepared_run_starts_before_runtime_claim(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -518,8 +350,7 @@ async def test_prepared_run_starts_before_runtime_claim(
         'config': {},
     }
     assert lease_token == 'token'
-    assert workers.calls == [('workspace-1', 'worker-1')]
-    assert workers.harness_calls == [(
+    assert workers.calls == [(
         'workspace-1',
         'worker-1',
         {'kind': 'louie', 'version': 'v1', 'config': {}},
@@ -569,7 +400,7 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -609,7 +440,7 @@ async def test_active_claim_can_renew_its_lease_but_stale_claim_cannot(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run one step.', status='active',
             steps=(PipelineActivityStep(activity_id=first.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -660,7 +491,7 @@ async def test_completed_step_schedules_success_dependent_child(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Run two steps.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),
@@ -726,7 +557,7 @@ async def test_started_human_activity_creates_a_waiting_child_run(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Wait for approval.', status='active',
             steps=(PipelineActivityStep(activity_id=gate.id),),
             created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
@@ -791,7 +622,7 @@ async def test_rejected_human_activity_reruns_ancestors_before_retry(
     now = datetime(2026, 8, 14, tzinfo=UTC)
     details = PipelineDetails(
         document=PipelineDocument(
-            id='pipeline-1', workspace_id='workspace-1', name='Pipeline',
+            id='pipeline-1', name='Pipeline',
             description='Correct then approve.', status='active',
             steps=(
                 PipelineActivityStep(activity_id=first.id),

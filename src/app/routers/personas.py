@@ -11,7 +11,7 @@ from src.app.catalogs.persona_skills import (
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.controllers.persona import PersonaController
+from src.app.controllers.personas import PersonaController
 from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.persona import (
     PersonaCreateRequest,
@@ -62,7 +62,7 @@ async def list_personas(
         CatalogInstructionStatus | None,
         Query(
             alias="status",
-            description="Filter by workspace enablement state.",
+            description="Filter by user enablement state.",
         ),
     ] = None,
     category: Annotated[
@@ -90,7 +90,6 @@ async def list_personas(
 
     return await controller.list(
         user_id=context.user_id,
-        requested_workspace_id=context.requested_workspace_id,
         search=search,
         status=persona_status,
         categories=category or (),
@@ -117,7 +116,6 @@ async def get_persona(
     return await controller.describe(
         user_id=context.user_id,
         persona_id=persona_id,
-        requested_workspace_id=context.requested_workspace_id,
     )
 
 
@@ -132,12 +130,11 @@ async def create_persona(
     context: ContextDependency,
     controller: ControllerDependency,
 ) -> PersonaResponse:
-    """Create a persona in the selected workspace."""
+    """Create a persona owned by the authenticated user."""
 
     return await controller.create(
         user_id=context.user_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
     )
 
 
@@ -155,13 +152,12 @@ async def patch_persona(
         Path(min_length=1),
     ],
 ) -> PersonaResponse:
-    """Modify persona content or its workspace enabled state."""
+    """Modify persona content or its user enabled state."""
 
     return await controller.patch(
         user_id=context.user_id,
         persona_id=persona_id,
         payload=payload,
-        requested_workspace_id=context.requested_workspace_id,
     )
 
 
@@ -183,5 +179,4 @@ async def delete_persona(
     return await controller.delete(
         user_id=context.user_id,
         persona_id=persona_id,
-        requested_workspace_id=context.requested_workspace_id,
     )

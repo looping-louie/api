@@ -22,10 +22,20 @@ from src.app.services.execution_instructions import ExecutionInstructionLibraryS
 from src.app.services.activity_runs.generation import (
     ActivityRunGenerationService,
 )
+from src.app.services.activity_runs.harness_result import (
+    harness_runtime_artifacts,
+    with_cli_commit_result,
+)
+from src.app.services.activity_runs.harness_loop import (
+    advance_harness_loop,
+    start_harness_loop,
+)
 from src.app.services.models import ModelExecutionService
 from src.app.services.models.availability import ModelServiceError
 from src.app.services.shared.pagination import PAGE_SIZE
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
+from src.app.services.projects.service import ProjectService
 
 
 class ActivityRunService:
@@ -41,6 +51,8 @@ class ActivityRunService:
         clock: Callable[[], datetime],
         model_execution_service: ModelExecutionService | None = None,
         instruction_library_service: ExecutionInstructionLibraryService | None = None,
+        workspace_service: ProjectService | None = None,
+        user_service: UserService | None = None,
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
     ) -> None:
         """Store dependencies used to persist and generate activity runs."""
@@ -60,6 +72,9 @@ class ActivityRunService:
             and instruction_library_service is not None
             else None
         )
+        self._model_execution_service = model_execution_service
+        self._workspace_service = workspace_service
+        self._user_service = user_service
 
     async def create(
         self,
@@ -67,24 +82,27 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         input_text: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Persist a new run from an active Activity definition."""
 
         activity = await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
+        )
+        harness = await self._inherited_harness(
+            activity=activity,
+            user_id=user_id,
         )
         now = self._clock()
         return await self._repository.create(
             document=ActivityRunDocument(
                 id=self._id_factory(),
-                workspace_id=workspace.workspace_id,
+                project_id=workspace.project_id,
                 activity_id=activity.id,
                 input=self._require_text(input_text, 'input'),
                 status='in_progress',
@@ -93,7 +111,12 @@ class ActivityRunService:
                 iteration=1,
                 token_revision=0,
                 continuation_token=self._token_factory(),
-                activity_snapshot=self._snapshot(activity),
+                activity_snapshot=await self._snapshot(
+                    activity,
+                    project_id=workspace.project_id,
+                    user_id=user_id,
+                    harness=harness,
+                ),
                 execution_context={},
                 created_at=now,
                 created_by=self._require_text(user_id, 'user_id'),
@@ -107,16 +130,16 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         run_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Return one run after validating activity ownership."""
 
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         document = await self._repository.get(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             activity_id=activity_id,
             run_id=run_id,
         )
@@ -133,14 +156,13 @@ class ActivityRunService:
         user_id: str,
         activity_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[ActivityRunDocument], int]:
         """Return a page of runs for an active executable activity."""
 
         await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if offset < 0:
             raise ActivityRunValidationError(
@@ -149,10 +171,10 @@ class ActivityRunService:
             )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         documents, total = await self._repository.list(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             activity_id=activity_id,
             offset=offset,
             limit=PAGE_SIZE,
@@ -171,28 +193,27 @@ class ActivityRunService:
         idempotency_key: str,
         action: str,
         result: Mapping[str, object],
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> ActivityRunDocument:
         """Advance one validated runtime or human execution checkpoint."""
 
         await self._active_activity(
             user_id=user_id,
             activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         document = await self.get(
             user_id=user_id,
             activity_id=activity_id,
             run_id=run_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         workspace = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
         human_execution = document.activity_snapshot.get('executor') == 'human'
         if not human_execution and not await self._repository.has_active_pipeline_lease(
-            workspace_id=workspace.workspace_id,
+            project_id=workspace.project_id,
             activity_run_id=document.id,
             pipeline_run_id=pipeline_run_id,
             lease_token=lease_token,
@@ -203,7 +224,7 @@ class ActivityRunService:
             decision = str(result.get('decision'))
             return await self._transition(
                 document=document,
-                workspace_id=workspace.workspace_id,
+                project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id,
                 lease_token=lease_token,
                 continuation_token=continuation_token,
@@ -225,9 +246,14 @@ class ActivityRunService:
             context.pop('action', None)
             if isinstance(previous_review, Mapping):
                 context['review_result'] = dict(previous_review)
-            if self._uses_codex_cli(document.activity_snapshot):
+            if self._uses_cli_harness(document.activity_snapshot):
+                context = start_harness_loop(
+                    snapshot=document.activity_snapshot,
+                    context=context,
+                    iteration=document.iteration,
+                )
                 return await self._transition(
-                    document=document, workspace_id=workspace.workspace_id,
+                    document=document, project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                     continuation_token=continuation_token, idempotency_key=idempotency_key,
                     action=action, status='in_progress', state='awaiting_harness',
@@ -236,7 +262,7 @@ class ActivityRunService:
                 )
             if self._generation_service is None:
                 return await self._transition(
-                    document=document, workspace_id=workspace.workspace_id,
+                    document=document, project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                     continuation_token=continuation_token, idempotency_key=idempotency_key,
                     action=action, status='in_progress', state='awaiting_generation',
@@ -245,16 +271,15 @@ class ActivityRunService:
             try:
                 generated = await self._generation_service.generate_context(
                     loop_snapshot=document.activity_snapshot,
-                    workspace_id=workspace.workspace_id,
                     user_id=user_id,
-                    requested_workspace_id=requested_workspace_id,
+                    requested_project_id=requested_project_id,
                     input_text=document.input,
                     context=context,
                 )
             except ModelServiceError as error:
                 return await self._generation_failure_transition(
                     document=document,
-                    workspace_id=workspace.workspace_id,
+                    project_id=workspace.project_id,
                     pipeline_run_id=pipeline_run_id,
                     lease_token=lease_token,
                     continuation_token=continuation_token,
@@ -264,7 +289,7 @@ class ActivityRunService:
                     error=error,
                 )
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='in_progress', state='awaiting_apply',
@@ -275,27 +300,68 @@ class ActivityRunService:
             context['apply_result' if action == 'apply_operations' else 'harness_result'] = dict(result)
             applied = result.get('applied') is True if action == 'apply_operations' else result.get('completed') is True
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
+            if action == 'run_harness':
+                pending = context.get('pending_harness_turn')
+                expected_snapshot = dict(document.activity_snapshot)
+                if isinstance(pending, Mapping):
+                    expected_snapshot['requested_model'] = pending.get('requested_model')
+                artifacts = harness_runtime_artifacts(
+                    activity_snapshot=expected_snapshot,
+                    result=result,
+                    require_commit_message=(
+                        not commit_forbidden
+                        and (not isinstance(pending, Mapping) or pending.get('phase') in ('execute', 'aggregate'))
+                    ),
+                )
+                if isinstance(pending, Mapping):
+                    try:
+                        advance = advance_harness_loop(
+                            snapshot=document.activity_snapshot,
+                            context=context,
+                            artifacts=artifacts,
+                            iteration=document.iteration,
+                        )
+                    except ValueError as error:
+                        raise ActivityRunValidationError(
+                            field_name='result', message=str(error),
+                        ) from error
+                    if not advance.terminal:
+                        next_iteration = advance.context['pending_harness_turn']['iteration']
+                        return await self._transition(
+                            document=document, project_id=workspace.project_id,
+                            pipeline_run_id=pipeline_run_id, lease_token=lease_token,
+                            continuation_token=continuation_token,
+                            idempotency_key=idempotency_key, action=action,
+                            status='in_progress', state='awaiting_harness',
+                            next_action='run_harness', next_token=self._token_factory(),
+                            context=advance.context,
+                            iteration=next_iteration if isinstance(next_iteration, int) else None,
+                        )
+                    context = advance.context
+                    applied = not advance.failed
+                else:
+                    context['runtime_artifacts'] = artifacts
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action,
                 status=(
                     'completed' if applied and commit_forbidden
-                    and not self._has_reviewers(document.activity_snapshot)
+                    and (action == 'run_harness' or not self._has_reviewers(document.activity_snapshot))
                     else ('in_progress' if applied else 'failed')
                 ),
                 state=(
-                    'awaiting_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    'awaiting_review_input' if action != 'run_harness' and applied and self._has_reviewers(document.activity_snapshot)
                     else ('completed' if applied and commit_forbidden else ('awaiting_commit' if applied else 'failed'))
                 ),
                 next_action=(
-                    'submit_review_input' if applied and self._has_reviewers(document.activity_snapshot)
+                    'submit_review_input' if action != 'run_harness' and applied and self._has_reviewers(document.activity_snapshot)
                     else ('none' if applied and commit_forbidden else ('commit_if_allowed' if applied else 'none'))
                 ),
                 next_token=(
                     self._token_factory() if applied and (
-                        self._has_reviewers(document.activity_snapshot) or not commit_forbidden
+                        (action != 'run_harness' and self._has_reviewers(document.activity_snapshot)) or not commit_forbidden
                     ) else None
                 ),
                 context=context,
@@ -305,7 +371,6 @@ class ActivityRunService:
                 raise RuntimeError('Activity generation is not configured.')
             review = await self._generation_service.generate_review_context(
                 loop_snapshot=document.activity_snapshot,
-                workspace_id=workspace.workspace_id,
                 input_text=document.input,
                 context=context,
                 final_diff=str(result.get('final_diff', '')),
@@ -316,7 +381,7 @@ class ActivityRunService:
             retry = not approved and document.iteration < self._max_iterations(document.activity_snapshot)
             commit_forbidden = document.activity_snapshot.get('commit_mode') == 'forbid'
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action,
@@ -337,13 +402,38 @@ class ActivityRunService:
             )
         if action == 'commit_if_allowed':
             committed = result.get('committed') is True
+            updated_context = {**context, 'commit_result': dict(result)}
+            artifacts = context.get('runtime_artifacts')
+            if self._uses_cli_harness(document.activity_snapshot) and isinstance(
+                artifacts,
+                Mapping,
+            ):
+                committed_artifacts = with_cli_commit_result(
+                    artifacts=artifacts,
+                    result=result,
+                )
+                updated_context['runtime_artifacts'] = committed_artifacts
+                loop_state = context.get('harness_loop')
+                turns = loop_state.get('turns') if isinstance(loop_state, Mapping) else None
+                if isinstance(turns, list):
+                    writer_turn_id = artifacts.get('turn_id')
+                    updated_context['harness_loop'] = {
+                        **dict(loop_state),
+                        'turns': [
+                            committed_artifacts
+                            if isinstance(turn, Mapping)
+                            and turn.get('turn_id') == writer_turn_id
+                            else turn
+                            for turn in turns
+                        ],
+                    }
             return await self._transition(
-                document=document, workspace_id=workspace.workspace_id,
+                document=document, project_id=workspace.project_id,
                 pipeline_run_id=pipeline_run_id, lease_token=lease_token,
                 continuation_token=continuation_token, idempotency_key=idempotency_key,
                 action=action, status='completed' if committed else 'failed',
                 state='completed' if committed else 'failed', next_action='none',
-                next_token=None, context={**context, 'commit_result': dict(result)},
+                next_token=None, context=updated_context,
             )
         raise ActivityRunValidationError(
             field_name='result.action',
@@ -354,7 +444,7 @@ class ActivityRunService:
         self,
         *,
         document: ActivityRunDocument,
-        workspace_id: str,
+        project_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
         continuation_token: str,
@@ -370,7 +460,7 @@ class ActivityRunService:
         """Persist a token-guarded activity-run state transition."""
 
         return await self._repository.transition(
-            workspace_id=workspace_id, activity_id=document.activity_id,
+            project_id=project_id, activity_id=document.activity_id,
             run_id=document.id, pipeline_run_id=pipeline_run_id,
             lease_token=lease_token, continuation_token=continuation_token,
             idempotency_key=idempotency_key, expected_action=action, status=status,
@@ -382,7 +472,7 @@ class ActivityRunService:
         self,
         *,
         document: ActivityRunDocument,
-        workspace_id: str,
+        project_id: str,
         pipeline_run_id: str | None,
         lease_token: str | None,
         continuation_token: str,
@@ -395,7 +485,7 @@ class ActivityRunService:
 
         return await self._transition(
             document=document,
-            workspace_id=workspace_id,
+            project_id=project_id,
             pipeline_run_id=pipeline_run_id,
             lease_token=lease_token,
             continuation_token=continuation_token,
@@ -416,13 +506,12 @@ class ActivityRunService:
         )
 
     async def _active_activity(
-        self, *, user_id: str, activity_id: str, requested_workspace_id: str | None,
+        self, *, user_id: str, activity_id: str,
     ) -> object:
         """Return an active Activity supported by the execution protocol."""
 
         activity = await self._activity_service.get(
             user_id=user_id, activity_id=activity_id,
-            requested_workspace_id=requested_workspace_id,
         )
         if activity.type not in ('approval', 'quiz', 'direct_loop', 'refinement_loop', 'roundtable_loop'):
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='type is not executable')
@@ -430,8 +519,43 @@ class ActivityRunService:
             raise ActivityRunUnavailableError(activity_id=activity.id, reason='status is not active')
         return activity
 
+    async def _inherited_harness(
+        self,
+        *,
+        activity: object,
+        user_id: str,
+    ) -> Mapping[str, object]:
+        """Resolve Activity and User Harness overrides in order."""
+
+        activity_harness = getattr(activity, 'harness')
+        if activity_harness is not None:
+            return self._harness_value(activity_harness)
+        if self._user_service is not None:
+            default_harness = (
+                await self._user_service.get(user_id=user_id)
+            ).settings.default_harness
+            if default_harness is not None:
+                return self._harness_value(default_harness)
+        return {'kind': 'louie', 'version': 'v1', 'config': {}}
+
     @staticmethod
-    def _snapshot(activity: object) -> dict[str, object]:
+    def _harness_value(harness: object) -> Mapping[str, object]:
+        """Convert a validated domain Harness into its frozen representation."""
+
+        return {
+            'kind': getattr(harness, 'kind'),
+            'version': getattr(harness, 'version'),
+            'config': dict(getattr(harness, 'config')),
+        }
+
+    async def _snapshot(
+        self,
+        activity: object,
+        *,
+        project_id: str,
+        user_id: str,
+        harness: Mapping[str, object],
+    ) -> dict[str, object]:
         """Shape a frozen configuration for its assigned ActivityRun executor."""
 
         flow = {
@@ -439,16 +563,86 @@ class ActivityRunService:
             'refinement_loop': 'refinement',
             'roundtable_loop': 'roundtable',
         }
+        config = dict(getattr(activity, 'config'))
+        if harness.get('kind') == 'louie':
+            inherited_model_id = await self._inherited_model_id(
+                activity=activity,
+                user_id=user_id,
+            )
+            agents = config.get('agents')
+            if isinstance(agents, list):
+                config['agents'] = [
+                    await self._louie_agent_snapshot(
+                        agent=agent,
+                        activity_id=str(getattr(activity, 'id')),
+                        project_id=project_id,
+                        user_id=user_id,
+                        inherited_model_id=inherited_model_id,
+                    )
+                    if isinstance(agent, dict)
+                    else agent
+                    for agent in agents
+                ]
         snapshot = {
             'id': getattr(activity, 'id'),
             'title': getattr(activity, 'name'),
             'description': getattr(activity, 'description'),
-            **dict(getattr(activity, 'config')),
+            'harness': dict(harness),
+            **config,
         }
         activity_type = getattr(activity, 'type')
         if activity_type in ('approval', 'quiz'):
             return {**snapshot, 'type': activity_type, 'executor': 'human'}
         return {**snapshot, 'flow': flow[activity_type], 'executor': 'runtime'}
+
+    async def _inherited_model_id(
+        self,
+        *,
+        activity: object,
+        user_id: str,
+    ) -> str | None:
+        """Resolve the direct Activity model override and User fallback."""
+
+        model_id = getattr(activity, 'model_id')
+        if isinstance(model_id, str):
+            return model_id
+        if self._user_service is None:
+            return None
+        return (await self._user_service.get(user_id=user_id)).settings.default_model_id
+
+    async def _louie_agent_snapshot(
+        self,
+        *,
+        agent: dict[str, object],
+        activity_id: str,
+        project_id: str,
+        user_id: str,
+        inherited_model_id: str | None,
+    ) -> dict[str, object]:
+        """Freeze an available linked service for one Louie agent model."""
+
+        snapshot = dict(agent)
+        model_id = snapshot.get('model_id')
+        if not isinstance(model_id, str):
+            model_id = inherited_model_id
+        if not isinstance(model_id, str):
+            raise ActivityRunUnavailableError(
+                activity_id=activity_id,
+                reason='louie execution requires a model_id',
+            )
+        if self._model_execution_service is None:
+            raise RuntimeError('Louie model execution is not configured.')
+        linked_service = await self._model_execution_service.select_linked_service(
+            project_id=project_id,
+            model_id=model_id,
+            user_id=user_id,
+        )
+        snapshot['model_target'] = {
+            'linked_service_id': linked_service.id,
+            'linked_service_user_id': linked_service.user_id,
+            'model_id': model_id,
+        }
+        return snapshot
 
     @staticmethod
     def _initial_state(activity: object) -> str:
@@ -481,14 +675,13 @@ class ActivityRunService:
         )
 
     @staticmethod
-    def _uses_codex_cli(snapshot: Mapping[str, object]) -> bool:
-        """Return whether this direct-loop snapshot must run through Codex CLI."""
+    def _uses_cli_harness(snapshot: Mapping[str, object]) -> bool:
+        """Return whether this snapshot must run through a CLI Harness adapter."""
 
         harness = snapshot.get('harness')
         return (
-            snapshot.get('flow') == 'direct'
-            and isinstance(harness, Mapping)
-            and harness.get('kind') == 'codex_cli'
+            isinstance(harness, Mapping)
+            and harness.get('kind') in ('codex_cli', 'copilot_cli')
             and harness.get('version') == 'v1'
             and harness.get('config') == {}
         )

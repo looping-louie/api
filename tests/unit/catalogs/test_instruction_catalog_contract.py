@@ -61,8 +61,8 @@ def test_builtin_skill_is_immutable_and_not_editable() -> None:
 def test_custom_skill_can_reference_its_source_without_catalog_version() -> None:
     skill = SkillCatalogEntry(
         id="0ac9ce4f7196499b81353b25e10b6d17",
-        name="Workspace security",
-        description="Workspace-specific security review.",
+        name="Project security",
+        description="Project-specific security review.",
         instructions="Apply the workspace security policy.",
         metadata=build_metadata(AgentRole.REVIEWER),
         origin=InstructionOrigin.CUSTOM,
@@ -95,8 +95,8 @@ def test_origin_must_use_the_shared_origin_contract() -> None:
     with pytest.raises(ValueError, match="InstructionOrigin"):
         SkillCatalogEntry(
             id="workspace-skill",
-            name="Workspace skill",
-            description="Workspace-specific review.",
+            name="Project skill",
+            description="Project-specific review.",
             instructions="Review the supplied work.",
             metadata=build_metadata(AgentRole.REVIEWER),
             origin="custom",  # type: ignore[arg-type]

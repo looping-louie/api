@@ -19,7 +19,7 @@ from src.app.services.execution_instructions import (
 from src.app.services.persona_skills import DefinitionDocument
 from src.app.services.shared.tenant import (
     TenantService,
-    WorkspaceMembership,
+    ProjectMembership,
 )
 from tests.fakes.tenant_repository import FakeTenantRepository
 from tests.integration.repositories.instructions.test_availability import (
@@ -38,7 +38,7 @@ async def test_custom_persists_source_instruction_id(
     now = datetime(2026, 7, 23, 13, 0, tzinfo=UTC)
     document = DefinitionDocument(
         id="forked-security",
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         name="Forked Security",
         description="Editable builtin fork.",
@@ -52,17 +52,17 @@ async def test_custom_persists_source_instruction_id(
 
     await repository.create(document)
     stored = await repository.get_owned_custom(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id=document.id,
     )
     available = await repository.get_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
         instruction_id=document.id,
     )
     summaries = await repository.list_available_for_workspace(
-        workspace_id="workspace-1",
+        project_id="workspace-1",
         instruction_type="skill",
     )
     summary = next(item for item in summaries if item.id == document.id)
@@ -91,9 +91,9 @@ async def test_execution_library_reads_sql_not_packaged_markdown(
         tenant_service=TenantService(
             repository=FakeTenantRepository(
                 [
-                    WorkspaceMembership(
+                    ProjectMembership(
                         user_id="user-1",
-                        workspace_id="workspace-1",
+                        project_id="workspace-1",
                         is_default=True,
                     ),
                 ]

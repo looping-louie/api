@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.skill import SkillController
+from src.app.controllers.skills import SkillController
 from src.app.routers.skills import router as skills_router
 from src.app.services.persona_skills import SkillDefinitionService
 from src.app.utils.http import register_exception_handlers
@@ -112,6 +112,30 @@ def test_create_skill_rejects_source_identifier(
     )
 
     assert response.status_code == 422
+
+
+def test_skills_ignore_workspace_selection(
+    skill_controller: SkillController,
+) -> None:
+    """Skill ownership and visibility depend only on the authenticated user."""
+
+    client = TestClient(build_app(controller=skill_controller))
+    created = client.post(
+        '/api/v1/skills',
+        headers={'X-Project-ID': 'workspace-a'},
+        json={
+            'name': 'User-owned Skill',
+            'instructions': 'Review the supplied work.',
+        },
+    )
+    listed = client.get(
+        '/api/v1/skills',
+        headers={'X-Project-ID': 'workspace-b'},
+    )
+
+    assert created.status_code == 201
+    assert listed.status_code == 200
+    assert listed.json()['total'] == 1
 
 
 def test_list_skills_filters_sorts_and_paginates(

@@ -9,6 +9,7 @@ from pydantic import Field
 
 from src.app.catalogs.models import (
     ModelCapability,
+    ModelEndpoint,
     ModelStatus,
 )
 from src.app.catalogs.persona_skills import (
@@ -24,10 +25,16 @@ from .shared import ListResponse, NonNegativeInteger, ResponseSchema
 
 
 class CatalogModelPricingResponse(ResponseSchema):
-    """Static token prices for one model deployment."""
+    """Static token prices for one provider-owned offering."""
 
     input_per_million_usd: Decimal = Field(ge=0)
     output_per_million_usd: Decimal = Field(ge=0)
+    cached_input_per_million_usd: Decimal | None = Field(
+        default=None,
+        ge=0,
+    )
+    valid_until: date | None = None
+    note: str | None = None
 
 
 class CatalogModelSummaryResponse(ResponseSchema):
@@ -41,9 +48,6 @@ class CatalogModelSummaryResponse(ResponseSchema):
     released_at: date
     capabilities: set[ModelCapability]
     status: ModelStatus
-    provider_ids: list[ProviderId]
-    deployment_count: NonNegativeInteger
-    starting_price: CatalogModelPricingResponse | None = None
     tags: list[str]
 
 
@@ -61,6 +65,20 @@ class CatalogProviderResponse(ResponseSchema):
     requires_api_key: bool
     default_base_url: str | None
     model_catalog_note: str | None = None
+    offerings: list[CatalogProviderOfferingResponse]
+
+
+class CatalogProviderOfferingResponse(ResponseSchema):
+    """One provider-owned route for a logical model."""
+
+    model_id: str
+    provider_model_id: str
+    endpoint: ModelEndpoint
+    context_window: NonNegativeInteger | None = None
+    max_output_tokens: NonNegativeInteger | None = None
+    pricing: CatalogModelPricingResponse | None = None
+    status: ModelStatus
+    deprecated_at: date | None = None
 
 
 class CatalogInstructionMetadataResponse(ResponseSchema):

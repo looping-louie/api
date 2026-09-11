@@ -9,15 +9,13 @@ from pydantic import Field, model_validator
 from .execution import (
     HarnessRequest,
     HarnessResponse,
-    ModelTargetRequest,
-    ModelTargetResponse,
 )
 from .shared import (
     ListResponse,
     NonEmptyString,
     PositiveInteger,
     RequestSchema,
-    ResourceName,
+    ResourceTitle,
     ResponseSchema,
 )
 
@@ -62,10 +60,10 @@ class LoopActivityStopConditionsSchema(RequestSchema):
 
 
 class LoopActivityAgentSchema(RequestSchema):
-    """One Persona role and optional explicit model target for a loop Activity."""
+    """One Persona role and optional logical model override for a loop Activity."""
 
     id: NonEmptyString | None = None
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     persona_id: NonEmptyString
     role: LoopActivityRoleValue
 
@@ -193,11 +191,11 @@ def validate_activity_config(
 class ActivityCreateRequest(RequestSchema):
     """Request body for creating an activity."""
 
-    name: ResourceName
+    name: ResourceTitle
     description: str
     type: ActivityTypeValue
     config: ActivityConfig
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: HarnessRequest | None = None
 
     @model_validator(mode='before')
@@ -221,11 +219,11 @@ class ActivityCreateRequest(RequestSchema):
 class ActivityPatchRequest(RequestSchema):
     """Mutable activity fields accepted by PATCH."""
 
-    name: ResourceName | None = None
+    name: ResourceTitle | None = None
     description: str | None = None
     status: ActivityStatusValue | None = None
     config: dict[str, Any] | None = None
-    model_target: ModelTargetRequest | None = None
+    model_id: NonEmptyString | None = None
     harness: HarnessRequest | None = None
 
     @model_validator(mode='after')
@@ -234,7 +232,7 @@ class ActivityPatchRequest(RequestSchema):
 
         if not self.model_fields_set:
             raise ValueError('At least one activity field must be supplied.')
-        for field_name in self.model_fields_set - {'model_target', 'harness'}:
+        for field_name in self.model_fields_set - {'model_id', 'harness'}:
             if getattr(self, field_name) is None:
                 raise ValueError(f'{field_name} must not be null.')
         return self
@@ -244,13 +242,12 @@ class ActivityResponse(ResponseSchema):
     """Complete activity representation."""
 
     id: str
-    workspace_id: str
     name: str
     description: str
     status: ActivityStatusValue
     type: ActivityTypeValue
     config: ActivityConfig
-    model_target: ModelTargetResponse | None
+    model_id: str | None
     harness: HarnessResponse | None
     created_at: datetime
     created_by: str

@@ -24,6 +24,15 @@ ResourceName = Annotated[
     ),
 ]
 
+ResourceTitle = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=140,
+        pattern=r'^[\p{L}\p{N}_][^.+?/<>*%&:\p{C}\p{Zl}\p{Zp}]*$',
+    ),
+]
+
 PositiveInteger = Annotated[
     int,
     Field(gt=0, strict=True),
@@ -69,7 +78,7 @@ class ResourceSummaryResponse(ResponseSchema):
 
 
 class InstructionCapabilitiesResponse(ResponseSchema):
-    """Workspace-specific origin and action capabilities for an instruction."""
+    """Project-specific origin and action capabilities for an instruction."""
 
     origin: InstructionOrigin
     enabled: bool

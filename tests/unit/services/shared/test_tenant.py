@@ -5,7 +5,7 @@ from src.app.services.shared.tenant import (
     TenantNotFoundError,
     TenantSelectionRequiredError,
     TenantService,
-    WorkspaceMembership,
+    ProjectMembership,
 )
 from tests.fakes.tenant_repository import FakeTenantRepository
 
@@ -14,13 +14,13 @@ from tests.fakes.tenant_repository import FakeTenantRepository
 async def test_resolve_requested_workspace() -> None:
     repository = FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-2",
+                project_id="workspace-2",
             ),
         ]
     )
@@ -28,24 +28,24 @@ async def test_resolve_requested_workspace() -> None:
 
     context = await service.resolve(
         user_id="user-1",
-        requested_workspace_id="workspace-2",
+        requested_project_id="workspace-2",
     )
 
     assert context.user_id == "user-1"
-    assert context.workspace_id == "workspace-2"
+    assert context.project_id == "workspace-2"
 
 
 @pytest.mark.asyncio
 async def test_resolve_default_workspace() -> None:
     repository = FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-2",
+                project_id="workspace-2",
                 is_default=True,
             ),
         ]
@@ -54,21 +54,21 @@ async def test_resolve_default_workspace() -> None:
 
     context = await service.resolve(user_id="user-1")
 
-    assert context.workspace_id == "workspace-2"
+    assert context.project_id == "workspace-2"
 
 
 @pytest.mark.asyncio
 async def test_resolve_only_enabled_workspace() -> None:
     repository = FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-disabled",
+                project_id="workspace-disabled",
                 is_enabled=False,
             ),
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-enabled",
+                project_id="workspace-enabled",
             ),
         ]
     )
@@ -76,20 +76,20 @@ async def test_resolve_only_enabled_workspace() -> None:
 
     context = await service.resolve(user_id="user-1")
 
-    assert context.workspace_id == "workspace-enabled"
+    assert context.project_id == "workspace-enabled"
 
 
 @pytest.mark.asyncio
 async def test_resolve_requires_selection_for_multiple_workspaces() -> None:
     repository = FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-2",
+                project_id="workspace-2",
             ),
         ]
     )
@@ -98,7 +98,7 @@ async def test_resolve_requires_selection_for_multiple_workspaces() -> None:
     with pytest.raises(TenantSelectionRequiredError) as error:
         await service.resolve(user_id="user-1")
 
-    assert error.value.workspace_ids == (
+    assert error.value.project_ids == (
         "workspace-1",
         "workspace-2",
     )
@@ -108,9 +108,9 @@ async def test_resolve_requires_selection_for_multiple_workspaces() -> None:
 async def test_resolve_rejects_inaccessible_workspace() -> None:
     repository = FakeTenantRepository(
         [
-            WorkspaceMembership(
+            ProjectMembership(
                 user_id="user-1",
-                workspace_id="workspace-1",
+                project_id="workspace-1",
             ),
         ]
     )
@@ -119,7 +119,7 @@ async def test_resolve_rejects_inaccessible_workspace() -> None:
     with pytest.raises(TenantAccessDeniedError):
         await service.resolve(
             user_id="user-1",
-            requested_workspace_id="workspace-2",
+            requested_project_id="workspace-2",
         )
 
 

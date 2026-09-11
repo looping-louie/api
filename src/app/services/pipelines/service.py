@@ -18,7 +18,6 @@ from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineStepDependency,
 )
-from src.app.models.execution import ModelTarget
 from src.app.repositories.pipelines.repository import (
     PipelineRepository,
 )
@@ -56,7 +55,7 @@ from src.app.services.linked_services import LinkedServiceService
 
 
 class PipelineService:
-    """Coordinate validated pipeline operations for one workspace."""
+    """Coordinate validated User-owned pipeline operations."""
 
     def __init__(
         self,
@@ -82,16 +81,13 @@ class PipelineService:
         offset: int,
         status: str | None = None,
         search: str | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[PipelineDocument], int]:
         """Return one filtered fixed-size pipeline page."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         documents, total = await self._repository.list(
-            workspace_id=workspace_id,
+            user_id=user_id,
             offset=normalize_offset(offset),
             limit=PAGE_SIZE,
             status=(
@@ -108,17 +104,14 @@ class PipelineService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDocument:
         """Return one complete pipeline."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         return await require_pipeline(
             self._repository,
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=pipeline_id,
         )
 
@@ -129,20 +122,20 @@ class PipelineService:
         offset: int,
         status: str | None = None,
         search: str | None = None,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[PipelineDetails], int]:
         """Return one filtered page with Activity definitions resolved."""
 
+        del requested_project_id
         documents, total = await self.list(
             user_id=user_id,
             offset=offset,
             status=status,
             search=search,
-            requested_workspace_id=requested_workspace_id,
         )
         details = [
             await self._pipeline_details(
-                workspace_id=document.workspace_id,
+                user_id=user_id,
                 pipeline_id=document.id,
             )
             for document in documents
@@ -154,29 +147,26 @@ class PipelineService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDetails:
         """Return one pipeline with its ordered Activity definitions."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         return await self._pipeline_details(
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=pipeline_id,
         )
 
     async def _pipeline_details(
         self,
         *,
-        workspace_id: str,
+        user_id: str,
         pipeline_id: str,
     ) -> PipelineDetails:
         """Resolve one persisted pipeline and its ordered Activities."""
 
         details = await self._repository.get_with_activities(
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=pipeline_id,
         )
         if details is None:
@@ -188,24 +178,21 @@ class PipelineService:
         *,
         user_id: str,
         payload: PipelineCreate,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDocument:
         """Create an enabled validated pipeline and its initial changelog."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         actor_id = require_text(user_id, "user_id")
         now = self._clock()
         document = PipelineDocument(
             id=self._id_factory(),
-            workspace_id=workspace_id,
+            user_id=actor_id,
             name=require_text(payload.name, "name"),
             description=normalize_description(payload.description),
             status="active",
             steps=(),
-            model_target=payload.model_target,
+            model_id=payload.model_id,
             harness=normalize_harness(payload.harness),
             created_at=now,
             created_by=actor_id,
@@ -213,23 +200,7 @@ class PipelineService:
             updated_by=actor_id,
         )
         inputs = normalize_steps(payload.steps)
-        await self._require_model_targets(
-            workspace_id=workspace_id,
-            model_targets=(
-                [target for target in (document.model_target,) if target is not None]
-                + [
-                    target
-                    for target in (
-                        activity.model_target
-                        for activity in inputs
-                    )
-                    if target is not None
-                ]
-                + self._agent_model_targets(inputs)
-            ),
-        )
         activities, activity_entries = self._build_activities(
-            workspace_id=workspace_id,
             actor_id=actor_id,
             inputs=inputs,
             now=now,
@@ -259,17 +230,14 @@ class PipelineService:
         user_id: str,
         pipeline_id: str,
         payload: PipelinePatch,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> PipelineDocument:
         """Apply a partial update after validating the resulting pipeline."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         current = await require_pipeline(
             self._repository,
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=pipeline_id,
         )
         actor_id = require_text(user_id, "user_id")
@@ -279,7 +247,6 @@ class PipelineService:
         if payload.steps is not None:
             inputs = normalize_steps(payload.steps)
             activities, activity_entries = self._build_activities(
-                workspace_id=workspace_id,
                 actor_id=actor_id,
                 inputs=inputs,
                 now=self._clock(),
@@ -287,25 +254,6 @@ class PipelineService:
             generated_steps = self._steps(
                 activities,
                 inputs,
-            )
-            await self._require_model_targets(
-                workspace_id=workspace_id,
-                model_targets=(
-                    [
-                        target
-                        for target in (
-                            activity.model_target
-                            for activity in inputs
-                        )
-                        if target is not None
-                    ]
-                    + self._agent_model_targets(inputs)
-                ),
-            )
-        if 'model_target' in payload.provided_fields and payload.model_target is not None:
-            await self._require_model_targets(
-                workspace_id=workspace_id,
-                model_targets=[payload.model_target],
             )
         updated = apply_patch(
             current,
@@ -352,45 +300,6 @@ class PipelineService:
             raise PipelineNotFoundError(pipeline_id=pipeline_id)
         return updated
 
-    async def _require_model_targets(
-        self,
-        *,
-        workspace_id: str,
-        model_targets: list[ModelTarget],
-    ) -> None:
-        """Require every explicitly configured model target to be available."""
-
-        if self._linked_service_service is None:
-            return
-        for model_target in model_targets:
-            await self._linked_service_service.require_available_selection(
-                workspace_id=workspace_id,
-                service_id=model_target.linked_service_id,
-                model_id=model_target.model_id,
-            )
-
-    @staticmethod
-    def _agent_model_targets(
-        inputs: tuple[PipelineActivityInput, ...],
-    ) -> list[ModelTarget]:
-        """Collect explicit loop-agent model targets from inline activities."""
-
-        return [
-            ModelTarget(
-                linked_service_id=target['linked_service_id'],
-                model_id=target['model_id'],
-            )
-            for activity in inputs
-            for agent in activity.config.get('agents', [])
-            if isinstance(agent, dict)
-            for target in [agent.get('model_target')]
-            if (
-                isinstance(target, dict)
-                and isinstance(target.get('linked_service_id'), str)
-                and isinstance(target.get('model_id'), str)
-            )
-        ]
-
     @staticmethod
     def _steps(
         activities: list[ActivityDocument],
@@ -421,17 +330,14 @@ class PipelineService:
         *,
         user_id: str,
         pipeline_id: str,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> None:
         """Archive a pipeline instead of physically deleting it."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         current = await require_pipeline(
             self._repository,
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=pipeline_id,
         )
         if current.status == "archived":
@@ -468,17 +374,14 @@ class PipelineService:
         user_id: str,
         pipeline_id: str,
         offset: int,
-        requested_workspace_id: str | None = None,
+        requested_project_id: str | None = None,
     ) -> tuple[list[PipelineChangelogEntry], int]:
         """Return newest-first pipeline changelog entries."""
 
-        workspace_id = await self._workspace_id(
-            user_id,
-            requested_workspace_id,
-        )
+        del requested_project_id
         normalized_id = require_text(pipeline_id, "pipeline_id")
         entries, total = await self._repository.list_changelog(
-            workspace_id=workspace_id,
+            user_id=user_id,
             pipeline_id=normalized_id,
             offset=normalize_offset(offset),
             limit=PAGE_SIZE,
@@ -487,23 +390,22 @@ class PipelineService:
             raise PipelineNotFoundError(pipeline_id=normalized_id)
         return list(entries), total
 
-    async def _workspace_id(
+    async def _project_id(
         self,
         user_id: str,
-        requested_workspace_id: str | None,
+        requested_project_id: str | None,
     ) -> str:
         """Resolve the workspace available to the authenticated user."""
 
         tenant = await self._tenant_service.resolve(
             user_id=user_id,
-            requested_workspace_id=requested_workspace_id,
+            requested_project_id=requested_project_id,
         )
-        return tenant.workspace_id
+        return tenant.project_id
 
     def _build_activities(
         self,
         *,
-        workspace_id: str,
         actor_id: str,
         inputs: tuple[PipelineActivityInput, ...],
         now: datetime,
@@ -526,7 +428,7 @@ class PipelineService:
                 )
             document = ActivityDocument(
                 id=self._id_factory(),
-                workspace_id=workspace_id,
+                user_id=actor_id,
                 name=value.name,
                 description=value.description,
                 status="active",
@@ -536,7 +438,7 @@ class PipelineService:
                 created_by=actor_id,
                 updated_at=now,
                 updated_by=actor_id,
-                model_target=value.model_target,
+                model_id=value.model_id,
                 harness=normalize_harness(value.harness),
             )
             documents.append(document)
@@ -544,7 +446,7 @@ class PipelineService:
                 ActivityChangelogEntry(
                     id=self._id_factory(),
                     activity_id=document.id,
-                    workspace_id=workspace_id,
+                    user_id=actor_id,
                     change_type="created",
                     actor_id=actor_id,
                     changed_at=now,
@@ -555,14 +457,7 @@ class PipelineService:
                         "status": document.status,
                         "type": document.type,
                         "config": document.config,
-                        "model_target": (
-                            {
-                                "linked_service_id": document.model_target.linked_service_id,
-                                "model_id": document.model_target.model_id,
-                            }
-                            if document.model_target is not None
-                            else None
-                        ),
+                        'model_id': document.model_id,
                         "harness": (
                             {
                                 "kind": document.harness.kind,

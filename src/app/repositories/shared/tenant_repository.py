@@ -8,7 +8,7 @@ from typing import Any
 
 import aiosqlite
 
-from src.app.services.shared.tenant import WorkspaceMembership
+from src.app.services.shared.tenant import ProjectMembership
 
 
 class SqliteTenantRepository:
@@ -26,24 +26,24 @@ class SqliteTenantRepository:
         self,
         *,
         user_id: str,
-        workspace_id: str,
-    ) -> WorkspaceMembership | None:
+        project_id: str,
+    ) -> ProjectMembership | None:
         """Return one membership for a user and workspace."""
 
         row = await self._fetch_one(
             """
             SELECT
                 user_id,
-                workspace_id,
+                project_id,
                 is_default
-            FROM workspace_memberships
+            FROM project_memberships
             WHERE user_id = ?
-              AND workspace_id = ?
+              AND project_id = ?
             LIMIT 1
             """,
             (
                 user_id,
-                workspace_id,
+                project_id,
             ),
         )
 
@@ -56,16 +56,16 @@ class SqliteTenantRepository:
         self,
         *,
         user_id: str,
-    ) -> WorkspaceMembership | None:
+    ) -> ProjectMembership | None:
         """Return the user's default workspace membership."""
 
         row = await self._fetch_one(
             """
             SELECT
                 user_id,
-                workspace_id,
+                project_id,
                 is_default
-            FROM workspace_memberships
+            FROM project_memberships
             WHERE user_id = ?
               AND is_default = 1
             LIMIT 1
@@ -82,21 +82,21 @@ class SqliteTenantRepository:
         self,
         *,
         user_id: str,
-    ) -> list[WorkspaceMembership]:
+    ) -> list[ProjectMembership]:
         """Return every workspace membership belonging to a user."""
 
         rows = await self._fetch_all(
             """
             SELECT
                 user_id,
-                workspace_id,
+                project_id,
                 is_default
-            FROM workspace_memberships
+            FROM project_memberships
             WHERE user_id = ?
             ORDER BY
                 is_default DESC,
                 created_at ASC,
-                workspace_id ASC
+                project_id ASC
             """,
             (user_id,),
         )
@@ -157,11 +157,11 @@ class SqliteTenantRepository:
     @staticmethod
     def _to_membership(
         row: aiosqlite.Row,
-    ) -> WorkspaceMembership:
+    ) -> ProjectMembership:
         """Convert a SQLite row into a workspace membership."""
 
-        return WorkspaceMembership(
+        return ProjectMembership(
             user_id=str(row["user_id"]),
-            workspace_id=str(row["workspace_id"]),
+            project_id=str(row["project_id"]),
             is_default=bool(row["is_default"]),
         )

@@ -6,18 +6,22 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from src.app.controllers.pipeline import PipelineController
+from src.app.controllers.pipelines import PipelineController
 from src.app.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
 from src.app.repositories.activity_runs.repository import ActivityRunRepository
 from src.app.repositories.pipeline_runs.sqlite_repository import SqlitePipelineRunRepository
 from src.app.services.pipelines.service import PipelineService
+from src.app.services.models import ModelExecutionService
+from src.app.services.models.catalog import ModelCatalogService
+from src.app.services.execution_instructions import ExecutionInstructionLibraryService
 from src.app.services.linked_services import LinkedServiceService
 from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.shared.tenant import TenantService
+from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
-from src.app.services.workspaces import WorkspaceService
+from src.app.services.projects.service import ProjectService
 
 
 def build_pipeline_controller(
@@ -29,7 +33,11 @@ def build_pipeline_controller(
     activity_run_repository: ActivityRunRepository,
     worker_service: WorkerService,
     linked_service_service: LinkedServiceService,
-    workspace_service: WorkspaceService,
+    workspace_service: ProjectService,
+    user_service: UserService,
+    model_execution_service: ModelExecutionService,
+    model_catalog_service: ModelCatalogService,
+    instruction_library_service: ExecutionInstructionLibraryService,
 ) -> PipelineController:
     """Build the pipeline persistence, service, and HTTP layers."""
 
@@ -50,6 +58,10 @@ def build_pipeline_controller(
             tenant_service=tenant_service,
             worker_service=worker_service,
             workspace_service=workspace_service,
+            user_service=user_service,
+            model_execution_service=model_execution_service,
+            model_catalog_service=model_catalog_service,
+            instruction_library_service=instruction_library_service,
             id_factory=id_factory,
             clock=clock,
         ),
