@@ -51,7 +51,7 @@ dev:
 	@set -a; \
 	. "./$(ENV_FILE)"; \
 	set +a; \
-	exec "$(VENV_PYTHON)" -m uvicorn src.app.main:app --reload
+	exec "$(VENV_PYTHON)" -m uvicorn src.app.main:app --reload --port 2000
 
 run: dev
 

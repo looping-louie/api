@@ -8,7 +8,7 @@ if [[ -f .env ]]; then
     set +a
 fi
 
-API_ROOT="${API_ROOT:-http://127.0.0.1:8000/api/v1}"
+API_ROOT="${API_ROOT:-http://127.0.0.1:2000/api/v1}"
 PROJECT_ID="${PROJECT_ID:-}"
 
 SMOKE_PROVIDER_ID="${SMOKE_PROVIDER_ID:-together}"
