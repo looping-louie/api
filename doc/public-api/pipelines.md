@@ -1077,10 +1077,12 @@ decisions are regular Activity-run checkpoints, not Pipeline-run gate events.
 
 Submit an approval or quiz decision through the Activity-run continuation
 endpoint. The request carries the current continuation token and an idempotency
-key, but no worker lease token.
+key. Include the owning `pipeline_run_id`; human decisions do not require a
+worker lease token.
 
 ```json
 {
+  "pipeline_run_id": "pipeline-run-001",
   "continuation_token": "activity-continuation-token",
   "idempotency_key": "review-decision-001",
   "result": {
@@ -1090,6 +1092,9 @@ key, but no worker lease token.
   }
 }
 ```
+
+Human Activity runs are created by Pipeline scheduling, so every human decision
+request requires its owning `pipeline_run_id`.
 
 After a terminal human result, call Pipeline continuation with no lease token
 to schedule the next step. A rejected decision resets the rejected step and
