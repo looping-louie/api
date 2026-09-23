@@ -92,8 +92,6 @@ http://127.0.0.1:2000/docs
 
 ## Development
 
-See [Docker](doc/docker.md) to run the production API image with Docker Compose.
-
 ### SQLite Migrations
 
 SQLite migration files are immutable once committed. Do not edit an existing
@@ -112,3 +110,5 @@ protects the exact bytes of committed migrations and must pass before the
 migration is committed.
 
 ## Docker
+
+See [Docker](doc/docker.md) to run the production API image with Docker Compose.
