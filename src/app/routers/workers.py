@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, status
 
 from src.app.controllers.workers import WorkerController
 from src.app.schemas.worker import (
@@ -29,7 +29,7 @@ WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker ide
 async def create_worker(
     context: ContextDependency,
     controller: ControllerDependency,
-    payload: Annotated[WorkerCreateRequest | None, Body()] = None,
+    payload: WorkerCreateRequest,
 ) -> WorkerResponse:
     """Create one API-owned runtime worker identity."""
 
@@ -49,7 +49,7 @@ async def heartbeat_worker(
     worker_id: WorkerIdPath,
     context: ContextDependency,
     controller: ControllerDependency,
-    payload: Annotated[WorkerHeartbeatRequest | None, Body()] = None,
+    payload: WorkerHeartbeatRequest,
 ) -> WorkerResponse:
     """Refresh one registered runtime worker's liveness signal."""
 

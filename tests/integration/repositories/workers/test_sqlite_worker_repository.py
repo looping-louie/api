@@ -25,6 +25,7 @@ async def test_worker_repository_preserves_harnesses_across_heartbeat(
     created = await repository.create(WorkerDocument(
         id='worker-1', project_id='workspace-1', registered_at=timestamp,
         last_heartbeat_at=timestamp,
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
     ))
     fetched = await repository.get(
         project_id='workspace-1',
@@ -56,7 +57,7 @@ async def test_worker_repository_heartbeat_replaces_harnesses(
         id='worker-1', project_id='workspace-1', registered_at=timestamp,
         last_heartbeat_at=timestamp,
         harnesses=(
-            WorkerHarnessCapability(),
+            WorkerHarnessCapability(kind='louie'),
             WorkerHarnessCapability(kind='codex_cli'),
         ),
     ))
@@ -65,7 +66,7 @@ async def test_worker_repository_heartbeat_replaces_harnesses(
         project_id='workspace-1',
         worker_id='worker-1',
         occurred_at=timestamp + timedelta(seconds=1),
-        harnesses=(WorkerHarnessCapability(),),
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
     )
 
     assert heartbeated is not None
@@ -90,6 +91,7 @@ async def test_worker_repository_summarizes_active_harness_compatibility(
     await repository.create(WorkerDocument(
         id='active-louie', project_id='workspace-1', registered_at=timestamp,
         last_heartbeat_at=timestamp + timedelta(minutes=3),
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
     ))
     await repository.create(WorkerDocument(
         id='active-codex', project_id='workspace-1', registered_at=timestamp,

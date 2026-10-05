@@ -71,8 +71,15 @@ async def test_registered_worker_heartbeat_admits_claims(
         clock=lambda: now,
     )
 
-    registered = await service.create(user_id='user-1')
-    heartbeated = await service.heartbeat(user_id='user-1', worker_id='worker-1')
+    registered = await service.create(
+        user_id='user-1',
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
+    )
+    heartbeated = await service.heartbeat(
+        user_id='user-1',
+        worker_id='worker-1',
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
+    )
     await service.require_capable(
         project_id='workspace-1', worker_id='worker-1',
         harness={'kind': 'louie', 'version': 'v1', 'config': {}},
@@ -98,7 +105,7 @@ async def test_heartbeat_replaces_observed_harness_capabilities(
     worker = await service.create(
         user_id='user-1',
         harnesses=(
-            WorkerHarnessCapability(),
+            WorkerHarnessCapability(kind='louie'),
             WorkerHarnessCapability(kind='codex_cli'),
         ),
     )
@@ -106,7 +113,7 @@ async def test_heartbeat_replaces_observed_harness_capabilities(
     refreshed = await service.heartbeat(
         user_id='user-1',
         worker_id=worker.id,
-        harnesses=(WorkerHarnessCapability(),),
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
     )
 
     assert [harness.kind for harness in refreshed.harnesses] == ['louie']
@@ -132,7 +139,10 @@ async def test_worker_harness_admission_requires_an_advertised_capability(
         id_factory=lambda: 'worker-1',
         clock=lambda: now,
     )
-    registered = await service.create(user_id='user-1')
+    registered = await service.create(
+        user_id='user-1',
+        harnesses=(WorkerHarnessCapability(kind='louie'),),
+    )
 
     await service.require_capable(
         project_id='workspace-1',
@@ -173,7 +183,10 @@ async def test_inactive_worker_cannot_claim(
         await WorkerService(
             repository=repository, tenant_service=tenant_service,
             id_factory=lambda: 'worker-1', clock=lambda: now,
-        ).create(user_id='user-1')
+        ).create(
+            user_id='user-1',
+            harnesses=(WorkerHarnessCapability(kind='louie'),),
+        )
     service = WorkerService(
         repository=repository,
         tenant_service=tenant_service,

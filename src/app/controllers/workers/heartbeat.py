@@ -15,7 +15,7 @@ class WorkerHeartbeatController:
         *,
         user_id: str,
         worker_id: str,
-        payload: WorkerHeartbeatRequest | None = None,
+        payload: WorkerHeartbeatRequest,
         requested_project_id: str | None = None,
     ) -> WorkerResponse:
         """Record one liveness heartbeat for a registered Worker."""
@@ -23,17 +23,13 @@ class WorkerHeartbeatController:
         return worker_response(await self._worker_service.heartbeat(
             user_id=user_id,
             worker_id=worker_id,
-            harnesses=(
-                tuple(
-                    WorkerHarnessCapability(
-                        kind=harness.kind,
-                        version=harness.version,
-                        config=dict(harness.config),
-                    )
-                    for harness in payload.harnesses
+            harnesses=tuple(
+                WorkerHarnessCapability(
+                    kind=harness.kind,
+                    version=harness.version,
+                    config=dict(harness.config),
                 )
-                if payload is not None
-                else None
+                for harness in payload.harnesses
             ),
             requested_project_id=requested_project_id,
         ))

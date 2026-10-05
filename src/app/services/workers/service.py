@@ -10,7 +10,6 @@ from src.app.models.worker import (
     WorkerDocument,
     WorkerHarnessCapability,
     WorkerReadinessDocument,
-    default_worker_harnesses,
 )
 from src.app.repositories.workers import WorkerRepository
 from src.app.services.shared.tenant import TenantService
@@ -71,7 +70,7 @@ class WorkerService:
         self,
         *,
         user_id: str,
-        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
+        harnesses: tuple[WorkerHarnessCapability, ...],
         requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Provision one API-owned worker identity in the selected workspace."""
@@ -86,11 +85,7 @@ class WorkerService:
             project_id=workspace.project_id,
             registered_at=now,
             last_heartbeat_at=now,
-            harnesses=(
-                harnesses
-                if harnesses is not None
-                else default_worker_harnesses()
-            ),
+            harnesses=harnesses,
         ))
 
     async def heartbeat(
@@ -98,7 +93,7 @@ class WorkerService:
         *,
         user_id: str,
         worker_id: str,
-        harnesses: tuple[WorkerHarnessCapability, ...] | None = None,
+        harnesses: tuple[WorkerHarnessCapability, ...],
         requested_project_id: str | None = None,
     ) -> WorkerDocument:
         """Record a liveness signal for an existing workspace worker."""

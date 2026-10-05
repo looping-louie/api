@@ -30,9 +30,13 @@ Pipeline-run claim admission remains the authoritative mutation-time check.
 ## Provision A Worker
 
 `POST /api/v1/workers` provisions a worker identity in the selected Project.
-Its optional `harnesses` array declares local execution capabilities. Omitting
-the request body registers the compatibility default: `louie` v1 with an empty
-configuration. Store the returned ID in that Project's runtime configuration.
+Its required `harnesses` array declares local execution capabilities. Each
+entry must explicitly name its `kind`; the API never infers `louie` or any
+other Harness. Store the returned ID in that Project's runtime configuration.
+
+An empty array registers a connected worker with no execution capabilities. It
+remains visible to readiness checks but cannot claim a PipelineRun until a
+heartbeat reports a Harness matching that run's frozen Harness.
 
 ```http
 POST /api/v1/workers
@@ -75,12 +79,11 @@ Example response (`201 Created`):
 ## Send A Heartbeat
 
 `POST /api/v1/workers/{worker_id}/heartbeat` refreshes the liveness timestamp
-for an existing provisioned worker. Its optional `harnesses` array atomically
-replaces the worker's currently observed capabilities. Omitting the body keeps
-the previously recorded capabilities for compatibility with older runtimes.
-Workers report Harness health, not a model list: `codex_cli` means that the
-configured executable and local login check currently succeed. An unknown
-worker returns `404 worker_not_found`.
+for an existing provisioned worker. Its required `harnesses` array atomically
+replaces the worker's currently observed capabilities, including replacing them
+with an empty array. Workers report Harness health, not a model list:
+`codex_cli` means that the configured executable and local login check currently
+succeed. An unknown worker returns `404 worker_not_found`.
 
 ```http
 POST /api/v1/workers/runtime-local-01/heartbeat

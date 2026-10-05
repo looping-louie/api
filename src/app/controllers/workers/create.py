@@ -14,24 +14,20 @@ class WorkerCreateController:
         self,
         *,
         user_id: str,
-        payload: WorkerCreateRequest | None = None,
+        payload: WorkerCreateRequest,
         requested_project_id: str | None = None,
     ) -> WorkerResponse:
         """Provision one Worker identity and record its Harness capabilities."""
 
         return worker_response(await self._worker_service.create(
             user_id=user_id,
-            harnesses=(
-                tuple(
-                    WorkerHarnessCapability(
-                        kind=harness.kind,
-                        version=harness.version,
-                        config=dict(harness.config),
-                    )
-                    for harness in payload.harnesses
+            harnesses=tuple(
+                WorkerHarnessCapability(
+                    kind=harness.kind,
+                    version=harness.version,
+                    config=dict(harness.config),
                 )
-                if payload is not None
-                else None
+                for harness in payload.harnesses
             ),
             requested_project_id=requested_project_id,
         ))

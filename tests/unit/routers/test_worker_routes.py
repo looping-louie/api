@@ -96,25 +96,26 @@ def build_client(tenant_service: TenantService) -> TestClient:
 def test_create_then_heartbeat_refreshes_one_workspace_worker(
     tenant_service: TenantService,
 ) -> None:
-    """API provisioning and heartbeat expose worker lifecycle timestamps."""
+    """API provisioning and heartbeat preserve an explicit empty capability set."""
 
     client = build_client(tenant_service)
     headers = {'X-Project-ID': 'workspace-1'}
 
-    registered = client.post('/api/v1/workers', headers=headers)
+    registered = client.post(
+        '/api/v1/workers',
+        headers=headers,
+        json={'harnesses': []},
+    )
     heartbeated = client.post(
         '/api/v1/workers/worker-1/heartbeat',
         headers=headers,
+        json={'harnesses': []},
     )
 
     assert registered.status_code == 201
     assert heartbeated.status_code == 200
     assert registered.json()['id'] == 'worker-1'
-    assert registered.json()['harnesses'] == [{
-        'kind': 'louie',
-        'version': 'v1',
-        'config': {},
-    }]
+    assert registered.json()['harnesses'] == []
     assert heartbeated.json()['harnesses'] == registered.json()['harnesses']
     assert heartbeated.json()['registered_at'] == registered.json()['registered_at']
     assert heartbeated.json()['last_heartbeat_at'] > registered.json()['last_heartbeat_at']
@@ -197,7 +198,38 @@ def test_heartbeat_requires_workspace_worker_registration(
 ) -> None:
     """A heartbeat cannot implicitly create an unregistered worker."""
 
-    response = build_client(tenant_service).post('/api/v1/workers/worker-1/heartbeat')
+    response = build_client(tenant_service).post(
+        '/api/v1/workers/worker-1/heartbeat',
+        json={'harnesses': []},
+    )
 
     assert response.status_code == 404
     assert response.json()['error']['code'] == 'worker_not_found'
+
+
+def test_worker_registration_requires_explicit_harnesses(
+    tenant_service: TenantService,
+) -> None:
+    """Worker provisioning never infers a default Harness capability."""
+
+    response = build_client(tenant_service).post(
+        '/api/v1/workers',
+        headers={'X-Project-ID': 'workspace-1'},
+        json={},
+    )
+
+    assert response.status_code == 422
+
+
+def test_worker_registration_requires_explicit_harness_kind(
+    tenant_service: TenantService,
+) -> None:
+    """Worker capabilities must name their Harness rather than defaulting to Louie."""
+
+    response = build_client(tenant_service).post(
+        '/api/v1/workers',
+        headers={'X-Project-ID': 'workspace-1'},
+        json={'harnesses': [{}]},
+    )
+
+    assert response.status_code == 422
