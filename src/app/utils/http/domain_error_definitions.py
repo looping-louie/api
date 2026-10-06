@@ -68,6 +68,7 @@ from src.app.services.workers import (
     WorkerNotFoundError,
     WorkerUnavailableError,
 )
+from src.app.services.worker_instances import WorkerInstanceNotFoundError
 from src.app.services.shared.tenant import (
     TenantAccessDeniedError,
     TenantNotFoundError,
@@ -212,6 +213,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         details_builder=pipeline_run_unavailable_details,
     ),
     WorkerNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='worker_not_found',
+    ),
+    WorkerInstanceNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code='worker_not_found',
     ),

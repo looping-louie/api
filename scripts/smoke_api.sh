@@ -480,6 +480,32 @@ PIPELINE_ID="$(
 worker_response="$(request POST "/workers" '{}')"
 WORKER_ID="$(printf '%s' "${worker_response}" | json_field "id")"
 request POST "/workers/${WORKER_ID}/heartbeat" '{}' >/dev/null
+worker_project_response="$(
+    request POST "/projects" "$(
+        cat <<JSON
+{
+    "name": "Worker Project ${SMOKE_RUN_ID}"
+}
+JSON
+    )"
+)"
+WORKER_PROJECT_ID="$(printf '%s' "${worker_project_response}" | json_field "id")"
+worker_instance_response="$(
+    request POST "/workers/instances" "$(
+        cat <<JSON
+{
+    "project_id": "${PROJECT_ID}",
+    "harnesses": []
+}
+JSON
+    )"
+)"
+WORKER_INSTANCE_ID="$(printf '%s' "${worker_instance_response}" | json_field "id")"
+request \
+    POST \
+    "/workers/instances/${WORKER_INSTANCE_ID}/projects/${WORKER_PROJECT_ID}" \
+    '{}' \
+    >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
 pipeline_run_response="$(

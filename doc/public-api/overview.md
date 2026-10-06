@@ -22,8 +22,8 @@ configuration.
   definitions and their Project-placed Activity runs.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
   persists each supplied step as an independent User-owned Activity record.
-- [Workers](workers.md) provisions runtime identities and records liveness
-  heartbeats required for PipelineRun claims.
+- [Workers](workers.md) registers global Workers, controls their Project
+  enablements, and records legacy Worker heartbeats during migration.
 
 ## Versioned API conventions
 
@@ -33,9 +33,10 @@ activity, and pipeline routes use the `/api/v1` prefix.
 These routes require a user identity. Until authentication is implemented,
 clients provide it through `X-User-ID`. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` when the request does not
-already have an identity. A request may select one of the User's Projects
-with the optional `X-Project-ID` header when it targets execution placement,
-such as a Worker, PipelineRun, or ActivityRun. Project management routes
+already have an identity. A request may select one of the User's Projects with
+the optional `X-Project-ID` header when it targets legacy execution placement,
+PipelineRun, or ActivityRun. Global Worker enablement routes identify the
+Project explicitly in their path or request body. Project management routes
 instead include the Project identifier in their URL. User model routes are
 user-scoped and ignore the header.
 If the User has access to more than one Project and the header is omitted, the

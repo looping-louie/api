@@ -214,6 +214,11 @@ controllers/
 |   |-- create.py                 Creates Workers
 |   |-- heartbeat.py              Records Worker heartbeats
 |   `-- response.py               Translates Worker documents to responses
+|-- worker_instances/
+|   |-- __init__.py               Composes endpoint-specific controllers
+|   |-- create.py                 Registers global Workers
+|   |-- enable_project.py         Enables global Workers for Projects
+|   `-- response.py               Translates global Worker documents to responses
 `-- users/
   |-- __init__.py               Composes endpoint-specific controllers
   |-- create.py                 Creates the current User

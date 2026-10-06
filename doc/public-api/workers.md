@@ -1,9 +1,14 @@
 # Workers
 
-Workers are API-provisioned, Project-scoped runtime identities. A runtime
-stores its assigned `worker_id` in the Project configuration and refreshes a
-heartbeat before each Project poll. An active heartbeat and a matching
-Harness capability are required to claim a PipelineRun.
+Workers are API-provisioned runtime identities. New global Workers register
+once, advertise capabilities once, and are explicitly enabled for each Project
+where they may claim work. The runtime retains local checkout paths; the API
+stores only Worker identities and Project execution authorization.
+
+Legacy Workers remain Project-scoped during the migration. A runtime stores its
+assigned `worker_id` in the Project configuration and refreshes a heartbeat
+before each Project poll. An active heartbeat and a matching Harness capability
+are required to claim a PipelineRun.
 
 Worker provisioning is separate from a PipelineRun lease. A heartbeat does not
 extend a lease, and an expired heartbeat does not revoke an existing lease.
@@ -12,11 +17,49 @@ extend a lease, and an expired heartbeat does not revoke an existing lease.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
+| `POST` | `/api/v1/workers/instances` | Register a global Worker and enable its initial Project. |
+| `POST` | `/api/v1/workers/instances/{worker_id}/projects/{project_id}` | Enable a global Worker for an additional Project. |
 | `POST` | `/api/v1/workers` | Provision a worker identity. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh an existing worker heartbeat. |
 
-Both endpoints require `X-User-ID` and use `X-Project-ID` to select one of that
-User's Projects.
+Legacy endpoints require `X-User-ID` and use `X-Project-ID` to select one of
+that User's Projects.
+
+Global Worker endpoints require `X-User-ID`. Registration names its initial
+Project in the request body, while a Project-enablement route names the Project
+in its path. The requesting User must have access to each named Project.
+
+## Register A Global Worker
+
+`POST /api/v1/workers/instances` registers one global Worker and enables it for
+the required `project_id`. Its `harnesses` array declares local execution
+capabilities. The API does not receive checkout paths.
+
+```http
+POST /api/v1/workers/instances
+X-User-ID: user-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "project_id": "project-acme",
+  "harnesses": [
+    {
+      "kind": "codex_cli",
+      "version": "v1",
+      "config": {}
+    }
+  ]
+}
+```
+
+Enable an additional Project only when the requesting User can access it:
+
+```http
+POST /api/v1/workers/instances/worker-local-01/projects/project-b
+X-User-ID: user-acme
+```
 
 ## Observe Worker Liveness
 

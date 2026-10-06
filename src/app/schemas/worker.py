@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 
 from .execution import HarnessRequest, HarnessResponse
-from .shared import RequestSchema, ResponseSchema
+from .shared import NonEmptyString, RequestSchema, ResponseSchema
 
 
 class WorkerHarnessCapabilityRequest(HarnessRequest):
@@ -17,6 +17,12 @@ class WorkerCreateRequest(RequestSchema):
     """Capabilities declared for one newly provisioned Worker."""
 
     harnesses: list[WorkerHarnessCapabilityRequest]
+
+
+class WorkerInstanceCreateRequest(WorkerCreateRequest):
+    """Initial Project assignment and capabilities for one global Worker."""
+
+    project_id: NonEmptyString
 
 
 class WorkerHeartbeatRequest(RequestSchema):
@@ -36,3 +42,11 @@ class WorkerResponse(ResponseSchema):
     registered_at: datetime
     last_heartbeat_at: datetime
     harnesses: list[WorkerHarnessCapabilityResponse]
+
+
+class WorkerProjectEnablementResponse(ResponseSchema):
+    """One Project that is authorized to receive work from a global Worker."""
+
+    worker_id: str
+    project_id: str
+    enabled_at: datetime

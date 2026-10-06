@@ -21,6 +21,7 @@ from src.app.controllers.projects import ProjectController
 from src.app.controllers.users import UserController
 from src.app.controllers.skills import SkillController
 from src.app.controllers.workers import WorkerController
+from src.app.controllers.worker_instances import WorkerInstanceController
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
 )
@@ -46,6 +47,7 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
 )
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
+from src.app.repositories.worker_instances import SqliteWorkerInstanceRepository
 from src.app.repositories.projects import SqliteProjectRepository
 from src.app.repositories.users import SqliteUserRepository
 from src.app.repositories.shared.reference_repository import (
@@ -92,6 +94,7 @@ from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
 from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import WorkerInstanceService
 from src.app.services.projects.service import ProjectService
 from src.app.services.users import UserService
 
@@ -180,6 +183,7 @@ async def configure_application(
     )
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
+    worker_instance_repository = SqliteWorkerInstanceRepository(database)
     project_repository = SqliteProjectRepository(database)
     user_repository = SqliteUserRepository(database)
     user_service = UserService(
@@ -306,6 +310,12 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
     )
+    worker_instance_service = WorkerInstanceService(
+        repository=worker_instance_repository,
+        tenant_service=tenant_service,
+        id_factory=create_identifier,
+        clock=utc_now,
+    )
     app.state.persona_controller = PersonaController(
         persona_service=persona_service,
     )
@@ -344,6 +354,9 @@ async def configure_application(
         model_catalog_service=model_catalog_service,
     )
     app.state.worker_controller = WorkerController(worker_service=worker_service)
+    app.state.worker_instance_controller = WorkerInstanceController(
+        service=worker_instance_service,
+    )
 
     app.state.database = database
     app.state.persona_skill_catalog = resolved_catalog
