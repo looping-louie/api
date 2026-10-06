@@ -126,6 +126,9 @@ services/
 |-- users/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages durable request identities
+|-- worker_instances/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Manages global Worker Project enablements
 |-- projects/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages User-owned execution-placement Projects

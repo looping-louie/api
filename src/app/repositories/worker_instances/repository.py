@@ -11,6 +11,14 @@ from src.app.models.worker_instance import (
 class WorkerInstanceRepository(Protocol):
     """Persist globally identified Workers and their Project assignments."""
 
+    async def get(
+        self,
+        *,
+        worker_instance_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one globally identified Worker."""
+        raise NotImplementedError
+
     async def create(
         self,
         document: WorkerInstanceDocument,

@@ -32,6 +32,7 @@ async def test_worker_can_be_enabled_for_multiple_projects(
         harnesses=(WorkerHarnessCapability(kind='codex_cli'),),
     )
     await repository.create(worker)
+    assert await repository.get(worker_instance_id=worker.id) == worker
 
     enabled_for_a = await repository.enable_project(
         WorkerProjectEnablementDocument(

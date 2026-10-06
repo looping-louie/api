@@ -21,6 +21,28 @@ class SqliteWorkerInstanceRepository:
 
         self._database = database
 
+    async def get(
+        self,
+        *,
+        worker_instance_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker and its advertised Harnesses."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, registered_at, last_heartbeat_at, harnesses_json
+                FROM worker_instances
+                WHERE id = ?
+                ''',
+                (worker_instance_id,),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return _to_worker_document(row) if row is not None else None
+
     async def create(
         self,
         document: WorkerInstanceDocument,
@@ -123,3 +145,38 @@ def _to_enablement_document(row: object) -> WorkerProjectEnablementDocument:
         project_id=row['project_id'],
         enabled_at=parse_datetime(row['enabled_at']),
     )
+
+
+def _to_worker_document(row: object) -> WorkerInstanceDocument:
+    """Map one SQLite Worker row to its domain document."""
+
+    return WorkerInstanceDocument(
+        id=row['id'],
+        registered_at=parse_datetime(row['registered_at']),
+        last_heartbeat_at=parse_datetime(row['last_heartbeat_at']),
+        harnesses=_deserialize_harnesses(row['harnesses_json']),
+    )
+
+
+def _deserialize_harnesses(value: str) -> tuple[WorkerHarnessCapability, ...]:
+    """Decode the durable Worker Harness capability representation."""
+
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError('Worker Harness capabilities are invalid.') from error
+    if not isinstance(parsed, list):
+        raise RuntimeError('Worker Harness capabilities are invalid.')
+    capabilities: list[WorkerHarnessCapability] = []
+    for capability in parsed:
+        config = capability.get('config') if isinstance(capability, dict) else None
+        if (
+            not isinstance(capability, dict)
+            or capability.get('kind') not in ('louie', 'codex_cli', 'copilot_cli')
+            or capability.get('version') != 'v1'
+            or not isinstance(config, dict)
+            or config
+        ):
+            raise RuntimeError('Worker Harness capabilities are invalid.')
+        capabilities.append(WorkerHarnessCapability(kind=capability['kind']))
+    return tuple(capabilities)
