@@ -189,7 +189,7 @@ class SqliteWorkerInstanceRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 await connection.execute(
                     '''
-                    INSERT INTO worker_project_enablements (
+                    INSERT OR IGNORE INTO worker_project_enablements (
                         worker_instance_id, project_id, enabled_at
                     ) VALUES (?, ?, ?)
                     ''',
@@ -199,11 +199,25 @@ class SqliteWorkerInstanceRepository:
                         document.enabled_at.isoformat(),
                     ),
                 )
+                cursor = await connection.execute(
+                    '''
+                    SELECT worker_instance_id, project_id, enabled_at
+                    FROM worker_project_enablements
+                    WHERE worker_instance_id = ? AND project_id = ?
+                    ''',
+                    (document.worker_instance_id, document.project_id),
+                )
+                try:
+                    row = await cursor.fetchone()
+                finally:
+                    await cursor.close()
                 await connection.commit()
             except Exception:
                 await connection.rollback()
                 raise
-        return document
+        if row is None:
+            raise RuntimeError('Worker Project enablement was not persisted.')
+        return _to_enablement_document(row)
 
     async def list_enabled_projects(
         self,
