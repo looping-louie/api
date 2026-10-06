@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+from typing import Mapping
 
-from src.app.models.worker import WorkerHarnessCapability
+from src.app.models.worker import WorkerHarnessCapability, WorkerReadinessDocument
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerProjectEnablementDocument,
@@ -106,6 +107,76 @@ class SqliteWorkerInstanceRepository:
                 await connection.rollback()
                 raise
         return _to_worker_document(row) if row is not None else None
+
+    async def get_enabled(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return a Worker only when it is enabled for the Project."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
+                    worker.harnesses_json
+                FROM worker_instances AS worker
+                INNER JOIN worker_project_enablements AS enablement
+                    ON enablement.worker_instance_id = worker.id
+                WHERE worker.id = ? AND enablement.project_id = ?
+                ''',
+                (worker_instance_id, project_id),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return _to_worker_document(row) if row is not None else None
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        active_since: datetime,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize enabled Worker liveness and exact Harness matches."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
+                    worker.harnesses_json
+                FROM worker_instances AS worker
+                INNER JOIN worker_project_enablements AS enablement
+                    ON enablement.worker_instance_id = worker.id
+                WHERE enablement.project_id = ?
+                ''',
+                (project_id,),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        workers = [_to_worker_document(row) for row in rows]
+        active = [
+            worker for worker in workers
+            if worker.last_heartbeat_at >= active_since
+        ]
+        compatible = [
+            worker for worker in active
+            if any(capability.matches(harness) for capability in worker.harnesses)
+        ]
+        return WorkerReadinessDocument(
+            registered_worker_count=len(workers),
+            active_worker_count=len(active),
+            compatible_worker_count=len(compatible),
+            latest_heartbeat_at=max(
+                (worker.last_heartbeat_at for worker in workers),
+                default=None,
+            ),
+        )
 
     async def enable_project(
         self,

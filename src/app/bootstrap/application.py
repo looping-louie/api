@@ -335,6 +335,7 @@ async def configure_application(
         clock=utc_now,
         activity_run_repository=activity_run_repository,
         worker_service=worker_service,
+        worker_instance_service=worker_instance_service,
         linked_service_service=linked_service_service,
         workspace_service=project_service,
         user_service=user_service,

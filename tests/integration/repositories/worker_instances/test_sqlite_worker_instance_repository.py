@@ -58,6 +58,23 @@ async def test_worker_can_be_enabled_for_multiple_projects(
         ),
     )
 
+    assert await repository.get_enabled(
+        worker_instance_id=worker.id,
+        project_id='project-a',
+    ) == heartbeated
+    assert await repository.get_enabled(
+        worker_instance_id=worker.id,
+        project_id='project-missing',
+    ) is None
+    readiness = await repository.readiness(
+        project_id='project-a',
+        active_since=timestamp,
+        harness={'kind': 'codex_cli', 'version': 'v1', 'config': {}},
+    )
+
+    assert readiness.registered_worker_count == 1
+    assert readiness.active_worker_count == 1
+    assert readiness.compatible_worker_count == 0
     assert await repository.list_enabled_projects(
         worker_instance_id=worker.id,
     ) == (enabled_for_a, enabled_for_b)

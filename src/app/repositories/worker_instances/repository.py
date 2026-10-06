@@ -1,9 +1,9 @@
 """Persistence protocol for global Workers and Project enablements."""
 
 from datetime import datetime
-from typing import Protocol
+from typing import Mapping, Protocol
 
-from src.app.models.worker import WorkerHarnessCapability
+from src.app.models.worker import WorkerHarnessCapability, WorkerReadinessDocument
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerProjectEnablementDocument,
@@ -36,6 +36,25 @@ class WorkerInstanceRepository(Protocol):
         harnesses: tuple[WorkerHarnessCapability, ...],
     ) -> WorkerInstanceDocument | None:
         """Refresh one Worker's liveness and observed Harnesses."""
+        raise NotImplementedError
+
+    async def get_enabled(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker when it is enabled for the specified Project."""
+        raise NotImplementedError
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        active_since: datetime,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize enabled Worker liveness and exact Harness matches."""
         raise NotImplementedError
 
     async def enable_project(

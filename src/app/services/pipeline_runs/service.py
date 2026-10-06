@@ -44,6 +44,7 @@ from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.pagination import PAGE_SIZE, require_offset
 from src.app.services.users import UserService
 from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import WorkerInstanceService
 from src.app.services.projects.service import ProjectService
 
 
@@ -58,6 +59,7 @@ class PipelineRunService:
         pipeline_service: PipelineService,
         tenant_service: TenantService,
         worker_service: WorkerService | None = None,
+        worker_instance_service: WorkerInstanceService | None = None,
         workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         model_execution_service: ModelExecutionService | None = None,
@@ -74,6 +76,7 @@ class PipelineRunService:
         self._pipeline_service = pipeline_service
         self._tenant_service = tenant_service
         self._worker_service = worker_service
+        self._worker_instance_service = worker_instance_service
         self._workspace_service = workspace_service
         self._user_service = user_service
         self._snapshot_builder = PipelineRunSnapshotBuilder(
@@ -87,6 +90,7 @@ class PipelineRunService:
             repository=repository,
             tenant_service=tenant_service,
             worker_service=worker_service,
+            worker_instance_service=worker_instance_service,
             clock=clock,
         )
         self._clock = clock
@@ -308,7 +312,18 @@ class PipelineRunService:
             run_id=run_id,
         )
         now = self._clock()
-        if self._worker_service is not None:
+        if (
+            self._worker_instance_service is not None
+            and await self._worker_instance_service.exists(
+                worker_id=normalized_worker_id,
+            )
+        ):
+            await self._worker_instance_service.require_capable(
+                project_id=workspace.project_id,
+                worker_id=normalized_worker_id,
+                harness=required_harness(candidate),
+            )
+        elif self._worker_service is not None:
             await self._worker_service.require_capable(
                 project_id=workspace.project_id,
                 worker_id=normalized_worker_id,

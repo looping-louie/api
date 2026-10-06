@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Literal, Mapping
 
 from src.app.models.pipeline_run import PipelineRunDocument
+from src.app.models.worker import WorkerReadinessDocument
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.pipeline_runs.graph import (
     first_dependency_ready_step,
@@ -17,6 +18,7 @@ from src.app.services.pipeline_runs.snapshot import harness_snapshot
 from src.app.services.pipeline_runs.types import PipelineRunNotFoundError
 from src.app.services.shared.tenant import TenantService
 from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import WorkerInstanceService
 
 
 PipelineRunReadinessStatus = Literal[
@@ -51,6 +53,7 @@ class PipelineRunReadinessService:
         repository: PipelineRunRepository,
         tenant_service: TenantService,
         worker_service: WorkerService | None,
+        worker_instance_service: WorkerInstanceService | None = None,
         clock: Callable[[], datetime],
     ) -> None:
         """Store run persistence, tenancy, worker, and time dependencies."""
@@ -58,6 +61,7 @@ class PipelineRunReadinessService:
         self._repository = repository
         self._tenant_service = tenant_service
         self._worker_service = worker_service
+        self._worker_instance_service = worker_instance_service
         self._clock = clock
 
     async def get(
@@ -89,12 +93,20 @@ class PipelineRunReadinessService:
                 latest_heartbeat_at=None, observed_at=now,
             )
         harness = required_harness(document)
-        if self._worker_service is None:
+        if self._worker_service is None and self._worker_instance_service is None:
             raise RuntimeError('Worker readiness is not configured.')
-        workers = await self._worker_service.readiness(
-            project_id=document.project_id,
-            harness=harness,
-        )
+        summaries = []
+        if self._worker_service is not None:
+            summaries.append(await self._worker_service.readiness(
+                project_id=document.project_id,
+                harness=harness,
+            ))
+        if self._worker_instance_service is not None:
+            summaries.append(await self._worker_instance_service.readiness(
+                project_id=document.project_id,
+                harness=harness,
+            ))
+        workers = _merge_readiness(summaries)
         status: PipelineRunReadinessStatus = 'ready'
         if workers.registered_worker_count == 0:
             status = 'no_registered_workers'
@@ -133,3 +145,23 @@ def required_harness(document: PipelineRunDocument) -> dict[str, object]:
     if step is None:
         raise RuntimeError('Pipeline run has no claimable step.')
     return harness_snapshot(step.activity_snapshot)
+
+
+def _merge_readiness(
+    summaries: list[WorkerReadinessDocument],
+) -> WorkerReadinessDocument:
+    """Combine legacy and global Worker readiness during migration."""
+
+    return WorkerReadinessDocument(
+        registered_worker_count=sum(
+            summary.registered_worker_count for summary in summaries
+        ),
+        active_worker_count=sum(summary.active_worker_count for summary in summaries),
+        compatible_worker_count=sum(
+            summary.compatible_worker_count for summary in summaries
+        ),
+        latest_heartbeat_at=max(
+            (summary.latest_heartbeat_at for summary in summaries),
+            default=None,
+        ),
+    )

@@ -2,14 +2,23 @@
 
 from collections.abc import Callable
 from datetime import datetime
+from typing import Mapping
 
-from src.app.models.worker import WorkerHarnessCapability
+from src.app.models.worker import (
+    WorkerHarnessCapability,
+    WorkerReadinessDocument,
+)
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerProjectEnablementDocument,
 )
 from src.app.repositories.worker_instances import WorkerInstanceRepository
 from src.app.services.shared.tenant import TenantService
+from src.app.services.workers import (
+    WORKER_HEARTBEAT_TIMEOUT,
+    WorkerHarnessUnavailableError,
+    WorkerUnavailableError,
+)
 
 
 class WorkerInstanceNotFoundError(Exception):
@@ -114,6 +123,49 @@ class WorkerInstanceService:
         if worker is None:
             raise WorkerInstanceNotFoundError(worker_id)
         return worker
+
+    async def require_capable(
+        self,
+        *,
+        project_id: str,
+        worker_id: str,
+        harness: Mapping[str, object],
+    ) -> None:
+        """Reject global Workers that cannot claim work for one Project."""
+
+        normalized_worker_id = _require_text(worker_id)
+        worker = await self._repository.get_enabled(
+            worker_instance_id=normalized_worker_id,
+            project_id=project_id,
+        )
+        if (
+            worker is None
+            or worker.last_heartbeat_at < self._clock() - WORKER_HEARTBEAT_TIMEOUT
+        ):
+            raise WorkerUnavailableError(normalized_worker_id)
+        if not any(candidate.matches(harness) for candidate in worker.harnesses):
+            raise WorkerHarnessUnavailableError(normalized_worker_id)
+
+    async def readiness(
+        self,
+        *,
+        project_id: str,
+        harness: Mapping[str, object],
+    ) -> WorkerReadinessDocument:
+        """Summarize enabled global Workers for one Project and Harness."""
+
+        return await self._repository.readiness(
+            project_id=project_id,
+            active_since=self._clock() - WORKER_HEARTBEAT_TIMEOUT,
+            harness=harness,
+        )
+
+    async def exists(self, *, worker_id: str) -> bool:
+        """Return whether an ID belongs to a globally registered Worker."""
+
+        return await self._repository.get(
+            worker_instance_id=_require_text(worker_id),
+        ) is not None
 
 
 def _require_text(value: str) -> str:
