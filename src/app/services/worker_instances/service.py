@@ -91,6 +91,30 @@ class WorkerInstanceService:
             ),
         )
 
+    async def heartbeat(
+        self,
+        *,
+        user_id: str,
+        worker_instance_id: str,
+        harnesses: tuple[WorkerHarnessCapability, ...],
+        requested_project_id: str | None = None,
+    ) -> WorkerInstanceDocument:
+        """Refresh one global Worker's liveness and observed Harnesses."""
+
+        await self._tenant_service.resolve(
+            user_id=user_id,
+            requested_project_id=requested_project_id,
+        )
+        worker_id = _require_text(worker_instance_id)
+        worker = await self._repository.heartbeat(
+            worker_instance_id=worker_id,
+            occurred_at=self._clock(),
+            harnesses=harnesses,
+        )
+        if worker is None:
+            raise WorkerInstanceNotFoundError(worker_id)
+        return worker
+
 
 def _require_text(value: str) -> str:
     """Normalize one required Worker identifier."""

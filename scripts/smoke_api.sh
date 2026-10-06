@@ -503,6 +503,11 @@ JSON
 WORKER_INSTANCE_ID="$(printf '%s' "${worker_instance_response}" | json_field "id")"
 request \
     POST \
+    "/workers/instances/${WORKER_INSTANCE_ID}/heartbeat" \
+    '{"harnesses":[]}' \
+    >/dev/null
+request \
+    POST \
     "/workers/instances/${WORKER_INSTANCE_ID}/projects/${WORKER_PROJECT_ID}" \
     '{}' \
     >/dev/null

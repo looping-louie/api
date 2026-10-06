@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import json
 
 from src.app.models.worker import WorkerHarnessCapability
@@ -70,6 +71,41 @@ class SqliteWorkerInstanceRepository:
                 await connection.rollback()
                 raise
         return document
+
+    async def heartbeat(
+        self,
+        *,
+        worker_instance_id: str,
+        occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...],
+    ) -> WorkerInstanceDocument | None:
+        """Refresh one Worker's liveness and observed Harnesses."""
+
+        async with self._database.connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                cursor = await connection.execute(
+                    '''
+                    UPDATE worker_instances
+                    SET last_heartbeat_at = ?, harnesses_json = ?
+                    WHERE id = ?
+                    RETURNING id, registered_at, last_heartbeat_at, harnesses_json
+                    ''',
+                    (
+                        occurred_at.isoformat(),
+                        _serialize_harnesses(harnesses),
+                        worker_instance_id,
+                    ),
+                )
+                try:
+                    row = await cursor.fetchone()
+                finally:
+                    await cursor.close()
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+        return _to_worker_document(row) if row is not None else None
 
     async def enable_project(
         self,

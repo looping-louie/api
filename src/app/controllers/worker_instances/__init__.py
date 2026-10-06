@@ -4,11 +4,13 @@ from src.app.services.worker_instances import WorkerInstanceService
 
 from .create import WorkerInstanceCreateController
 from .enable_project import WorkerInstanceEnableProjectController
+from .heartbeat import WorkerInstanceHeartbeatController
 
 
 class WorkerInstanceController(
     WorkerInstanceCreateController,
     WorkerInstanceEnableProjectController,
+    WorkerInstanceHeartbeatController,
 ):
     """Compose endpoint-specific global Worker controllers."""
 
@@ -22,4 +24,5 @@ __all__ = [
     'WorkerInstanceController',
     'WorkerInstanceCreateController',
     'WorkerInstanceEnableProjectController',
+    'WorkerInstanceHeartbeatController',
 ]

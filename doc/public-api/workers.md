@@ -18,6 +18,7 @@ extend a lease, and an expired heartbeat does not revoke an existing lease.
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `POST` | `/api/v1/workers/instances` | Register a global Worker and enable its initial Project. |
+| `POST` | `/api/v1/workers/instances/{worker_id}/heartbeat` | Refresh a global Worker heartbeat. |
 | `POST` | `/api/v1/workers/instances/{worker_id}/projects/{project_id}` | Enable a global Worker for an additional Project. |
 | `POST` | `/api/v1/workers` | Provision a worker identity. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh an existing worker heartbeat. |
@@ -59,6 +60,34 @@ Enable an additional Project only when the requesting User can access it:
 ```http
 POST /api/v1/workers/instances/worker-local-01/projects/project-b
 X-User-ID: user-acme
+```
+
+## Heartbeat A Global Worker
+
+`POST /api/v1/workers/instances/{worker_id}/heartbeat` records one liveness
+signal and atomically replaces the global Worker's observed Harness
+capabilities. The caller must provide `X-User-ID` and select an accessible
+Project with `X-Project-ID` when they belong to multiple Projects. The selected
+Project authorizes the request; the heartbeat itself remains global to the
+Worker.
+
+```http
+POST /api/v1/workers/instances/worker-local-01/heartbeat
+X-User-ID: user-acme
+X-Project-ID: project-acme
+Content-Type: application/json
+```
+
+```json
+{
+  "harnesses": [
+    {
+      "kind": "codex_cli",
+      "version": "v1",
+      "config": {}
+    }
+  ]
+}
 ```
 
 ## Observe Worker Liveness

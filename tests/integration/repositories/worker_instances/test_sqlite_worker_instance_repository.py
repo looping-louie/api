@@ -1,6 +1,6 @@
 """Integration tests for SQLite global Worker persistence."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -33,6 +33,15 @@ async def test_worker_can_be_enabled_for_multiple_projects(
     )
     await repository.create(worker)
     assert await repository.get(worker_instance_id=worker.id) == worker
+    heartbeated = await repository.heartbeat(
+        worker_instance_id=worker.id,
+        occurred_at=timestamp + timedelta(seconds=1),
+        harnesses=(),
+    )
+
+    assert heartbeated is not None
+    assert heartbeated.harnesses == ()
+    assert heartbeated.last_heartbeat_at > worker.last_heartbeat_at
 
     enabled_for_a = await repository.enable_project(
         WorkerProjectEnablementDocument(

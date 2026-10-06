@@ -7,6 +7,9 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from src.app.controllers.worker_instances import WorkerInstanceController
+from datetime import datetime
+
+from src.app.models.worker import WorkerHarnessCapability
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerProjectEnablementDocument,
@@ -44,6 +47,27 @@ class InMemoryWorkerInstanceRepository:
 
         self.workers[document.id] = document
         return document
+
+    async def heartbeat(
+        self,
+        *,
+        worker_instance_id: str,
+        occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...],
+    ) -> WorkerInstanceDocument | None:
+        """Update one global Worker's liveness and Harnesses."""
+
+        current = self.workers.get(worker_instance_id)
+        if current is None:
+            return None
+        updated = WorkerInstanceDocument(
+            id=current.id,
+            registered_at=current.registered_at,
+            last_heartbeat_at=occurred_at,
+            harnesses=harnesses,
+        )
+        self.workers[updated.id] = updated
+        return updated
 
     async def enable_project(
         self,
@@ -112,12 +136,18 @@ def test_register_then_enable_global_worker_for_another_project(
     enabled = client.post(
         '/api/v1/workers/instances/worker-1/projects/workspace-1',
     )
+    heartbeated = client.post(
+        '/api/v1/workers/instances/worker-1/heartbeat',
+        json={'harnesses': []},
+    )
 
     assert registered.status_code == 201
     assert registered.json()['id'] == 'worker-1'
     assert enabled.status_code == 201
     assert enabled.json()['worker_id'] == 'worker-1'
     assert enabled.json()['project_id'] == 'workspace-1'
+    assert heartbeated.status_code == 200
+    assert heartbeated.json()['harnesses'] == []
 
 
 def test_global_worker_registration_requires_an_explicit_project(

@@ -1,7 +1,9 @@
 """Persistence protocol for global Workers and Project enablements."""
 
+from datetime import datetime
 from typing import Protocol
 
+from src.app.models.worker import WorkerHarnessCapability
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerProjectEnablementDocument,
@@ -24,6 +26,16 @@ class WorkerInstanceRepository(Protocol):
         document: WorkerInstanceDocument,
     ) -> WorkerInstanceDocument:
         """Persist one newly registered Worker."""
+        raise NotImplementedError
+
+    async def heartbeat(
+        self,
+        *,
+        worker_instance_id: str,
+        occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...],
+    ) -> WorkerInstanceDocument | None:
+        """Refresh one Worker's liveness and observed Harnesses."""
         raise NotImplementedError
 
     async def enable_project(
