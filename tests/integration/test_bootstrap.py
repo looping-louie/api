@@ -52,6 +52,8 @@ EXPECTED_TABLES = {
     "pipeline_run_steps",
     "pipeline_run_events",
     "workers",
+    "worker_instances",
+    "worker_project_enablements",
     "users",
 }
 
@@ -242,6 +244,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
                         "0057_local_project_seed",
                         "0058_restore_foreign_keys",
                         "0059_harness_activity_run_checkpoints",
+                        "0060_worker_instances",
     ]
     assert activity_rows == []
 

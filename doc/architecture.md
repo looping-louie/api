@@ -323,6 +323,10 @@ repositories/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists Projects
+|-- worker_instances/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists Workers and Project enablements
 |-- users/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
@@ -352,6 +356,7 @@ models/
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
+|-- worker_instance.py             Defines Worker identities and Project enablements
 |-- tenant.py                      Defines workspace and membership state
 |-- user.py                        Defines persisted user identities
 |-- workspace.py                   Defines Workspace documents

@@ -1,0 +1,125 @@
+"""SQLite persistence for global Workers and Project enablements."""
+
+from __future__ import annotations
+
+import json
+
+from src.app.models.worker import WorkerHarnessCapability
+from src.app.models.worker_instance import (
+    WorkerInstanceDocument,
+    WorkerProjectEnablementDocument,
+)
+from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
+from src.app.repositories.shared.datetime import parse_datetime
+
+
+class SqliteWorkerInstanceRepository:
+    """Persist Worker identities separately from their Project assignments."""
+
+    def __init__(self, database: SqliteDatabase) -> None:
+        """Store the shared SQLite connection manager."""
+
+        self._database = database
+
+    async def create(
+        self,
+        document: WorkerInstanceDocument,
+    ) -> WorkerInstanceDocument:
+        """Persist one Worker and its advertised Harnesses."""
+
+        async with self._database.connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                await connection.execute(
+                    '''
+                    INSERT INTO worker_instances (
+                        id, registered_at, last_heartbeat_at, harnesses_json
+                    ) VALUES (?, ?, ?, ?)
+                    ''',
+                    (
+                        document.id,
+                        document.registered_at.isoformat(),
+                        document.last_heartbeat_at.isoformat(),
+                        _serialize_harnesses(document.harnesses),
+                    ),
+                )
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+        return document
+
+    async def enable_project(
+        self,
+        document: WorkerProjectEnablementDocument,
+    ) -> WorkerProjectEnablementDocument:
+        """Persist one Worker's Project execution authorization."""
+
+        async with self._database.connect() as connection:
+            try:
+                await connection.execute('BEGIN IMMEDIATE')
+                await connection.execute(
+                    '''
+                    INSERT INTO worker_project_enablements (
+                        worker_instance_id, project_id, enabled_at
+                    ) VALUES (?, ?, ?)
+                    ''',
+                    (
+                        document.worker_instance_id,
+                        document.project_id,
+                        document.enabled_at.isoformat(),
+                    ),
+                )
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+        return document
+
+    async def list_enabled_projects(
+        self,
+        *,
+        worker_instance_id: str,
+    ) -> tuple[WorkerProjectEnablementDocument, ...]:
+        """Return all Project assignments for one Worker."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT worker_instance_id, project_id, enabled_at
+                FROM worker_project_enablements
+                WHERE worker_instance_id = ?
+                ORDER BY project_id
+                ''',
+                (worker_instance_id,),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return tuple(_to_enablement_document(row) for row in rows)
+
+
+def _serialize_harnesses(
+    harnesses: tuple[WorkerHarnessCapability, ...],
+) -> str:
+    """Serialize Harness capabilities in the durable API representation."""
+
+    return json.dumps([
+        {
+            'kind': harness.kind,
+            'version': harness.version,
+            'config': dict(harness.config),
+        }
+        for harness in harnesses
+    ])
+
+
+def _to_enablement_document(row: object) -> WorkerProjectEnablementDocument:
+    """Map one SQLite enablement row to its domain document."""
+
+    return WorkerProjectEnablementDocument(
+        worker_instance_id=row['worker_instance_id'],
+        project_id=row['project_id'],
+        enabled_at=parse_datetime(row['enabled_at']),
+    )
