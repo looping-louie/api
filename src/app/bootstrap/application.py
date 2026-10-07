@@ -20,7 +20,6 @@ from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.projects import ProjectController
 from src.app.controllers.users import UserController
 from src.app.controllers.skills import SkillController
-from src.app.controllers.workers import WorkerController
 from src.app.controllers.worker_instances import WorkerInstanceController
 from src.app.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
@@ -46,7 +45,6 @@ from src.app.repositories.infrastructure.local_tenant_seed import (
     ensure_local_tenant,
 )
 from src.app.repositories.linked_services import SqliteLinkedServiceRepository
-from src.app.repositories.workers import SqliteWorkerRepository
 from src.app.repositories.worker_instances import SqliteWorkerInstanceRepository
 from src.app.repositories.projects import SqliteProjectRepository
 from src.app.repositories.pipeline_runs.sqlite_repository import (
@@ -96,7 +94,6 @@ from src.app.services.shared.reference_resolver import ReferenceResolver
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.validation import ValidationService
 from src.app.services.skills import SkillService
-from src.app.services.workers import WorkerService
 from src.app.services.worker_instances import WorkerInstanceService
 from src.app.services.projects.service import ProjectService
 from src.app.services.users import UserService
@@ -185,7 +182,6 @@ async def configure_application(
         resolved_settings.database_path,
     )
     linked_service_repository = SqliteLinkedServiceRepository(database)
-    worker_repository = SqliteWorkerRepository(database)
     worker_instance_repository = SqliteWorkerInstanceRepository(database)
     pipeline_run_repository = SqlitePipelineRunRepository(
         resolved_settings.database_path,
@@ -310,12 +306,6 @@ async def configure_application(
         workspace_service=project_service,
         user_service=user_service,
     )
-    worker_service = WorkerService(
-        repository=worker_repository,
-        tenant_service=tenant_service,
-        id_factory=create_identifier,
-        clock=utc_now,
-    )
     worker_instance_service = WorkerInstanceService(
         repository=worker_instance_repository,
         tenant_service=tenant_service,
@@ -340,7 +330,6 @@ async def configure_application(
         id_factory=create_identifier,
         clock=utc_now,
         activity_run_repository=activity_run_repository,
-        worker_service=worker_service,
         worker_instance_service=worker_instance_service,
         linked_service_service=linked_service_service,
         workspace_service=project_service,
@@ -360,7 +349,6 @@ async def configure_application(
         service=user_service,
         model_catalog_service=model_catalog_service,
     )
-    app.state.worker_controller = WorkerController(worker_service=worker_service)
     app.state.worker_instance_controller = WorkerInstanceController(
         service=worker_instance_service,
         pipeline_run_repository=pipeline_run_repository,

@@ -477,9 +477,6 @@ PIPELINE_ID="$(
     printf '%s' "${pipeline_response}" | json_field "id"
 )"
 
-worker_response="$(request POST "/workers" '{}')"
-WORKER_ID="$(printf '%s' "${worker_response}" | json_field "id")"
-request POST "/workers/${WORKER_ID}/heartbeat" '{}' >/dev/null
 worker_project_response="$(
     request POST "/projects" "$(
         cat <<JSON

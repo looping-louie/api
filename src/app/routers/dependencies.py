@@ -13,7 +13,6 @@ from src.app.controllers.catalogs import CatalogController
 from src.app.controllers.pipelines import PipelineController
 from src.app.controllers.personas import PersonaController
 from src.app.controllers.skills import SkillController
-from src.app.controllers.workers import WorkerController
 from src.app.controllers.worker_instances import WorkerInstanceController
 from src.app.controllers.linked_services import LinkedServiceController
 from src.app.controllers.projects import ProjectController
@@ -224,16 +223,6 @@ def get_execution_instruction_library_service(
         request,
         attribute_name="execution_instruction_library_service",
         expected_type=ExecutionInstructionLibraryService,
-    )
-
-
-def get_worker_controller(request: Request) -> WorkerController:
-    """Return the configured runtime worker registration controller."""
-
-    return _get_controller(
-        request,
-        attribute_name='worker_controller',
-        expected_type=WorkerController,
     )
 
 

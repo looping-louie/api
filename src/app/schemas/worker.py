@@ -13,16 +13,11 @@ class WorkerHarnessCapabilityRequest(HarnessRequest):
     kind: Literal['louie', 'codex_cli', 'copilot_cli']
 
 
-class WorkerCreateRequest(RequestSchema):
-    """Capabilities declared for one newly provisioned Worker."""
-
-    harnesses: list[WorkerHarnessCapabilityRequest]
-
-
-class WorkerInstanceCreateRequest(WorkerCreateRequest):
+class WorkerInstanceCreateRequest(RequestSchema):
     """Initial Project assignment and capabilities for one global Worker."""
 
     project_id: NonEmptyString
+    harnesses: list[WorkerHarnessCapabilityRequest]
 
 
 class WorkerHeartbeatRequest(RequestSchema):

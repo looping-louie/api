@@ -1,7 +1,7 @@
 """Application service for global Worker registration and Project enablement."""
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Mapping
 
 from src.app.models.worker import (
@@ -15,15 +15,38 @@ from src.app.models.worker_instance import (
 )
 from src.app.repositories.worker_instances import WorkerInstanceRepository
 from src.app.services.shared.tenant import TenantService
-from src.app.services.workers import (
-    WORKER_HEARTBEAT_TIMEOUT,
-    WorkerHarnessUnavailableError,
-    WorkerUnavailableError,
-)
-
-
-
 GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT = 1
+WORKER_HEARTBEAT_TIMEOUT = timedelta(minutes=2)
+
+
+class WorkerUnavailableError(Exception):
+    """Raised when a global Worker cannot claim work for a Project."""
+
+    def __init__(self, worker_id: str) -> None:
+        """Store the unavailable Worker identifier."""
+
+        super().__init__(f"Worker '{worker_id}' is not actively registered.")
+        self.worker_id = worker_id
+
+
+class WorkerHarnessUnavailableError(Exception):
+    """Raised when a global Worker lacks a Pipeline Harness capability."""
+
+    def __init__(self, worker_id: str) -> None:
+        """Store the incompatible Worker identifier."""
+
+        super().__init__(f"Worker '{worker_id}' lacks the required Harness.")
+        self.worker_id = worker_id
+
+
+class WorkerCapacityUnavailableError(Exception):
+    """Raised when a global Worker already holds its active claim limit."""
+
+    def __init__(self, worker_id: str) -> None:
+        """Store the saturated Worker identifier."""
+
+        super().__init__(f"Worker '{worker_id}' has no remaining claim capacity.")
+        self.worker_id = worker_id
 
 class WorkerInstanceNotFoundError(Exception):
     """Raised when an operation targets an unregistered global Worker."""

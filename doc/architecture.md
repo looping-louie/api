@@ -132,9 +132,6 @@ services/
 |-- projects/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages User-owned execution-placement Projects
-`-- workers/
-    |-- __init__.py                Defines the package's public imports
-    `-- service.py                 Manages worker registration and liveness
 ```
 
 ### Controllers
@@ -209,11 +206,6 @@ controllers/
 |   |-- list.py                   Lists accessible Projects
 |   |-- patch.py                  Applies Project metadata changes
 |   `-- response.py               Translates Project documents to responses
-|-- workers/
-|   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- create.py                 Creates Workers
-|   |-- heartbeat.py              Records Worker heartbeats
-|   `-- response.py               Translates Worker documents to responses
 |-- worker_instances/
 |   |-- __init__.py               Composes endpoint-specific controllers
 |   |-- create.py                 Registers global Workers
@@ -341,10 +333,6 @@ repositories/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists User records
-`-- workers/
-  |-- __init__.py                Declares persistence contracts
-  |-- repository.py              Defines the persistence contract
-  `-- sqlite_repository.py       Persists Worker records
 ```
 
 ### Models

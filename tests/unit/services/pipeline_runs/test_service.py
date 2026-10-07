@@ -14,7 +14,6 @@ from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
     PipelineDocument,
-    PipelineHarness,
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
@@ -25,7 +24,7 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
-from src.app.services.workers import (
+from src.app.services.worker_instances import (
     WorkerCapacityUnavailableError,
     WorkerHarnessUnavailableError,
     WorkerUnavailableError,
@@ -201,8 +200,8 @@ class InMemoryPipelineRunRepository:
         return True
 
 
-class InMemoryWorkerService:
-    """Control worker claim admission for PipelineRun scheduler tests."""
+class InMemoryGlobalWorkerService:
+    """Control global Worker claim admission for PipelineRun scheduler tests."""
 
     def __init__(self, *, active: bool, supports_harness: bool = True) -> None:
         """Store whether registration liveness should admit claims."""
@@ -225,15 +224,6 @@ class InMemoryWorkerService:
             raise WorkerUnavailableError(worker_id)
         if not self.supports_harness:
             raise WorkerHarnessUnavailableError(worker_id)
-
-
-class InMemoryGlobalWorkerService(InMemoryWorkerService):
-    """Identify selected test workers as globally registered Workers."""
-
-    async def exists(self, *, worker_id: str) -> bool:
-        """Report that the supplied test Worker is globally registered."""
-
-        return worker_id == 'global-worker-1'
 
 
 class InMemoryActivityRunRepository:
@@ -302,11 +292,11 @@ async def test_prepared_run_starts_before_runtime_claim(
         activities=(first,),
     )
     runs = InMemoryPipelineRunRepository()
-    workers = InMemoryWorkerService(active=True)
+    workers = InMemoryGlobalWorkerService(active=True)
     service = PipelineRunService(
         repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
-        worker_service=workers,
+        worker_instance_service=workers,
         id_factory=lambda: 'run-1', clock=IncrementingClock(),
         token_factory=lambda: 'token',
     )
@@ -422,11 +412,11 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
         activities=(first,),
     )
     runs = InMemoryPipelineRunRepository()
-    workers = InMemoryWorkerService(active=True, supports_harness=False)
+    workers = InMemoryGlobalWorkerService(active=True, supports_harness=False)
     service = PipelineRunService(
         repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
-        worker_service=workers, id_factory=lambda: 'run-1',
+        worker_instance_service=workers, id_factory=lambda: 'run-1',
         clock=IncrementingClock(), token_factory=lambda: 'token',
     )
     created, _ = await service.create(
@@ -480,7 +470,7 @@ async def test_claim_rejects_a_global_worker_at_its_active_lease_limit(
     with pytest.raises(WorkerCapacityUnavailableError):
         await service.claim(
             user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
-            worker_id='global-worker-1', if_match=pipeline_run_etag(started),
+            worker_id='worker-1', if_match=pipeline_run_etag(started),
             lease_duration=timedelta(minutes=1),
         )
 

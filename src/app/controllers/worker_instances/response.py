@@ -13,7 +13,7 @@ from src.app.schemas.worker import (
     WorkerProjectEnablementResponse,
     WorkerResponse,
 )
-from src.app.services.workers import WORKER_HEARTBEAT_TIMEOUT
+from src.app.services.worker_instances import WORKER_HEARTBEAT_TIMEOUT
 
 
 def worker_instance_response(worker: WorkerInstanceDocument) -> WorkerResponse:

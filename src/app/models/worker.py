@@ -1,4 +1,4 @@
-"""Domain models for workspace-scoped runtime workers."""
+"""Domain models for global Worker capabilities and readiness."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -21,17 +21,6 @@ class WorkerHarnessCapability:
             and self.version == harness.get('version')
             and dict(self.config) == harness.get('config')
         )
-
-
-@dataclass(frozen=True)
-class WorkerDocument:
-    """One durable runtime identity and its most recent liveness signal."""
-
-    id: str
-    project_id: str
-    registered_at: datetime
-    last_heartbeat_at: datetime
-    harnesses: tuple[WorkerHarnessCapability, ...]
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,9 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 
 from src.app.controllers.worker_instances import WorkerInstanceController
-from src.app.controllers.workers import WorkerController
 from src.app.schemas.worker import (
-    WorkerCreateRequest,
     WorkerHeartbeatRequest,
     WorkerInstanceCreateRequest,
     WorkerInstanceProjectResponse,
@@ -18,14 +16,12 @@ from src.app.schemas.worker import (
 from .dependencies import (
     RequestContext,
     get_request_context,
-    get_worker_controller,
     get_worker_instance_controller,
 )
 
 
 router = APIRouter(prefix='/workers', tags=['Workers'])
 ContextDependency = Annotated[RequestContext, Depends(get_request_context)]
-ControllerDependency = Annotated[WorkerController, Depends(get_worker_controller)]
 InstanceControllerDependency = Annotated[
     WorkerInstanceController,
     Depends(get_worker_instance_controller),
@@ -100,47 +96,6 @@ async def heartbeat_worker_instance(
     payload: WorkerHeartbeatRequest,
 ) -> WorkerResponse:
     """Refresh one global Worker's liveness and reported capabilities."""
-
-    return await controller.heartbeat(
-        user_id=context.user_id,
-        worker_id=worker_id,
-        payload=payload,
-        requested_project_id=context.requested_project_id,
-    )
-
-
-@router.post(
-    '',
-    response_model=WorkerResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary='Create worker',
-)
-async def create_worker(
-    context: ContextDependency,
-    controller: ControllerDependency,
-    payload: WorkerCreateRequest,
-) -> WorkerResponse:
-    """Create one API-owned runtime worker identity."""
-
-    return await controller.create(
-        user_id=context.user_id,
-        payload=payload,
-        requested_project_id=context.requested_project_id,
-    )
-
-
-@router.post(
-    '/{worker_id}/heartbeat',
-    response_model=WorkerResponse,
-    summary='Heartbeat worker',
-)
-async def heartbeat_worker(
-    worker_id: WorkerIdPath,
-    context: ContextDependency,
-    controller: ControllerDependency,
-    payload: WorkerHeartbeatRequest,
-) -> WorkerResponse:
-    """Refresh one registered runtime worker's liveness signal."""
 
     return await controller.heartbeat(
         user_id=context.user_id,
