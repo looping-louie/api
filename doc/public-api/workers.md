@@ -17,6 +17,7 @@ extend a lease, and an expired heartbeat does not revoke an existing lease.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
+| `GET` | `/api/v1/workers/instances` | List global Workers enabled for the selected Project. |
 | `POST` | `/api/v1/workers/instances` | Register a global Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/instances/{worker_id}/heartbeat` | Refresh a global Worker heartbeat. |
 | `POST` | `/api/v1/workers/instances/{worker_id}/projects/{project_id}` | Enable a global Worker for an additional Project. |
@@ -90,14 +91,36 @@ Content-Type: application/json
 }
 ```
 
-## Observe Worker Liveness
+## List Global Workers
 
-The API intentionally exposes no raw Worker list or identity read endpoint.
-Runtimes verify their own registration by sending a heartbeat and inspecting
-the returned `last_heartbeat_at`. Web clients diagnose queued work through
-`GET /api/v1/pipelines/{pipeline_id}/runs/{run_id}/readiness`, which returns
-only Project-scoped aggregate liveness and Harness-compatibility counts.
-Pipeline-run claim admission remains the authoritative mutation-time check.
+`GET /api/v1/workers/instances` returns global Workers enabled for the Project
+selected by `X-Project-ID`. It exposes the Worker identity, last heartbeat,
+observed Harnesses, that Project's enablement time, and server-calculated
+`active` state. It does not expose the Worker's enablements in other Projects.
+
+```http
+GET /api/v1/workers/instances
+X-User-ID: user-acme
+X-Project-ID: project-acme
+```
+
+```json
+[
+  {
+    "id": "worker-local-01",
+    "registered_at": "2026-10-07T10:00:00Z",
+    "last_heartbeat_at": "2026-10-07T10:01:00Z",
+    "harnesses": [
+      { "kind": "codex_cli", "version": "v1", "config": {} }
+    ],
+    "enabled_at": "2026-10-07T10:00:00Z",
+    "active": true
+  }
+]
+```
+
+Pipeline-run readiness remains the aggregate diagnosis for one queued run, and
+claim admission remains the authoritative mutation-time capability check.
 
 ## Provision A Worker
 

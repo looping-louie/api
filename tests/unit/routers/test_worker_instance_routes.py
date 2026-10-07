@@ -12,6 +12,7 @@ from datetime import datetime
 from src.app.models.worker import WorkerHarnessCapability
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
+    WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
 from src.app.routers.workers import router
@@ -91,6 +92,22 @@ class InMemoryWorkerInstanceRepository:
             if enablement.worker_instance_id == worker_instance_id
         )
 
+    async def list_enabled(
+        self,
+        *,
+        project_id: str,
+    ) -> tuple[WorkerInstanceProjectDocument, ...]:
+        """Return Workers enabled for one Project."""
+
+        return tuple(
+            WorkerInstanceProjectDocument(
+                worker=self.workers[enablement.worker_instance_id],
+                enablement=enablement,
+            )
+            for enablement in self.enablements
+            if enablement.project_id == project_id
+        )
+
 
 def build_client(tenant_service: TenantService) -> TestClient:
     """Build an authenticated global Worker API application."""
@@ -103,6 +120,7 @@ def build_client(tenant_service: TenantService) -> TestClient:
             id_factory=lambda: 'worker-1',
             clock=IncrementingClock(),
         ),
+        clock=IncrementingClock(),
     )
 
     @app.middleware('http')
@@ -161,3 +179,33 @@ def test_global_worker_registration_requires_an_explicit_project(
     )
 
     assert response.status_code == 422
+
+
+def test_lists_global_workers_enabled_for_selected_project(
+    tenant_service: TenantService,
+) -> None:
+    """A Project sees only its enabled global Worker operational state."""
+
+    client = build_client(tenant_service)
+    client.post(
+        '/api/v1/workers/instances',
+        json={
+            'project_id': 'workspace-1',
+            'harnesses': [{'kind': 'codex_cli'}],
+        },
+    )
+
+    response = client.get(
+        '/api/v1/workers/instances',
+        headers={'X-Project-ID': 'workspace-1'},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [{
+        'id': 'worker-1',
+        'registered_at': '2026-07-13T10:00:00Z',
+        'last_heartbeat_at': '2026-07-13T10:00:00Z',
+        'harnesses': [{'kind': 'codex_cli', 'version': 'v1', 'config': {}}],
+        'enabled_at': '2026-07-13T10:00:00Z',
+        'active': True,
+    }]

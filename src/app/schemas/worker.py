@@ -50,3 +50,10 @@ class WorkerProjectEnablementResponse(ResponseSchema):
     worker_id: str
     project_id: str
     enabled_at: datetime
+
+
+class WorkerInstanceProjectResponse(WorkerResponse):
+    """A global Worker visible through one enabled Project."""
+
+    enabled_at: datetime
+    active: bool

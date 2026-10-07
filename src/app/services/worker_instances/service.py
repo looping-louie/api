@@ -10,6 +10,7 @@ from src.app.models.worker import (
 )
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
+    WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
 from src.app.repositories.worker_instances import WorkerInstanceRepository
@@ -166,6 +167,20 @@ class WorkerInstanceService:
         return await self._repository.get(
             worker_instance_id=_require_text(worker_id),
         ) is not None
+
+    async def list_for_project(
+        self,
+        *,
+        user_id: str,
+        requested_project_id: str | None,
+    ) -> tuple[WorkerInstanceProjectDocument, ...]:
+        """List global Workers the caller may inspect for one Project."""
+
+        project = await self._tenant_service.resolve(
+            user_id=user_id,
+            requested_project_id=requested_project_id,
+        )
+        return await self._repository.list_enabled(project_id=project.project_id)
 
 
 def _require_text(value: str) -> str:

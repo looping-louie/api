@@ -7,6 +7,7 @@ import pytest
 from src.app.models.worker import WorkerHarnessCapability
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
+    WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
@@ -73,6 +74,7 @@ async def test_worker_can_be_enabled_for_multiple_projects(
         worker_instance_id=worker.id,
         project_id='project-missing',
     ) is None
+    enabled_workers = await repository.list_enabled(project_id='project-a')
     readiness = await repository.readiness(
         project_id='project-a',
         active_since=timestamp,
@@ -83,6 +85,12 @@ async def test_worker_can_be_enabled_for_multiple_projects(
     assert readiness.active_worker_count == 1
     assert readiness.compatible_worker_count == 0
     assert repeated_enablement == enabled_for_a
+    assert enabled_workers == (
+        WorkerInstanceProjectDocument(
+            worker=heartbeated,
+            enablement=enabled_for_a,
+        ),
+    )
     assert await repository.list_enabled_projects(
         worker_instance_id=worker.id,
     ) == (enabled_for_a, enabled_for_b)

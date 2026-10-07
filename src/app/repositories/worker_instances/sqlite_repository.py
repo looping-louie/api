@@ -9,6 +9,7 @@ from typing import Mapping
 from src.app.models.worker import WorkerHarnessCapability, WorkerReadinessDocument
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
+    WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
 from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
@@ -241,6 +242,39 @@ class SqliteWorkerInstanceRepository:
             finally:
                 await cursor.close()
         return tuple(_to_enablement_document(row) for row in rows)
+
+    async def list_enabled(
+        self,
+        *,
+        project_id: str,
+    ) -> tuple[WorkerInstanceProjectDocument, ...]:
+        """Return global Workers enabled for one Project."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
+                    worker.harnesses_json, enablement.worker_instance_id,
+                    enablement.project_id, enablement.enabled_at
+                FROM worker_project_enablements AS enablement
+                INNER JOIN worker_instances AS worker
+                    ON worker.id = enablement.worker_instance_id
+                WHERE enablement.project_id = ?
+                ORDER BY worker.last_heartbeat_at DESC, worker.id
+                ''',
+                (project_id,),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return tuple(
+            WorkerInstanceProjectDocument(
+                worker=_to_worker_document(row),
+                enablement=_to_enablement_document(row),
+            )
+            for row in rows
+        )
 
 
 def _serialize_harnesses(

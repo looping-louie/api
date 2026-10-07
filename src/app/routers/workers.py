@@ -10,6 +10,7 @@ from src.app.schemas.worker import (
     WorkerCreateRequest,
     WorkerHeartbeatRequest,
     WorkerInstanceCreateRequest,
+    WorkerInstanceProjectResponse,
     WorkerProjectEnablementResponse,
     WorkerResponse,
 )
@@ -31,6 +32,23 @@ InstanceControllerDependency = Annotated[
 ]
 WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker identifier.')]
 ProjectIdPath = Annotated[str, Path(min_length=1, description='Project identifier.')]
+
+
+@router.get(
+    '/instances',
+    response_model=list[WorkerInstanceProjectResponse],
+    summary='List global Workers for Project',
+)
+async def list_worker_instances(
+    context: ContextDependency,
+    controller: InstanceControllerDependency,
+) -> list[WorkerInstanceProjectResponse]:
+    """List global Workers enabled for the selected Project."""
+
+    return await controller.list_for_project(
+        user_id=context.user_id,
+        project_id=context.requested_project_id,
+    )
 
 
 @router.post(

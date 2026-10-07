@@ -357,6 +357,7 @@ async def configure_application(
     app.state.worker_controller = WorkerController(worker_service=worker_service)
     app.state.worker_instance_controller = WorkerInstanceController(
         service=worker_instance_service,
+        clock=utc_now,
     )
 
     app.state.database = database

@@ -6,6 +6,7 @@ from typing import Mapping, Protocol
 from src.app.models.worker import WorkerHarnessCapability, WorkerReadinessDocument
 from src.app.models.worker_instance import (
     WorkerInstanceDocument,
+    WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
 
@@ -70,4 +71,12 @@ class WorkerInstanceRepository(Protocol):
         worker_instance_id: str,
     ) -> tuple[WorkerProjectEnablementDocument, ...]:
         """Return the Projects enabled for one Worker."""
+        raise NotImplementedError
+
+    async def list_enabled(
+        self,
+        *,
+        project_id: str,
+    ) -> tuple[WorkerInstanceProjectDocument, ...]:
+        """Return global Workers enabled for one Project."""
         raise NotImplementedError

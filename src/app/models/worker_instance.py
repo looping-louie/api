@@ -23,3 +23,11 @@ class WorkerProjectEnablementDocument:
     worker_instance_id: str
     project_id: str
     enabled_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class WorkerInstanceProjectDocument:
+    """One global Worker and its authorization for a Project."""
+
+    worker: WorkerInstanceDocument
+    enablement: WorkerProjectEnablementDocument
