@@ -219,7 +219,7 @@ controllers/
 |   |-- create.py                 Registers global Workers
 |   |-- enable_project.py         Enables global Workers for Projects
 |   |-- heartbeat.py              Records global Worker heartbeats
-|   |-- list.py                   Lists global Workers for one Project
+|   |-- list.py                   Lists global Workers and their capacity for one Project
 |   `-- response.py               Translates global Worker documents to responses
 `-- users/
   |-- __init__.py               Composes endpoint-specific controllers

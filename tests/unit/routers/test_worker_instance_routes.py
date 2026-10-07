@@ -109,6 +109,21 @@ class InMemoryWorkerInstanceRepository:
         )
 
 
+class InMemoryPipelineRunRepository:
+    """Provide active Worker lease counts for HTTP route tests."""
+
+    async def active_claim_counts(
+        self,
+        *,
+        worker_ids: tuple[str, ...],
+        observed_at: datetime,
+    ) -> dict[str, int]:
+        """Return no active leases for the test Workers."""
+
+        del worker_ids, observed_at
+        return {}
+
+
 def build_client(tenant_service: TenantService) -> TestClient:
     """Build an authenticated global Worker API application."""
 
@@ -120,6 +135,7 @@ def build_client(tenant_service: TenantService) -> TestClient:
             id_factory=lambda: 'worker-1',
             clock=IncrementingClock(),
         ),
+        pipeline_run_repository=InMemoryPipelineRunRepository(),
         clock=IncrementingClock(),
     )
 
@@ -208,4 +224,6 @@ def test_lists_global_workers_enabled_for_selected_project(
         'harnesses': [{'kind': 'codex_cli', 'version': 'v1', 'config': {}}],
         'enabled_at': '2026-07-13T10:00:00Z',
         'active': True,
+        'active_claims': 0,
+        'capacity': 1,
     }]

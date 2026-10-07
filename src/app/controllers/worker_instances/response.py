@@ -50,6 +50,8 @@ def worker_instance_project_response(
     document: WorkerInstanceProjectDocument,
     *,
     observed_at: datetime,
+    active_claims: int,
+    capacity: int,
 ) -> WorkerInstanceProjectResponse:
     """Map one Project-authorized Worker with server-calculated liveness."""
 
@@ -71,4 +73,6 @@ def worker_instance_project_response(
             worker.last_heartbeat_at
             >= observed_at - WORKER_HEARTBEAT_TIMEOUT
         ),
+        active_claims=active_claims,
+        capacity=capacity,
     )

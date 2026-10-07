@@ -49,6 +49,9 @@ from src.app.repositories.linked_services import SqliteLinkedServiceRepository
 from src.app.repositories.workers import SqliteWorkerRepository
 from src.app.repositories.worker_instances import SqliteWorkerInstanceRepository
 from src.app.repositories.projects import SqliteProjectRepository
+from src.app.repositories.pipeline_runs.sqlite_repository import (
+    SqlitePipelineRunRepository,
+)
 from src.app.repositories.users import SqliteUserRepository
 from src.app.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
@@ -184,6 +187,9 @@ async def configure_application(
     linked_service_repository = SqliteLinkedServiceRepository(database)
     worker_repository = SqliteWorkerRepository(database)
     worker_instance_repository = SqliteWorkerInstanceRepository(database)
+    pipeline_run_repository = SqlitePipelineRunRepository(
+        resolved_settings.database_path,
+    )
     project_repository = SqliteProjectRepository(database)
     user_repository = SqliteUserRepository(database)
     user_service = UserService(
@@ -357,6 +363,7 @@ async def configure_application(
     app.state.worker_controller = WorkerController(worker_service=worker_service)
     app.state.worker_instance_controller = WorkerInstanceController(
         service=worker_instance_service,
+        pipeline_run_repository=pipeline_run_repository,
         clock=utc_now,
     )
 

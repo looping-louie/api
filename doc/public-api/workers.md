@@ -101,7 +101,9 @@ Content-Type: application/json
 `GET /api/v1/workers/instances` returns global Workers enabled for the Project
 selected by `X-Project-ID`. It exposes the Worker identity, last heartbeat,
 observed Harnesses, that Project's enablement time, and server-calculated
-`active` state. It does not expose the Worker's enablements in other Projects.
+`active` state. `active_claims` counts the Worker's active leases across all
+enabled Projects; `capacity` is currently fixed at `1`. It does not expose the
+Worker's enablements in other Projects.
 
 ```http
 GET /api/v1/workers/instances
@@ -119,7 +121,9 @@ X-Project-ID: project-acme
       { "kind": "codex_cli", "version": "v1", "config": {} }
     ],
     "enabled_at": "2026-10-07T10:00:00Z",
-    "active": true
+    "active": true,
+    "active_claims": 0,
+    "capacity": 1
   }
 ]
 ```

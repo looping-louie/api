@@ -57,3 +57,5 @@ class WorkerInstanceProjectResponse(WorkerResponse):
 
     enabled_at: datetime
     active: bool
+    active_claims: int
+    capacity: int

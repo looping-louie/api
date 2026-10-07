@@ -294,6 +294,38 @@ class SqlitePipelineRunRepository:
                 await connection.rollback()
                 raise
 
+    async def active_claim_counts(
+        self,
+        *,
+        worker_ids: tuple[str, ...],
+        observed_at: datetime,
+    ) -> dict[str, int]:
+        """Return active leases for Workers across all authorized Projects."""
+
+        if not worker_ids:
+            return {}
+        placeholders = ', '.join('?' for _ in worker_ids)
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                f'''
+                SELECT worker_id, COUNT(*) AS active_claim_count
+                FROM pipeline_runs
+                WHERE worker_id IN ({placeholders})
+                  AND status = 'claimed'
+                  AND lease_expires_at > ?
+                GROUP BY worker_id
+                ''',
+                (*worker_ids, observed_at.isoformat()),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return {
+            str(row['worker_id']): int(row['active_claim_count'])
+            for row in rows
+        }
+
     async def renew_lease(
         self,
         *,

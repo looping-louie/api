@@ -120,6 +120,12 @@ async def test_claim_inserts_initial_child_before_referencing_it(
 
     assert persisted == 'claimed'
     assert fetched == claimed
+    active_claim_counts = await repository.active_claim_counts(
+        worker_ids=('worker-1', 'worker-2'),
+        observed_at=timestamp,
+    )
+
+    assert active_claim_counts == {'worker-1': 1}
 
     second = replace(
         queued,

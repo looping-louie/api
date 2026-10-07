@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from datetime import datetime
 
+from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.worker_instances import WorkerInstanceService
 
 from .create import WorkerInstanceCreateController
@@ -23,11 +24,17 @@ class WorkerInstanceController(
         self,
         *,
         service: WorkerInstanceService,
+        pipeline_run_repository: PipelineRunRepository,
         clock: Callable[[], datetime],
     ) -> None:
         """Store the global Worker lifecycle service."""
 
-        WorkerInstanceListController.__init__(self, service=service, clock=clock)
+        WorkerInstanceListController.__init__(
+            self,
+            service=service,
+            pipeline_run_repository=pipeline_run_repository,
+            clock=clock,
+        )
 
 
 __all__ = [

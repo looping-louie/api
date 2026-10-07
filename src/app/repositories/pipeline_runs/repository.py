@@ -80,6 +80,15 @@ class PipelineRunRepository(Protocol):
         """Atomically assign a worker lease within an optional active-lease limit."""
         raise NotImplementedError
 
+    async def active_claim_counts(
+        self,
+        *,
+        worker_ids: tuple[str, ...],
+        observed_at: datetime,
+    ) -> dict[str, int]:
+        """Return active unexpired lease counts for the supplied Workers."""
+        raise NotImplementedError
+
     async def renew_lease(
         self,
         *,
