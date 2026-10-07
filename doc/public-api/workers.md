@@ -13,6 +13,11 @@ are required to claim a PipelineRun.
 Worker provisioning is separate from a PipelineRun lease. A heartbeat does not
 extend a lease, and an expired heartbeat does not revoke an existing lease.
 
+A global Worker currently has capacity for one active, unexpired PipelineRun
+lease across all of its enabled Projects. A claim made while that lease is
+active returns `409 worker_capacity_unavailable`. Legacy Project-scoped Workers
+remain unconstrained during the migration.
+
 ## Resource Endpoints
 
 | Method | Path | Purpose |

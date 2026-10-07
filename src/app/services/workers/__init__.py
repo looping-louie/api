@@ -2,6 +2,7 @@
 
 from .service import (
     WORKER_HEARTBEAT_TIMEOUT,
+    WorkerCapacityUnavailableError,
     WorkerHarnessUnavailableError,
     WorkerNotFoundError,
     WorkerService,
@@ -10,6 +11,7 @@ from .service import (
 
 __all__ = [
     'WORKER_HEARTBEAT_TIMEOUT',
+    'WorkerCapacityUnavailableError',
     'WorkerHarnessUnavailableError',
     'WorkerNotFoundError',
     'WorkerService',

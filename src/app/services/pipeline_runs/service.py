@@ -43,8 +43,11 @@ from src.app.services.pipeline_runs.types import (
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.pagination import PAGE_SIZE, require_offset
 from src.app.services.users import UserService
-from src.app.services.workers import WorkerService
-from src.app.services.worker_instances import WorkerInstanceService
+from src.app.services.workers import WorkerCapacityUnavailableError, WorkerService
+from src.app.services.worker_instances import (
+    GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
+    WorkerInstanceService,
+)
 from src.app.services.projects.service import ProjectService
 
 
@@ -312,12 +315,13 @@ class PipelineRunService:
             run_id=run_id,
         )
         now = self._clock()
-        if (
+        global_worker = (
             self._worker_instance_service is not None
             and await self._worker_instance_service.exists(
                 worker_id=normalized_worker_id,
             )
-        ):
+        )
+        if global_worker:
             await self._worker_instance_service.require_capable(
                 project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
@@ -359,12 +363,13 @@ class PipelineRunService:
                 attempt=candidate.attempt,
                 updated_at=now,
             )
-            if not await self._repository.claim(
+            claim_result = await self._repository.claim(
                 document=waiting,
                 expected_updated_at=candidate.updated_at,
                 expected_current_activity_run_id=candidate.current_activity_run_id,
                 activity_run=None,
-            ):
+            )
+            if claim_result != 'claimed':
                 raise PipelineRunPreconditionFailedError(
                     pipeline_id=pipeline_id,
                     run_id=run_id,
@@ -386,7 +391,7 @@ class PipelineRunService:
                 step_started=candidate.current_activity_run_id is None,
             ),
         )
-        if not await self._repository.claim(
+        claim_result = await self._repository.claim(
             document=claimed, expected_updated_at=candidate.updated_at,
             expected_current_activity_run_id=candidate.current_activity_run_id,
             activity_run=(
@@ -394,7 +399,13 @@ class PipelineRunService:
                 if candidate.current_activity_run_id is None
                 else None
             ),
-        ):
+            active_claim_limit=(
+                GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT if global_worker else None
+            ),
+        )
+        if claim_result == 'capacity_exhausted':
+            raise WorkerCapacityUnavailableError(normalized_worker_id)
+        if claim_result != 'claimed':
             raise PipelineRunPreconditionFailedError(
                 pipeline_id=pipeline_id,
                 run_id=run_id,

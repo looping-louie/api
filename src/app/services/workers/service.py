@@ -48,6 +48,16 @@ class WorkerHarnessUnavailableError(Exception):
         self.worker_id = worker_id
 
 
+class WorkerCapacityUnavailableError(Exception):
+    """Raised when a global Worker already holds its active claim limit."""
+
+    def __init__(self, worker_id: str) -> None:
+        """Store the saturated Worker identifier."""
+
+        super().__init__(f"Worker '{worker_id}' has no remaining claim capacity.")
+        self.worker_id = worker_id
+
+
 class WorkerService:
     """Coordinate durable worker registration and heartbeat liveness."""
 

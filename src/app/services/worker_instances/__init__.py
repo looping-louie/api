@@ -1,5 +1,13 @@
 """Global Worker registration application services."""
 
-from .service import WorkerInstanceNotFoundError, WorkerInstanceService
+from .service import (
+    GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
+    WorkerInstanceNotFoundError,
+    WorkerInstanceService,
+)
 
-__all__ = ['WorkerInstanceNotFoundError', 'WorkerInstanceService']
+__all__ = [
+    'GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT',
+    'WorkerInstanceNotFoundError',
+    'WorkerInstanceService',
+]

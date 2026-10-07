@@ -64,6 +64,7 @@ from src.app.services.shared.reference_resolver import (
     ResourceNotFoundError,
 )
 from src.app.services.workers import (
+    WorkerCapacityUnavailableError,
     WorkerHarnessUnavailableError,
     WorkerNotFoundError,
     WorkerUnavailableError,
@@ -223,6 +224,10 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
     WorkerUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='worker_unavailable',
+    ),
+    WorkerCapacityUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='worker_capacity_unavailable',
     ),
     WorkerHarnessUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,

@@ -22,6 +22,9 @@ from src.app.services.workers import (
 )
 
 
+
+GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT = 1
+
 class WorkerInstanceNotFoundError(Exception):
     """Raised when an operation targets an unregistered global Worker."""
 
