@@ -137,14 +137,9 @@ class WorkerInstanceService:
         user_id: str,
         worker_instance_id: str,
         harnesses: tuple[WorkerHarnessCapability, ...],
-        requested_project_id: str | None = None,
     ) -> WorkerInstanceDocument:
         """Refresh one Worker's liveness and observed Harnesses."""
 
-        await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_project_id=requested_project_id,
-        )
         worker_id = _require_text(worker_instance_id)
         if await self._repository.get_for_owner(
             worker_instance_id=worker_id,

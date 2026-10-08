@@ -61,6 +61,28 @@ class InMemoryWorkerInstanceRepository:
         self.workers[document.id] = document
         return document
 
+    async def heartbeat(
+        self,
+        *,
+        worker_instance_id: str,
+        occurred_at: datetime,
+        harnesses: tuple[WorkerHarnessCapability, ...],
+    ) -> WorkerInstanceDocument | None:
+        """Update one stored Worker's liveness and Harnesses."""
+
+        current = self.workers.get(worker_instance_id)
+        if current is None:
+            return None
+        worker = WorkerInstanceDocument(
+            id=current.id,
+            owner_user_id=current.owner_user_id,
+            registered_at=current.registered_at,
+            last_heartbeat_at=occurred_at,
+            harnesses=harnesses,
+        )
+        self.workers[worker.id] = worker
+        return worker
+
     async def enable_project(
         self,
         document: WorkerProjectEnablementDocument,
@@ -181,3 +203,26 @@ async def test_worker_detail_is_limited_to_its_owner() -> None:
             user_id='user-2',
             worker_instance_id='worker-1',
         )
+
+
+@pytest.mark.asyncio
+async def test_worker_owner_can_heartbeat_without_a_project_membership() -> None:
+    """Heartbeat authorization depends on Worker ownership, not Project access."""
+
+    tenant_service = TenantService(repository=FakeTenantRepository([]))
+    service, repository = build_service(tenant_service=tenant_service)
+    repository.workers['worker-1'] = WorkerInstanceDocument(
+        id='worker-1',
+        owner_user_id='user-1',
+        registered_at=datetime(2026, 10, 6, tzinfo=UTC),
+        last_heartbeat_at=datetime(2026, 10, 6, tzinfo=UTC),
+        harnesses=(),
+    )
+
+    worker = await service.heartbeat(
+        user_id='user-1',
+        worker_instance_id='worker-1',
+        harnesses=(WorkerHarnessCapability(kind='codex_cli'),),
+    )
+
+    assert worker.harnesses == (WorkerHarnessCapability(kind='codex_cli'),)

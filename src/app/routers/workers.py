@@ -121,5 +121,4 @@ async def heartbeat_worker_instance(
         user_id=context.user_id,
         worker_id=worker_id,
         payload=payload,
-        requested_project_id=context.requested_project_id,
     )

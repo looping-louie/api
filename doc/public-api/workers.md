@@ -62,15 +62,12 @@ X-User-ID: user-acme
 
 `POST /api/v1/workers/{worker_id}/heartbeat` records one liveness
 signal and atomically replaces the Worker's observed Harness
-capabilities. The caller must provide `X-User-ID` and select an accessible
-Project with `X-Project-ID` when they belong to multiple Projects. The selected
-Project authorizes the request; the heartbeat itself remains global to the
-Worker.
+capabilities. The caller must provide `X-User-ID` and own the Worker. A
+heartbeat is global to the Worker and does not require `X-Project-ID`.
 
 ```http
 POST /api/v1/workers/worker-local-01/heartbeat
 X-User-ID: user-acme
-X-Project-ID: project-acme
 Content-Type: application/json
 ```
 
