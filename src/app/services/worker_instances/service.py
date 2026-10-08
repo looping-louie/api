@@ -198,13 +198,13 @@ class WorkerInstanceService:
         self,
         *,
         user_id: str,
-        requested_project_id: str | None,
+        project_id: str,
     ) -> tuple[WorkerInstanceProjectDocument, ...]:
         """List global Workers the caller may inspect for one Project."""
 
-        project = await self._tenant_service.resolve(
+        project = await self._tenant_service.require_access(
             user_id=user_id,
-            requested_project_id=requested_project_id,
+            project_id=project_id,
         )
         return await self._repository.list_enabled(project_id=project.project_id)
 

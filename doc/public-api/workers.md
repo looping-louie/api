@@ -16,7 +16,7 @@ active returns `409 worker_capacity_unavailable`.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
-| `GET` | `/api/v1/workers` | List global Workers enabled for the selected Project. |
+| `GET` | `/api/v1/workers?project_id={project_id}` | List global Workers enabled for one Project. |
 | `GET` | `/api/v1/workers/{worker_id}` | Describe one global Worker enabled for the selected Project. |
 | `POST` | `/api/v1/workers` | Register a global Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh a global Worker heartbeat. |
@@ -87,17 +87,16 @@ Content-Type: application/json
 
 ## List Global Workers
 
-`GET /api/v1/workers` returns global Workers enabled for the Project
-selected by `X-Project-ID`. It exposes the Worker identity, last heartbeat,
-observed Harnesses, that Project's enablement time, and server-calculated
-`active` state. `active_claims` counts the Worker's active leases across all
-enabled Projects; `capacity` is currently fixed at `1`. It does not expose the
-Worker's enablements in other Projects.
+`GET /api/v1/workers?project_id={project_id}` returns global Workers enabled for
+the requested Project. The caller must have access to that Project. It exposes
+the Worker identity, last heartbeat, observed Harnesses, that Project's
+enablement time, and server-calculated `active` state. `active_claims` counts
+the Worker's active leases across all enabled Projects; `capacity` is currently
+fixed at `1`. It does not expose the Worker's enablements in other Projects.
 
 ```http
-GET /api/v1/workers
+GET /api/v1/workers?project_id=project-acme
 X-User-ID: user-acme
-X-Project-ID: project-acme
 ```
 
 ```json

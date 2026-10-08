@@ -238,8 +238,7 @@ def test_lists_global_workers_enabled_for_selected_project(
     )
 
     response = client.get(
-        '/api/v1/workers',
-        headers={'X-Project-ID': 'workspace-1'},
+        '/api/v1/workers?project_id=workspace-1',
     )
 
     assert response.status_code == 200
@@ -253,6 +252,16 @@ def test_lists_global_workers_enabled_for_selected_project(
         'active_claims': 0,
         'capacity': 1,
     }]
+
+
+def test_listing_global_workers_requires_a_project_filter(
+    tenant_service: TenantService,
+) -> None:
+    """Worker collection reads require an explicit Project query filter."""
+
+    response = build_client(tenant_service).get('/api/v1/workers')
+
+    assert response.status_code == 422
 
 
 def test_describes_global_worker_enabled_for_selected_project(

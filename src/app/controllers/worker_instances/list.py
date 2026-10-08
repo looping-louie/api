@@ -33,13 +33,13 @@ class WorkerInstanceListController:
         self,
         *,
         user_id: str,
-        project_id: str | None,
+        project_id: str,
     ) -> list[WorkerInstanceProjectResponse]:
         """Return global Workers enabled for the requested Project."""
 
         workers = await self._worker_instance_service.list_for_project(
             user_id=user_id,
-            requested_project_id=project_id,
+            project_id=project_id,
         )
         observed_at = self._clock()
         active_claim_counts = await self._pipeline_run_repository.active_claim_counts(
