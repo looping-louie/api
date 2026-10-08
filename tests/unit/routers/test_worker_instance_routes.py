@@ -183,10 +183,10 @@ def build_client(tenant_service: TenantService) -> TestClient:
     return TestClient(app)
 
 
-def test_register_then_enable_global_worker_for_another_project(
+def test_project_route_enables_global_worker(
     tenant_service: TenantService,
 ) -> None:
-    """A Worker has one identity and separate Project enablements."""
+    """A Project enables one existing global Worker."""
 
     client = build_client(tenant_service)
     registered = client.post(
@@ -197,8 +197,9 @@ def test_register_then_enable_global_worker_for_another_project(
         },
     )
     enabled = client.post(
-        '/api/v1/workers/worker-1/projects/workspace-1',
+        '/api/v1/projects/workspace-1/workers/worker-1',
     )
+    legacy_path = client.post('/api/v1/workers/worker-1/projects/workspace-1')
     heartbeated = client.post(
         '/api/v1/workers/worker-1/heartbeat',
         json={'harnesses': []},
@@ -209,6 +210,7 @@ def test_register_then_enable_global_worker_for_another_project(
     assert enabled.status_code == 201
     assert enabled.json()['worker_id'] == 'worker-1'
     assert enabled.json()['project_id'] == 'workspace-1'
+    assert legacy_path.status_code == 404
     assert heartbeated.status_code == 200
     assert heartbeated.json()['harnesses'] == []
 

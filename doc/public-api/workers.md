@@ -20,12 +20,10 @@ active returns `409 worker_capacity_unavailable`.
 | `GET` | `/api/v1/workers/{worker_id}` | Describe one Worker owned by the requesting User. |
 | `POST` | `/api/v1/workers` | Register a Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh a Worker heartbeat. |
-| `POST` | `/api/v1/workers/{worker_id}/projects/{project_id}` | Enable a Worker for an additional Project. |
 
 Worker endpoints require `X-User-ID`. Registration names its initial Project in
-the request body, while a Project-enablement route names the Project in its
-path. The requesting User must own the Worker and have access to each named
-Project.
+the request body. The requesting User must own the Worker and have access to
+that Project.
 
 ## Register A Worker
 
@@ -35,13 +33,6 @@ capabilities. The API does not receive checkout paths.
 
 ```http
 POST /api/v1/workers
-X-User-ID: user-acme
-```
-
-Enable an additional Project only when the requesting User can access it:
-
-```http
-POST /api/v1/workers/worker-local-01/projects/project-b
 X-User-ID: user-acme
 ```
 
@@ -70,9 +61,9 @@ Content-Type: application/json
 }
 ```
 
-## List Owned Workers
+## List Workers
 
-`GET /api/v1/workers` returns Workers owned by the requesting User. It returns
+`GET /api/v1/workers` returns Workers **owned** by the requesting User. It returns
 Worker identity and observed Harness state only; Project enablement fields such
 as `enabled_at` do not belong to this representation. To inspect Workers
 enabled for a Project, use the [Project Worker collection](projects.md#list-project-workers).

@@ -508,7 +508,7 @@ request \
     >/dev/null
 request \
     POST \
-    "/workers/${WORKER_INSTANCE_ID}/projects/${WORKER_PROJECT_ID}" \
+    "/projects/${WORKER_PROJECT_ID}/workers/${WORKER_INSTANCE_ID}" \
     '{}' \
     >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null

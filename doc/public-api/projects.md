@@ -17,6 +17,7 @@ configuration can define narrower persisted overrides.
 | `POST` | `/api/v1/projects` | Create a Project owned by the current User. |
 | `GET` | `/api/v1/projects/{project_id}` | Describe one accessible Project. |
 | `GET` | `/api/v1/projects/{project_id}/workers` | List Workers enabled for one Project. |
+| `POST` | `/api/v1/projects/{project_id}/workers/{worker_id}` | Enable one owned Worker for a Project. |
 | `PATCH` | `/api/v1/projects/{project_id}` | Update one accessible Project. |
 
 ## List projects
@@ -102,6 +103,16 @@ fixed at `1`. The response does not expose enablements in other Projects.
 
 ```http
 GET /api/v1/projects/project-acme/workers
+X-User-ID: user-123
+```
+
+## Enable Project Worker
+
+`POST /api/v1/projects/{project_id}/workers/{worker_id}` enables one Worker
+owned by the requesting User to claim work for an accessible Project.
+
+```http
+POST /api/v1/projects/project-acme/workers/worker-local-01
 X-User-ID: user-123
 ```
 

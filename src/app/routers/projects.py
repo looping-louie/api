@@ -11,7 +11,10 @@ from src.app.schemas.project import (
     ProjectPatchRequest,
     ProjectResponse,
 )
-from src.app.schemas.worker import WorkerInstanceProjectResponse
+from src.app.schemas.worker import (
+    WorkerInstanceProjectResponse,
+    WorkerProjectEnablementResponse,
+)
 
 from .dependencies import (
     RequestContext,
@@ -32,6 +35,7 @@ WorkerControllerDependency = Annotated[
     Depends(get_worker_instance_controller),
 ]
 ProjectIdPath = Annotated[str, Path(min_length=1, description='Project identifier.')]
+WorkerIdPath = Annotated[str, Path(min_length=1, description='Worker identifier.')]
 
 
 @router.get('', response_model=list[ProjectResponse], summary='List projects')
@@ -74,6 +78,27 @@ async def list_project_workers(
 
     return await controller.list_for_project(
         user_id=context.user_id,
+        project_id=project_id,
+    )
+
+
+@router.post(
+    '/{project_id}/workers/{worker_id}',
+    response_model=WorkerProjectEnablementResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary='Enable Worker for Project',
+)
+async def enable_project_worker(
+    project_id: ProjectIdPath,
+    worker_id: WorkerIdPath,
+    context: ContextDependency,
+    controller: WorkerControllerDependency,
+) -> WorkerProjectEnablementResponse:
+    """Authorize one Worker to claim work for one accessible Project."""
+
+    return await controller.enable_project(
+        user_id=context.user_id,
+        worker_id=worker_id,
         project_id=project_id,
     )
 

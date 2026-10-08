@@ -8,7 +8,6 @@ from src.app.controllers.worker_instances import WorkerInstanceController
 from src.app.schemas.worker import (
     WorkerHeartbeatRequest,
     WorkerInstanceCreateRequest,
-    WorkerProjectEnablementResponse,
     WorkerResponse,
 )
 
@@ -26,7 +25,6 @@ InstanceControllerDependency = Annotated[
     Depends(get_worker_instance_controller),
 ]
 WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker identifier.')]
-ProjectIdPath = Annotated[str, Path(min_length=1, description='Project identifier.')]
 
 
 @router.get(
@@ -75,27 +73,6 @@ async def create_worker_instance(
     """Register one Worker and enable its initial Project."""
 
     return await controller.create(user_id=context.user_id, payload=payload)
-
-
-@router.post(
-    '/{worker_id}/projects/{project_id}',
-    response_model=WorkerProjectEnablementResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary='Enable worker for project',
-)
-async def enable_worker_instance_project(
-    worker_id: WorkerIdPath,
-    project_id: ProjectIdPath,
-    context: ContextDependency,
-    controller: InstanceControllerDependency,
-) -> WorkerProjectEnablementResponse:
-    """Authorize one Worker to claim work for one Project."""
-
-    return await controller.enable_project(
-        user_id=context.user_id,
-        worker_id=worker_id,
-        project_id=project_id,
-    )
 
 
 @router.post(
