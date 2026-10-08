@@ -1,9 +1,9 @@
 # Workers
 
-Workers are API-provisioned runtime identities. New Workers register
-once, advertise capabilities once, and are explicitly enabled for each Project
-where they may claim work. The runtime retains local checkout paths; the API
-stores only Worker identities and Project execution authorization.
+Workers are API-provisioned, User-owned runtime identities. New Workers
+register once, advertise capabilities once, and are explicitly enabled for each
+Project where they may claim work. The runtime retains local checkout paths;
+the API stores only Worker identities and Project execution authorization.
 
 Worker provisioning is separate from a PipelineRun lease. A heartbeat does not
 extend a lease, and an expired heartbeat does not revoke an existing lease.
@@ -17,13 +17,14 @@ active returns `409 worker_capacity_unavailable`.
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `GET` | `/api/v1/workers?project_id={project_id}` | List Workers enabled for one Project. |
-| `GET` | `/api/v1/workers/{worker_id}` | Describe one Worker enabled for the selected Project. |
+| `GET` | `/api/v1/workers/{worker_id}` | Describe one Worker owned by the requesting User. |
 | `POST` | `/api/v1/workers` | Register a Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh a Worker heartbeat. |
 | `POST` | `/api/v1/workers/{worker_id}/projects/{project_id}` | Enable a Worker for an additional Project. |
-Worker endpoints require `X-User-ID`. Registration names its initial
-Project in the request body, while a Project-enablement route names the Project
-in its path. The requesting User must have access to each named Project.
+Worker endpoints require `X-User-ID`. Registration names its initial Project in
+the request body, while a Project-enablement route names the Project in its
+path. The requesting User must own the Worker and have access to each named
+Project.
 
 ## Register A Worker
 
@@ -87,12 +88,12 @@ Content-Type: application/json
 
 ## List Workers
 
-`GET /api/v1/workers?project_id={project_id}` returns Workers enabled for
-the requested Project. The caller must have access to that Project. It exposes
-the Worker identity, last heartbeat, observed Harnesses, that Project's
-enablement time, and server-calculated `active` state. `active_claims` counts
+`GET /api/v1/workers?project_id={project_id}` returns Workers enabled for the
+requested Project. The caller must have access to that Project. Each list item
+combines Worker state with that Project's enablement: `enabled_at` belongs to
+the enablement association, not to the Worker itself. `active_claims` counts
 the Worker's active leases across all enabled Projects; `capacity` is currently
-fixed at `1`. It does not expose the Worker's enablements in other Projects.
+fixed at `1`. The response does not expose enablements in other Projects.
 
 ```http
 GET /api/v1/workers?project_id=project-acme
@@ -118,14 +119,14 @@ X-User-ID: user-acme
 
 ## Describe A Worker
 
-`GET /api/v1/workers/{worker_id}` returns the same Project-scoped operational
-state as the list item for one Worker. It returns `404 worker_not_found` when
-the Worker is not enabled for the Project selected by `X-Project-ID`.
+`GET /api/v1/workers/{worker_id}` returns Worker identity and observed Harness
+state. It does not require `X-Project-ID` and does not include Project
+enablement fields such as `enabled_at`. It returns `404 worker_not_found` when
+the Worker is not owned by the requesting User.
 
 ```http
 GET /api/v1/workers/worker-local-01
 X-User-ID: user-acme
-X-Project-ID: project-acme
 ```
 
 Pipeline-run readiness remains the aggregate diagnosis for one queued run, and

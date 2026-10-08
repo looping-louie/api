@@ -92,6 +92,7 @@ class WorkerInstanceService:
         now = self._clock()
         worker = await self._repository.create(WorkerInstanceDocument(
             id=self._id_factory(),
+            owner_user_id=_require_text(user_id),
             registered_at=now,
             last_heartbeat_at=now,
             harnesses=harnesses,
@@ -112,13 +113,16 @@ class WorkerInstanceService:
     ) -> WorkerProjectEnablementDocument:
         """Enable an existing Worker for one Project accessible to the caller."""
 
+        worker_id = _require_text(worker_instance_id)
+        if await self._repository.get_for_owner(
+            worker_instance_id=worker_id,
+            owner_user_id=_require_text(user_id),
+        ) is None:
+            raise WorkerInstanceNotFoundError(worker_id)
         project = await self._tenant_service.require_access(
             user_id=user_id,
             project_id=project_id,
         )
-        worker_id = _require_text(worker_instance_id)
-        if await self._repository.get(worker_instance_id=worker_id) is None:
-            raise WorkerInstanceNotFoundError(worker_id)
         return await self._repository.enable_project(
             WorkerProjectEnablementDocument(
                 worker_instance_id=worker_id,
@@ -142,6 +146,11 @@ class WorkerInstanceService:
             requested_project_id=requested_project_id,
         )
         worker_id = _require_text(worker_instance_id)
+        if await self._repository.get_for_owner(
+            worker_instance_id=worker_id,
+            owner_user_id=_require_text(user_id),
+        ) is None:
+            raise WorkerInstanceNotFoundError(worker_id)
         worker = await self._repository.heartbeat(
             worker_instance_id=worker_id,
             occurred_at=self._clock(),
@@ -208,23 +217,18 @@ class WorkerInstanceService:
         )
         return await self._repository.list_enabled(project_id=project.project_id)
 
-    async def get_for_project(
+    async def get_for_user(
         self,
         *,
         user_id: str,
-        requested_project_id: str | None,
         worker_instance_id: str,
-    ) -> WorkerInstanceProjectDocument:
-        """Return one Worker enabled for the caller's selected Project."""
+    ) -> WorkerInstanceDocument:
+        """Return one Worker owned by the requesting User."""
 
-        project = await self._tenant_service.resolve(
-            user_id=user_id,
-            requested_project_id=requested_project_id,
-        )
         worker_id = _require_text(worker_instance_id)
-        worker = await self._repository.get_enabled_project(
+        worker = await self._repository.get_for_owner(
             worker_instance_id=worker_id,
-            project_id=project.project_id,
+            owner_user_id=_require_text(user_id),
         )
         if worker is None:
             raise WorkerInstanceNotFoundError(worker_id)

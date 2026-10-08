@@ -22,7 +22,7 @@ configuration.
   definitions and their Project-placed Activity runs.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
   persists each supplied step as an independent User-owned Activity record.
-- [Workers](workers.md) registers Workers, controls their Project
+- [Workers](workers.md) registers User-owned Workers, controls their Project
   enablements, and records their heartbeats.
 
 ## Versioned API conventions

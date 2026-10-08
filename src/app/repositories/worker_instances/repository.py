@@ -22,6 +22,15 @@ class WorkerInstanceRepository(Protocol):
         """Return one globally identified Worker."""
         raise NotImplementedError
 
+    async def get_for_owner(
+        self,
+        *,
+        worker_instance_id: str,
+        owner_user_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker owned by the specified User."""
+        raise NotImplementedError
+
     async def create(
         self,
         document: WorkerInstanceDocument,
@@ -46,15 +55,6 @@ class WorkerInstanceRepository(Protocol):
         project_id: str,
     ) -> WorkerInstanceDocument | None:
         """Return one Worker when it is enabled for the specified Project."""
-        raise NotImplementedError
-
-    async def get_enabled_project(
-        self,
-        *,
-        worker_instance_id: str,
-        project_id: str,
-    ) -> WorkerInstanceProjectDocument | None:
-        """Return one Worker with its enablement for the specified Project."""
         raise NotImplementedError
 
     async def readiness(

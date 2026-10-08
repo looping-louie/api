@@ -40,6 +40,19 @@ class InMemoryWorkerInstanceRepository:
 
         return self.workers.get(worker_instance_id)
 
+    async def get_for_owner(
+        self,
+        *,
+        worker_instance_id: str,
+        owner_user_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker owned by the specified User."""
+
+        worker = self.workers.get(worker_instance_id)
+        if worker is None or worker.owner_user_id != owner_user_id:
+            return None
+        return worker
+
     async def create(
         self,
         document: WorkerInstanceDocument,
@@ -63,38 +76,13 @@ class InMemoryWorkerInstanceRepository:
             return None
         updated = WorkerInstanceDocument(
             id=current.id,
+            owner_user_id=current.owner_user_id,
             registered_at=current.registered_at,
             last_heartbeat_at=occurred_at,
             harnesses=harnesses,
         )
         self.workers[updated.id] = updated
         return updated
-
-    async def get_enabled_project(
-        self,
-        *,
-        worker_instance_id: str,
-        project_id: str,
-    ) -> WorkerInstanceProjectDocument | None:
-        """Return one Worker only when it is enabled for the Project."""
-
-        enablement = next(
-            (
-                candidate
-                for candidate in self.enablements
-                if (
-                    candidate.worker_instance_id == worker_instance_id
-                    and candidate.project_id == project_id
-                )
-            ),
-            None,
-        )
-        if enablement is None:
-            return None
-        return WorkerInstanceProjectDocument(
-            worker=self.workers[worker_instance_id],
-            enablement=enablement,
-        )
 
     async def enable_project(
         self,
@@ -264,10 +252,10 @@ def test_listing_global_workers_requires_a_project_filter(
     assert response.status_code == 422
 
 
-def test_describes_global_worker_enabled_for_selected_project(
+def test_describes_worker_owned_by_requesting_user(
     tenant_service: TenantService,
 ) -> None:
-    """A selected Project can inspect one of its enabled Workers."""
+    """A Worker detail read omits Project enablement state."""
 
     client = build_client(tenant_service)
     client.post(
@@ -278,27 +266,23 @@ def test_describes_global_worker_enabled_for_selected_project(
         },
     )
 
-    response = client.get(
-        '/api/v1/workers/worker-1',
-        headers={'X-Project-ID': 'workspace-1'},
-    )
+    response = client.get('/api/v1/workers/worker-1')
 
     assert response.status_code == 200
-    assert response.json()['id'] == 'worker-1'
-    assert response.json()['enabled_at'] == '2026-07-13T10:00:00Z'
-    assert response.json()['active_claims'] == 0
-    assert response.json()['capacity'] == 1
+    assert response.json() == {
+        'id': 'worker-1',
+        'registered_at': '2026-07-13T10:00:00Z',
+        'last_heartbeat_at': '2026-07-13T10:00:00Z',
+        'harnesses': [{'kind': 'codex_cli', 'version': 'v1', 'config': {}}],
+    }
 
 
-def test_does_not_describe_unenabled_global_worker(
+def test_does_not_describe_missing_worker(
     tenant_service: TenantService,
 ) -> None:
-    """A Project cannot inspect a Worker that is not enabled for it."""
+    """A missing Worker detail read returns the stable not-found error."""
 
-    response = build_client(tenant_service).get(
-        '/api/v1/workers/worker-missing',
-        headers={'X-Project-ID': 'workspace-1'},
-    )
+    response = build_client(tenant_service).get('/api/v1/workers/worker-missing')
 
     assert response.status_code == 404
     assert response.json()['error']['code'] == 'worker_not_found'

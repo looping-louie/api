@@ -11,6 +11,7 @@ class WorkerInstanceDocument:
     """One Worker process and its latest advertised capabilities."""
 
     id: str
+    owner_user_id: str | None
     registered_at: datetime
     last_heartbeat_at: datetime
     harnesses: tuple[WorkerHarnessCapability, ...]

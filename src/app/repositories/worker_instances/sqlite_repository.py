@@ -34,11 +34,36 @@ class SqliteWorkerInstanceRepository:
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT id, registered_at, last_heartbeat_at, harnesses_json
+                SELECT id, owner_user_id, registered_at, last_heartbeat_at,
+                    harnesses_json
                 FROM worker_instances
                 WHERE id = ?
                 ''',
                 (worker_instance_id,),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return _to_worker_document(row) if row is not None else None
+
+    async def get_for_owner(
+        self,
+        *,
+        worker_instance_id: str,
+        owner_user_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker owned by the specified User."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, owner_user_id, registered_at, last_heartbeat_at,
+                    harnesses_json
+                FROM worker_instances
+                WHERE id = ? AND owner_user_id = ?
+                ''',
+                (worker_instance_id, owner_user_id),
             )
             try:
                 row = await cursor.fetchone()
@@ -58,11 +83,13 @@ class SqliteWorkerInstanceRepository:
                 await connection.execute(
                     '''
                     INSERT INTO worker_instances (
-                        id, registered_at, last_heartbeat_at, harnesses_json
-                    ) VALUES (?, ?, ?, ?)
+                        id, owner_user_id, registered_at, last_heartbeat_at,
+                        harnesses_json
+                    ) VALUES (?, ?, ?, ?, ?)
                     ''',
                     (
                         document.id,
+                        document.owner_user_id,
                         document.registered_at.isoformat(),
                         document.last_heartbeat_at.isoformat(),
                         _serialize_harnesses(document.harnesses),
@@ -91,7 +118,8 @@ class SqliteWorkerInstanceRepository:
                     UPDATE worker_instances
                     SET last_heartbeat_at = ?, harnesses_json = ?
                     WHERE id = ?
-                    RETURNING id, registered_at, last_heartbeat_at, harnesses_json
+                    RETURNING id, owner_user_id, registered_at,
+                        last_heartbeat_at, harnesses_json
                     ''',
                     (
                         occurred_at.isoformat(),
@@ -121,7 +149,7 @@ class SqliteWorkerInstanceRepository:
             cursor = await connection.execute(
                 '''
                 SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.harnesses_json
+                    worker.owner_user_id, worker.harnesses_json
                 FROM worker_instances AS worker
                 INNER JOIN worker_project_enablements AS enablement
                     ON enablement.worker_instance_id = worker.id
@@ -134,38 +162,6 @@ class SqliteWorkerInstanceRepository:
             finally:
                 await cursor.close()
         return _to_worker_document(row) if row is not None else None
-
-    async def get_enabled_project(
-        self,
-        *,
-        worker_instance_id: str,
-        project_id: str,
-    ) -> WorkerInstanceProjectDocument | None:
-        """Return one Worker with its Project execution authorization."""
-
-        async with self._database.connect() as connection:
-            cursor = await connection.execute(
-                '''
-                SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.harnesses_json, enablement.worker_instance_id,
-                    enablement.project_id, enablement.enabled_at
-                FROM worker_project_enablements AS enablement
-                INNER JOIN worker_instances AS worker
-                    ON worker.id = enablement.worker_instance_id
-                WHERE enablement.worker_instance_id = ? AND enablement.project_id = ?
-                ''',
-                (worker_instance_id, project_id),
-            )
-            try:
-                row = await cursor.fetchone()
-            finally:
-                await cursor.close()
-        if row is None:
-            return None
-        return WorkerInstanceProjectDocument(
-            worker=_to_worker_document(row),
-            enablement=_to_enablement_document(row),
-        )
 
     async def readiness(
         self,
@@ -180,7 +176,7 @@ class SqliteWorkerInstanceRepository:
             cursor = await connection.execute(
                 '''
                 SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.harnesses_json
+                    worker.owner_user_id, worker.harnesses_json
                 FROM worker_instances AS worker
                 INNER JOIN worker_project_enablements AS enablement
                     ON enablement.worker_instance_id = worker.id
@@ -286,7 +282,8 @@ class SqliteWorkerInstanceRepository:
             cursor = await connection.execute(
                 '''
                 SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.harnesses_json, enablement.worker_instance_id,
+                    worker.owner_user_id, worker.harnesses_json,
+                    enablement.worker_instance_id,
                     enablement.project_id, enablement.enabled_at
                 FROM worker_project_enablements AS enablement
                 INNER JOIN worker_instances AS worker
@@ -339,6 +336,7 @@ def _to_worker_document(row: object) -> WorkerInstanceDocument:
 
     return WorkerInstanceDocument(
         id=row['id'],
+        owner_user_id=row['owner_user_id'],
         registered_at=parse_datetime(row['registered_at']),
         last_heartbeat_at=parse_datetime(row['last_heartbeat_at']),
         harnesses=_deserialize_harnesses(row['harnesses_json']),

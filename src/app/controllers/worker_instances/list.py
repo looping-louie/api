@@ -56,32 +56,6 @@ class WorkerInstanceListController:
             for worker in workers
         ]
 
-    async def get_for_project(
-        self,
-        *,
-        user_id: str,
-        project_id: str | None,
-        worker_instance_id: str,
-    ) -> WorkerInstanceProjectResponse:
-        """Return one Worker enabled for the requested Project."""
-
-        worker = await self._worker_instance_service.get_for_project(
-            user_id=user_id,
-            requested_project_id=project_id,
-            worker_instance_id=worker_instance_id,
-        )
-        observed_at = self._clock()
-        active_claim_counts = await self._pipeline_run_repository.active_claim_counts(
-            worker_ids=(worker.worker.id,),
-            observed_at=observed_at,
-        )
-        return worker_instance_project_response(
-            worker,
-            observed_at=observed_at,
-            active_claims=active_claim_counts.get(worker.worker.id, 0),
-            capacity=GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
-        )
-
     _worker_instance_service: WorkerInstanceService
     _pipeline_run_repository: PipelineRunRepository
     _clock: Callable[[], datetime]

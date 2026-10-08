@@ -22,12 +22,19 @@ async def test_worker_can_be_enabled_for_multiple_projects(
 ) -> None:
     """A Worker has explicit execution permissions per Project."""
 
-    await create_workspace(project_id='project-a')
-    await create_workspace(project_id='project-b')
+    await create_workspace(
+        project_id='project-a',
+        memberships=(('user-1', 'owner', True),),
+    )
+    await create_workspace(
+        project_id='project-b',
+        memberships=(('user-1', 'owner', False),),
+    )
     timestamp = datetime(2026, 10, 6, tzinfo=UTC)
     repository = SqliteWorkerInstanceRepository(sqlite_database)
     worker = WorkerInstanceDocument(
         id='worker-1',
+        owner_user_id='user-1',
         registered_at=timestamp,
         last_heartbeat_at=timestamp,
         harnesses=(WorkerHarnessCapability(kind='codex_cli'),),
@@ -74,10 +81,14 @@ async def test_worker_can_be_enabled_for_multiple_projects(
         worker_instance_id=worker.id,
         project_id='project-missing',
     ) is None
-    enabled_worker = await repository.get_enabled_project(
+    assert await repository.get_for_owner(
         worker_instance_id=worker.id,
-        project_id='project-a',
-    )
+        owner_user_id='user-1',
+    ) == heartbeated
+    assert await repository.get_for_owner(
+        worker_instance_id=worker.id,
+        owner_user_id='user-other',
+    ) is None
     enabled_workers = await repository.list_enabled(project_id='project-a')
     readiness = await repository.readiness(
         project_id='project-a',
@@ -89,10 +100,6 @@ async def test_worker_can_be_enabled_for_multiple_projects(
     assert readiness.active_worker_count == 1
     assert readiness.compatible_worker_count == 0
     assert repeated_enablement == enabled_for_a
-    assert enabled_worker == WorkerInstanceProjectDocument(
-        worker=heartbeated,
-        enablement=enabled_for_a,
-    )
     assert enabled_workers == (
         WorkerInstanceProjectDocument(
             worker=heartbeated,

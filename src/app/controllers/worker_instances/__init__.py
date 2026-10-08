@@ -7,6 +7,7 @@ from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
 from src.app.services.worker_instances import WorkerInstanceService
 
 from .create import WorkerInstanceCreateController
+from .describe import WorkerInstanceDescribeController
 from .enable_project import WorkerInstanceEnableProjectController
 from .heartbeat import WorkerInstanceHeartbeatController
 from .list import WorkerInstanceListController
@@ -14,6 +15,7 @@ from .list import WorkerInstanceListController
 
 class WorkerInstanceController(
     WorkerInstanceCreateController,
+    WorkerInstanceDescribeController,
     WorkerInstanceEnableProjectController,
     WorkerInstanceHeartbeatController,
     WorkerInstanceListController,
@@ -40,6 +42,7 @@ class WorkerInstanceController(
 __all__ = [
     'WorkerInstanceController',
     'WorkerInstanceCreateController',
+    'WorkerInstanceDescribeController',
     'WorkerInstanceEnableProjectController',
     'WorkerInstanceHeartbeatController',
     'WorkerInstanceListController',

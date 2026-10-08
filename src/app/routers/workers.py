@@ -51,19 +51,18 @@ async def list_worker_instances(
 
 @router.get(
     '/{worker_id}',
-    response_model=WorkerInstanceProjectResponse,
-    summary='Describe Worker for Project',
+    response_model=WorkerResponse,
+    summary='Describe worker',
 )
 async def get_worker_instance(
     worker_id: WorkerIdPath,
     context: ContextDependency,
     controller: InstanceControllerDependency,
-) -> WorkerInstanceProjectResponse:
-    """Describe one Worker enabled for the selected Project."""
+) -> WorkerResponse:
+    """Describe one Worker owned by the requesting User."""
 
-    return await controller.get_for_project(
+    return await controller.describe(
         user_id=context.user_id,
-        project_id=context.requested_project_id,
         worker_instance_id=worker_id,
     )
 

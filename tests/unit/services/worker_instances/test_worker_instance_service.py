@@ -14,7 +14,10 @@ from src.app.services.shared.tenant import (
     TenantAccessDeniedError,
     TenantService,
 )
-from src.app.services.worker_instances import WorkerInstanceService
+from src.app.services.worker_instances import (
+    WorkerInstanceNotFoundError,
+    WorkerInstanceService,
+)
 from tests.fakes.tenant_repository import FakeTenantRepository
 
 
@@ -35,6 +38,19 @@ class InMemoryWorkerInstanceRepository:
         """Return one stored Worker."""
 
         return self.workers.get(worker_instance_id)
+
+    async def get_for_owner(
+        self,
+        *,
+        worker_instance_id: str,
+        owner_user_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker owned by the specified User."""
+
+        worker = self.workers.get(worker_instance_id)
+        if worker is None or worker.owner_user_id != owner_user_id:
+            return None
+        return worker
 
     async def create(
         self,
@@ -113,11 +129,12 @@ async def test_worker_can_be_enabled_for_multiple_accessible_projects() -> None:
         'project-a',
         'project-b',
     ]
+    assert worker.owner_user_id == 'user-1'
 
 
 @pytest.mark.asyncio
 async def test_worker_cannot_be_enabled_for_an_inaccessible_project() -> None:
-    """Project membership is required before assigning a Worker to it."""
+    """A Worker owner needs access to assign it to another Project."""
 
     tenant_service = TenantService(repository=FakeTenantRepository([
         ProjectMembership(
@@ -135,11 +152,32 @@ async def test_worker_cannot_be_enabled_for_an_inaccessible_project() -> None:
 
     with pytest.raises(TenantAccessDeniedError):
         await service.enable_project(
-            user_id='user-2',
+            user_id='user-1',
             worker_instance_id=worker.id,
-            project_id='project-a',
+            project_id='project-b',
         )
 
     assert [enablement.project_id for enablement in repository.enablements] == [
         'project-a',
     ]
+
+
+@pytest.mark.asyncio
+async def test_worker_detail_is_limited_to_its_owner() -> None:
+    """A Worker cannot be described by a User who does not own it."""
+
+    tenant_service = TenantService(repository=FakeTenantRepository([]))
+    service, repository = build_service(tenant_service=tenant_service)
+    repository.workers['worker-1'] = WorkerInstanceDocument(
+        id='worker-1',
+        owner_user_id='user-1',
+        registered_at=datetime(2026, 10, 6, tzinfo=UTC),
+        last_heartbeat_at=datetime(2026, 10, 6, tzinfo=UTC),
+        harnesses=(),
+    )
+
+    with pytest.raises(WorkerInstanceNotFoundError):
+        await service.get_for_user(
+            user_id='user-2',
+            worker_instance_id='worker-1',
+        )
