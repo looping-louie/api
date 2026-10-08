@@ -161,17 +161,17 @@ def test_register_then_enable_global_worker_for_another_project(
 
     client = build_client(tenant_service)
     registered = client.post(
-        '/api/v1/workers/instances',
+        '/api/v1/workers',
         json={
             'project_id': 'workspace-1',
             'harnesses': [{'kind': 'codex_cli'}],
         },
     )
     enabled = client.post(
-        '/api/v1/workers/instances/worker-1/projects/workspace-1',
+        '/api/v1/workers/worker-1/projects/workspace-1',
     )
     heartbeated = client.post(
-        '/api/v1/workers/instances/worker-1/heartbeat',
+        '/api/v1/workers/worker-1/heartbeat',
         json={'harnesses': []},
     )
 
@@ -190,7 +190,7 @@ def test_global_worker_registration_requires_an_explicit_project(
     """A global Worker cannot receive an implicit initial Project assignment."""
 
     response = build_client(tenant_service).post(
-        '/api/v1/workers/instances',
+        '/api/v1/workers',
         json={'harnesses': []},
     )
 
@@ -204,7 +204,7 @@ def test_lists_global_workers_enabled_for_selected_project(
 
     client = build_client(tenant_service)
     client.post(
-        '/api/v1/workers/instances',
+        '/api/v1/workers',
         json={
             'project_id': 'workspace-1',
             'harnesses': [{'kind': 'codex_cli'}],
@@ -212,7 +212,7 @@ def test_lists_global_workers_enabled_for_selected_project(
     )
 
     response = client.get(
-        '/api/v1/workers/instances',
+        '/api/v1/workers',
         headers={'X-Project-ID': 'workspace-1'},
     )
 

@@ -31,7 +31,7 @@ ProjectIdPath = Annotated[str, Path(min_length=1, description='Project identifie
 
 
 @router.get(
-    '/instances',
+    '',
     response_model=list[WorkerInstanceProjectResponse],
     summary='List global Workers for Project',
 )
@@ -48,7 +48,7 @@ async def list_worker_instances(
 
 
 @router.post(
-    '/instances',
+    '',
     response_model=WorkerResponse,
     status_code=status.HTTP_201_CREATED,
     summary='Register global worker',
@@ -64,7 +64,7 @@ async def create_worker_instance(
 
 
 @router.post(
-    '/instances/{worker_id}/projects/{project_id}',
+    '/{worker_id}/projects/{project_id}',
     response_model=WorkerProjectEnablementResponse,
     status_code=status.HTTP_201_CREATED,
     summary='Enable global worker for project',
@@ -85,7 +85,7 @@ async def enable_worker_instance_project(
 
 
 @router.post(
-    '/instances/{worker_id}/heartbeat',
+    '/{worker_id}/heartbeat',
     response_model=WorkerResponse,
     summary='Heartbeat global worker',
 )

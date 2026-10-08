@@ -23,7 +23,7 @@ configuration.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
   persists each supplied step as an independent User-owned Activity record.
 - [Workers](workers.md) registers global Workers, controls their Project
-  enablements, and records global and legacy Worker heartbeats during migration.
+  enablements, and records their heartbeats.
 
 ## Versioned API conventions
 

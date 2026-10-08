@@ -488,7 +488,7 @@ JSON
 )"
 WORKER_PROJECT_ID="$(printf '%s' "${worker_project_response}" | json_field "id")"
 worker_instance_response="$(
-    request POST "/workers/instances" "$(
+    request POST "/workers" "$(
         cat <<JSON
 {
     "project_id": "${PROJECT_ID}",
@@ -498,15 +498,15 @@ JSON
     )"
 )"
 WORKER_INSTANCE_ID="$(printf '%s' "${worker_instance_response}" | json_field "id")"
-request GET "/workers/instances" >/dev/null
+request GET "/workers" >/dev/null
 request \
     POST \
-    "/workers/instances/${WORKER_INSTANCE_ID}/heartbeat" \
+    "/workers/${WORKER_INSTANCE_ID}/heartbeat" \
     '{"harnesses":[]}' \
     >/dev/null
 request \
     POST \
-    "/workers/instances/${WORKER_INSTANCE_ID}/projects/${WORKER_PROJECT_ID}" \
+    "/workers/${WORKER_INSTANCE_ID}/projects/${WORKER_PROJECT_ID}" \
     '{}' \
     >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
