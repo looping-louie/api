@@ -8,6 +8,7 @@ from src.app.services.worker_instances import WorkerInstanceService
 
 from .create import WorkerInstanceCreateController
 from .describe import WorkerInstanceDescribeController
+from .disable_project import WorkerInstanceDisableProjectController
 from .enable_project import WorkerInstanceEnableProjectController
 from .heartbeat import WorkerInstanceHeartbeatController
 from .list import WorkerInstanceListController
@@ -16,6 +17,7 @@ from .list import WorkerInstanceListController
 class WorkerInstanceController(
     WorkerInstanceCreateController,
     WorkerInstanceDescribeController,
+    WorkerInstanceDisableProjectController,
     WorkerInstanceEnableProjectController,
     WorkerInstanceHeartbeatController,
     WorkerInstanceListController,
@@ -43,6 +45,7 @@ __all__ = [
     'WorkerInstanceController',
     'WorkerInstanceCreateController',
     'WorkerInstanceDescribeController',
+    'WorkerInstanceDisableProjectController',
     'WorkerInstanceEnableProjectController',
     'WorkerInstanceHeartbeatController',
     'WorkerInstanceListController',

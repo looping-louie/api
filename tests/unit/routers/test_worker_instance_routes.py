@@ -107,6 +107,23 @@ class InMemoryWorkerInstanceRepository:
         self.enablements.append(document)
         return document
 
+    async def disable_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> None:
+        """Remove all matching Worker Project enablements."""
+
+        self.enablements = [
+            enablement
+            for enablement in self.enablements
+            if (
+                enablement.worker_instance_id != worker_instance_id
+                or enablement.project_id != project_id
+            )
+        ]
+
     async def list_enabled_projects(
         self,
         *,
@@ -199,6 +216,10 @@ def test_project_route_enables_global_worker(
     enabled = client.post(
         '/api/v1/projects/workspace-1/workers/worker-1',
     )
+    disabled = client.delete(
+        '/api/v1/projects/workspace-1/workers/worker-1',
+    )
+    remaining_workers = client.get('/api/v1/projects/workspace-1/workers')
     legacy_path = client.post('/api/v1/workers/worker-1/projects/workspace-1')
     heartbeated = client.post(
         '/api/v1/workers/worker-1/heartbeat',
@@ -210,6 +231,9 @@ def test_project_route_enables_global_worker(
     assert enabled.status_code == 201
     assert enabled.json()['worker_id'] == 'worker-1'
     assert enabled.json()['project_id'] == 'workspace-1'
+    assert disabled.status_code == 200
+    assert disabled.json() == {'deleted': True}
+    assert remaining_workers.json() == []
     assert legacy_path.status_code == 404
     assert heartbeated.status_code == 200
     assert heartbeated.json()['harnesses'] == []

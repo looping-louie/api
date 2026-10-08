@@ -131,6 +131,30 @@ class WorkerInstanceService:
             ),
         )
 
+    async def disable_project(
+        self,
+        *,
+        user_id: str,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> None:
+        """Prevent a Worker from claiming future work for one Project."""
+
+        worker_id = _require_text(worker_instance_id)
+        if await self._repository.get_for_owner(
+            worker_instance_id=worker_id,
+            owner_user_id=_require_text(user_id),
+        ) is None:
+            raise WorkerInstanceNotFoundError(worker_id)
+        project = await self._tenant_service.require_access(
+            user_id=user_id,
+            project_id=project_id,
+        )
+        await self._repository.disable_project(
+            worker_instance_id=worker_id,
+            project_id=project.project_id,
+        )
+
     async def heartbeat(
         self,
         *,

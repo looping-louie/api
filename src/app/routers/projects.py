@@ -11,6 +11,7 @@ from src.app.schemas.project import (
     ProjectPatchRequest,
     ProjectResponse,
 )
+from src.app.schemas.shared import DeleteResponse
 from src.app.schemas.worker import (
     WorkerInstanceProjectResponse,
     WorkerProjectEnablementResponse,
@@ -97,6 +98,26 @@ async def enable_project_worker(
     """Authorize one Worker to claim work for one accessible Project."""
 
     return await controller.enable_project(
+        user_id=context.user_id,
+        worker_id=worker_id,
+        project_id=project_id,
+    )
+
+
+@router.delete(
+    '/{project_id}/workers/{worker_id}',
+    response_model=DeleteResponse,
+    summary='Disable Worker for Project',
+)
+async def disable_project_worker(
+    project_id: ProjectIdPath,
+    worker_id: WorkerIdPath,
+    context: ContextDependency,
+    controller: WorkerControllerDependency,
+) -> DeleteResponse:
+    """Prevent one Worker from claiming future work for one Project."""
+
+    return await controller.disable_project(
         user_id=context.user_id,
         worker_id=worker_id,
         project_id=project_id,

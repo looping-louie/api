@@ -82,6 +82,15 @@ class WorkerInstanceRepository(Protocol):
         """Allow a Worker to claim work for one Project."""
         raise NotImplementedError
 
+    async def disable_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> None:
+        """Remove one Worker's authorization to claim Project work."""
+        raise NotImplementedError
+
     async def list_enabled_projects(
         self,
         *,

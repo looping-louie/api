@@ -110,3 +110,13 @@ async def test_worker_can_be_enabled_for_multiple_projects(
     assert await repository.list_enabled_projects(
         worker_instance_id=worker.id,
     ) == (enabled_for_a, enabled_for_b)
+
+    await repository.disable_project(
+        worker_instance_id=worker.id,
+        project_id='project-a',
+    )
+
+    assert await repository.list_enabled(project_id='project-a') == ()
+    assert await repository.list_enabled_projects(
+        worker_instance_id=worker.id,
+    ) == (enabled_for_b,)

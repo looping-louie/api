@@ -272,6 +272,27 @@ class SqliteWorkerInstanceRepository:
             raise RuntimeError('Worker Project enablement was not persisted.')
         return _to_enablement_document(row)
 
+    async def disable_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> None:
+        """Delete one Worker's Project execution authorization."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                DELETE FROM worker_project_enablements
+                WHERE worker_instance_id = ? AND project_id = ?
+                ''',
+                (worker_instance_id, project_id),
+            )
+            try:
+                await connection.commit()
+            finally:
+                await cursor.close()
+
     async def list_enabled_projects(
         self,
         *,

@@ -105,6 +105,23 @@ class InMemoryWorkerInstanceRepository:
         self.enablements.append(document)
         return document
 
+    async def disable_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> None:
+        """Remove one Worker Project enablement."""
+
+        self.enablements = [
+            enablement
+            for enablement in self.enablements
+            if (
+                enablement.worker_instance_id != worker_instance_id
+                or enablement.project_id != project_id
+            )
+        ]
+
     async def list_enabled_projects(
         self,
         *,
@@ -165,6 +182,42 @@ async def test_worker_can_be_enabled_for_multiple_accessible_projects() -> None:
         'project-b',
     ]
     assert worker.owner_user_id == 'user-1'
+
+
+@pytest.mark.asyncio
+async def test_worker_can_be_disabled_for_an_accessible_project() -> None:
+    """Disabling prevents future Project claims without deleting the Worker."""
+
+    tenant_service = TenantService(repository=FakeTenantRepository([
+        ProjectMembership(
+            user_id='user-1',
+            project_id='project-a',
+            is_default=True,
+        ),
+        ProjectMembership(user_id='user-1', project_id='project-b'),
+    ]))
+    service, repository = build_service(tenant_service=tenant_service)
+    worker = await service.register(
+        user_id='user-1',
+        project_id='project-a',
+        harnesses=(),
+    )
+    await service.enable_project(
+        user_id='user-1',
+        worker_instance_id=worker.id,
+        project_id='project-b',
+    )
+
+    await service.disable_project(
+        user_id='user-1',
+        worker_instance_id=worker.id,
+        project_id='project-b',
+    )
+
+    assert repository.workers[worker.id] == worker
+    assert [enablement.project_id for enablement in repository.enablements] == [
+        'project-a',
+    ]
 
 
 @pytest.mark.asyncio

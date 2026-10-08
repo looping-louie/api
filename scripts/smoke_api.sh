@@ -511,6 +511,10 @@ request \
     "/projects/${WORKER_PROJECT_ID}/workers/${WORKER_INSTANCE_ID}" \
     '{}' \
     >/dev/null
+request \
+    DELETE \
+    "/projects/${WORKER_PROJECT_ID}/workers/${WORKER_INSTANCE_ID}" \
+    >/dev/null
 request GET "/pipelines/${PIPELINE_ID}" >/dev/null
 request GET "/pipelines?offset=0&status=active&search=Smoke" >/dev/null
 pipeline_run_response="$(
