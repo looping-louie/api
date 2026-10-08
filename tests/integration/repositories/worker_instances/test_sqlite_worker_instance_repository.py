@@ -1,4 +1,4 @@
-"""Integration tests for SQLite global Worker persistence."""
+"""Integration tests for SQLite Worker persistence."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -20,7 +20,7 @@ async def test_worker_can_be_enabled_for_multiple_projects(
     sqlite_database: SqliteDatabase,
     create_workspace: WorkspaceFactory,
 ) -> None:
-    """A global Worker has explicit execution permissions per Project."""
+    """A Worker has explicit execution permissions per Project."""
 
     await create_workspace(project_id='project-a')
     await create_workspace(project_id='project-b')

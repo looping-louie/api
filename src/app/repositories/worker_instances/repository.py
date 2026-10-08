@@ -1,4 +1,4 @@
-"""Persistence protocol for global Workers and Project enablements."""
+"""Persistence protocol for Workers and Project enablements."""
 
 from datetime import datetime
 from typing import Mapping, Protocol
@@ -87,5 +87,5 @@ class WorkerInstanceRepository(Protocol):
         *,
         project_id: str,
     ) -> tuple[WorkerInstanceProjectDocument, ...]:
-        """Return global Workers enabled for one Project."""
+        """Return Workers enabled for one Project."""
         raise NotImplementedError

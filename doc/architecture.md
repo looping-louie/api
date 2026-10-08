@@ -128,7 +128,7 @@ services/
 |   `-- service.py                 Manages durable request identities
 |-- worker_instances/
 |   |-- __init__.py                Defines the package's public imports
-|   `-- service.py                 Manages global Worker Project enablements and capacity
+|   `-- service.py                 Manages Worker Project enablements and capacity
 |-- projects/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages User-owned execution-placement Projects
@@ -208,11 +208,11 @@ controllers/
 |   `-- response.py               Translates Project documents to responses
 |-- worker_instances/
 |   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- create.py                 Registers global Workers
-|   |-- enable_project.py         Enables global Workers for Projects
-|   |-- heartbeat.py              Records global Worker heartbeats
-|   |-- list.py                   Lists global Workers and their capacity for one Project
-|   `-- response.py               Translates global Worker documents to responses
+|   |-- create.py                 Registers Workers
+|   |-- enable_project.py         Enables Workers for Projects
+|   |-- heartbeat.py              Records Worker heartbeats
+|   |-- list.py                   Lists Workers and their capacity for one Project
+|   `-- response.py               Translates Worker documents to responses
 `-- users/
   |-- __init__.py               Composes endpoint-specific controllers
   |-- create.py                 Creates the current User

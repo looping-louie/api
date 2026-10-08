@@ -1,4 +1,4 @@
-"""SQLite persistence for global Workers and Project enablements."""
+"""SQLite persistence for Workers and Project enablements."""
 
 from __future__ import annotations
 
@@ -280,7 +280,7 @@ class SqliteWorkerInstanceRepository:
         *,
         project_id: str,
     ) -> tuple[WorkerInstanceProjectDocument, ...]:
-        """Return global Workers enabled for one Project."""
+        """Return Workers enabled for one Project."""
 
         async with self._database.connect() as connection:
             cursor = await connection.execute(

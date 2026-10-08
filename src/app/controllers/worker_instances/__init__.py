@@ -1,4 +1,4 @@
-"""Controllers for global Worker HTTP operations."""
+"""Controllers for Worker HTTP operations."""
 
 from collections.abc import Callable
 from datetime import datetime
@@ -18,7 +18,7 @@ class WorkerInstanceController(
     WorkerInstanceHeartbeatController,
     WorkerInstanceListController,
 ):
-    """Compose endpoint-specific global Worker controllers."""
+    """Compose endpoint-specific Worker controllers."""
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class WorkerInstanceController(
         pipeline_run_repository: PipelineRunRepository,
         clock: Callable[[], datetime],
     ) -> None:
-        """Store the global Worker lifecycle service."""
+        """Store the Worker lifecycle service."""
 
         WorkerInstanceListController.__init__(
             self,

@@ -1,4 +1,4 @@
-"""Global Worker HTTP response mapping."""
+"""Worker HTTP response mapping."""
 
 from datetime import datetime
 
@@ -17,7 +17,7 @@ from src.app.services.worker_instances import WORKER_HEARTBEAT_TIMEOUT
 
 
 def worker_instance_response(worker: WorkerInstanceDocument) -> WorkerResponse:
-    """Map one global Worker to its public identity representation."""
+    """Map one Worker to its public identity representation."""
 
     return WorkerResponse(
         id=worker.id,
@@ -37,7 +37,7 @@ def worker_instance_response(worker: WorkerInstanceDocument) -> WorkerResponse:
 def worker_project_enablement_response(
     enablement: WorkerProjectEnablementDocument,
 ) -> WorkerProjectEnablementResponse:
-    """Map one global Worker's Project authorization to its HTTP response."""
+    """Map one Worker's Project authorization to its HTTP response."""
 
     return WorkerProjectEnablementResponse(
         worker_id=enablement.worker_instance_id,

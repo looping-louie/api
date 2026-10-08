@@ -1,4 +1,4 @@
-"""HTTP contract tests for global Worker lifecycle routes."""
+"""HTTP contract tests for Worker lifecycle routes."""
 
 from collections.abc import Awaitable, Callable
 
@@ -23,7 +23,7 @@ from tests.conftest import IncrementingClock
 
 
 class InMemoryWorkerInstanceRepository:
-    """Persist global Workers for HTTP route tests."""
+    """Persist Workers for HTTP route tests."""
 
     def __init__(self) -> None:
         """Initialize Worker and Project enablement storage."""
@@ -36,7 +36,7 @@ class InMemoryWorkerInstanceRepository:
         *,
         worker_instance_id: str,
     ) -> WorkerInstanceDocument | None:
-        """Return one stored global Worker."""
+        """Return one stored Worker."""
 
         return self.workers.get(worker_instance_id)
 
@@ -44,7 +44,7 @@ class InMemoryWorkerInstanceRepository:
         self,
         document: WorkerInstanceDocument,
     ) -> WorkerInstanceDocument:
-        """Store one global Worker."""
+        """Store one Worker."""
 
         self.workers[document.id] = document
         return document
@@ -56,7 +56,7 @@ class InMemoryWorkerInstanceRepository:
         occurred_at: datetime,
         harnesses: tuple[WorkerHarnessCapability, ...],
     ) -> WorkerInstanceDocument | None:
-        """Update one global Worker's liveness and Harnesses."""
+        """Update one Worker's liveness and Harnesses."""
 
         current = self.workers.get(worker_instance_id)
         if current is None:
@@ -151,7 +151,7 @@ class InMemoryPipelineRunRepository:
 
 
 def build_client(tenant_service: TenantService) -> TestClient:
-    """Build an authenticated global Worker API application."""
+    """Build an authenticated Worker API application."""
 
     app = FastAPI()
     app.state.worker_instance_controller = WorkerInstanceController(
@@ -213,7 +213,7 @@ def test_register_then_enable_global_worker_for_another_project(
 def test_global_worker_registration_requires_an_explicit_project(
     tenant_service: TenantService,
 ) -> None:
-    """A global Worker cannot receive an implicit initial Project assignment."""
+    """A Worker cannot receive an implicit initial Project assignment."""
 
     response = build_client(tenant_service).post(
         '/api/v1/workers',
@@ -226,7 +226,7 @@ def test_global_worker_registration_requires_an_explicit_project(
 def test_lists_global_workers_enabled_for_selected_project(
     tenant_service: TenantService,
 ) -> None:
-    """A Project sees only its enabled global Worker operational state."""
+    """A Project sees only its enabled Worker operational state."""
 
     client = build_client(tenant_service)
     client.post(
@@ -267,7 +267,7 @@ def test_listing_global_workers_requires_a_project_filter(
 def test_describes_global_worker_enabled_for_selected_project(
     tenant_service: TenantService,
 ) -> None:
-    """A selected Project can inspect one of its enabled global Workers."""
+    """A selected Project can inspect one of its enabled Workers."""
 
     client = build_client(tenant_service)
     client.post(
@@ -293,7 +293,7 @@ def test_describes_global_worker_enabled_for_selected_project(
 def test_does_not_describe_unenabled_global_worker(
     tenant_service: TenantService,
 ) -> None:
-    """A Project cannot inspect a global Worker that is not enabled for it."""
+    """A Project cannot inspect a Worker that is not enabled for it."""
 
     response = build_client(tenant_service).get(
         '/api/v1/workers/worker-missing',

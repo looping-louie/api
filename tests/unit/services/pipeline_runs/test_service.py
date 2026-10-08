@@ -201,7 +201,7 @@ class InMemoryPipelineRunRepository:
 
 
 class InMemoryGlobalWorkerService:
-    """Control global Worker claim admission for PipelineRun scheduler tests."""
+    """Control Worker claim admission for PipelineRun scheduler tests."""
 
     def __init__(self, *, active: bool, supports_harness: bool = True) -> None:
         """Store whether registration liveness should admit claims."""
@@ -438,7 +438,7 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
 async def test_claim_rejects_a_global_worker_at_its_active_lease_limit(
     tenant_service: TenantService,
 ) -> None:
-    """A saturated global Worker receives a capacity-specific claim error."""
+    """A saturated Worker receives a capacity-specific claim error."""
 
     first = activity('activity-1')
     now = datetime(2026, 8, 14, tzinfo=UTC)

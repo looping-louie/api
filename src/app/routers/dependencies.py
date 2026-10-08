@@ -227,7 +227,7 @@ def get_execution_instruction_library_service(
 
 
 def get_worker_instance_controller(request: Request) -> WorkerInstanceController:
-    """Return the configured global Worker lifecycle controller."""
+    """Return the configured Worker lifecycle controller."""
 
     return _get_controller(
         request,

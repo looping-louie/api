@@ -8,7 +8,7 @@ from .response import worker_instance_response
 
 
 class WorkerInstanceCreateController:
-    """Register global Workers with authorized initial Project assignments."""
+    """Register Workers with authorized initial Project assignments."""
 
     async def create(
         self,
@@ -16,7 +16,7 @@ class WorkerInstanceCreateController:
         user_id: str,
         payload: WorkerInstanceCreateRequest,
     ) -> WorkerResponse:
-        """Register one global Worker and enable its initial Project."""
+        """Register one Worker and enable its initial Project."""
 
         return worker_instance_response(await self._worker_instance_service.register(
             user_id=user_id,

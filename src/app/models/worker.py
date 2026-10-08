@@ -1,4 +1,4 @@
-"""Domain models for global Worker capabilities and readiness."""
+"""Domain models for Worker capabilities and readiness."""
 
 from dataclasses import dataclass, field
 from datetime import datetime

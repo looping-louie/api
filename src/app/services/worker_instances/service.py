@@ -1,4 +1,4 @@
-"""Application service for global Worker registration and Project enablement."""
+"""Application service for Worker registration and Project enablement."""
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -20,7 +20,7 @@ WORKER_HEARTBEAT_TIMEOUT = timedelta(minutes=2)
 
 
 class WorkerUnavailableError(Exception):
-    """Raised when a global Worker cannot claim work for a Project."""
+    """Raised when a Worker cannot claim work for a Project."""
 
     def __init__(self, worker_id: str) -> None:
         """Store the unavailable Worker identifier."""
@@ -30,7 +30,7 @@ class WorkerUnavailableError(Exception):
 
 
 class WorkerHarnessUnavailableError(Exception):
-    """Raised when a global Worker lacks a Pipeline Harness capability."""
+    """Raised when a Worker lacks a Pipeline Harness capability."""
 
     def __init__(self, worker_id: str) -> None:
         """Store the incompatible Worker identifier."""
@@ -40,7 +40,7 @@ class WorkerHarnessUnavailableError(Exception):
 
 
 class WorkerCapacityUnavailableError(Exception):
-    """Raised when a global Worker already holds its active claim limit."""
+    """Raised when a Worker already holds its active claim limit."""
 
     def __init__(self, worker_id: str) -> None:
         """Store the saturated Worker identifier."""
@@ -49,7 +49,7 @@ class WorkerCapacityUnavailableError(Exception):
         self.worker_id = worker_id
 
 class WorkerInstanceNotFoundError(Exception):
-    """Raised when an operation targets an unregistered global Worker."""
+    """Raised when an operation targets an unregistered Worker."""
 
     def __init__(self, worker_instance_id: str) -> None:
         """Store the absent Worker identity."""
@@ -59,7 +59,7 @@ class WorkerInstanceNotFoundError(Exception):
 
 
 class WorkerInstanceService:
-    """Manage global Workers and their authorized Project assignments."""
+    """Manage Workers and their authorized Project assignments."""
 
     def __init__(
         self,
@@ -135,7 +135,7 @@ class WorkerInstanceService:
         harnesses: tuple[WorkerHarnessCapability, ...],
         requested_project_id: str | None = None,
     ) -> WorkerInstanceDocument:
-        """Refresh one global Worker's liveness and observed Harnesses."""
+        """Refresh one Worker's liveness and observed Harnesses."""
 
         await self._tenant_service.resolve(
             user_id=user_id,
@@ -158,7 +158,7 @@ class WorkerInstanceService:
         worker_id: str,
         harness: Mapping[str, object],
     ) -> None:
-        """Reject global Workers that cannot claim work for one Project."""
+        """Reject Workers that cannot claim work for one Project."""
 
         normalized_worker_id = _require_text(worker_id)
         worker = await self._repository.get_enabled(
@@ -179,7 +179,7 @@ class WorkerInstanceService:
         project_id: str,
         harness: Mapping[str, object],
     ) -> WorkerReadinessDocument:
-        """Summarize enabled global Workers for one Project and Harness."""
+        """Summarize enabled Workers for one Project and Harness."""
 
         return await self._repository.readiness(
             project_id=project_id,
@@ -200,7 +200,7 @@ class WorkerInstanceService:
         user_id: str,
         project_id: str,
     ) -> tuple[WorkerInstanceProjectDocument, ...]:
-        """List global Workers the caller may inspect for one Project."""
+        """List Workers the caller may inspect for one Project."""
 
         project = await self._tenant_service.require_access(
             user_id=user_id,
@@ -215,7 +215,7 @@ class WorkerInstanceService:
         requested_project_id: str | None,
         worker_instance_id: str,
     ) -> WorkerInstanceProjectDocument:
-        """Return one global Worker enabled for the caller's selected Project."""
+        """Return one Worker enabled for the caller's selected Project."""
 
         project = await self._tenant_service.resolve(
             user_id=user_id,

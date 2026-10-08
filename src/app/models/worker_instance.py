@@ -27,7 +27,7 @@ class WorkerProjectEnablementDocument:
 
 @dataclass(frozen=True, slots=True)
 class WorkerInstanceProjectDocument:
-    """One global Worker and its authorization for a Project."""
+    """One Worker and its authorization for a Project."""
 
     worker: WorkerInstanceDocument
     enablement: WorkerProjectEnablementDocument

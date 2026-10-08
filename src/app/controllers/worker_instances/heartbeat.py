@@ -1,4 +1,4 @@
-"""Controller for recording global Worker heartbeats."""
+"""Controller for recording Worker heartbeats."""
 
 from src.app.models.worker import WorkerHarnessCapability
 from src.app.schemas.worker import WorkerHeartbeatRequest, WorkerResponse
@@ -8,7 +8,7 @@ from .response import worker_instance_response
 
 
 class WorkerInstanceHeartbeatController:
-    """Refresh global Worker liveness and reported Harness capabilities."""
+    """Refresh Worker liveness and reported Harness capabilities."""
 
     async def heartbeat(
         self,
@@ -18,7 +18,7 @@ class WorkerInstanceHeartbeatController:
         payload: WorkerHeartbeatRequest,
         requested_project_id: str | None = None,
     ) -> WorkerResponse:
-        """Record one liveness heartbeat for a registered global Worker."""
+        """Record one liveness heartbeat for a registered Worker."""
 
         return worker_instance_response(
             await self._worker_instance_service.heartbeat(

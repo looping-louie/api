@@ -1,4 +1,4 @@
-"""Tests for global Worker registration and Project enablement."""
+"""Tests for Worker registration and Project enablement."""
 
 from datetime import UTC, datetime
 
@@ -19,7 +19,7 @@ from tests.fakes.tenant_repository import FakeTenantRepository
 
 
 class InMemoryWorkerInstanceRepository:
-    """Store global Workers and their Project enablements for service tests."""
+    """Store Workers and their Project enablements for service tests."""
 
     def __init__(self) -> None:
         """Initialize empty Worker and enablement storage."""
@@ -32,7 +32,7 @@ class InMemoryWorkerInstanceRepository:
         *,
         worker_instance_id: str,
     ) -> WorkerInstanceDocument | None:
-        """Return one stored global Worker."""
+        """Return one stored Worker."""
 
         return self.workers.get(worker_instance_id)
 
@@ -40,7 +40,7 @@ class InMemoryWorkerInstanceRepository:
         self,
         document: WorkerInstanceDocument,
     ) -> WorkerInstanceDocument:
-        """Store one global Worker."""
+        """Store one Worker."""
 
         self.workers[document.id] = document
         return document

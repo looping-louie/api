@@ -14,7 +14,7 @@ class WorkerHarnessCapabilityRequest(HarnessRequest):
 
 
 class WorkerInstanceCreateRequest(RequestSchema):
-    """Initial Project assignment and capabilities for one global Worker."""
+    """Initial Project assignment and capabilities for one Worker."""
 
     project_id: NonEmptyString
     harnesses: list[WorkerHarnessCapabilityRequest]
@@ -40,7 +40,7 @@ class WorkerResponse(ResponseSchema):
 
 
 class WorkerProjectEnablementResponse(ResponseSchema):
-    """One Project that is authorized to receive work from a global Worker."""
+    """One Project that is authorized to receive work from a Worker."""
 
     worker_id: str
     project_id: str
@@ -48,7 +48,7 @@ class WorkerProjectEnablementResponse(ResponseSchema):
 
 
 class WorkerInstanceProjectResponse(WorkerResponse):
-    """A global Worker visible through one enabled Project."""
+    """A Worker visible through one enabled Project."""
 
     enabled_at: datetime
     active: bool

@@ -34,14 +34,14 @@ ProjectIdQuery = Annotated[str, Query(min_length=1, description='Project used to
 @router.get(
     '',
     response_model=list[WorkerInstanceProjectResponse],
-    summary='List global Workers for Project',
+    summary='List Workers for Project',
 )
 async def list_worker_instances(
     context: ContextDependency,
     controller: InstanceControllerDependency,
     project_id: ProjectIdQuery,
 ) -> list[WorkerInstanceProjectResponse]:
-    """List global Workers enabled for the requested Project."""
+    """List Workers enabled for the requested Project."""
 
     return await controller.list_for_project(
         user_id=context.user_id,
@@ -52,14 +52,14 @@ async def list_worker_instances(
 @router.get(
     '/{worker_id}',
     response_model=WorkerInstanceProjectResponse,
-    summary='Describe global Worker for Project',
+    summary='Describe Worker for Project',
 )
 async def get_worker_instance(
     worker_id: WorkerIdPath,
     context: ContextDependency,
     controller: InstanceControllerDependency,
 ) -> WorkerInstanceProjectResponse:
-    """Describe one global Worker enabled for the selected Project."""
+    """Describe one Worker enabled for the selected Project."""
 
     return await controller.get_for_project(
         user_id=context.user_id,
@@ -72,14 +72,14 @@ async def get_worker_instance(
     '',
     response_model=WorkerResponse,
     status_code=status.HTTP_201_CREATED,
-    summary='Register global worker',
+    summary='Register worker',
 )
 async def create_worker_instance(
     context: ContextDependency,
     controller: InstanceControllerDependency,
     payload: WorkerInstanceCreateRequest,
 ) -> WorkerResponse:
-    """Register one global Worker and enable its initial Project."""
+    """Register one Worker and enable its initial Project."""
 
     return await controller.create(user_id=context.user_id, payload=payload)
 
@@ -88,7 +88,7 @@ async def create_worker_instance(
     '/{worker_id}/projects/{project_id}',
     response_model=WorkerProjectEnablementResponse,
     status_code=status.HTTP_201_CREATED,
-    summary='Enable global worker for project',
+    summary='Enable worker for project',
 )
 async def enable_worker_instance_project(
     worker_id: WorkerIdPath,
@@ -96,7 +96,7 @@ async def enable_worker_instance_project(
     context: ContextDependency,
     controller: InstanceControllerDependency,
 ) -> WorkerProjectEnablementResponse:
-    """Authorize one global Worker to claim work for one Project."""
+    """Authorize one Worker to claim work for one Project."""
 
     return await controller.enable_project(
         user_id=context.user_id,
@@ -108,7 +108,7 @@ async def enable_worker_instance_project(
 @router.post(
     '/{worker_id}/heartbeat',
     response_model=WorkerResponse,
-    summary='Heartbeat global worker',
+    summary='Heartbeat worker',
 )
 async def heartbeat_worker_instance(
     worker_id: WorkerIdPath,
@@ -116,7 +116,7 @@ async def heartbeat_worker_instance(
     controller: InstanceControllerDependency,
     payload: WorkerHeartbeatRequest,
 ) -> WorkerResponse:
-    """Refresh one global Worker's liveness and reported capabilities."""
+    """Refresh one Worker's liveness and reported capabilities."""
 
     return await controller.heartbeat(
         user_id=context.user_id,

@@ -1,4 +1,4 @@
-"""Read global Workers enabled for one Project."""
+"""Read Workers enabled for one Project."""
 
 from collections.abc import Callable
 from datetime import datetime
@@ -14,7 +14,7 @@ from .response import worker_instance_project_response
 
 
 class WorkerInstanceListController:
-    """Expose Project-scoped global Worker operational state."""
+    """Expose Project-scoped Worker operational state."""
 
     def __init__(
         self,
@@ -35,7 +35,7 @@ class WorkerInstanceListController:
         user_id: str,
         project_id: str,
     ) -> list[WorkerInstanceProjectResponse]:
-        """Return global Workers enabled for the requested Project."""
+        """Return Workers enabled for the requested Project."""
 
         workers = await self._worker_instance_service.list_for_project(
             user_id=user_id,
@@ -63,7 +63,7 @@ class WorkerInstanceListController:
         project_id: str | None,
         worker_instance_id: str,
     ) -> WorkerInstanceProjectResponse:
-        """Return one global Worker enabled for the requested Project."""
+        """Return one Worker enabled for the requested Project."""
 
         worker = await self._worker_instance_service.get_for_project(
             user_id=user_id,

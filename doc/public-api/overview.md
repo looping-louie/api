@@ -22,7 +22,7 @@ configuration.
   definitions and their Project-placed Activity runs.
 - [Pipelines](pipelines.md) manages User-owned ordered Activity definitions and
   persists each supplied step as an independent User-owned Activity record.
-- [Workers](workers.md) registers global Workers, controls their Project
+- [Workers](workers.md) registers Workers, controls their Project
   enablements, and records their heartbeats.
 
 ## Versioned API conventions
@@ -35,7 +35,7 @@ clients provide it through `X-User-ID`. In local development,
 `LOUIE_DEV_AUTH=true` injects `LOUIE_DEV_USER_ID` when the request does not
 already have an identity. A request may select one of the User's Projects with
 the optional `X-Project-ID` header when it targets legacy execution placement,
-PipelineRun, or ActivityRun. Global Worker enablement routes identify the
+PipelineRun, or ActivityRun. Worker enablement routes identify the
 Project explicitly in their path or request body. Project management routes
 instead include the Project identifier in their URL. User model routes are
 user-scoped and ignore the header.

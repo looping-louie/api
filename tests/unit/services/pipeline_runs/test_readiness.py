@@ -27,7 +27,7 @@ class ReadinessRunRepository:
 
 
 class ReadinessWorkerInstanceService:
-    """Return deterministic global Worker aggregates."""
+    """Return deterministic Worker aggregates."""
 
     def __init__(self, summary: WorkerReadinessDocument) -> None:
         """Store the Worker aggregate and observed Harness."""
