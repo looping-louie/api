@@ -15,6 +15,7 @@ from src.app.models.worker_instance import (
     WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
+from src.app.routers.projects import router as projects_router
 from src.app.routers.workers import router
 from src.app.services.shared.tenant import TenantService
 from src.app.services.worker_instances import WorkerInstanceService
@@ -52,6 +53,19 @@ class InMemoryWorkerInstanceRepository:
         if worker is None or worker.owner_user_id != owner_user_id:
             return None
         return worker
+
+    async def list_for_owner(
+        self,
+        *,
+        owner_user_id: str,
+    ) -> tuple[WorkerInstanceDocument, ...]:
+        """Return Workers owned by the specified User."""
+
+        return tuple(
+            worker
+            for worker in self.workers.values()
+            if worker.owner_user_id == owner_user_id
+        )
 
     async def create(
         self,
@@ -165,6 +179,7 @@ def build_client(tenant_service: TenantService) -> TestClient:
 
     register_exception_handlers(app)
     app.include_router(router, prefix='/api/v1')
+    app.include_router(projects_router, prefix='/api/v1')
     return TestClient(app)
 
 
@@ -211,7 +226,7 @@ def test_global_worker_registration_requires_an_explicit_project(
     assert response.status_code == 422
 
 
-def test_lists_global_workers_enabled_for_selected_project(
+def test_lists_workers_enabled_for_selected_project(
     tenant_service: TenantService,
 ) -> None:
     """A Project sees only its enabled Worker operational state."""
@@ -225,9 +240,7 @@ def test_lists_global_workers_enabled_for_selected_project(
         },
     )
 
-    response = client.get(
-        '/api/v1/workers?project_id=workspace-1',
-    )
+    response = client.get('/api/v1/projects/workspace-1/workers')
 
     assert response.status_code == 200
     assert response.json() == [{
@@ -242,14 +255,29 @@ def test_lists_global_workers_enabled_for_selected_project(
     }]
 
 
-def test_listing_global_workers_requires_a_project_filter(
+def test_lists_workers_owned_by_requesting_user(
     tenant_service: TenantService,
 ) -> None:
-    """Worker collection reads require an explicit Project query filter."""
+    """The root Worker collection contains base Worker state only."""
 
-    response = build_client(tenant_service).get('/api/v1/workers')
+    client = build_client(tenant_service)
+    client.post(
+        '/api/v1/workers',
+        json={
+            'project_id': 'workspace-1',
+            'harnesses': [{'kind': 'codex_cli'}],
+        },
+    )
 
-    assert response.status_code == 422
+    response = client.get('/api/v1/workers')
+
+    assert response.status_code == 200
+    assert response.json() == [{
+        'id': 'worker-1',
+        'registered_at': '2026-07-13T10:00:00Z',
+        'last_heartbeat_at': '2026-07-13T10:00:00Z',
+        'harnesses': [{'kind': 'codex_cli', 'version': 'v1', 'config': {}}],
+    }]
 
 
 def test_describes_worker_owned_by_requesting_user(

@@ -52,6 +52,19 @@ class InMemoryWorkerInstanceRepository:
             return None
         return worker
 
+    async def list_for_owner(
+        self,
+        *,
+        owner_user_id: str,
+    ) -> tuple[WorkerInstanceDocument, ...]:
+        """Return Workers owned by the specified User."""
+
+        return tuple(
+            worker
+            for worker in self.workers.values()
+            if worker.owner_user_id == owner_user_id
+        )
+
     async def create(
         self,
         document: WorkerInstanceDocument,
@@ -203,6 +216,35 @@ async def test_worker_detail_is_limited_to_its_owner() -> None:
             user_id='user-2',
             worker_instance_id='worker-1',
         )
+
+
+@pytest.mark.asyncio
+async def test_worker_list_is_limited_to_its_owner() -> None:
+    """A Worker collection exposes only the requesting User's Workers."""
+
+    tenant_service = TenantService(repository=FakeTenantRepository([]))
+    service, repository = build_service(tenant_service=tenant_service)
+    timestamp = datetime(2026, 10, 6, tzinfo=UTC)
+    repository.workers = {
+        'worker-owned': WorkerInstanceDocument(
+            id='worker-owned',
+            owner_user_id='user-1',
+            registered_at=timestamp,
+            last_heartbeat_at=timestamp,
+            harnesses=(),
+        ),
+        'worker-other': WorkerInstanceDocument(
+            id='worker-other',
+            owner_user_id='user-2',
+            registered_at=timestamp,
+            last_heartbeat_at=timestamp,
+            harnesses=(),
+        ),
+    }
+
+    assert await service.list_for_user(user_id='user-1') == (
+        repository.workers['worker-owned'],
+    )
 
 
 @pytest.mark.asyncio

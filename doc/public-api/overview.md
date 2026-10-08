@@ -36,9 +36,9 @@ clients provide it through `X-User-ID`. In local development,
 already have an identity. A request may select one of the User's Projects with
 the optional `X-Project-ID` header when it targets legacy execution placement,
 PipelineRun, or ActivityRun. Worker enablement routes identify the
-Project explicitly in their path or request body. Project management routes
-instead include the Project identifier in their URL. User model routes are
-user-scoped and ignore the header.
+Project explicitly in their path, request body, or collection URL. Project
+management routes instead include the Project identifier in their URL. User
+model routes are user-scoped and ignore the header.
 If the User has access to more than one Project and the header is omitted, the
 API returns `409 project_selection_required`.
 

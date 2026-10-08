@@ -89,6 +89,7 @@ async def test_worker_can_be_enabled_for_multiple_projects(
         worker_instance_id=worker.id,
         owner_user_id='user-other',
     ) is None
+    assert await repository.list_for_owner(owner_user_id='user-1') == (heartbeated,)
     enabled_workers = await repository.list_enabled(project_id='project-a')
     readiness = await repository.readiness(
         project_id='project-a',

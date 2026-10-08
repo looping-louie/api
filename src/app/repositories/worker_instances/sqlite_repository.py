@@ -71,6 +71,30 @@ class SqliteWorkerInstanceRepository:
                 await cursor.close()
         return _to_worker_document(row) if row is not None else None
 
+    async def list_for_owner(
+        self,
+        *,
+        owner_user_id: str,
+    ) -> tuple[WorkerInstanceDocument, ...]:
+        """Return all Workers owned by the specified User."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, owner_user_id, registered_at, last_heartbeat_at,
+                    harnesses_json
+                FROM worker_instances
+                WHERE owner_user_id = ?
+                ORDER BY last_heartbeat_at DESC, id
+                ''',
+                (owner_user_id,),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return tuple(_to_worker_document(row) for row in rows)
+
     async def create(
         self,
         document: WorkerInstanceDocument,

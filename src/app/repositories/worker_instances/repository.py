@@ -31,6 +31,14 @@ class WorkerInstanceRepository(Protocol):
         """Return one Worker owned by the specified User."""
         raise NotImplementedError
 
+    async def list_for_owner(
+        self,
+        *,
+        owner_user_id: str,
+    ) -> tuple[WorkerInstanceDocument, ...]:
+        """Return Workers owned by the specified User."""
+        raise NotImplementedError
+
     async def create(
         self,
         document: WorkerInstanceDocument,

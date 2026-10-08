@@ -16,7 +16,7 @@ active returns `409 worker_capacity_unavailable`.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
-| `GET` | `/api/v1/workers?project_id={project_id}` | List Workers enabled for one Project. |
+| `GET` | `/api/v1/workers` | List Workers owned by the requesting User. |
 | `GET` | `/api/v1/workers/{worker_id}` | Describe one Worker owned by the requesting User. |
 | `POST` | `/api/v1/workers` | Register a Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh a Worker heartbeat. |
@@ -83,17 +83,14 @@ Content-Type: application/json
 }
 ```
 
-## List Workers
+## List Owned Workers
 
-`GET /api/v1/workers?project_id={project_id}` returns Workers enabled for the
-requested Project. The caller must have access to that Project. Each list item
-combines Worker state with that Project's enablement: `enabled_at` belongs to
-the enablement association, not to the Worker itself. `active_claims` counts
-the Worker's active leases across all enabled Projects; `capacity` is currently
-fixed at `1`. The response does not expose enablements in other Projects.
+`GET /api/v1/workers` returns Workers owned by the requesting User. It returns
+Worker identity and observed Harness state only; Project enablement fields such
+as `enabled_at` do not belong to this representation.
 
 ```http
-GET /api/v1/workers?project_id=project-acme
+GET /api/v1/workers
 X-User-ID: user-acme
 ```
 
@@ -105,13 +102,23 @@ X-User-ID: user-acme
     "last_heartbeat_at": "2026-10-07T10:01:00Z",
     "harnesses": [
       { "kind": "codex_cli", "version": "v1", "config": {} }
-    ],
-    "enabled_at": "2026-10-07T10:00:00Z",
-    "active": true,
-    "active_claims": 0,
-    "capacity": 1
+    ]
   }
 ]
+```
+
+## List Project Workers
+
+`GET /api/v1/projects/{project_id}/workers` returns Workers enabled for the
+requested Project. The caller must have access to that Project. Each list item
+combines Worker state with that Project's enablement: `enabled_at` belongs to
+the enablement association, not to the Worker itself. `active_claims` counts
+the Worker's active leases across all enabled Projects; `capacity` is currently
+fixed at `1`. The response does not expose enablements in other Projects.
+
+```http
+GET /api/v1/projects/project-acme/workers
+X-User-ID: user-acme
 ```
 
 ## Describe A Worker

@@ -2,13 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Path, status
 
 from src.app.controllers.worker_instances import WorkerInstanceController
 from src.app.schemas.worker import (
     WorkerHeartbeatRequest,
     WorkerInstanceCreateRequest,
-    WorkerInstanceProjectResponse,
     WorkerProjectEnablementResponse,
     WorkerResponse,
 )
@@ -28,25 +27,20 @@ InstanceControllerDependency = Annotated[
 ]
 WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker identifier.')]
 ProjectIdPath = Annotated[str, Path(min_length=1, description='Project identifier.')]
-ProjectIdQuery = Annotated[str, Query(min_length=1, description='Project used to filter enabled Workers.')]
 
 
 @router.get(
     '',
-    response_model=list[WorkerInstanceProjectResponse],
-    summary='List Workers for Project',
+    response_model=list[WorkerResponse],
+    summary='List owned Workers',
 )
 async def list_worker_instances(
     context: ContextDependency,
     controller: InstanceControllerDependency,
-    project_id: ProjectIdQuery,
-) -> list[WorkerInstanceProjectResponse]:
-    """List Workers enabled for the requested Project."""
+) -> list[WorkerResponse]:
+    """List Workers owned by the requesting User."""
 
-    return await controller.list_for_project(
-        user_id=context.user_id,
-        project_id=project_id,
-    )
+    return await controller.list_for_user(user_id=context.user_id)
 
 
 @router.get(

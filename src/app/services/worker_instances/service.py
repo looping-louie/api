@@ -212,6 +212,17 @@ class WorkerInstanceService:
         )
         return await self._repository.list_enabled(project_id=project.project_id)
 
+    async def list_for_user(
+        self,
+        *,
+        user_id: str,
+    ) -> tuple[WorkerInstanceDocument, ...]:
+        """List Workers owned by the requesting User."""
+
+        return await self._repository.list_for_owner(
+            owner_user_id=_require_text(user_id),
+        )
+
     async def get_for_user(
         self,
         *,

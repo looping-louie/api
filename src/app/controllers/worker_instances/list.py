@@ -4,17 +4,18 @@ from collections.abc import Callable
 from datetime import datetime
 
 from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
-from src.app.schemas.worker import WorkerInstanceProjectResponse
+from src.app.schemas.worker import WorkerInstanceProjectResponse, WorkerResponse
 from src.app.services.worker_instances import (
     GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
     WorkerInstanceService,
 )
 
 from .response import worker_instance_project_response
+from .response import worker_instance_response
 
 
 class WorkerInstanceListController:
-    """Expose Project-scoped Worker operational state."""
+    """Expose User-owned Workers and Project-scoped operational state."""
 
     def __init__(
         self,
@@ -28,6 +29,18 @@ class WorkerInstanceListController:
         self._worker_instance_service = service
         self._pipeline_run_repository = pipeline_run_repository
         self._clock = clock
+
+    async def list_for_user(
+        self,
+        *,
+        user_id: str,
+    ) -> list[WorkerResponse]:
+        """Return Workers owned by the requesting User."""
+
+        workers = await self._worker_instance_service.list_for_user(
+            user_id=user_id,
+        )
+        return [worker_instance_response(worker) for worker in workers]
 
     async def list_for_project(
         self,

@@ -16,6 +16,7 @@ configuration can define narrower persisted overrides.
 | `GET` | `/api/v1/projects` | List Projects accessible to the current User. |
 | `POST` | `/api/v1/projects` | Create a Project owned by the current User. |
 | `GET` | `/api/v1/projects/{project_id}` | Describe one accessible Project. |
+| `GET` | `/api/v1/projects/{project_id}/workers` | List Workers enabled for one Project. |
 | `PATCH` | `/api/v1/projects/{project_id}` | Update one accessible Project. |
 
 ## List projects
@@ -88,6 +89,18 @@ Example response (`200 OK`):
   "created_at": "2026-08-26T10:00:00Z",
   "updated_at": "2026-08-26T10:00:00Z"
 }
+```
+
+## List Project Workers
+
+`GET /api/v1/projects/{project_id}/workers` returns the Workers enabled to
+claim work for one accessible Project. Each item includes Worker identity and
+observed Harness state, plus that Project's enablement time, liveness, and
+global claim capacity. See [Workers](workers.md) for the response format.
+
+```http
+GET /api/v1/projects/project-acme/workers
+X-User-ID: user-123
 ```
 
 ## Update project
