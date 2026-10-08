@@ -208,6 +208,28 @@ class WorkerInstanceService:
         )
         return await self._repository.list_enabled(project_id=project.project_id)
 
+    async def get_for_project(
+        self,
+        *,
+        user_id: str,
+        requested_project_id: str | None,
+        worker_instance_id: str,
+    ) -> WorkerInstanceProjectDocument:
+        """Return one global Worker enabled for the caller's selected Project."""
+
+        project = await self._tenant_service.resolve(
+            user_id=user_id,
+            requested_project_id=requested_project_id,
+        )
+        worker_id = _require_text(worker_instance_id)
+        worker = await self._repository.get_enabled_project(
+            worker_instance_id=worker_id,
+            project_id=project.project_id,
+        )
+        if worker is None:
+            raise WorkerInstanceNotFoundError(worker_id)
+        return worker
+
 
 def _require_text(value: str) -> str:
     """Normalize one required Worker identifier."""

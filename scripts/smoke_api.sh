@@ -499,6 +499,7 @@ JSON
 )"
 WORKER_INSTANCE_ID="$(printf '%s' "${worker_instance_response}" | json_field "id")"
 request GET "/workers" >/dev/null
+request GET "/workers/${WORKER_INSTANCE_ID}" >/dev/null
 request \
     POST \
     "/workers/${WORKER_INSTANCE_ID}/heartbeat" \

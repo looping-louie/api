@@ -70,6 +70,32 @@ class InMemoryWorkerInstanceRepository:
         self.workers[updated.id] = updated
         return updated
 
+    async def get_enabled_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> WorkerInstanceProjectDocument | None:
+        """Return one Worker only when it is enabled for the Project."""
+
+        enablement = next(
+            (
+                candidate
+                for candidate in self.enablements
+                if (
+                    candidate.worker_instance_id == worker_instance_id
+                    and candidate.project_id == project_id
+                )
+            ),
+            None,
+        )
+        if enablement is None:
+            return None
+        return WorkerInstanceProjectDocument(
+            worker=self.workers[worker_instance_id],
+            enablement=enablement,
+        )
+
     async def enable_project(
         self,
         document: WorkerProjectEnablementDocument,
@@ -227,3 +253,43 @@ def test_lists_global_workers_enabled_for_selected_project(
         'active_claims': 0,
         'capacity': 1,
     }]
+
+
+def test_describes_global_worker_enabled_for_selected_project(
+    tenant_service: TenantService,
+) -> None:
+    """A selected Project can inspect one of its enabled global Workers."""
+
+    client = build_client(tenant_service)
+    client.post(
+        '/api/v1/workers',
+        json={
+            'project_id': 'workspace-1',
+            'harnesses': [{'kind': 'codex_cli'}],
+        },
+    )
+
+    response = client.get(
+        '/api/v1/workers/worker-1',
+        headers={'X-Project-ID': 'workspace-1'},
+    )
+
+    assert response.status_code == 200
+    assert response.json()['id'] == 'worker-1'
+    assert response.json()['enabled_at'] == '2026-07-13T10:00:00Z'
+    assert response.json()['active_claims'] == 0
+    assert response.json()['capacity'] == 1
+
+
+def test_does_not_describe_unenabled_global_worker(
+    tenant_service: TenantService,
+) -> None:
+    """A Project cannot inspect a global Worker that is not enabled for it."""
+
+    response = build_client(tenant_service).get(
+        '/api/v1/workers/worker-missing',
+        headers={'X-Project-ID': 'workspace-1'},
+    )
+
+    assert response.status_code == 404
+    assert response.json()['error']['code'] == 'worker_not_found'

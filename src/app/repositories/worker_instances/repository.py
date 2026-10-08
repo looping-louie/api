@@ -48,6 +48,15 @@ class WorkerInstanceRepository(Protocol):
         """Return one Worker when it is enabled for the specified Project."""
         raise NotImplementedError
 
+    async def get_enabled_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> WorkerInstanceProjectDocument | None:
+        """Return one Worker with its enablement for the specified Project."""
+        raise NotImplementedError
+
     async def readiness(
         self,
         *,

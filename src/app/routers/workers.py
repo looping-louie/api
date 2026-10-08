@@ -47,6 +47,25 @@ async def list_worker_instances(
     )
 
 
+@router.get(
+    '/{worker_id}',
+    response_model=WorkerInstanceProjectResponse,
+    summary='Describe global Worker for Project',
+)
+async def get_worker_instance(
+    worker_id: WorkerIdPath,
+    context: ContextDependency,
+    controller: InstanceControllerDependency,
+) -> WorkerInstanceProjectResponse:
+    """Describe one global Worker enabled for the selected Project."""
+
+    return await controller.get_for_project(
+        user_id=context.user_id,
+        project_id=context.requested_project_id,
+        worker_instance_id=worker_id,
+    )
+
+
 @router.post(
     '',
     response_model=WorkerResponse,

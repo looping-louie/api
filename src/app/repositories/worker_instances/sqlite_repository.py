@@ -135,6 +135,38 @@ class SqliteWorkerInstanceRepository:
                 await cursor.close()
         return _to_worker_document(row) if row is not None else None
 
+    async def get_enabled_project(
+        self,
+        *,
+        worker_instance_id: str,
+        project_id: str,
+    ) -> WorkerInstanceProjectDocument | None:
+        """Return one Worker with its Project execution authorization."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
+                    worker.harnesses_json, enablement.worker_instance_id,
+                    enablement.project_id, enablement.enabled_at
+                FROM worker_project_enablements AS enablement
+                INNER JOIN worker_instances AS worker
+                    ON worker.id = enablement.worker_instance_id
+                WHERE enablement.worker_instance_id = ? AND enablement.project_id = ?
+                ''',
+                (worker_instance_id, project_id),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        if row is None:
+            return None
+        return WorkerInstanceProjectDocument(
+            worker=_to_worker_document(row),
+            enablement=_to_enablement_document(row),
+        )
+
     async def readiness(
         self,
         *,

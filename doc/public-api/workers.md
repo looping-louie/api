@@ -17,6 +17,7 @@ active returns `409 worker_capacity_unavailable`.
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `GET` | `/api/v1/workers` | List global Workers enabled for the selected Project. |
+| `GET` | `/api/v1/workers/{worker_id}` | Describe one global Worker enabled for the selected Project. |
 | `POST` | `/api/v1/workers` | Register a global Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh a global Worker heartbeat. |
 | `POST` | `/api/v1/workers/{worker_id}/projects/{project_id}` | Enable a global Worker for an additional Project. |
@@ -114,6 +115,18 @@ X-Project-ID: project-acme
     "capacity": 1
   }
 ]
+```
+
+## Describe A Global Worker
+
+`GET /api/v1/workers/{worker_id}` returns the same Project-scoped operational
+state as the list item for one Worker. It returns `404 worker_not_found` when
+the Worker is not enabled for the Project selected by `X-Project-ID`.
+
+```http
+GET /api/v1/workers/worker-local-01
+X-User-ID: user-acme
+X-Project-ID: project-acme
 ```
 
 Pipeline-run readiness remains the aggregate diagnosis for one queued run, and
