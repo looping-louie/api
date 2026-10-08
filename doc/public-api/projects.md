@@ -94,9 +94,11 @@ Example response (`200 OK`):
 ## List Project Workers
 
 `GET /api/v1/projects/{project_id}/workers` returns the Workers enabled to
-claim work for one accessible Project. Each item includes Worker identity and
-observed Harness state, plus that Project's enablement time, liveness, and
-global claim capacity. See [Workers](workers.md) for the response format.
+claim work for one accessible Project. Each item combines Worker identity and
+observed Harness state with that Project's enablement. `enabled_at` belongs to
+the enablement association, not to the Worker itself. `active_claims` counts
+the Worker's active leases across all enabled Projects; `capacity` is currently
+fixed at `1`. The response does not expose enablements in other Projects.
 
 ```http
 GET /api/v1/projects/project-acme/workers

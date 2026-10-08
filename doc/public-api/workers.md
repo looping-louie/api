@@ -21,6 +21,7 @@ active returns `409 worker_capacity_unavailable`.
 | `POST` | `/api/v1/workers` | Register a Worker and enable its initial Project. |
 | `POST` | `/api/v1/workers/{worker_id}/heartbeat` | Refresh a Worker heartbeat. |
 | `POST` | `/api/v1/workers/{worker_id}/projects/{project_id}` | Enable a Worker for an additional Project. |
+
 Worker endpoints require `X-User-ID`. Registration names its initial Project in
 the request body, while a Project-enablement route names the Project in its
 path. The requesting User must own the Worker and have access to each named
@@ -35,20 +36,6 @@ capabilities. The API does not receive checkout paths.
 ```http
 POST /api/v1/workers
 X-User-ID: user-acme
-Content-Type: application/json
-```
-
-```json
-{
-  "project_id": "project-acme",
-  "harnesses": [
-    {
-      "kind": "codex_cli",
-      "version": "v1",
-      "config": {}
-    }
-  ]
-}
 ```
 
 Enable an additional Project only when the requesting User can access it:
@@ -87,7 +74,8 @@ Content-Type: application/json
 
 `GET /api/v1/workers` returns Workers owned by the requesting User. It returns
 Worker identity and observed Harness state only; Project enablement fields such
-as `enabled_at` do not belong to this representation.
+as `enabled_at` do not belong to this representation. To inspect Workers
+enabled for a Project, use the [Project Worker collection](projects.md#list-project-workers).
 
 ```http
 GET /api/v1/workers
@@ -105,20 +93,6 @@ X-User-ID: user-acme
     ]
   }
 ]
-```
-
-## List Project Workers
-
-`GET /api/v1/projects/{project_id}/workers` returns Workers enabled for the
-requested Project. The caller must have access to that Project. Each list item
-combines Worker state with that Project's enablement: `enabled_at` belongs to
-the enablement association, not to the Worker itself. `active_claims` counts
-the Worker's active leases across all enabled Projects; `capacity` is currently
-fixed at `1`. The response does not expose enablements in other Projects.
-
-```http
-GET /api/v1/projects/project-acme/workers
-X-User-ID: user-acme
 ```
 
 ## Describe A Worker
