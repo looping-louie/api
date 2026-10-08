@@ -16,6 +16,9 @@ configuration can define narrower persisted overrides.
 | `GET` | `/api/v1/projects` | List Projects accessible to the current User. |
 | `POST` | `/api/v1/projects` | Create a Project owned by the current User. |
 | `GET` | `/api/v1/projects/{project_id}` | Describe one accessible Project. |
+| `GET` | `/api/v1/projects/{project_id}/workers` | List Workers enabled for one Project. |
+| `POST` | `/api/v1/projects/{project_id}/workers/{worker_id}` | Enable one owned Worker for a Project. |
+| `DELETE` | `/api/v1/projects/{project_id}/workers/{worker_id}` | Disable one Worker for a Project. |
 | `PATCH` | `/api/v1/projects/{project_id}` | Update one accessible Project. |
 
 ## List projects
@@ -88,6 +91,41 @@ Example response (`200 OK`):
   "created_at": "2026-08-26T10:00:00Z",
   "updated_at": "2026-08-26T10:00:00Z"
 }
+```
+
+## List Project Workers
+
+`GET /api/v1/projects/{project_id}/workers` returns the Workers enabled to
+claim work for one accessible Project. Each item combines Worker identity and
+observed Harness state with that Project's enablement. `enabled_at` belongs to
+the enablement association, not to the Worker itself. `active_claims` counts
+the Worker's active leases across all enabled Projects; `capacity` is currently
+fixed at `1`. The response does not expose enablements in other Projects.
+
+```http
+GET /api/v1/projects/project-acme/workers
+X-User-ID: user-123
+```
+
+## Enable Project Worker
+
+`POST /api/v1/projects/{project_id}/workers/{worker_id}` enables one Worker
+owned by the requesting User to claim work for an accessible Project.
+
+```http
+POST /api/v1/projects/project-acme/workers/worker-local-01
+X-User-ID: user-123
+```
+
+## Disable Project Worker
+
+`DELETE /api/v1/projects/{project_id}/workers/{worker_id}` removes a Worker's
+authorization to claim future work for an accessible Project. Existing
+PipelineRuns already claimed by that Worker continue unaffected.
+
+```http
+DELETE /api/v1/projects/project-acme/workers/worker-local-01
+X-User-ID: user-123
 ```
 
 ## Update project

@@ -16,7 +16,7 @@ from src.app.services.pipeline_runs.graph import (
 from src.app.services.pipeline_runs.snapshot import harness_snapshot
 from src.app.services.pipeline_runs.types import PipelineRunNotFoundError
 from src.app.services.shared.tenant import TenantService
-from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import WorkerInstanceService
 
 
 PipelineRunReadinessStatus = Literal[
@@ -50,14 +50,14 @@ class PipelineRunReadinessService:
         *,
         repository: PipelineRunRepository,
         tenant_service: TenantService,
-        worker_service: WorkerService | None,
+        worker_instance_service: WorkerInstanceService | None = None,
         clock: Callable[[], datetime],
     ) -> None:
         """Store run persistence, tenancy, worker, and time dependencies."""
 
         self._repository = repository
         self._tenant_service = tenant_service
-        self._worker_service = worker_service
+        self._worker_instance_service = worker_instance_service
         self._clock = clock
 
     async def get(
@@ -89,9 +89,9 @@ class PipelineRunReadinessService:
                 latest_heartbeat_at=None, observed_at=now,
             )
         harness = required_harness(document)
-        if self._worker_service is None:
+        if self._worker_instance_service is None:
             raise RuntimeError('Worker readiness is not configured.')
-        workers = await self._worker_service.readiness(
+        workers = await self._worker_instance_service.readiness(
             project_id=document.project_id,
             harness=harness,
         )

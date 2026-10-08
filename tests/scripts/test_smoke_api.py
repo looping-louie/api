@@ -25,7 +25,9 @@ PATH_PARAMETERS = {
     "SMOKE_PROVIDER_ID": "provider_id",
     "SKILL_ID": "skill_id",
     "WORKER_ID": "worker_id",
+    "WORKER_INSTANCE_ID": "worker_id",
     "PROJECT_ID": "project_id",
+    "WORKER_PROJECT_ID": "project_id",
 }
 REQUEST_PATTERN = re.compile(
     r"\brequest(?:_expect_status)?\s+"

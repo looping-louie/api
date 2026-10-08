@@ -118,8 +118,56 @@ async def test_claim_inserts_initial_child_before_referencing_it(
         project_id='workspace-1', pipeline_id=pipeline.id, run_id=queued.id,
     )
 
-    assert persisted is True
+    assert persisted == 'claimed'
     assert fetched == claimed
+    active_claim_counts = await repository.active_claim_counts(
+        worker_ids=('worker-1', 'worker-2'),
+        observed_at=timestamp,
+    )
+
+    assert active_claim_counts == {'worker-1': 1}
+
+    second = replace(
+        queued,
+        id='run-2',
+        created_at=timestamp + timedelta(seconds=2),
+        updated_at=timestamp + timedelta(seconds=2),
+    )
+    await repository.create(document=second, activity_run=None)
+    rejected = await repository.claim(
+        document=replace(
+            second,
+            status='claimed',
+            worker_id='worker-1',
+            lease_token='lease-2',
+            lease_expires_at=timestamp + timedelta(minutes=1),
+            attempt=1,
+        ),
+        expected_updated_at=second.updated_at,
+        expected_current_activity_run_id=second.current_activity_run_id,
+        activity_run=None,
+        active_claim_limit=1,
+    )
+
+    assert rejected == 'capacity_exhausted'
+
+    reclaimed = await repository.claim(
+        document=replace(
+            second,
+            status='claimed',
+            worker_id='worker-1',
+            lease_token='lease-2',
+            lease_expires_at=timestamp + timedelta(minutes=3),
+            attempt=1,
+            updated_at=timestamp + timedelta(minutes=2),
+        ),
+        expected_updated_at=second.updated_at,
+        expected_current_activity_run_id=second.current_activity_run_id,
+        activity_run=None,
+        active_claim_limit=1,
+    )
+
+    assert reclaimed == 'claimed'
 
     successor = replace(
         child,

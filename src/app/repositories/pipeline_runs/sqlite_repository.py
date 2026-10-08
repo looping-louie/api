@@ -16,6 +16,7 @@ from src.app.models.pipeline_run import (
     PipelineRunEventDocument,
     PipelineRunStepDocument,
 )
+from src.app.repositories.pipeline_runs.repository import PipelineRunClaimResult
 
 
 class SqlitePipelineRunRepository:
@@ -228,12 +229,33 @@ class SqlitePipelineRunRepository:
         expected_updated_at: datetime,
         expected_current_activity_run_id: str | None,
         activity_run: ActivityRunDocument | None,
-    ) -> bool:
-        """Assign a claim only while its observed queue state remains current."""
+        active_claim_limit: int | None = None,
+    ) -> PipelineRunClaimResult:
+        """Assign a claim only while queue state and capacity remain current."""
 
         async with self._connect() as connection:
             try:
                 await connection.execute('BEGIN IMMEDIATE')
+                if active_claim_limit is not None:
+                    if document.worker_id is None:
+                        raise ValueError('A capacity-limited claim requires a worker ID.')
+                    cursor = await connection.execute(
+                        '''
+                        SELECT COUNT(*) AS active_claim_count
+                        FROM pipeline_runs
+                        WHERE worker_id = ?
+                          AND status = 'claimed'
+                          AND lease_expires_at > ?
+                        ''',
+                        (document.worker_id, document.updated_at.isoformat()),
+                    )
+                    try:
+                        row = await cursor.fetchone()
+                    finally:
+                        await cursor.close()
+                    if row['active_claim_count'] >= active_claim_limit:
+                        await connection.rollback()
+                        return 'capacity_exhausted'
                 if activity_run is not None:
                     await self._insert_activity_run(connection, activity_run)
                 cursor = await connection.execute(
@@ -263,14 +285,46 @@ class SqlitePipelineRunRepository:
                     await cursor.close()
                 if not claimed:
                     await connection.rollback()
-                    return False
+                    return 'not_current'
                 await self._update_steps(connection, document)
                 await self._insert_events(connection, document.events)
                 await connection.commit()
-                return True
+                return 'claimed'
             except Exception:
                 await connection.rollback()
                 raise
+
+    async def active_claim_counts(
+        self,
+        *,
+        worker_ids: tuple[str, ...],
+        observed_at: datetime,
+    ) -> dict[str, int]:
+        """Return active leases for Workers across all authorized Projects."""
+
+        if not worker_ids:
+            return {}
+        placeholders = ', '.join('?' for _ in worker_ids)
+        async with self._connect() as connection:
+            cursor = await connection.execute(
+                f'''
+                SELECT worker_id, COUNT(*) AS active_claim_count
+                FROM pipeline_runs
+                WHERE worker_id IN ({placeholders})
+                  AND status = 'claimed'
+                  AND lease_expires_at > ?
+                GROUP BY worker_id
+                ''',
+                (*worker_ids, observed_at.isoformat()),
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return {
+            str(row['worker_id']): int(row['active_claim_count'])
+            for row in rows
+        }
 
     async def renew_lease(
         self,

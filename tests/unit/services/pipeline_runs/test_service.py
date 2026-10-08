@@ -14,7 +14,6 @@ from src.app.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
     PipelineDocument,
-    PipelineHarness,
     PipelineStepDependency,
 )
 from src.app.models.pipeline_run import PipelineRunDocument
@@ -25,7 +24,8 @@ from src.app.services.pipeline_runs.types import (
     PipelineRunUnavailableError,
 )
 from src.app.services.shared.tenant import TenantService
-from src.app.services.workers import (
+from src.app.services.worker_instances import (
+    WorkerCapacityUnavailableError,
     WorkerHarnessUnavailableError,
     WorkerUnavailableError,
 )
@@ -41,6 +41,7 @@ class InMemoryPipelineRunRepository:
         self.document: PipelineRunDocument | None = None
         self.children: dict[str, ActivityRunDocument] = {}
         self.events = []
+        self.claim_result = 'claimed'
 
     async def create(
         self, *, document: PipelineRunDocument, activity_run: ActivityRunDocument | None,
@@ -124,20 +125,23 @@ class InMemoryPipelineRunRepository:
         self, *, document: PipelineRunDocument, expected_updated_at: datetime,
         expected_current_activity_run_id: str | None,
         activity_run: ActivityRunDocument | None,
-    ) -> bool:
+        active_claim_limit: int | None = None,
+    ) -> str:
         """Replace the observed run and persist an initial child when supplied."""
 
+        if active_claim_limit is not None and self.claim_result != 'claimed':
+            return self.claim_result
         if (
             self.document is None
             or self.document.updated_at != expected_updated_at
             or self.document.current_activity_run_id != expected_current_activity_run_id
         ):
-            return False
+            return 'not_current'
         self.document = document
         self.events.extend(document.events)
         if activity_run is not None:
             self.children[activity_run.id] = activity_run
-        return True
+        return 'claimed'
 
     async def renew_lease(
         self,
@@ -196,8 +200,8 @@ class InMemoryPipelineRunRepository:
         return True
 
 
-class InMemoryWorkerService:
-    """Control worker claim admission for PipelineRun scheduler tests."""
+class InMemoryGlobalWorkerService:
+    """Control Worker claim admission for PipelineRun scheduler tests."""
 
     def __init__(self, *, active: bool, supports_harness: bool = True) -> None:
         """Store whether registration liveness should admit claims."""
@@ -288,11 +292,11 @@ async def test_prepared_run_starts_before_runtime_claim(
         activities=(first,),
     )
     runs = InMemoryPipelineRunRepository()
-    workers = InMemoryWorkerService(active=True)
+    workers = InMemoryGlobalWorkerService(active=True)
     service = PipelineRunService(
         repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
-        worker_service=workers,
+        worker_instance_service=workers,
         id_factory=lambda: 'run-1', clock=IncrementingClock(),
         token_factory=lambda: 'token',
     )
@@ -408,11 +412,11 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
         activities=(first,),
     )
     runs = InMemoryPipelineRunRepository()
-    workers = InMemoryWorkerService(active=True, supports_harness=False)
+    workers = InMemoryGlobalWorkerService(active=True, supports_harness=False)
     service = PipelineRunService(
         repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
         pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
-        worker_service=workers, id_factory=lambda: 'run-1',
+        worker_instance_service=workers, id_factory=lambda: 'run-1',
         clock=IncrementingClock(), token_factory=lambda: 'token',
     )
     created, _ = await service.create(
@@ -423,6 +427,47 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
     )
 
     with pytest.raises(WorkerHarnessUnavailableError):
+        await service.claim(
+            user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
+            worker_id='worker-1', if_match=pipeline_run_etag(started),
+            lease_duration=timedelta(minutes=1),
+        )
+
+
+@pytest.mark.asyncio
+async def test_claim_rejects_a_global_worker_at_its_active_lease_limit(
+    tenant_service: TenantService,
+) -> None:
+    """A saturated Worker receives a capacity-specific claim error."""
+
+    first = activity('activity-1')
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    details = PipelineDetails(
+        document=PipelineDocument(
+            id='pipeline-1', name='Pipeline',
+            description='Run one step.', status='active',
+            steps=(PipelineActivityStep(activity_id=first.id),),
+            created_at=now, created_by='user-1', updated_at=now, updated_by='user-1',
+        ),
+        activities=(first,),
+    )
+    runs = InMemoryPipelineRunRepository()
+    runs.claim_result = 'capacity_exhausted'
+    workers = InMemoryGlobalWorkerService(active=True)
+    service = PipelineRunService(
+        repository=runs, activity_run_repository=InMemoryActivityRunRepository(runs),
+        pipeline_service=PipelineDetailsService(details), tenant_service=tenant_service,
+        worker_instance_service=workers, id_factory=lambda: 'run-1',
+        clock=IncrementingClock(), token_factory=lambda: 'token',
+    )
+    created, _ = await service.create(
+        user_id='user-1', pipeline_id='pipeline-1', input_text='Implement.',
+    )
+    started, _ = await service.start(
+        user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
+    )
+
+    with pytest.raises(WorkerCapacityUnavailableError):
         await service.claim(
             user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
             worker_id='worker-1', if_match=pipeline_run_etag(started),
