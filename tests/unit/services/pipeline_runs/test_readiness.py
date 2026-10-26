@@ -26,8 +26,8 @@ class ReadinessRunRepository:
         return self.document
 
 
-class ReadinessWorkerService:
-    """Return deterministic workspace Worker aggregates."""
+class ReadinessWorkerInstanceService:
+    """Return deterministic Worker aggregates."""
 
     def __init__(self, summary: WorkerReadinessDocument) -> None:
         """Store the Worker aggregate and observed Harness."""
@@ -81,14 +81,14 @@ async def test_queued_run_readiness_uses_the_next_step_harness(
         ),),
         created_at=now, created_by='user-1', updated_at=now,
     )
-    workers = ReadinessWorkerService(WorkerReadinessDocument(
+    workers = ReadinessWorkerInstanceService(WorkerReadinessDocument(
         registered_worker_count=counts[0], active_worker_count=counts[1],
         compatible_worker_count=counts[2], latest_heartbeat_at=None,
     ))
     service = PipelineRunReadinessService(
         repository=ReadinessRunRepository(document),
         tenant_service=tenant_service,
-        worker_service=workers,
+            worker_instance_service=workers,
         clock=lambda: now,
     )
 

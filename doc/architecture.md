@@ -4,7 +4,7 @@ This document describes the software architecture of the Looping Louie API.
 The cross-repository product architecture is documented on the
 [Looping Louie documentation site](https://loopinglouie.ai/docs/architecture/).
 The API and runtime checkpoint contract is documented in
-[Execution](components/execution.md).
+[Execution lifecycle](components/execution-lifecycle.md).
 
 ## Repository structure
 
@@ -126,12 +126,12 @@ services/
 |-- users/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages durable request identities
+|-- worker_instances/
+|   |-- __init__.py                Defines the package's public imports
+|   `-- service.py                 Manages User-owned Workers, Project enablements, and capacity
 |-- projects/
 |   |-- __init__.py                Defines the package's public imports
 |   `-- service.py                 Manages User-owned execution-placement Projects
-`-- workers/
-    |-- __init__.py                Defines the package's public imports
-    `-- service.py                 Manages worker registration and liveness
 ```
 
 ### Controllers
@@ -206,10 +206,12 @@ controllers/
 |   |-- list.py                   Lists accessible Projects
 |   |-- patch.py                  Applies Project metadata changes
 |   `-- response.py               Translates Project documents to responses
-|-- workers/
+|-- worker_instances/
 |   |-- __init__.py               Composes endpoint-specific controllers
-|   |-- create.py                 Creates Workers
+|   |-- create.py                 Registers Workers
+|   |-- enable_project.py         Enables Workers for Projects
 |   |-- heartbeat.py              Records Worker heartbeats
+|   |-- list.py                   Lists Workers and their capacity for one Project
 |   `-- response.py               Translates Worker documents to responses
 `-- users/
   |-- __init__.py               Composes endpoint-specific controllers
@@ -323,14 +325,14 @@ repositories/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists Projects
+|-- worker_instances/
+|   |-- __init__.py                Declares persistence contracts
+|   |-- repository.py              Defines the persistence contract
+|   `-- sqlite_repository.py       Persists Workers and Project enablements
 |-- users/
 |   |-- __init__.py                Declares persistence contracts
 |   |-- repository.py              Defines the persistence contract
 |   `-- sqlite_repository.py       Persists User records
-`-- workers/
-  |-- __init__.py                Declares persistence contracts
-  |-- repository.py              Defines the persistence contract
-  `-- sqlite_repository.py       Persists Worker records
 ```
 
 ### Models
@@ -352,6 +354,7 @@ models/
 |-- pipeline.py                    Defines definitions, steps, and history
 |-- pipeline_run.py                Defines frozen Pipeline execution state and events
 |-- reference.py                   Defines dependency and reference values
+|-- worker_instance.py             Defines Worker identities and Project enablements
 |-- tenant.py                      Defines workspace and membership state
 |-- user.py                        Defines persisted user identities
 |-- workspace.py                   Defines Workspace documents
@@ -360,13 +363,8 @@ models/
 
 ## Components
 
-- [Execution](components/execution.md) describes persisted runs, checkpoints,
+- [Execution lifecycle](components/execution-lifecycle.md) describes persisted
+  runs, checkpoints,
   prompts, review, finalisation, artefacts, and metrics.
 - [Persona and Skill catalog](components/persona-skill-catalog.md) describes
   builtin Persona and Skill ownership, synchronization, and maintenance.
-- [Providers](components/providers.md) records the static provider and model
-  catalog boundary. Linked Services persist independent User-owned provider
-  connections and derive their available deployment models from that catalog.
-  Legacy provider credentials and Persona model associations are retired.
-- [Current limitations](components/limitations.md) records known MVP
-  boundaries.

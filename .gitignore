@@ -15,7 +15,9 @@ venv/
 
 # Environment variables
 .env
+!.env.tpl
 .env.*
+!.env.*.tpl
 
 # IDEs
 .vscode/

@@ -63,11 +63,12 @@ from src.app.services.shared.reference_resolver import (
     ReferenceValidationError,
     ResourceNotFoundError,
 )
-from src.app.services.workers import (
+from src.app.services.worker_instances import (
+    WorkerCapacityUnavailableError,
     WorkerHarnessUnavailableError,
-    WorkerNotFoundError,
     WorkerUnavailableError,
 )
+from src.app.services.worker_instances import WorkerInstanceNotFoundError
 from src.app.services.shared.tenant import (
     TenantAccessDeniedError,
     TenantNotFoundError,
@@ -211,13 +212,17 @@ ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
         code='pipeline_run_unavailable',
         details_builder=pipeline_run_unavailable_details,
     ),
-    WorkerNotFoundError: ErrorDefinition(
+    WorkerInstanceNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code='worker_not_found',
     ),
     WorkerUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,
         code='worker_unavailable',
+    ),
+    WorkerCapacityUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='worker_capacity_unavailable',
     ),
     WorkerHarnessUnavailableError: ErrorDefinition(
         status_code=status.HTTP_409_CONFLICT,

@@ -1,0 +1,74 @@
+"""Read Workers enabled for one Project."""
+
+from collections.abc import Callable
+from datetime import datetime
+
+from src.app.repositories.pipeline_runs.repository import PipelineRunRepository
+from src.app.schemas.worker import WorkerInstanceProjectResponse, WorkerResponse
+from src.app.services.worker_instances import (
+    GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
+    WorkerInstanceService,
+)
+
+from .response import worker_instance_project_response
+from .response import worker_instance_response
+
+
+class WorkerInstanceListController:
+    """Expose User-owned Workers and Project-scoped operational state."""
+
+    def __init__(
+        self,
+        *,
+        service: WorkerInstanceService,
+        pipeline_run_repository: PipelineRunRepository,
+        clock: Callable[[], datetime],
+    ) -> None:
+        """Store Worker lookup dependencies."""
+
+        self._worker_instance_service = service
+        self._pipeline_run_repository = pipeline_run_repository
+        self._clock = clock
+
+    async def list_for_user(
+        self,
+        *,
+        user_id: str,
+    ) -> list[WorkerResponse]:
+        """Return Workers owned by the requesting User."""
+
+        workers = await self._worker_instance_service.list_for_user(
+            user_id=user_id,
+        )
+        return [worker_instance_response(worker) for worker in workers]
+
+    async def list_for_project(
+        self,
+        *,
+        user_id: str,
+        project_id: str,
+    ) -> list[WorkerInstanceProjectResponse]:
+        """Return Workers enabled for the requested Project."""
+
+        workers = await self._worker_instance_service.list_for_project(
+            user_id=user_id,
+            project_id=project_id,
+        )
+        observed_at = self._clock()
+        active_claim_counts = await self._pipeline_run_repository.active_claim_counts(
+            worker_ids=tuple(worker.worker.id for worker in workers),
+            observed_at=observed_at,
+        )
+        return [
+            worker_instance_project_response(
+                worker,
+                observed_at=observed_at,
+                active_claims=active_claim_counts.get(worker.worker.id, 0),
+                capacity=GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
+            )
+            for worker in workers
+        ]
+
+    _worker_instance_service: WorkerInstanceService
+    _pipeline_run_repository: PipelineRunRepository
+    _clock: Callable[[], datetime]

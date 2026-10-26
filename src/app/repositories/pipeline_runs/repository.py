@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
 from src.app.models.activity_run import ActivityRunDocument
 from src.app.models.pipeline_run import (
     PipelineRunDocument,
     PipelineRunEventDocument,
 )
+
+
+PipelineRunClaimResult = Literal['claimed', 'not_current', 'capacity_exhausted']
 
 
 class PipelineRunRepository(Protocol):
@@ -72,8 +75,18 @@ class PipelineRunRepository(Protocol):
         expected_updated_at: datetime,
         expected_current_activity_run_id: str | None,
         activity_run: ActivityRunDocument | None,
-    ) -> bool:
-        """Atomically assign a worker lease and optionally create a child run."""
+        active_claim_limit: int | None = None,
+    ) -> PipelineRunClaimResult:
+        """Atomically assign a worker lease within an optional active-lease limit."""
+        raise NotImplementedError
+
+    async def active_claim_counts(
+        self,
+        *,
+        worker_ids: tuple[str, ...],
+        observed_at: datetime,
+    ) -> dict[str, int]:
+        """Return active unexpired lease counts for the supplied Workers."""
         raise NotImplementedError
 
     async def renew_lease(

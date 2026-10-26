@@ -17,7 +17,7 @@ This command will:
 
 - Create the Python virtual environment in `env/`.
 - Install every dependency from `requirements.txt`.
-- Create `.env.local` when it does not already exist.
+- Create a `.env.local` file if it does not already exist.
 - Generate a Fernet encryption key.
 - Store the generated key as `LOUIE_ENCRYPTION_KEY` in `.env.local`.
 
@@ -78,23 +78,21 @@ The local SQLite database at `runtime/db/looping-louie.db` is an
 intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in
 `.env.local` to store it outside the repository when preferred.
 
-The API is available at:
+The API will be available (by default) at:
 
 ```text
-http://127.0.0.1:8000
+http://127.0.0.1:2000
 ```
 
 Interactive API documentation is available at:
 
 ```text
-http://127.0.0.1:8000/docs
+http://127.0.0.1:2000/docs
 ```
 
-## Docker
+## Development
 
-See [Docker](doc/docker.md) to run the production API image with Docker Compose.
-
-## SQLite Migrations
+### SQLite Migrations
 
 SQLite migration files are immutable once committed. Do not edit an existing
 migration for any reason, including whitespace or terminal-newline changes.
@@ -111,3 +109,6 @@ Every new SQLite migration must be added to the checksum manifest in
 protects the exact bytes of committed migrations and must pass before the
 migration is committed.
 
+## Docker
+
+See [Docker](doc/docker.md) to run the production API image with Docker Compose.

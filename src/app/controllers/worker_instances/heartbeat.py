@@ -2,40 +2,36 @@
 
 from src.app.models.worker import WorkerHarnessCapability
 from src.app.schemas.worker import WorkerHeartbeatRequest, WorkerResponse
-from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import WorkerInstanceService
 
-from .response import worker_response
+from .response import worker_instance_response
 
 
-class WorkerHeartbeatController:
-    """Refresh registered Worker liveness."""
+class WorkerInstanceHeartbeatController:
+    """Refresh Worker liveness and reported Harness capabilities."""
 
     async def heartbeat(
         self,
         *,
         user_id: str,
         worker_id: str,
-        payload: WorkerHeartbeatRequest | None = None,
-        requested_project_id: str | None = None,
+        payload: WorkerHeartbeatRequest,
     ) -> WorkerResponse:
         """Record one liveness heartbeat for a registered Worker."""
 
-        return worker_response(await self._worker_service.heartbeat(
-            user_id=user_id,
-            worker_id=worker_id,
-            harnesses=(
-                tuple(
+        return worker_instance_response(
+            await self._worker_instance_service.heartbeat(
+                user_id=user_id,
+                worker_instance_id=worker_id,
+                harnesses=tuple(
                     WorkerHarnessCapability(
                         kind=harness.kind,
                         version=harness.version,
                         config=dict(harness.config),
                     )
                     for harness in payload.harnesses
-                )
-                if payload is not None
-                else None
+                ),
             ),
-            requested_project_id=requested_project_id,
-        ))
+        )
 
-    _worker_service: WorkerService
+    _worker_instance_service: WorkerInstanceService

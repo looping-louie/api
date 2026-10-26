@@ -43,7 +43,11 @@ from src.app.services.pipeline_runs.types import (
 from src.app.services.shared.tenant import TenantService
 from src.app.services.shared.pagination import PAGE_SIZE, require_offset
 from src.app.services.users import UserService
-from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import (
+    GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
+    WorkerCapacityUnavailableError,
+    WorkerInstanceService,
+)
 from src.app.services.projects.service import ProjectService
 
 
@@ -57,7 +61,7 @@ class PipelineRunService:
         activity_run_repository: ActivityRunRepository,
         pipeline_service: PipelineService,
         tenant_service: TenantService,
-        worker_service: WorkerService | None = None,
+        worker_instance_service: WorkerInstanceService | None = None,
         workspace_service: ProjectService | None = None,
         user_service: UserService | None = None,
         model_execution_service: ModelExecutionService | None = None,
@@ -73,7 +77,7 @@ class PipelineRunService:
         self._activity_run_repository = activity_run_repository
         self._pipeline_service = pipeline_service
         self._tenant_service = tenant_service
-        self._worker_service = worker_service
+        self._worker_instance_service = worker_instance_service
         self._workspace_service = workspace_service
         self._user_service = user_service
         self._snapshot_builder = PipelineRunSnapshotBuilder(
@@ -86,7 +90,7 @@ class PipelineRunService:
         self._readiness_service = PipelineRunReadinessService(
             repository=repository,
             tenant_service=tenant_service,
-            worker_service=worker_service,
+            worker_instance_service=worker_instance_service,
             clock=clock,
         )
         self._clock = clock
@@ -308,8 +312,8 @@ class PipelineRunService:
             run_id=run_id,
         )
         now = self._clock()
-        if self._worker_service is not None:
-            await self._worker_service.require_capable(
+        if self._worker_instance_service is not None:
+            await self._worker_instance_service.require_capable(
                 project_id=workspace.project_id,
                 worker_id=normalized_worker_id,
                 harness=required_harness(candidate),
@@ -344,12 +348,13 @@ class PipelineRunService:
                 attempt=candidate.attempt,
                 updated_at=now,
             )
-            if not await self._repository.claim(
+            claim_result = await self._repository.claim(
                 document=waiting,
                 expected_updated_at=candidate.updated_at,
                 expected_current_activity_run_id=candidate.current_activity_run_id,
                 activity_run=None,
-            ):
+            )
+            if claim_result != 'claimed':
                 raise PipelineRunPreconditionFailedError(
                     pipeline_id=pipeline_id,
                     run_id=run_id,
@@ -371,7 +376,7 @@ class PipelineRunService:
                 step_started=candidate.current_activity_run_id is None,
             ),
         )
-        if not await self._repository.claim(
+        claim_result = await self._repository.claim(
             document=claimed, expected_updated_at=candidate.updated_at,
             expected_current_activity_run_id=candidate.current_activity_run_id,
             activity_run=(
@@ -379,7 +384,15 @@ class PipelineRunService:
                 if candidate.current_activity_run_id is None
                 else None
             ),
-        ):
+            active_claim_limit=(
+                GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT
+                if self._worker_instance_service is not None
+                else None
+            ),
+        )
+        if claim_result == 'capacity_exhausted':
+            raise WorkerCapacityUnavailableError(normalized_worker_id)
+        if claim_result != 'claimed':
             raise PipelineRunPreconditionFailedError(
                 pipeline_id=pipeline_id,
                 run_id=run_id,

@@ -20,7 +20,7 @@ from src.app.services.linked_services import LinkedServiceService
 from src.app.services.pipeline_runs import PipelineRunService
 from src.app.services.shared.tenant import TenantService
 from src.app.services.users import UserService
-from src.app.services.workers import WorkerService
+from src.app.services.worker_instances import WorkerInstanceService
 from src.app.services.projects.service import ProjectService
 
 
@@ -31,7 +31,7 @@ def build_pipeline_controller(
     id_factory: Callable[[], str],
     clock: Callable[[], datetime],
     activity_run_repository: ActivityRunRepository,
-    worker_service: WorkerService,
+    worker_instance_service: WorkerInstanceService,
     linked_service_service: LinkedServiceService,
     workspace_service: ProjectService,
     user_service: UserService,
@@ -56,7 +56,7 @@ def build_pipeline_controller(
             activity_run_repository=activity_run_repository,
             pipeline_service=service,
             tenant_service=tenant_service,
-            worker_service=worker_service,
+            worker_instance_service=worker_instance_service,
             workspace_service=workspace_service,
             user_service=user_service,
             model_execution_service=model_execution_service,
