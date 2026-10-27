@@ -73,7 +73,7 @@ jobs:
         id: generate-image-metadata
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository_owner }}/looping-louie-api
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
