@@ -2,7 +2,8 @@
 
 ## Resumen
 
-La arquitectura ha quedado con una separación clara entre catálogo empaquetado, persistencia y runtime.
+La arquitectura ha quedado con una separación clara entre catálogo empaquetado,
+persistencia y runtime.
 
 ### Catálogo estático
 
@@ -13,7 +14,8 @@ La arquitectura ha quedado con una separación clara entre catálogo empaquetado
 - Skills builtin.
 - Personas builtin.
 
-Skills y personas tienen un `registry.json` con identidad, versión y metadata, y un Markdown con las instrucciones. Los IDs son estables, por ejemplo:
+Skills y personas tienen un `registry.json` con identidad, versión y metadata,
+y un Markdown con las instrucciones. Los IDs son estables, por ejemplo:
 
 ```text
 builtin:skill:security
@@ -40,7 +42,8 @@ La sincronización es transaccional e idempotente:
 - Nunca elimina builtins físicamente.
 - Nunca modifica instrucciones custom.
 
-Si el catálogo es inválido o no puede sincronizarse, la aplicación no termina de arrancar.
+Si el catálogo es inválido o no puede sincronizarse, la aplicación no termina
+de arrancar.
 
 ### Fuente operativa única
 
@@ -53,7 +56,8 @@ Después del bootstrap, SQL es la única fuente utilizada por:
 - Reviewers.
 - Construcción de prompts.
 
-Los Markdown no se leen durante las ejecuciones. Modificar un Markdown requiere reiniciar y sincronizar; modificar SQL afecta a las ejecuciones nuevas.
+Los Markdown no se leen durante las ejecuciones. Modificar un Markdown requiere
+reiniciar y sincronizar; modificar SQL afecta a las ejecuciones nuevas.
 
 ### Biblioteca efectiva por workspace
 
@@ -70,7 +74,9 @@ setting explícito del workspace
 → enabled_by_default
 ```
 
-Las builtins pueden habilitarse, deshabilitarse o duplicarse, pero no editarse ni borrarse. Al duplicarlas se crea una custom editable con nuevo UUID y `source_instruction_id`.
+Las builtins pueden habilitarse, deshabilitarse o duplicarse, pero no editarse
+ni borrarse. Al duplicarlas se crea una custom editable con nuevo UUID y
+`source_instruction_id`.
 
 Las custom siempre pertenecen a un workspace y no son visibles desde otros.
 
@@ -85,7 +91,8 @@ Para nuevas referencias, una instrucción debe:
 - Estar habilitada.
 - No estar deprecada.
 
-Las referencias históricas sí pueden resolver instrucciones deshabilitadas o deprecadas. Las dependencias continúan protegiendo el borrado de custom utilizadas.
+Las referencias históricas sí pueden resolver instrucciones deshabilitadas o
+deprecadas. Las dependencias continúan protegiendo el borrado de custom utilizadas.
 
 ### Ejecuciones reproducibles
 
@@ -95,15 +102,22 @@ Al iniciar un task o meeting se guarda:
 instructions-snapshot.json
 ```
 
-Incluye IDs, tipo, origen, versiones, contenido efectivo y metadata de la biblioteca presentada al planner. La ejecución conserva ese snapshot en memoria y no vuelve a consultar las definiciones.
+Incluye IDs, tipo, origen, versiones, contenido efectivo y metadata de la
+biblioteca presentada al planner. La ejecución conserva ese snapshot en memoria
+y no vuelve a consultar las definiciones.
 
-Por eso una ejecución histórica sigue siendo interpretable aunque posteriormente cambie el catálogo o SQL.
+Por eso una ejecución histórica sigue siendo interpretable aunque posteriormente
+cambie el catálogo o SQL.
 
 ### Proveedores y modelos
 
-Los proveedores tienen identidad centralizada y los modelos se relacionan exclusivamente mediante deployments. Un mismo modelo puede estar disponible desde varios proveedores.
+Los proveedores tienen identidad centralizada y los modelos se relacionan
+exclusivamente mediante deployments. Un mismo modelo puede estar disponible
+desde varios proveedores.
 
-El número de modelos de cada proveedor se calcula desde esos deployments. NVIDIA y Ollama existen como proveedores configurables, pero actualmente declaran explícitamente que no tienen deployments curados.
+El número de modelos de cada proveedor se calcula desde esos deployments. NVIDIA
+y Ollama existen como proveedores configurables, pero actualmente declaran
+explícitamente que no tienen deployments curados.
 
 ### Mantenimiento
 
@@ -111,7 +125,6 @@ Para cambiar una builtin:
 
 - Se modifica su manifest o Markdown.
 - Se incrementa `version`.
-- Se ejecuta `make catalog-check`.
 - El siguiente bootstrap la sincroniza.
 
 En producción conviene activar:

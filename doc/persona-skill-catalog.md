@@ -27,7 +27,7 @@ records only from SQL after that point.
 4. Keep identity, description, version, and structured metadata in the
    manifest. Keep only effective prompt instructions in Markdown.
 5. For a persona, use stable builtin skill IDs in `skill_ids`.
-6. Run `make catalog-check` and the test suite.
+6. Run the test suite.
 
 ## Update a builtin
 

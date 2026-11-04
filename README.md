@@ -28,7 +28,7 @@ unreadable.
 
 ## Configuration
 
-`make install` creates `.env.local` with these defaults:
+`make create-config` creates `.env.local` with these defaults:
 
 ```text
 LOUIE_ENCRYPTION_KEY=<generated Fernet key>
@@ -60,20 +60,21 @@ reconfigure those credentials after resetting the key.
 
 ## Execution
 
-Start the development server:
+Start the development server with automatic reload:
 
 ```sh
-make dev
+make start-dev
 ```
 
-Or use the existing alias:
+Start the non-reloading production server without Docker:
 
 ```sh
-make run
+make start-prod
 ```
 
-The Makefile always starts Uvicorn with the virtual environment interpreter and
-exports the values from `.env.local`.
+Both commands start Uvicorn with the virtual environment interpreter and export
+the values from `.env.local`. Docker is an alternative deployment mechanism,
+not the only production execution path.
 
 The local SQLite database at `runtime/db/looping-louie.db` is an
 intentional runtime artifact and is ignored by Git. Set `LOUIE_DB_PATH` in

@@ -122,7 +122,7 @@ and update its checksum manifest instead.
 
 ### Development Servers and Runtime Artifacts
 
-- MUST NOT start `make dev`, `make run`, Uvicorn, or another long-lived API
+- MUST NOT start `make start-dev`, `make start-prod`, Uvicorn, or another long-lived API
   server through a sandboxed agent terminal. Sandboxed environments can create
   empty home-configuration placeholders such as `.bashrc`, `.gitconfig`, or
   `.vscode` in the repository root.

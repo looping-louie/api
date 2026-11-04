@@ -1,13 +1,9 @@
-.PHONY: install venv config reset-config dev run test tests smoke catalog-check
+.PHONY: install venv create-config reset-config start-dev start-prod test smoke
 
 PYTHON ?= python3
 VENV := env
 VENV_PYTHON := $(VENV)/bin/python
 ENV_FILE := .env.local
-
-install: venv config
-	@echo "Looping Louie is ready."
-	@echo "Run 'make dev' to start the API."
 
 venv:
 	@if [ ! -x "$(VENV_PYTHON)" ]; then \
@@ -17,7 +13,7 @@ venv:
 	@"$(VENV_PYTHON)" -m pip install --upgrade pip
 	@"$(VENV_PYTHON)" -m pip install -r requirements-dev.txt
 
-config: venv
+create-config: venv
 	@if [ -f "$(ENV_FILE)" ]; then \
 		echo "$(ENV_FILE) already exists; keeping its encryption key."; \
 	else \
@@ -36,16 +32,20 @@ config: venv
 reset-config: venv
 	@echo "Replacing $(ENV_FILE) and its encryption key..."
 	@rm -f "$(ENV_FILE)"
-	@$(MAKE) --no-print-directory config
+	@$(MAKE) --no-print-directory create-config
 	@echo "Existing encrypted provider credentials can no longer be decrypted."
 
-dev:
+install: venv create-config
+	@echo "Looping Louie is ready."
+	@echo "Run 'make start-dev' to start the development server."
+
+start-dev:
 	@if [ ! -x "$(VENV_PYTHON)" ]; then \
 		echo "Virtual environment not found. Run 'make install' first."; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(ENV_FILE)" ]; then \
-		echo "$(ENV_FILE) not found. Run 'make config' first."; \
+		echo "$(ENV_FILE) not found. Run 'make create-config' first."; \
 		exit 1; \
 	fi
 	@set -a; \
@@ -54,13 +54,23 @@ dev:
 	exec "$(VENV_PYTHON)" -m uvicorn src.main:app --reload --port 2000 \
 		--log-config config/uvicorn-logging.json
 
-run: dev
+start-prod:
+	@if [ ! -x "$(VENV_PYTHON)" ]; then \
+		echo "Virtual environment not found. Run 'make install' first."; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "$(ENV_FILE) not found. Run 'make create-config' first."; \
+		exit 1; \
+	fi
+	@set -a; \
+	. "./$(ENV_FILE)"; \
+	set +a; \
+	exec "$(VENV_PYTHON)" -m uvicorn src.main:app --port 2000 \
+		--log-config config/uvicorn-logging.json
 
-test tests: venv
+test: venv
 	@"$(VENV_PYTHON)" -m pytest -q
 
-catalog-check: venv
-	@"$(VENV_PYTHON)" scripts/check_catalog.py
-
-smoke: venv config
+smoke: venv create-config
 	@ENV_FILE="$(ENV_FILE)" ./scripts/smoke_api.sh

@@ -6,7 +6,7 @@ Create the local configuration if it does not exist, then build and start the
 production image:
 
 ```sh
-make config
+make create-config
 docker compose up --build
 ```
 
@@ -17,6 +17,16 @@ Compose loads `LOUIE_ENCRYPTION_KEY` from `.env.local`. The SQLite database is
 stored in the `looping-louie-api-runtime` Docker volume at
 `/app/runtime/db/looping-louie.db`, so it remains available after containers
 are replaced.
+
+## Release images
+
+Pushing a `vMAJOR.MINOR.PATCH` tag that matches the version in `pyproject.toml`
+runs the release workflow. It tests the API, publishes
+`ghcr.io/looping-louie/api:<version>`, and creates a GitHub Release.
+
+Published images support `linux/amd64` and `linux/arm64`; Docker selects the
+matching image automatically. A Raspberry Pi 4 needs a 64-bit operating system
+because 32-bit `linux/arm/v7` is not published.
 
 ## Check the API
 
