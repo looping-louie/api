@@ -6,20 +6,20 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.worker_instances import WorkerInstanceController
+from src.controllers.worker_instances import WorkerInstanceController
 from datetime import datetime
 
-from src.app.models.worker import WorkerHarnessCapability
-from src.app.models.worker_instance import (
+from src.models.worker import WorkerHarnessCapability
+from src.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
-from src.app.routers.projects import router as projects_router
-from src.app.routers.workers import router
-from src.app.services.shared.tenant import TenantService
-from src.app.services.worker_instances import WorkerInstanceService
-from src.app.utils.http import register_exception_handlers
+from src.routers.projects import router as projects_router
+from src.routers.workers import router
+from src.services.shared.tenant import TenantService
+from src.services.worker_instances import WorkerInstanceService
+from src.utils.http import register_exception_handlers
 from tests.conftest import IncrementingClock
 
 

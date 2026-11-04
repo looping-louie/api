@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.services.persona_skills import (
+from src.catalogs.persona_skills import InstructionOrigin
+from src.services.persona_skills import (
     AvailableDefinitionDocument,
     BuiltinDefinitionImmutableError,
     DefinitionCreate,
@@ -16,8 +16,8 @@ from src.app.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.services.shared.reference_resolver import ResourceReference
-from src.app.services.shared.validation import DuplicateResourceError
+from src.services.shared.reference_resolver import ResourceReference
+from src.services.shared.validation import DuplicateResourceError
 from tests.fakes.dependency_checker import FakeDependencyChecker, FakeResourceInUseError
 from tests.fakes.instruction_repository import FakeInstructionRepository
 

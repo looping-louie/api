@@ -1,6 +1,6 @@
 """Tests for API-owned multi-agent Harness loop coordination."""
 
-from src.app.services.activity_runs.harness_loop import (
+from src.services.activity_runs.harness_loop import (
     advance_harness_loop,
     pending_harness_payload,
     start_harness_loop,

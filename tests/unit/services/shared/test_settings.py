@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.app.services.shared.settings import get_app_settings
+from src.services.shared.settings import get_app_settings
 
 
 def test_get_app_settings_uses_runtime_database_by_default(

@@ -13,18 +13,18 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.activities import ActivityController
-from src.app.controllers.activity_runs import ActivityRunController
-from src.app.models.activity_run import ActivityRunDocument
-from src.app.routers.activities import router as activities_router
-from src.app.services.activity_runs import ActivityRunService
-from src.app.services.activities.service import ActivityService
-from src.app.services.models.availability import ModelNotFoundError
-from src.app.services.models import ModelExecutionResult
-from src.app.catalogs.providers import ProviderId
-from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant import TenantService
-from src.app.utils.http import register_exception_handlers
+from src.controllers.activities import ActivityController
+from src.controllers.activity_runs import ActivityRunController
+from src.models.activity_run import ActivityRunDocument
+from src.routers.activities import router as activities_router
+from src.services.activity_runs import ActivityRunService
+from src.services.activities.service import ActivityService
+from src.services.models.availability import ModelNotFoundError
+from src.services.models import ModelExecutionResult
+from src.catalogs.providers import ProviderId
+from src.services.shared.reference_resolver import ReferenceResolver
+from src.services.shared.tenant import TenantService
+from src.utils.http import register_exception_handlers
 from tests.fakes.activity_repository import FakeActivityRepository
 from tests.fakes.reference_repository import FakeReferenceRepository
 

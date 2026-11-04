@@ -7,8 +7,8 @@ from itertools import count
 
 import pytest
 
-from src.app.services.pipelines.service import PipelineService
-from src.app.services.pipelines.types import (
+from src.services.pipelines.service import PipelineService
+from src.services.pipelines.types import (
     InvalidPipelineStepsError,
     PipelineActivityDependencyInput,
     PipelineArchivedError,
@@ -17,7 +17,7 @@ from src.app.services.pipelines.types import (
     PipelineHarnessInput,
     PipelinePatch,
 )
-from src.app.services.shared.tenant import TenantService
+from src.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.fakes.pipeline_repository import FakePipelineRepository
 

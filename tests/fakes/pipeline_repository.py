@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
-from src.app.models.pipeline import (
+from src.models.activity import ActivityChangelogEntry, ActivityDocument
+from src.models.pipeline import (
     PipelineChangelogEntry,
     PipelineDetails,
     PipelineDocument,

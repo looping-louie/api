@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from src.app.catalogs.models import (
+from src.catalogs.models import (
     CatalogIndex,
     ModelCapability,
     ModelCatalogEntry,
@@ -15,7 +15,7 @@ from src.app.catalogs.models import (
     ModelStatus,
     ProviderModelOffering,
 )
-from src.app.catalogs.providers import ProviderCatalogEntry, ProviderId
+from src.catalogs.providers import ProviderCatalogEntry, ProviderId
 
 
 def build_offering(

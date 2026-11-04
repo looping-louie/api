@@ -2,19 +2,19 @@
 
 import pytest
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.services.personas import (
+from src.catalogs.persona_skills import InstructionOrigin
+from src.services.personas import (
     PersonaCreate,
     PersonaService,
     PersonaUpdate,
 )
-from src.app.services.persona_skills import (
+from src.services.persona_skills import (
     DefinitionCreate,
     DefinitionNotFoundError,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.services.users import UserNotFoundError
+from src.services.users import UserNotFoundError
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
 )

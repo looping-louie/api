@@ -1,14 +1,14 @@
 import pytest
 
-from src.app.catalogs.models import (
+from src.catalogs.models import (
     CatalogIndex,
     ModelCatalogEntry,
     ModelOffering,
     ModelStatus,
     ProviderModelOffering,
 )
-from src.app.catalogs.providers import ProviderId
-from src.app.services.models.availability import (
+from src.catalogs.providers import ProviderId
+from src.services.models.availability import (
     ModelAvailabilityService,
     ModelUnavailableReason,
     ProviderConnectionState,

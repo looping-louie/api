@@ -1,8 +1,8 @@
 """Contract tests for the shared instruction business taxonomy."""
 
-from src.app.catalogs.persona_skills import CatalogInstructionCategory
-from src.app.catalogs.personas.loader import load_persona_catalog
-from src.app.catalogs.skills.loader import load_skill_catalog
+from src.catalogs.persona_skills import CatalogInstructionCategory
+from src.catalogs.personas.loader import load_persona_catalog
+from src.catalogs.skills.loader import load_skill_catalog
 
 
 def test_packaged_instructions_use_the_stable_business_taxonomy() -> None:

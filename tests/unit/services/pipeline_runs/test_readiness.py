@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunStepDocument
-from src.app.models.worker import WorkerReadinessDocument
-from src.app.services.pipeline_runs.readiness import PipelineRunReadinessService
-from src.app.services.shared.tenant import TenantService
+from src.models.pipeline_run import PipelineRunDocument, PipelineRunStepDocument
+from src.models.worker import WorkerReadinessDocument
+from src.services.pipeline_runs.readiness import PipelineRunReadinessService
+from src.services.shared.tenant import TenantService
 
 
 class ReadinessRunRepository:

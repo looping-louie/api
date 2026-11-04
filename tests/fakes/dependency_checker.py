@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
-from src.app.services.shared.dependency_checker import DependencyUsage
-from src.app.services.shared.reference_resolver import ResourceReference
+from src.services.shared.dependency_checker import DependencyUsage
+from src.services.shared.reference_resolver import ResourceReference
 
 
 @dataclass(frozen=True, slots=True)

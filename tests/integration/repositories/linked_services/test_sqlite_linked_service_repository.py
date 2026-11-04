@@ -5,9 +5,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.models.linked_service import LinkedService
-from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
-from src.app.repositories.linked_services import SqliteLinkedServiceRepository
+from src.models.linked_service import LinkedService
+from src.repositories.infrastructure.sqlite_database import SqliteDatabase
+from src.repositories.linked_services import SqliteLinkedServiceRepository
 
 
 WorkspaceFactory = Callable[..., Awaitable[None]]

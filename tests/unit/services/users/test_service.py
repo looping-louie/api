@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.models.user import UserDocument
-from src.app.services.users import UserNotFoundError, UserService
+from src.models.user import UserDocument
+from src.services.users import UserNotFoundError, UserService
 
 
 class FakeUserRepository:

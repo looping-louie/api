@@ -3,8 +3,8 @@
 from datetime import UTC, datetime
 from typing import cast
 
-from src.app.controllers.activity_runs.utils import action_result, activity_run_response
-from src.app.models.activity_run import ActivityRunDocument
+from src.controllers.activity_runs.utils import action_result, activity_run_response
+from src.models.activity_run import ActivityRunDocument
 
 
 def test_run_harness_payload_exposes_frozen_instruction_snapshot() -> None:

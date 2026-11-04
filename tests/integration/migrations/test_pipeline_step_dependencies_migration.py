@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.infrastructure.migration_runner import (
+from src.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
 

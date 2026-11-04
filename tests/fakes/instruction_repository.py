@@ -2,13 +2,13 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import Sequence
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.catalogs.persona_skills import (
+from src.catalogs.persona_skills import InstructionOrigin
+from src.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.services.persona_skills import (
+from src.services.persona_skills import (
     AvailableDefinitionDocument,
     AvailableDefinitionPage,
     AvailableDefinitionSummary,

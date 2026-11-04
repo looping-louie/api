@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
+from src.models.activity import ActivityChangelogEntry, ActivityDocument
 
 
 class FakeActivityRepository:

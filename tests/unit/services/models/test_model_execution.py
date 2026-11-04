@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 import pytest
 
-from src.app.catalogs.models import (
+from src.catalogs.models import (
     CatalogIndex,
     ModelCapability,
     ModelCatalogEntry,
@@ -18,10 +18,10 @@ from src.app.catalogs.models import (
     ModelOffering,
     ProviderModelOffering,
 )
-from src.app.catalogs.providers import ProviderId
-from src.app.models.linked_service import LinkedService
-from src.app.models.user import UserDocument, UserSettings
-from src.app.services.models import (
+from src.catalogs.providers import ProviderId
+from src.models.linked_service import LinkedService
+from src.models.user import UserDocument, UserSettings
+from src.services.models import (
     ModelDeploymentUnavailableError,
     ModelExecutionService,
 )

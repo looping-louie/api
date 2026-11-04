@@ -1,6 +1,6 @@
 """Fake provider connectivity service."""
 
-from src.app.catalogs.providers import ProviderId
+from src.catalogs.providers import ProviderId
 
 
 class FakeProviderConnectionService:

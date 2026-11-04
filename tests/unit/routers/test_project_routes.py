@@ -7,15 +7,15 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.app.controllers.projects import ProjectController
-from src.app.models.user import UserDocument
-from src.app.models.project import ProjectDocument
-from src.app.routers.projects import router
-from src.app.services.shared.tenant import TenantService
-from src.app.services.shared.tenant import ProjectMembership
-from src.app.services.users import UserService
-from src.app.services.projects.service import ProjectService
-from src.app.utils.http import register_exception_handlers
+from src.controllers.projects import ProjectController
+from src.models.user import UserDocument
+from src.models.project import ProjectDocument
+from src.routers.projects import router
+from src.services.shared.tenant import TenantService
+from src.services.shared.tenant import ProjectMembership
+from src.services.users import UserService
+from src.services.projects.service import ProjectService
+from src.utils.http import register_exception_handlers
 from tests.fakes.tenant_repository import FakeTenantRepository
 
 

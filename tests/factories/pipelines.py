@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from src.app.models.pipeline import (
+from src.models.pipeline import (
     PipelineActivityStep,
     PipelineDocument,
 )

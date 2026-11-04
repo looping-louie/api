@@ -6,18 +6,18 @@ import sqlite3
 
 import pytest
 
-from src.app.catalogs import InstructionOrigin
-from src.app.repositories.instructions.repository import (
+from src.catalogs import InstructionOrigin
+from src.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.instructions.persona_skill_repository import (
+from src.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
-from src.app.services.execution_instructions import (
+from src.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.persona_skills import DefinitionDocument
-from src.app.services.shared.tenant import (
+from src.services.persona_skills import DefinitionDocument
+from src.services.shared.tenant import (
     TenantService,
     ProjectMembership,
 )
@@ -81,7 +81,7 @@ async def test_execution_library_reads_sql_not_packaged_markdown(
 ) -> None:
     """Runtime content comes from synchronized SQL rather than source files."""
 
-    import src.app.catalogs.skills.loader as skill_loader
+    import src.catalogs.skills.loader as skill_loader
 
     service = ExecutionInstructionLibraryService(
         repository=SqliteInstructionRepository(library_database),

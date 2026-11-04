@@ -11,10 +11,10 @@ from typing import Any
 import aiosqlite
 import pytest
 
-from src.app.repositories.instructions.repository import (
+from src.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.persona_skills import (
+from src.services.persona_skills import (
     DefinitionDocument,
     DefinitionType,
 )

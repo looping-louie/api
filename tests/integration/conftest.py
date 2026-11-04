@@ -9,10 +9,10 @@ import aiosqlite
 import pytest
 import pytest_asyncio
 
-from src.app.repositories.infrastructure.migration_runner import (
+from src.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
-from src.app.repositories.infrastructure.sqlite_database import (
+from src.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
 

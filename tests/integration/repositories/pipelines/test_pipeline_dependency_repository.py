@@ -7,13 +7,13 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from src.app.repositories.pipelines.sqlite_repository import (
+from src.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
-from src.app.repositories.shared.dependency_repository import (
+from src.repositories.shared.dependency_repository import (
     SqliteDependencyRepository,
 )
-from src.app.services.shared.reference_resolver import ResourceReference
+from src.services.shared.reference_resolver import ResourceReference
 from tests.factories.pipelines import build_pipeline
 from tests.integration.conftest import WorkspaceFactory
 from tests.integration.repositories.pipelines.test_sqlite_pipeline_repository import (

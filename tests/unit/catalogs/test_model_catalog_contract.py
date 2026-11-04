@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from src.app.catalogs.models import (
+from src.catalogs.models import (
     CatalogIndex,
     MODEL_CATALOG,
     ModelCatalogEntry,
@@ -12,7 +12,7 @@ from src.app.catalogs.models import (
     ModelLab,
     validate_model_catalog,
 )
-from src.app.catalogs.providers import ProviderId
+from src.catalogs.providers import ProviderId
 from tests.factories.models import build_model, build_offering, build_provider
 
 

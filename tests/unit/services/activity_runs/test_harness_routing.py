@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.app.models.activity import ActivityDocument
-from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline import PipelineHarness
-from src.app.models.user import UserDocument, UserSettings
-from src.app.services.activity_runs.service import ActivityRunService
-from src.app.services.shared.tenant import TenantService
+from src.models.activity import ActivityDocument
+from src.models.activity_run import ActivityRunDocument
+from src.models.pipeline import PipelineHarness
+from src.models.user import UserDocument, UserSettings
+from src.services.activity_runs.service import ActivityRunService
+from src.services.shared.tenant import TenantService
 
 
 class _ActivityService:

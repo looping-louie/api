@@ -4,7 +4,7 @@ Builtin Personas and Skills are versioned application resources. Their
 manifests and Markdown live under:
 
 ```text
-src/app/catalogs/
+src/catalogs/
 |-- skills/
 |   |-- registry.json
 |   `-- items/

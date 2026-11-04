@@ -7,20 +7,20 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.app.controllers.users import UserController
-from src.app.services.models.availability import ModelAvailabilityService
-from src.app.services.models.catalog import ModelCatalogService
-from src.app.services.users import UserService
-from src.app.services.persona_skills import (
+from src.controllers.users import UserController
+from src.services.models.availability import ModelAvailabilityService
+from src.services.models.catalog import ModelCatalogService
+from src.services.users import UserService
+from src.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.services.shared.reference_resolver import ReferenceResolver
-from src.app.services.shared.tenant import (
+from src.services.shared.reference_resolver import ReferenceResolver
+from src.services.shared.tenant import (
     TenantService,
     ProjectMembership,
 )
-from src.app.services.shared.validation import ValidationService
+from src.services.shared.validation import ValidationService
 from tests.fakes.dependency_checker import FakeDependencyChecker
 from tests.fakes.dependency_repository import FakeDependencyRepository
 from tests.fakes.instruction_repository import FakeInstructionRepository

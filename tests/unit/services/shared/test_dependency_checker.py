@@ -2,12 +2,12 @@
 
 import pytest
 
-from src.app.services.shared.dependency_checker import (
+from src.services.shared.dependency_checker import (
     DependencyChecker,
     DependencyUsage,
     ResourceInUseError,
 )
-from src.app.services.shared.reference_resolver import ResourceReference
+from src.services.shared.reference_resolver import ResourceReference
 from tests.fakes.dependency_repository import FakeDependencyRepository
 
 

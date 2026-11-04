@@ -4,26 +4,26 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from src.app.catalogs.models import (
+from src.catalogs.models import (
     CatalogIndex,
     ModelCapability,
     ModelLab,
     ModelSort,
     ModelStatus,
 )
-from src.app.catalogs.providers import ProviderId
-from src.app.models.user import (
+from src.catalogs.providers import ProviderId
+from src.models.user import (
     ConfiguredModelAvailability,
     UserDocument,
     UserSettings,
 )
-from src.app.services.models.availability import (
+from src.services.models.availability import (
     ModelAvailabilityService,
     ModelNotFoundError,
     ProviderConnectionState,
 )
-from src.app.services.models.catalog import ModelCatalogService
-from src.app.services.shared.tenant import TenantService
+from src.services.models.catalog import ModelCatalogService
+from src.services.shared.tenant import TenantService
 from tests.factories.models import (
     build_model,
     build_offering,

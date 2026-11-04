@@ -7,7 +7,7 @@ import hashlib
 import sqlite3
 from pathlib import Path
 
-from src.app.repositories.infrastructure.migration_runner import (
+from src.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
 

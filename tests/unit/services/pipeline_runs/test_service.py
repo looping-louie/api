@@ -8,23 +8,23 @@ from itertools import count
 
 import pytest
 
-from src.app.models.activity import ActivityDocument
-from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline import (
+from src.models.activity import ActivityDocument
+from src.models.activity_run import ActivityRunDocument
+from src.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
     PipelineDocument,
     PipelineStepDependency,
 )
-from src.app.models.pipeline_run import PipelineRunDocument
-from src.app.services.pipeline_runs.etag import pipeline_run_etag
-from src.app.services.pipeline_runs.service import PipelineRunService
-from src.app.services.pipeline_runs.types import (
+from src.models.pipeline_run import PipelineRunDocument
+from src.services.pipeline_runs.etag import pipeline_run_etag
+from src.services.pipeline_runs.service import PipelineRunService
+from src.services.pipeline_runs.types import (
     PipelineRunPreconditionFailedError,
     PipelineRunUnavailableError,
 )
-from src.app.services.shared.tenant import TenantService
-from src.app.services.worker_instances import (
+from src.services.shared.tenant import TenantService
+from src.services.worker_instances import (
     WorkerCapacityUnavailableError,
     WorkerHarnessUnavailableError,
     WorkerUnavailableError,

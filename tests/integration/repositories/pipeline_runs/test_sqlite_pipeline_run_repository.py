@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from src.app.models.activity import ActivityChangelogEntry, ActivityDocument
-from src.app.models.activity_run import ActivityRunDocument
-from src.app.models.pipeline import PipelineActivityStep, PipelineDocument
-from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunStepDocument
-from src.app.repositories.pipelines.sqlite_repository import SqlitePipelineRepository
-from src.app.repositories.pipeline_runs.sqlite_repository import SqlitePipelineRunRepository
+from src.models.activity import ActivityChangelogEntry, ActivityDocument
+from src.models.activity_run import ActivityRunDocument
+from src.models.pipeline import PipelineActivityStep, PipelineDocument
+from src.models.pipeline_run import PipelineRunDocument, PipelineRunStepDocument
+from src.repositories.pipelines.sqlite_repository import SqlitePipelineRepository
+from src.repositories.pipeline_runs.sqlite_repository import SqlitePipelineRunRepository
 
 
 @pytest.mark.asyncio
@@ -205,7 +205,7 @@ async def test_claim_inserts_initial_child_before_referencing_it(
 def _pipeline_entry(pipeline: PipelineDocument, timestamp: datetime) -> object:
     """Build the changelog entry required by Pipeline persistence."""
 
-    from src.app.models.pipeline import PipelineChangelogEntry
+    from src.models.pipeline import PipelineChangelogEntry
 
     return PipelineChangelogEntry(
         id='pipeline-entry-1', pipeline_id=pipeline.id,

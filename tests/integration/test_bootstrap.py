@@ -14,18 +14,18 @@ from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.app.bootstrap import configure_application
-from src.app.controllers.activities import ActivityController
-from src.app.controllers.activity_runs import ActivityRunController
-from src.app.controllers.personas import PersonaController
-from src.app.controllers.pipelines import PipelineController
-from src.app.controllers.skills import SkillController
-from src.app.controllers.projects import ProjectController
-from src.app.controllers.users import UserController
-from src.app.repositories.infrastructure.sqlite_database import (
+from src.bootstrap import configure_application
+from src.controllers.activities import ActivityController
+from src.controllers.activity_runs import ActivityRunController
+from src.controllers.personas import PersonaController
+from src.controllers.pipelines import PipelineController
+from src.controllers.skills import SkillController
+from src.controllers.projects import ProjectController
+from src.controllers.users import UserController
+from src.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
-from src.app.services.shared.settings import AppSettings
+from src.services.shared.settings import AppSettings
 
 
 EXPECTED_TABLES = {

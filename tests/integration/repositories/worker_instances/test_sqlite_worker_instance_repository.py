@@ -4,14 +4,14 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from src.app.models.worker import WorkerHarnessCapability
-from src.app.models.worker_instance import (
+from src.models.worker import WorkerHarnessCapability
+from src.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerInstanceProjectDocument,
     WorkerProjectEnablementDocument,
 )
-from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
-from src.app.repositories.worker_instances import SqliteWorkerInstanceRepository
+from src.repositories.infrastructure.sqlite_database import SqliteDatabase
+from src.repositories.worker_instances import SqliteWorkerInstanceRepository
 from tests.integration.conftest import WorkspaceFactory
 
 

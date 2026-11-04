@@ -8,10 +8,10 @@ The API and runtime checkpoint contract is documented in
 
 ## Repository structure
 
-Application code lives under `src/app` and is organized by responsibility:
+Application code lives under `src` and is organized by responsibility:
 
 ```text
-src/app/
+src/
 |
 |-- bootstrap/       Application startup and dependency wiring
 |-- catalogs/        Builtin providers, models, personas, and skills

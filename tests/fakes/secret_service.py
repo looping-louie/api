@@ -1,6 +1,6 @@
 """Fake provider secret service."""
 
-from src.app.services.providers.secret import (
+from src.services.providers.secret import (
     SecretDecryptionError,
 )
 

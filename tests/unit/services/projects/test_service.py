@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.app.models.user import UserDocument
-from src.app.models.project import ProjectDocument
-from src.app.services.projects import ProjectService
-from src.app.services.shared.tenant import TenantService, ProjectMembership
+from src.models.user import UserDocument
+from src.models.project import ProjectDocument
+from src.services.projects import ProjectService
+from src.services.shared.tenant import TenantService, ProjectMembership
 from tests.fakes.tenant_repository import FakeTenantRepository
 
 

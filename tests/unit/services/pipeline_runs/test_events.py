@@ -8,16 +8,16 @@ from itertools import count
 
 import pytest
 
-from src.app.models.pipeline import (
+from src.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
     PipelineDocument,
     PipelineHarness,
 )
-from src.app.services.pipeline_runs.etag import pipeline_run_etag
-from src.app.services.pipeline_runs.events import PipelineRunEventBuilder
-from src.app.services.pipeline_runs.service import PipelineRunService
-from src.app.services.shared.tenant import TenantService
+from src.services.pipeline_runs.etag import pipeline_run_etag
+from src.services.pipeline_runs.events import PipelineRunEventBuilder
+from src.services.pipeline_runs.service import PipelineRunService
+from src.services.shared.tenant import TenantService
 from tests.contract_fixtures import load_harness_observation
 from tests.conftest import IncrementingClock
 from tests.unit.services.pipeline_runs.test_service import (

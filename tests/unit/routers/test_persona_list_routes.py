@@ -3,8 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app.controllers.personas import PersonaController
-from src.app.services.persona_skills import (
+from src.controllers.personas import PersonaController
+from src.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )

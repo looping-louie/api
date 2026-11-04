@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from src.app.routers import api_v1_router
+from src.routers import api_v1_router
 
 
 def test_deprecated_meeting_route_is_not_exposed() -> None:

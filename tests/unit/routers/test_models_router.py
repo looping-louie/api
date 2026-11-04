@@ -6,15 +6,15 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.catalogs.models import (
+from src.catalogs.models import (
     MODEL_CATALOG_BY_ID,
     ModelLab,
 )
-from src.app.catalogs.providers import ProviderId
-from src.app.controllers.users import UserController
-from src.app.routers.users import router as users_router
-from src.app.services.models.availability import ProviderConnectionState
-from src.app.utils.http import register_exception_handlers
+from src.catalogs.providers import ProviderId
+from src.controllers.users import UserController
+from src.routers.users import router as users_router
+from src.services.models.availability import ProviderConnectionState
+from src.utils.http import register_exception_handlers
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )

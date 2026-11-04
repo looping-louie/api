@@ -8,11 +8,11 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from src.app.models.activity_run import ActivityRunDocument
-from src.app.repositories.activity_runs.errors import (
+from src.models.activity_run import ActivityRunDocument
+from src.repositories.activity_runs.errors import (
     ActivityRunInvalidTransitionError,
 )
-from src.app.repositories.activity_runs.sqlite_repository import (
+from src.repositories.activity_runs.sqlite_repository import (
     SqliteActivityRunRepository,
 )
 

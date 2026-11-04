@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs import load_persona_skill_catalog
-from src.app.catalogs.persona_skills.loader import PersonaSkillCatalog
-from src.app.services.persona_skills.synchronization import (
+from src.catalogs import load_persona_skill_catalog
+from src.catalogs.persona_skills.loader import PersonaSkillCatalog
+from src.services.persona_skills.synchronization import (
     CatalogChecksumConflictError,
     CatalogChecksumPolicy,
     CatalogVersionRegressionError,

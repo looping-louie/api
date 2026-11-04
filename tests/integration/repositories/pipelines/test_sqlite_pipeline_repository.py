@@ -9,20 +9,20 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from src.app.models.activity import (
+from src.models.activity import (
     ActivityChangelogEntry,
     ActivityDocument,
 )
-from src.app.models.pipeline import (
+from src.models.pipeline import (
     PipelineActivityStep,
     PipelineChangelogEntry,
     PipelineDocument,
     PipelineStepDependency,
 )
-from src.app.repositories.activities.sqlite_repository import (
+from src.repositories.activities.sqlite_repository import (
     SqliteActivityRepository,
 )
-from src.app.repositories.pipelines.sqlite_repository import (
+from src.repositories.pipelines.sqlite_repository import (
     SqlitePipelineRepository,
 )
 from tests.factories.pipelines import (

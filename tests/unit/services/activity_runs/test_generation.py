@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.catalogs.providers import ProviderId
-from src.app.services.execution_instructions import (
+from src.catalogs.persona_skills import InstructionOrigin
+from src.catalogs.providers import ProviderId
+from src.services.execution_instructions import (
     ExecutionInstruction,
     ExecutionInstructionLibrary,
 )
-from src.app.services.activity_runs.generation import (
+from src.services.activity_runs.generation import (
     ActivityRunGenerationService,
     _json_object_payload,
 )
-from src.app.services.activity_runs.types import ActivityRunValidationError
-from src.app.services.models import ModelExecutionResult
+from src.services.activity_runs.types import ActivityRunValidationError
+from src.services.models import ModelExecutionResult
 
 
 class InvalidThenValidModelExecutionService:

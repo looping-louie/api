@@ -2,12 +2,12 @@
 
 import pytest
 
-from src.app.services.persona_skills import (
+from src.services.persona_skills import (
     DefinitionCreate,
     DefinitionUpdate,
     SkillDefinitionService,
 )
-from src.app.services.skills import SkillService, SkillValidationError
+from src.services.skills import SkillService, SkillValidationError
 from tests.fakes.instruction_repository import (
     FakeInstructionRepository,
 )

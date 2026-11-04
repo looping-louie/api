@@ -7,22 +7,22 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.catalogs.providers import PROVIDER_CATALOG
-from src.app.controllers.linked_services import LinkedServiceController
-from src.app.models.linked_service import LinkedService
-from src.app.routers.linked_services import router
-from src.app.services.linked_services import LinkedServiceService
-from src.app.services.providers.connection import ProviderConnectionError
-from src.app.services.shared.tenant import TenantService
-from src.app.services.shared.dependency_checker import (
+from src.catalogs.providers import PROVIDER_CATALOG
+from src.controllers.linked_services import LinkedServiceController
+from src.models.linked_service import LinkedService
+from src.routers.linked_services import router
+from src.services.linked_services import LinkedServiceService
+from src.services.providers.connection import ProviderConnectionError
+from src.services.shared.tenant import TenantService
+from src.services.shared.dependency_checker import (
     DependencyChecker,
     DependencyUsage,
 )
-from src.app.services.shared.reference_resolver import ResourceReference
+from src.services.shared.reference_resolver import ResourceReference
 from tests.conftest import IncrementingClock
 from tests.fakes.provider_connection_service import FakeProviderConnectionService
 from tests.fakes.secret_service import FakeSecretService
-from src.app.utils.http import register_exception_handlers
+from src.utils.http import register_exception_handlers
 
 
 class InMemoryLinkedServiceRepository:

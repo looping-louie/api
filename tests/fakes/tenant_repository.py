@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from src.app.services.shared.tenant import ProjectMembership
+from src.services.shared.tenant import ProjectMembership
 
 
 class FakeTenantRepository:

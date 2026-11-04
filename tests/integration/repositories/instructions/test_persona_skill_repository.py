@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.instructions.repository import (
+from src.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.instructions.persona_skill_repository import (
+from src.repositories.instructions.persona_skill_repository import (
     SqlitePersonaSkillRepository,
 )
 from tests.integration.repositories.instructions.test_sqlite_instruction_repository import (

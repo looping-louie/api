@@ -2,11 +2,11 @@
 
 import pytest
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.controllers.skills import SkillController
-from src.app.schemas.skill import SkillCreateRequest, SkillPatchRequest
-from src.app.services.persona_skills import SkillDefinitionService
-from src.app.services.skills import SkillService
+from src.catalogs.persona_skills import InstructionOrigin
+from src.controllers.skills import SkillController
+from src.schemas.skill import SkillCreateRequest, SkillPatchRequest
+from src.services.persona_skills import SkillDefinitionService
+from src.services.skills import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
 from tests.unit.services.skills.test_service import build_skill_service

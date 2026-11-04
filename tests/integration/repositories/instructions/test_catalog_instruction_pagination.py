@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from src.app.catalogs.persona_skills import (
+from src.catalogs.persona_skills import (
     CatalogInstructionCategory,
     CatalogInstructionSort,
     CatalogInstructionStatus,
 )
-from src.app.repositories.instructions.repository import (
+from src.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.services.persona_skills import DefinitionDocument
+from src.services.persona_skills import DefinitionDocument
 
 
 WorkspaceFactory = Callable[..., Awaitable[None]]

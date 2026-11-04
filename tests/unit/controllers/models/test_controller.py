@@ -1,9 +1,9 @@
 import pytest
 
-from src.app.catalogs.models import ModelCapability
-from src.app.catalogs.providers import ProviderId
-from src.app.controllers.users import UserController
-from src.app.services.models.availability import ProviderConnectionState
+from src.catalogs.models import ModelCapability
+from src.catalogs.providers import ProviderId
+from src.controllers.users import UserController
+from src.services.models.availability import ProviderConnectionState
 from tests.fakes.provider_state_repository import (
     FakeProviderStateRepository,
 )

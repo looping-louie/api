@@ -8,16 +8,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.app.models.pipeline import (
+from src.models.pipeline import (
     PipelineActivityStep,
     PipelineDetails,
     PipelineDocument,
     PipelineHarness,
 )
-from src.app.models.user import UserDocument, UserSettings
-from src.app.services.pipeline_runs.service import PipelineRunService
-from src.app.services.pipeline_runs.types import PipelineRunUnavailableError
-from src.app.services.shared.tenant import TenantService
+from src.models.user import UserDocument, UserSettings
+from src.services.pipeline_runs.service import PipelineRunService
+from src.services.pipeline_runs.types import PipelineRunUnavailableError
+from src.services.shared.tenant import TenantService
 from tests.conftest import IncrementingClock
 from tests.unit.services.pipeline_runs.test_service import (
     InMemoryActivityRunRepository,

@@ -10,14 +10,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.pipelines import PipelineController
-from src.app.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
-from src.app.routers.pipelines import router as pipelines_router
-from src.app.routers.pipeline_runs import router as pipeline_runs_router
-from src.app.services.shared.tenant import TenantService
-from src.app.services.pipeline_runs import PipelineRunService
-from src.app.services.pipeline_runs.readiness import PipelineRunReadiness
-from src.app.utils.http import register_exception_handlers
+from src.controllers.pipelines import PipelineController
+from src.models.pipeline_run import PipelineRunDocument, PipelineRunEventDocument
+from src.routers.pipelines import router as pipelines_router
+from src.routers.pipeline_runs import router as pipeline_runs_router
+from src.services.shared.tenant import TenantService
+from src.services.pipeline_runs import PipelineRunService
+from src.services.pipeline_runs.readiness import PipelineRunReadiness
+from src.utils.http import register_exception_handlers
 from tests.unit.services.pipelines.test_service import build_service
 
 
@@ -683,7 +683,7 @@ class _UnavailableCreateService:
     async def create(self, **_: object) -> tuple[PipelineRunDocument, None]:
         """Raise the same domain error produced before run persistence."""
 
-        from src.app.services.pipeline_runs import PipelineRunUnavailableError
+        from src.services.pipeline_runs import PipelineRunUnavailableError
 
         raise PipelineRunUnavailableError(
             pipeline_id='pipeline-1',

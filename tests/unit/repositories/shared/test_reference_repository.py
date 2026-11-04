@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.repositories.shared.reference_repository import (
+from src.catalogs.persona_skills import InstructionOrigin
+from src.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
-from src.app.services.persona_skills import (
+from src.services.persona_skills import (
     AvailableDefinitionDocument,
     DefinitionDocument,
 )

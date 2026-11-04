@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.infrastructure.local_tenant_seed import (
+from src.repositories.infrastructure.local_tenant_seed import (
     ensure_local_tenant,
 )
 from tests.integration.migrations.test_instruction_catalog_migration import (

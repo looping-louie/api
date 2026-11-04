@@ -4,17 +4,17 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.models.worker import WorkerHarnessCapability
-from src.app.models.worker_instance import (
+from src.models.worker import WorkerHarnessCapability
+from src.models.worker_instance import (
     WorkerInstanceDocument,
     WorkerProjectEnablementDocument,
 )
-from src.app.services.shared.tenant import (
+from src.services.shared.tenant import (
     ProjectMembership,
     TenantAccessDeniedError,
     TenantService,
 )
-from src.app.services.worker_instances import (
+from src.services.worker_instances import (
     WorkerInstanceNotFoundError,
     WorkerInstanceService,
 )

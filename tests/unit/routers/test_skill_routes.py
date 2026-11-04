@@ -7,10 +7,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.skills import SkillController
-from src.app.routers.skills import router as skills_router
-from src.app.services.persona_skills import SkillDefinitionService
-from src.app.utils.http import register_exception_handlers
+from src.controllers.skills import SkillController
+from src.routers.skills import router as skills_router
+from src.services.persona_skills import SkillDefinitionService
+from src.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
 from tests.unit.services.skills.test_service import build_skill_service

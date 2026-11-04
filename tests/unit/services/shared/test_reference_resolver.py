@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.app.services.shared.reference_resolver import (
+from src.services.shared.reference_resolver import (
     ReferenceResolver,
     ResourceNotFoundError,
     ResourceReference,

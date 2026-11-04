@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from src.app.catalogs.providers import ProviderId
-from src.app.models.linked_service import LinkedService
+from src.catalogs.providers import ProviderId
+from src.models.linked_service import LinkedService
 
 
 class FakeProviderStateRepository:

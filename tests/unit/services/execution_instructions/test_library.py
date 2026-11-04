@@ -2,21 +2,21 @@
 
 import pytest
 
-from src.app.services.execution_instructions import (
+from src.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.personas import (
+from src.services.personas import (
     PersonaCreate,
     PersonaService,
 )
-from src.app.services.persona_skills import (
+from src.services.persona_skills import (
     DefinitionCreate,
     DefinitionUpdate,
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.services.shared.tenant import TenantService
-from src.app.services.skills import SkillService
+from src.services.shared.tenant import TenantService
+from src.services.skills import SkillService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.fakes.persona_skill_repository import (
     FakePersonaSkillRepository,

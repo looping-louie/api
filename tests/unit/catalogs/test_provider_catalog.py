@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from src.app.catalogs.providers import (
+from src.catalogs.providers import (
     PROVIDER_CATALOG,
     PROVIDER_CATALOG_BY_ID,
     ProviderId,

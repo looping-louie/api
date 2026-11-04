@@ -8,13 +8,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
-from src.app.controllers.personas import PersonaController
-from src.app.routers.personas import router as personas_router
-from src.app.services.persona_skills import (
+from src.controllers.personas import PersonaController
+from src.routers.personas import router as personas_router
+from src.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.utils.http import register_exception_handlers
+from src.utils.http import register_exception_handlers
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
 from tests.unit.services.personas.test_service import build_persona_service

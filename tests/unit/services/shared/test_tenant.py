@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.services.shared.tenant import (
+from src.services.shared.tenant import (
     TenantAccessDeniedError,
     TenantNotFoundError,
     TenantSelectionRequiredError,

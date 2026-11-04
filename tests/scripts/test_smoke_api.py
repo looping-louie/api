@@ -7,7 +7,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from src.app.main import app
+from src.main import app
 
 
 HTTP_METHODS = frozenset({"delete", "get", "patch", "post", "put"})

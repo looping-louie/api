@@ -12,14 +12,14 @@ import pytest
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
 
-import src.app.bootstrap.application as bootstrap
-from src.app.catalogs import load_persona_skill_catalog
-from src.app.catalogs.persona_skills.loader import PersonaSkillCatalog
-from src.app.services.shared.settings import AppSettings
-from src.app.services.execution_instructions import (
+import src.bootstrap.application as bootstrap
+from src.catalogs import load_persona_skill_catalog
+from src.catalogs.persona_skills.loader import PersonaSkillCatalog
+from src.services.shared.settings import AppSettings
+from src.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
-from src.app.services.persona_skills.synchronization import (
+from src.services.persona_skills.synchronization import (
     CatalogSynchronizationError,
     PersonaSkillCatalogSynchronizer,
 )

@@ -8,9 +8,9 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-from src.app.models.project import ProjectDocument
-from src.app.repositories.infrastructure.sqlite_database import SqliteDatabase
-from src.app.repositories.projects import SqliteProjectRepository
+from src.models.project import ProjectDocument
+from src.repositories.infrastructure.sqlite_database import SqliteDatabase
+from src.repositories.projects import SqliteProjectRepository
 
 
 def project_document(project_id: str) -> ProjectDocument:

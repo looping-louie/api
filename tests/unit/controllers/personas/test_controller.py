@@ -2,14 +2,14 @@
 
 import pytest
 
-from src.app.catalogs.persona_skills import InstructionOrigin
-from src.app.controllers.personas import PersonaController
-from src.app.schemas.persona import PersonaCreateRequest, PersonaPatchRequest
-from src.app.services.persona_skills import (
+from src.catalogs.persona_skills import InstructionOrigin
+from src.controllers.personas import PersonaController
+from src.schemas.persona import PersonaCreateRequest, PersonaPatchRequest
+from src.services.persona_skills import (
     PersonaDefinitionService,
     SkillDefinitionService,
 )
-from src.app.services.personas import PersonaService
+from src.services.personas import PersonaService
 from tests.fakes.instruction_repository import FakeInstructionRepository
 from tests.unit.services.instructions.test_service import seed_builtin
 from tests.unit.services.personas.test_service import build_persona_service

@@ -7,18 +7,18 @@ from pathlib import Path
 
 import pytest
 
-from src.app.repositories.instructions.repository import (
+from src.repositories.instructions.repository import (
     SqliteInstructionRepository,
 )
-from src.app.repositories.linked_services import SqliteLinkedServiceRepository
-from src.app.repositories.shared.reference_repository import (
+from src.repositories.linked_services import SqliteLinkedServiceRepository
+from src.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
-from src.app.repositories.infrastructure.sqlite_database import (
+from src.repositories.infrastructure.sqlite_database import (
     SqliteDatabase,
 )
-from src.app.services.models.availability import ModelAvailabilityService
-from src.app.services.models.catalog import ModelCatalogService
+from src.services.models.availability import ModelAvailabilityService
+from src.services.models.catalog import ModelCatalogService
 from tests.integration.factories import build_instruction
 
 

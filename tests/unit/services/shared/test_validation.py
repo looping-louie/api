@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.services.persona_skills import DefinitionDocument
-from src.app.services.shared.validation import (
+from src.services.persona_skills import DefinitionDocument
+from src.services.shared.validation import (
     DomainValidationError,
     DuplicateResourceError,
     ResourceVersionConflictError,

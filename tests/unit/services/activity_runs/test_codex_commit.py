@@ -6,13 +6,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.app.controllers.activity_runs.utils import activity_run_response
-from src.app.models.activity import ActivityDocument
-from src.app.models.activity_run import ActivityRunDocument
-from src.app.services.activity_runs.harness_result import harness_runtime_artifacts
-from src.app.services.activity_runs.service import ActivityRunService
-from src.app.services.activity_runs.types import ActivityRunValidationError
-from src.app.services.shared.tenant import TenantService
+from src.controllers.activity_runs.utils import activity_run_response
+from src.models.activity import ActivityDocument
+from src.models.activity_run import ActivityRunDocument
+from src.services.activity_runs.harness_result import harness_runtime_artifacts
+from src.services.activity_runs.service import ActivityRunService
+from src.services.activity_runs.types import ActivityRunValidationError
+from src.services.shared.tenant import TenantService
 from tests.contract_fixtures import load_harness_observation
 from tests.unit.services.activity_runs.test_harness_routing import (
     _ActivityRunRepository,

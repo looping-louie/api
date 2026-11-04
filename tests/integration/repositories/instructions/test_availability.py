@@ -8,13 +8,13 @@ from typing import Any
 
 import pytest
 
-from src.app.repositories.instructions import repository as repository_module
-from src.app.catalogs import InstructionOrigin, load_persona_skill_catalog
-from src.app.repositories.instructions.repository import (
+from src.repositories.instructions import repository as repository_module
+from src.catalogs import InstructionOrigin, load_persona_skill_catalog
+from src.repositories.instructions.repository import (
     SqliteInstructionRepository,
     SqliteUserPersonaRepository,
 )
-from src.app.services.persona_skills.synchronization import (
+from src.services.persona_skills.synchronization import (
     PersonaSkillCatalogSynchronizer,
 )
 from tests.integration.repositories.instructions.helpers import (

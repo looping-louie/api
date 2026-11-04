@@ -9,22 +9,22 @@ from typing import Any, cast
 import pytest
 from fastapi import FastAPI
 
-import src.app.bootstrap.application as bootstrap
-from src.app.catalogs.persona_skills.errors import CatalogLoadError
-from src.app.catalogs.persona_skills import (
+import src.bootstrap.application as bootstrap
+from src.catalogs.persona_skills.errors import CatalogLoadError
+from src.catalogs.persona_skills import (
     PersonaCatalogEntry,
     SkillCatalogEntry,
 )
-from src.app.catalogs.persona_skills.loader import load_persona_skill_catalog
-from src.app.catalogs.personas.loader import (
+from src.catalogs.persona_skills.loader import load_persona_skill_catalog
+from src.catalogs.personas.loader import (
     PERSONA_CATALOG_DIR,
     load_persona_catalog,
 )
-from src.app.catalogs.skills.loader import (
+from src.catalogs.skills.loader import (
     SKILL_CATALOG_DIR,
     load_skill_catalog,
 )
-from src.app.services.shared.settings import AppSettings
+from src.services.shared.settings import AppSettings
 
 
 def copy_catalogs(tmp_path: Path) -> tuple[Path, Path]:
