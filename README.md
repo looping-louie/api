@@ -16,7 +16,8 @@ make install
 This command will:
 
 - Create the Python virtual environment in `env/`.
-- Install every dependency from `requirements.txt`.
+- Install application dependencies from `requirements.txt` and development
+  dependencies from `requirements-dev.txt`.
 - Create a `.env.local` file if it does not already exist.
 - Generate a Fernet encryption key.
 - Store the generated key as `LOUIE_ENCRYPTION_KEY` in `.env.local`.
