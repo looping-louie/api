@@ -20,57 +20,16 @@ coherent change that satisfies the request.
 - MUST ask before making a materially different product or architecture
   decision that cannot be inferred safely from the repository.
 
-## Technology and API Style
+## Architecture and API Contracts
 
-This project is a Python FastAPI REST API.
+Before changing application structure, read
+[`doc/architecture.md`](doc/architecture.md). Preserve its documented layer
+boundaries and dependency direction; do not add layers or bypass existing
+boundaries without explicit authorization.
 
-- MUST use FastAPI and Pydantic conventions already present in the repository.
-- MUST add type hints to every function and method.
-- MUST define explicit Pydantic request and response schemas for HTTP
-  contracts; do not return untyped dictionaries when a clear schema exists.
-- MUST use an explicit `response_model` for endpoints when a response body is
-  returned.
-- MUST use HTTP methods, status codes, and error responses according to their
-  REST semantics.
-- MUST preserve existing public API contracts unless the user explicitly asks
-  to change them.
-- MUST NOT expose persistence entities directly through the HTTP API.
-- SHOULD use plural nouns for resource collections and follow the existing URL
-  conventions.
-- MUST NOT introduce pagination, filtering, versioning, or other API behavior
-  unless requested or required by an existing project convention.
-
-## MVC and Layer Responsibilities
-
-Apply MVC proportionally to the complexity of the change. Do not create empty
-layers merely to satisfy a directory structure.
-
-- **Model:** domain models and persistence-related entities.
-- **View:** Pydantic request/response schemas and HTTP representations.
-- **Controller:** application-facing orchestration between the HTTP layer and
-  business services.
-- **Router:** FastAPI route declarations and HTTP-specific concerns.
-- **Service:** non-trivial or reusable business logic.
-- **Repository:** persistence and data-access logic.
-
-Dependency flow should normally be:
-
-`router -> controller -> service -> repository`
-
-The following constraints apply:
-
-- Routers and controllers MUST remain thin.
-- Routers MUST handle routing, dependency injection, request extraction, and
-  response declaration.
-- Controllers MUST coordinate use cases and translate application results for
-  the HTTP layer.
-- Business rules MUST live in services when they are non-trivial or reusable.
-- Database queries and persistence details MUST live in repositories.
-- Services MUST NOT depend on FastAPI request or response objects.
-- Repositories MUST NOT contain HTTP concerns.
-- Layers MAY be omitted when they add no meaningful separation.
-- MUST NOT add a service, repository, interface, factory, or helper solely for
-  hypothetical future reuse.
+Before changing an HTTP contract, read the relevant document under
+[`doc/public-api/`](doc/public-api/). Preserve public API contracts unless the
+user explicitly requests a change.
 
 ## File Size
 
@@ -157,20 +116,9 @@ During implementation:
 
 ### SQLite Migrations
 
-SQLite migration files are immutable once committed. Do not edit an existing
-migration for any reason, including whitespace or terminal-newline changes.
-Create a new forward migration instead.
-
-Migration checksums cover exact file bytes. An editor-inserted terminal newline
-after a migration has been applied changes its checksum and blocks application
-startup for that database. The `.editorconfig` exception for
-`migrations/**/*.sql` prevents automatic save-time whitespace rewrites; it does
-not make post-application edits safe.
-
-Every new SQLite migration must be added to the checksum manifest in
-`tests/integration/migrations/test_sqlite_migration_checksums.py`. That test
-protects the exact bytes of committed migrations and must pass before the
-migration is committed.
+Read the [SQLite migration policy](README.md#sqlite-migrations) before changing
+migrations. Existing migration files are immutable: create a forward migration
+and update its checksum manifest instead.
 
 ### Development Servers and Runtime Artifacts
 

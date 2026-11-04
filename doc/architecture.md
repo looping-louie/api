@@ -25,6 +25,32 @@ src/
 `-- utils/           Shared HTTP and utility code
 ```
 
+## Layering and dependency direction
+
+Apply layers only when they provide a meaningful separation. The normal
+dependency direction is:
+
+```text
+router -> controller -> service -> repository
+```
+
+- Routers own route declarations, dependency injection, request extraction,
+  and response declaration.
+- Controllers translate HTTP schemas to service inputs and application results
+  to response schemas.
+- Services own non-trivial or reusable business rules and do not depend on
+  FastAPI request or response objects.
+- Repositories own persistence and data-access details and do not contain HTTP
+  concerns.
+- Models represent internal domain and persistence entities; schemas represent
+  HTTP contracts. Do not expose persistence entities directly through the API.
+
+HTTP endpoints use the established FastAPI and Pydantic conventions, explicit
+request and response schemas, and REST methods, status codes, and errors.
+Resource collections use plural nouns. Do not introduce pagination, filtering,
+versioning, or other API behavior without a product requirement or an
+established repository convention.
+
 ### Services
 
 This package implements application use cases and reusable business rules. It
