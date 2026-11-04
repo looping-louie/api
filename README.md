@@ -91,6 +91,9 @@ Interactive API documentation is available at:
 http://127.0.0.1:2000/docs
 ```
 
+API access and application logs begin with an ISO 8601 timestamp and timezone
+offset, so local and container logs can be correlated with runtime activity.
+
 ## Development
 
 ### SQLite Migrations
