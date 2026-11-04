@@ -1,4 +1,4 @@
-.PHONY: install venv create-config reset-config start-dev start-prod test smoke
+.PHONY: install venv create-config reset-config start-dev start-prod test
 
 PYTHON ?= python3
 VENV := env
@@ -71,6 +71,3 @@ start-prod:
 
 test: venv
 	@"$(VENV_PYTHON)" -m pytest -q
-
-smoke: venv create-config
-	@ENV_FILE="$(ENV_FILE)" ./scripts/smoke_api.sh

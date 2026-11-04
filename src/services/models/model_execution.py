@@ -117,8 +117,11 @@ class ModelExecutionService:
         *,
         user_id: str,
         model_id: str,
+        project_id: str | None = None,
     ) -> LinkedService:
         """Select the first usable User-owned service for a logical model."""
+
+        del project_id
 
         if not await self._model_enabled(user_id=user_id, model_id=model_id):
             raise ModelDeploymentUnavailableError(
