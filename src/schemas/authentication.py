@@ -1,5 +1,7 @@
 """HTTP schemas for local-account authentication."""
 
+from datetime import datetime
+
 from pydantic import Field
 
 from .shared import RequestSchema, ResponseSchema
@@ -40,6 +42,30 @@ class MemberAccountActivationRequest(RequestSchema):
     """Requested active state for one administrator-managed member."""
 
     is_active: bool
+
+
+class PersonalAccessTokenCreateRequest(RequestSchema):
+    """Name and optional expiry for a new personal access token."""
+
+    name: str = Field(min_length=1, max_length=140)
+    expires_at: datetime | None = None
+
+
+class PersonalAccessTokenResponse(ResponseSchema):
+    """Credential-safe personal access-token metadata."""
+
+    id: str
+    name: str
+    created_at: datetime
+    last_used_at: datetime | None
+    expires_at: datetime | None
+    revoked_at: datetime | None
+
+
+class PersonalAccessTokenCreatedResponse(PersonalAccessTokenResponse):
+    """One-time display of a newly issued opaque token."""
+
+    token: str
 
 
 class SetupStatusResponse(ResponseSchema):

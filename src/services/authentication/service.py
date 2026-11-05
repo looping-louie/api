@@ -9,6 +9,8 @@ from hashlib import sha256
 from secrets import token_urlsafe
 
 from src.models.user import UserDocument
+from src.models.personal_access_token import PersonalAccessToken
+from src.repositories.personal_access_tokens import PersonalAccessTokenRepository
 from src.models.user_session import UserSession
 from src.repositories.user_sessions import UserSessionRepository
 from src.repositories.users import UserRepository
@@ -18,6 +20,7 @@ from .passwords import PasswordHasher
 
 LOCAL_USER_ID = 'local-user'
 SESSION_DURATION = timedelta(days=30)
+PERSONAL_ACCESS_TOKEN_DURATION = timedelta(days=90)
 
 
 class AuthenticationError(Exception):
@@ -52,6 +55,7 @@ class AccountAuthenticationService:
         *,
         users: UserRepository,
         sessions: UserSessionRepository,
+        personal_access_tokens: PersonalAccessTokenRepository,
         password_hasher: PasswordHasher,
         id_factory: Callable[[], str],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -61,6 +65,7 @@ class AccountAuthenticationService:
 
         self._users = users
         self._sessions = sessions
+        self._personal_access_tokens = personal_access_tokens
         self._password_hasher = password_hasher
         self._id_factory = id_factory
         self._token_factory = token_factory
@@ -154,6 +159,92 @@ class AccountAuthenticationService:
         await self._sessions.delete_by_token_hash(
             token_hash=_token_hash(token),
         )
+
+    async def create_personal_access_token(
+        self,
+        *,
+        user_id: str,
+        name: str,
+        expires_at: datetime | None,
+        use_default_expiry: bool,
+    ) -> tuple[PersonalAccessToken, str]:
+        """Create a named opaque API token for its authenticated owner."""
+
+        user = await self._require_account(user_id=user_id)
+        if not user.is_active:
+            raise AuthenticationError
+        now = self._clock()
+        token = self._token_factory()
+        document = PersonalAccessToken(
+            id=self._id_factory(),
+            user_id=user_id,
+            name=_require_token_name(name),
+            token_hash=_token_hash(token),
+            created_at=now,
+            last_used_at=None,
+            expires_at=(
+                now + PERSONAL_ACCESS_TOKEN_DURATION
+                if use_default_expiry
+                else expires_at
+            ),
+            revoked_at=None,
+        )
+        return await self._personal_access_tokens.create(document), token
+
+    async def list_personal_access_tokens(
+        self,
+        *,
+        user_id: str,
+    ) -> list[PersonalAccessToken]:
+        """List the authenticated user's personal access tokens."""
+
+        await self._require_account(user_id=user_id)
+        return await self._personal_access_tokens.list_for_user(user_id=user_id)
+
+    async def revoke_personal_access_token(
+        self,
+        *,
+        user_id: str,
+        token_id: str,
+    ) -> None:
+        """Revoke one personal access token owned by its authenticated user."""
+
+        token = await self._require_personal_access_token(token_id=token_id)
+        if token.user_id != user_id:
+            raise AccountAccessDeniedError
+        await self._personal_access_tokens.revoke(
+            token_id=token.id,
+            revoked_at=self._clock(),
+        )
+
+    async def current_user_from_personal_access_token(
+        self,
+        *,
+        token: str,
+    ) -> UserDocument | None:
+        """Resolve an active local user from a valid opaque bearer token."""
+
+        document = await self._personal_access_tokens.get_by_token_hash(
+            token_hash=_token_hash(token),
+        )
+        now = self._clock()
+        if (
+            document is None
+            or document.revoked_at is not None
+            or (
+                document.expires_at is not None
+                and document.expires_at <= now
+            )
+        ):
+            return None
+        user = await self._users.get(user_id=document.user_id)
+        if user is None or not user.is_active:
+            return None
+        await self._personal_access_tokens.mark_used(
+            token_id=document.id,
+            used_at=now,
+        )
+        return user
 
     async def list_accounts(self, *, administrator_id: str) -> list[UserDocument]:
         """Return the instance local accounts to an authenticated administrator."""
@@ -276,6 +367,18 @@ class AccountAuthenticationService:
             raise AccountNotFoundError
         return user
 
+    async def _require_personal_access_token(
+        self,
+        *,
+        token_id: str,
+    ) -> PersonalAccessToken:
+        """Return one stored personal access token."""
+
+        token = await self._personal_access_tokens.get(token_id=token_id)
+        if token is None:
+            raise AccountNotFoundError
+        return token
+
 
 def _require_username(value: str) -> str:
     """Normalize one required local-account username."""
@@ -292,6 +395,15 @@ def _require_password(value: str) -> str:
     if len(value) < 12:
         raise ValueError('password must contain at least 12 characters.')
     return value
+
+
+def _require_token_name(value: str) -> str:
+    """Normalize a user-visible personal access-token name."""
+
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError('name must not be empty.')
+    return normalized
 
 
 def _token_hash(token: str) -> str:

@@ -53,6 +53,9 @@ from src.repositories.pipeline_runs.sqlite_repository import (
 )
 from src.repositories.users import SqliteUserRepository
 from src.repositories.user_sessions import SqliteUserSessionRepository
+from src.repositories.personal_access_tokens import (
+    SqlitePersonalAccessTokenRepository,
+)
 from src.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -195,6 +198,9 @@ async def configure_application(
     project_repository = SqliteProjectRepository(database)
     user_repository = SqliteUserRepository(database)
     user_session_repository = SqliteUserSessionRepository(database)
+    personal_access_token_repository = SqlitePersonalAccessTokenRepository(
+        database,
+    )
     user_service = UserService(
         repository=user_repository,
         clock=utc_now,
@@ -202,6 +208,7 @@ async def configure_application(
     account_authentication_service = AccountAuthenticationService(
         users=user_repository,
         sessions=user_session_repository,
+        personal_access_tokens=personal_access_token_repository,
         password_hasher=PasswordHasher(),
         id_factory=create_identifier,
         clock=utc_now,

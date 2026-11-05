@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
 
 from src.models.user import UserDocument
 from src.models.user_session import UserSession
+from src.models.personal_access_token import PersonalAccessToken
 from src.services.authentication import (
     AccountAuthenticationService,
     AuthenticationError,
@@ -79,9 +81,65 @@ class FakeSessionRepository:
         return session
 
 
+class FakePersonalAccessTokenRepository:
+    """Store personal access tokens in memory for authentication tests."""
+
+    def __init__(self) -> None:
+        """Create an empty personal access-token store."""
+
+        self.tokens: dict[str, PersonalAccessToken] = {}
+
+    async def create(self, token: PersonalAccessToken) -> PersonalAccessToken:
+        """Store one token."""
+
+        self.tokens[token.id] = token
+        return token
+
+    async def get(self, *, token_id: str) -> PersonalAccessToken | None:
+        """Return one token by its durable identifier."""
+
+        return self.tokens.get(token_id)
+
+    async def list_for_user(self, *, user_id: str) -> list[PersonalAccessToken]:
+        """Return the tokens owned by one user."""
+
+        return [
+            token for token in self.tokens.values()
+            if token.user_id == user_id
+        ]
+
+    async def get_by_token_hash(
+        self,
+        *,
+        token_hash: str,
+    ) -> PersonalAccessToken | None:
+        """Return one token by its digest."""
+
+        return next(
+            (
+                token for token in self.tokens.values()
+                if token.token_hash == token_hash
+            ),
+            None,
+        )
+
+    async def mark_used(self, *, token_id: str, used_at: datetime) -> None:
+        """Record one successful token use."""
+
+        token = self.tokens[token_id]
+        self.tokens[token_id] = replace(token, last_used_at=used_at)
+
+    async def revoke(self, *, token_id: str, revoked_at: datetime) -> None:
+        """Record one token revocation."""
+
+        token = self.tokens[token_id]
+        self.tokens[token_id] = replace(token, revoked_at=revoked_at)
+
+
 def build_service(
     users: FakeUserRepository,
     sessions: FakeSessionRepository,
+    tokens: FakePersonalAccessTokenRepository | None = None,
 ) -> AccountAuthenticationService:
     """Build deterministic account authentication dependencies."""
 
@@ -89,6 +147,7 @@ def build_service(
     return AccountAuthenticationService(
         users=users,
         sessions=sessions,
+        personal_access_tokens=tokens or FakePersonalAccessTokenRepository(),
         password_hasher=PasswordHasher(),
         id_factory=lambda: next(identifiers),
         token_factory=lambda: 'raw-session-token',

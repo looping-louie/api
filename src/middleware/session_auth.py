@@ -23,16 +23,33 @@ class SessionAuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         """Attach the verified session user to the request when present."""
 
+        service = getattr(
+            request.app.state,
+            'account_authentication_service',
+            None,
+        )
+        if not isinstance(service, AccountAuthenticationService):
+            raise RuntimeError('Account authentication is not configured.')
         token = request.cookies.get(SESSION_COOKIE_NAME)
         if token:
-            service = getattr(
-                request.app.state,
-                'account_authentication_service',
-                None,
-            )
-            if not isinstance(service, AccountAuthenticationService):
-                raise RuntimeError('Account authentication is not configured.')
             user = await service.current_user(token=token)
             if user is not None:
                 request.state.user_id = user.id
+        if not getattr(request.state, 'user_id', None):
+            bearer_token = _bearer_token(request)
+            if bearer_token is not None:
+                user = await service.current_user_from_personal_access_token(
+                    token=bearer_token,
+                )
+                if user is not None:
+                    request.state.user_id = user.id
         return await call_next(request)
+
+
+def _bearer_token(request: Request) -> str | None:
+    """Return one validly formatted bearer token from an API request."""
+
+    scheme, _, token = request.headers.get('Authorization', '').partition(' ')
+    if scheme.casefold() != 'bearer' or not token.strip():
+        return None
+    return token.strip()

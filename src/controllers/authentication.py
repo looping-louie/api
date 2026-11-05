@@ -1,11 +1,15 @@
 """HTTP-oriented local account authentication controller."""
 
 from src.models.user import UserDocument
+from src.models.personal_access_token import PersonalAccessToken
 from src.schemas.authentication import (
     LocalAccountResponse,
     MemberAccountActivationRequest,
     MemberAccountCreateRequest,
     MemberAccountPasswordResetRequest,
+    PersonalAccessTokenCreateRequest,
+    PersonalAccessTokenCreatedResponse,
+    PersonalAccessTokenResponse,
     SessionStatusResponse,
     SessionUserResponse,
     SetupStatusResponse,
@@ -145,6 +149,52 @@ class AuthenticationController:
             ),
         )
 
+    async def list_personal_access_tokens(
+        self,
+        *,
+        user_id: str,
+    ) -> list[PersonalAccessTokenResponse]:
+        """Return the authenticated user's personal access tokens."""
+
+        return [
+            _personal_access_token_response(token)
+            for token in await self._service.list_personal_access_tokens(
+                user_id=user_id,
+            )
+        ]
+
+    async def create_personal_access_token(
+        self,
+        *,
+        user_id: str,
+        payload: PersonalAccessTokenCreateRequest,
+    ) -> PersonalAccessTokenCreatedResponse:
+        """Issue one named personal access token to its authenticated owner."""
+
+        token, raw_token = await self._service.create_personal_access_token(
+            user_id=user_id,
+            name=payload.name,
+            expires_at=payload.expires_at,
+            use_default_expiry='expires_at' not in payload.model_fields_set,
+        )
+        return PersonalAccessTokenCreatedResponse(
+            **_personal_access_token_response(token).model_dump(),
+            token=raw_token,
+        )
+
+    async def revoke_personal_access_token(
+        self,
+        *,
+        user_id: str,
+        token_id: str,
+    ) -> None:
+        """Revoke one personal access token belonging to its owner."""
+
+        await self._service.revoke_personal_access_token(
+            user_id=user_id,
+            token_id=token_id,
+        )
+
 
 def _session_user_response(document: UserDocument) -> SessionUserResponse:
     """Map one credentialed User document to browser-safe session identity."""
@@ -164,4 +214,19 @@ def _local_account_response(document: UserDocument) -> LocalAccountResponse:
     return LocalAccountResponse(
         **_session_user_response(document).model_dump(),
         is_active=document.is_active,
+    )
+
+
+def _personal_access_token_response(
+    token: PersonalAccessToken,
+) -> PersonalAccessTokenResponse:
+    """Map one token to credential-safe API metadata."""
+
+    return PersonalAccessTokenResponse(
+        id=token.id,
+        name=token.name,
+        created_at=token.created_at,
+        last_used_at=token.last_used_at,
+        expires_at=token.expires_at,
+        revoked_at=token.revoked_at,
     )

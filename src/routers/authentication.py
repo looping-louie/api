@@ -12,6 +12,9 @@ from src.schemas.authentication import (
     MemberAccountActivationRequest,
     MemberAccountCreateRequest,
     MemberAccountPasswordResetRequest,
+    PersonalAccessTokenCreateRequest,
+    PersonalAccessTokenCreatedResponse,
+    PersonalAccessTokenResponse,
     SessionStatusResponse,
     SetupStatusResponse,
 )
@@ -178,6 +181,54 @@ async def set_member_account_active(
         administrator_id=context.user_id,
         user_id=user_id,
         payload=payload,
+    )
+
+
+@router.get(
+    '/personal-access-tokens',
+    response_model=list[PersonalAccessTokenResponse],
+)
+async def list_personal_access_tokens(
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> list[PersonalAccessTokenResponse]:
+    """List personal access tokens owned by the authenticated user."""
+
+    return await controller.list_personal_access_tokens(user_id=context.user_id)
+
+
+@router.post(
+    '/personal-access-tokens',
+    response_model=PersonalAccessTokenCreatedResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_personal_access_token(
+    payload: PersonalAccessTokenCreateRequest,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> PersonalAccessTokenCreatedResponse:
+    """Issue a personal access token to the authenticated user."""
+
+    return await controller.create_personal_access_token(
+        user_id=context.user_id,
+        payload=payload,
+    )
+
+
+@router.delete(
+    '/personal-access-tokens/{token_id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def revoke_personal_access_token(
+    token_id: AccountIdPath,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> None:
+    """Revoke one personal access token owned by the authenticated user."""
+
+    await controller.revoke_personal_access_token(
+        user_id=context.user_id,
+        token_id=token_id,
     )
 
 

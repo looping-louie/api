@@ -186,6 +186,56 @@ def test_administrator_manages_member_accounts(
     assert disabled_login.status_code == 401
 
 
+def test_user_manages_and_uses_personal_access_tokens(
+    session_api_client: TestClient,
+) -> None:
+    """A user receives each opaque token once and can revoke it."""
+
+    setup = session_api_client.post(
+        '/api/v1/auth/setup',
+        json={'username': 'administrator', 'password': 'correct horse battery'},
+    )
+    assert setup.status_code == 200
+
+    created = session_api_client.post(
+        '/api/v1/auth/personal-access-tokens',
+        json={'name': 'Postman'},
+    )
+
+    assert created.status_code == 201
+    token = created.json()
+    assert token['name'] == 'Postman'
+    assert token['token']
+    assert token['expires_at'] is not None
+
+    bearer_client = TestClient(
+        session_api_client.app,
+        base_url='https://testserver',
+    )
+    projects = bearer_client.get(
+        '/api/v1/projects',
+        headers={'Authorization': f'Bearer {token["token"]}'},
+    )
+    assert projects.status_code == 200
+    assert projects.json()[0]['id'] == 'local-project'
+
+    listed = session_api_client.get('/api/v1/auth/personal-access-tokens')
+    assert listed.status_code == 200
+    assert listed.json()[0]['id'] == token['id']
+    assert 'token' not in listed.json()[0]
+
+    revoked = session_api_client.delete(
+        f'/api/v1/auth/personal-access-tokens/{token["id"]}',
+    )
+    assert revoked.status_code == 204
+
+    denied = bearer_client.get(
+        '/api/v1/projects',
+        headers={'Authorization': f'Bearer {token["token"]}'},
+    )
+    assert denied.status_code == 401
+
+
 def _set_session_cookie(client: TestClient, token: str) -> None:
     """Replace the test browser session cookie with one saved opaque token."""
 
