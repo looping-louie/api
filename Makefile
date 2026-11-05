@@ -24,6 +24,7 @@ create-config: venv
 			"LOUIE_ENCRYPTION_KEY=$$ENCRYPTION_KEY" \
 			'LOUIE_DB_PATH=runtime/db/looping-louie.db' \
 			'LOUIE_CATALOG_STRICT_VERSIONING=false' \
+			'LOUIE_SESSION_COOKIE_SECURE=false' \
 			> "$(ENV_FILE)"; \
 		chmod 600 "$(ENV_FILE)"; \
 		echo "Created $(ENV_FILE) with a generated encryption key."; \

@@ -56,6 +56,7 @@ async def get_session_status(
 @router.post('/setup', response_model=SessionStatusResponse)
 async def setup_administrator(
     payload: AccountCredentialsRequest,
+    request: Request,
     response: Response,
     controller: ControllerDependency,
 ) -> SessionStatusResponse:
@@ -65,13 +66,18 @@ async def setup_administrator(
         username=payload.username,
         password=payload.password,
     )
-    _set_session_cookie(response, token)
+    _set_session_cookie(
+        response,
+        token,
+        secure=_session_cookie_secure(request),
+    )
     return result
 
 
 @router.post('/login', response_model=SessionStatusResponse)
 async def login(
     payload: AccountCredentialsRequest,
+    request: Request,
     response: Response,
     controller: ControllerDependency,
 ) -> SessionStatusResponse:
@@ -81,12 +87,17 @@ async def login(
         username=payload.username,
         password=payload.password,
     )
-    _set_session_cookie(response, token)
+    _set_session_cookie(
+        response,
+        token,
+        secure=_session_cookie_secure(request),
+    )
     return result
 
 
 @router.post('/logout', status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
+    request: Request,
     response: Response,
     controller: ControllerDependency,
     context: Annotated[RequestContext, Depends(get_request_context)],
@@ -99,13 +110,18 @@ async def logout(
     response.delete_cookie(
         key=SESSION_COOKIE_NAME,
         path='/',
-        secure=True,
+        secure=_session_cookie_secure(request),
         httponly=True,
         samesite='lax',
     )
 
 
-def _set_session_cookie(response: Response, token: str) -> None:
+def _set_session_cookie(
+    response: Response,
+    token: str,
+    *,
+    secure: bool,
+) -> None:
     """Store the opaque session only in a browser-protected cookie."""
 
     response.set_cookie(
@@ -113,7 +129,16 @@ def _set_session_cookie(response: Response, token: str) -> None:
         value=token,
         max_age=_SESSION_MAX_AGE_SECONDS,
         path='/',
-        secure=True,
+        secure=secure,
         httponly=True,
         samesite='lax',
     )
+
+
+def _session_cookie_secure(request: Request) -> bool:
+    """Return the application-configured browser-cookie transport policy."""
+
+    secure = getattr(request.app.state, 'session_cookie_secure', None)
+    if not isinstance(secure, bool):
+        raise RuntimeError('Session cookie security has not been configured.')
+    return secure

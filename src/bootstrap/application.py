@@ -374,6 +374,11 @@ async def configure_application(
     )
 
     app.state.database = database
+    app.state.session_cookie_secure = getattr(
+        resolved_settings,
+        'session_cookie_secure',
+        True,
+    )
     app.state.persona_skill_catalog = resolved_catalog
     app.state.catalog_synchronization = catalog_synchronization
     app.state.execution_instruction_library_service = (
