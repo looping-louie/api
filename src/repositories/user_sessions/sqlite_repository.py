@@ -65,3 +65,13 @@ class SqliteUserSessionRepository:
                 (token_hash,),
             )
             await connection.commit()
+
+    async def delete_by_user_id(self, *, user_id: str) -> None:
+        """Revoke every persisted browser session for one user."""
+
+        async with self._database.connect() as connection:
+            await connection.execute(
+                'DELETE FROM user_sessions WHERE user_id = ?',
+                (user_id,),
+            )
+            await connection.commit()

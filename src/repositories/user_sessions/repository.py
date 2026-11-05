@@ -23,3 +23,7 @@ class UserSessionRepository(Protocol):
     async def delete_by_token_hash(self, *, token_hash: str) -> None:
         """Revoke one session selected by its digest."""
         raise NotImplementedError
+
+    async def delete_by_user_id(self, *, user_id: str) -> None:
+        """Revoke every browser session belonging to one user."""
+        raise NotImplementedError

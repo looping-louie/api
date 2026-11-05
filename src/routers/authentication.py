@@ -2,12 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Path, Request, Response, status
 
 from src.controllers.authentication import AuthenticationController
 from src.middleware.session_auth import SESSION_COOKIE_NAME
 from src.schemas.authentication import (
     AccountCredentialsRequest,
+    LocalAccountResponse,
+    MemberAccountActivationRequest,
+    MemberAccountCreateRequest,
+    MemberAccountPasswordResetRequest,
     SessionStatusResponse,
     SetupStatusResponse,
 )
@@ -29,6 +33,7 @@ SessionCookie = Annotated[
     Cookie(alias=SESSION_COOKIE_NAME),
 ]
 _SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
+AccountIdPath = Annotated[str, Path(min_length=1)]
 
 
 @router.get('/setup-status', response_model=SetupStatusResponse)
@@ -113,6 +118,66 @@ async def logout(
         secure=_session_cookie_secure(request),
         httponly=True,
         samesite='lax',
+    )
+
+
+@router.get('/accounts', response_model=list[LocalAccountResponse])
+async def list_accounts(
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> list[LocalAccountResponse]:
+    """List local accounts for an authenticated administrator."""
+
+    return await controller.list_accounts(administrator_id=context.user_id)
+
+
+@router.post(
+    '/accounts',
+    response_model=LocalAccountResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_member_account(
+    payload: MemberAccountCreateRequest,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> LocalAccountResponse:
+    """Create one local member account as an authenticated administrator."""
+
+    return await controller.create_member(
+        administrator_id=context.user_id,
+        payload=payload,
+    )
+
+
+@router.patch('/accounts/{user_id}/password', response_model=LocalAccountResponse)
+async def reset_member_account_password(
+    user_id: AccountIdPath,
+    payload: MemberAccountPasswordResetRequest,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> LocalAccountResponse:
+    """Replace one local member password as an authenticated administrator."""
+
+    return await controller.reset_member_password(
+        administrator_id=context.user_id,
+        user_id=user_id,
+        payload=payload,
+    )
+
+
+@router.patch('/accounts/{user_id}/activation', response_model=LocalAccountResponse)
+async def set_member_account_active(
+    user_id: AccountIdPath,
+    payload: MemberAccountActivationRequest,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> LocalAccountResponse:
+    """Activate or deactivate one local member as an administrator."""
+
+    return await controller.set_member_active(
+        administrator_id=context.user_id,
+        user_id=user_id,
+        payload=payload,
     )
 
 

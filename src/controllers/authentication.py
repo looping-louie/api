@@ -2,6 +2,10 @@
 
 from src.models.user import UserDocument
 from src.schemas.authentication import (
+    LocalAccountResponse,
+    MemberAccountActivationRequest,
+    MemberAccountCreateRequest,
+    MemberAccountPasswordResetRequest,
     SessionStatusResponse,
     SessionUserResponse,
     SetupStatusResponse,
@@ -77,6 +81,70 @@ class AuthenticationController:
         if token is not None:
             await self._service.logout(token=token)
 
+    async def list_accounts(
+        self,
+        *,
+        administrator_id: str,
+    ) -> list[LocalAccountResponse]:
+        """Return accounts visible to one authenticated administrator."""
+
+        return [
+            _local_account_response(account)
+            for account in await self._service.list_accounts(
+                administrator_id=administrator_id,
+            )
+        ]
+
+    async def create_member(
+        self,
+        *,
+        administrator_id: str,
+        payload: MemberAccountCreateRequest,
+    ) -> LocalAccountResponse:
+        """Create a local member account for one administrator."""
+
+        return _local_account_response(
+            await self._service.create_member(
+                administrator_id=administrator_id,
+                username=payload.username,
+                password=payload.password,
+            ),
+        )
+
+    async def reset_member_password(
+        self,
+        *,
+        administrator_id: str,
+        user_id: str,
+        payload: MemberAccountPasswordResetRequest,
+    ) -> LocalAccountResponse:
+        """Replace one local member password."""
+
+        return _local_account_response(
+            await self._service.reset_member_password(
+                administrator_id=administrator_id,
+                user_id=user_id,
+                password=payload.password,
+            ),
+        )
+
+    async def set_member_active(
+        self,
+        *,
+        administrator_id: str,
+        user_id: str,
+        payload: MemberAccountActivationRequest,
+    ) -> LocalAccountResponse:
+        """Activate or deactivate one local member account."""
+
+        return _local_account_response(
+            await self._service.set_member_active(
+                administrator_id=administrator_id,
+                user_id=user_id,
+                is_active=payload.is_active,
+            ),
+        )
+
 
 def _session_user_response(document: UserDocument) -> SessionUserResponse:
     """Map one credentialed User document to browser-safe session identity."""
@@ -87,4 +155,13 @@ def _session_user_response(document: UserDocument) -> SessionUserResponse:
         id=document.id,
         username=document.username,
         role=document.role,
+    )
+
+
+def _local_account_response(document: UserDocument) -> LocalAccountResponse:
+    """Map one credentialed User document to administrator-visible metadata."""
+
+    return LocalAccountResponse(
+        **_session_user_response(document).model_dump(),
+        is_active=document.is_active,
     )

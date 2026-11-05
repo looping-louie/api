@@ -83,6 +83,10 @@ from src.services.shared.validation import (
 from src.services.skills import SkillValidationError
 from src.services.users import UserNotFoundError
 from src.services.authentication import (
+    AccountAccessDeniedError,
+    AccountNotFoundError,
+    AccountSelfModificationError,
+    AccountUsernameConflictError,
     AuthenticationError,
     BootstrapUnavailableError,
 )
@@ -113,6 +117,26 @@ from .domain_error_details import _linked_service_not_found_details
 
 
 ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
+    AccountAccessDeniedError: ErrorDefinition(
+        status_code=status.HTTP_403_FORBIDDEN,
+        code='account_access_denied',
+        public_message='Administrator access is required.',
+    ),
+    AccountNotFoundError: ErrorDefinition(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code='account_not_found',
+        public_message='The local account was not found.',
+    ),
+    AccountSelfModificationError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='account_self_modification',
+        public_message='Administrators cannot modify their own account access.',
+    ),
+    AccountUsernameConflictError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='account_username_conflict',
+        public_message='That username is already in use.',
+    ),
     AuthenticationError: ErrorDefinition(
         status_code=status.HTTP_401_UNAUTHORIZED,
         code='invalid_credentials',

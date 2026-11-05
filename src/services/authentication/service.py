@@ -28,6 +28,22 @@ class BootstrapUnavailableError(Exception):
     """Raised when an initial administrator account already exists."""
 
 
+class AccountAccessDeniedError(Exception):
+    """Raised when a non-administrator manages local accounts."""
+
+
+class AccountNotFoundError(Exception):
+    """Raised when a requested local account does not exist."""
+
+
+class AccountSelfModificationError(Exception):
+    """Raised when an administrator modifies their own access."""
+
+
+class AccountUsernameConflictError(Exception):
+    """Raised when a local username already belongs to an account."""
+
+
 class AccountAuthenticationService:
     """Coordinate initial local-account setup and server-side browser sessions."""
 
@@ -139,6 +155,82 @@ class AccountAuthenticationService:
             token_hash=_token_hash(token),
         )
 
+    async def list_accounts(self, *, administrator_id: str) -> list[UserDocument]:
+        """Return the instance local accounts to an authenticated administrator."""
+
+        await self._require_administrator(user_id=administrator_id)
+        return await self._users.list_local_accounts()
+
+    async def create_member(
+        self,
+        *,
+        administrator_id: str,
+        username: str,
+        password: str,
+    ) -> UserDocument:
+        """Create an active local member account."""
+
+        await self._require_administrator(user_id=administrator_id)
+        normalized_username = _require_username(username)
+        if await self._users.get_by_username(username=normalized_username):
+            raise AccountUsernameConflictError
+        now = self._clock()
+        return await self._users.create_if_absent(UserDocument(
+            id=self._id_factory(),
+            created_at=now,
+            updated_at=now,
+            username=normalized_username,
+            password_hash=self._password_hasher.hash(
+                _require_password(password),
+            ),
+        ))
+
+    async def reset_member_password(
+        self,
+        *,
+        administrator_id: str,
+        user_id: str,
+        password: str,
+    ) -> UserDocument:
+        """Replace one member password and revoke every existing session."""
+
+        await self._require_modifiable_member(
+            administrator_id=administrator_id,
+            user_id=user_id,
+        )
+        user = await self._require_account(user_id=user_id)
+        updated = await self._users.update(replace(
+            user,
+            password_hash=self._password_hasher.hash(
+                _require_password(password),
+            ),
+            updated_at=self._clock(),
+        ))
+        await self._sessions.delete_by_user_id(user_id=user_id)
+        return updated
+
+    async def set_member_active(
+        self,
+        *,
+        administrator_id: str,
+        user_id: str,
+        is_active: bool,
+    ) -> UserDocument:
+        """Activate or deactivate one member and revoke existing sessions."""
+
+        await self._require_modifiable_member(
+            administrator_id=administrator_id,
+            user_id=user_id,
+        )
+        user = await self._require_account(user_id=user_id)
+        updated = await self._users.update(replace(
+            user,
+            is_active=is_active,
+            updated_at=self._clock(),
+        ))
+        await self._sessions.delete_by_user_id(user_id=user_id)
+        return updated
+
     async def _create_session(self, *, user_id: str, now: datetime) -> str:
         """Persist only a digest while returning the raw token to the caller."""
 
@@ -152,6 +244,37 @@ class AccountAuthenticationService:
             expires_at=now + SESSION_DURATION,
         ))
         return token
+
+    async def _require_administrator(self, *, user_id: str) -> UserDocument:
+        """Return an active administrator allowed to manage accounts."""
+
+        user = await self._users.get(user_id=user_id)
+        if user is None or not user.is_active or user.role != 'admin':
+            raise AccountAccessDeniedError
+        return user
+
+    async def _require_modifiable_member(
+        self,
+        *,
+        administrator_id: str,
+        user_id: str,
+    ) -> None:
+        """Reject self-management and management of other administrators."""
+
+        await self._require_administrator(user_id=administrator_id)
+        if user_id == administrator_id:
+            raise AccountSelfModificationError
+        account = await self._require_account(user_id=user_id)
+        if account.role == 'admin':
+            raise AccountSelfModificationError
+
+    async def _require_account(self, *, user_id: str) -> UserDocument:
+        """Return an existing credentialed local account."""
+
+        user = await self._users.get(user_id=user_id)
+        if user is None or user.username is None:
+            raise AccountNotFoundError
+        return user
 
 
 def _require_username(value: str) -> str:

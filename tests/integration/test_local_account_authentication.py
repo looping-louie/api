@@ -109,3 +109,88 @@ def test_logout_revokes_the_server_side_session(
 
     assert logout.status_code == 204
     assert replay.status_code == 401
+
+
+def test_administrator_manages_member_accounts(
+    session_api_client: TestClient,
+) -> None:
+    """Only administrators can provision, reset, and deactivate members."""
+
+    setup = session_api_client.post(
+        '/api/v1/auth/setup',
+        json={'username': 'administrator', 'password': 'correct horse battery'},
+    )
+    assert setup.status_code == 200
+    administrator_token = session_api_client.cookies.get('looping_louie_session')
+    assert administrator_token is not None
+
+    created = session_api_client.post(
+        '/api/v1/auth/accounts',
+        json={'username': 'member', 'password': 'member password'},
+    )
+    accounts = session_api_client.get('/api/v1/auth/accounts')
+
+    assert created.status_code == 201
+    member = created.json()
+    assert member['username'] == 'member'
+    assert member['role'] == 'member'
+    assert member['is_active'] is True
+    assert [account['username'] for account in accounts.json()] == [
+        'administrator',
+        'member',
+    ]
+
+    member_login = session_api_client.post(
+        '/api/v1/auth/login',
+        json={'username': 'member', 'password': 'member password'},
+    )
+    assert member_login.status_code == 200
+    member_token = session_api_client.cookies.get('looping_louie_session')
+    assert member_token is not None
+
+    unauthorized = session_api_client.post(
+        '/api/v1/auth/accounts',
+        json={'username': 'another', 'password': 'another password'},
+    )
+    assert unauthorized.status_code == 403
+
+    _set_session_cookie(session_api_client, administrator_token)
+    reset = session_api_client.patch(
+        f'/api/v1/auth/accounts/{member["id"]}/password',
+        json={'password': 'replaced member password'},
+    )
+    assert reset.status_code == 200
+
+    _set_session_cookie(session_api_client, member_token)
+    revoked_session = session_api_client.get('/api/v1/users/me')
+    assert revoked_session.status_code == 401
+
+    member_relogin = session_api_client.post(
+        '/api/v1/auth/login',
+        json={'username': 'member', 'password': 'replaced member password'},
+    )
+    assert member_relogin.status_code == 200
+
+    _set_session_cookie(session_api_client, administrator_token)
+    deactivated = session_api_client.patch(
+        f'/api/v1/auth/accounts/{member["id"]}/activation',
+        json={'is_active': False},
+    )
+    assert deactivated.status_code == 200
+    assert deactivated.json()['is_active'] is False
+
+    disabled_login = session_api_client.post(
+        '/api/v1/auth/login',
+        json={'username': 'member', 'password': 'replaced member password'},
+    )
+    assert disabled_login.status_code == 401
+
+
+def _set_session_cookie(client: TestClient, token: str) -> None:
+    """Replace the test browser session cookie with one saved opaque token."""
+
+    client.cookies.clear()
+    client.cookies.set(
+        'looping_louie_session',
+        token,
+    )

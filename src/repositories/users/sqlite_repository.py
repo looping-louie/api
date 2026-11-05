@@ -73,6 +73,25 @@ class SqliteUserRepository:
                 await cursor.close()
         return bool(row[0])
 
+    async def list_local_accounts(self) -> list[UserDocument]:
+        """Return local accounts ordered without their credential hashes."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, created_at, updated_at, settings_json, username,
+                       password_hash, role, is_active
+                FROM users
+                WHERE username IS NOT NULL
+                ORDER BY lower(username), id
+                ''',
+            )
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return [_to_document(row) for row in rows]
+
     async def create_if_absent(self, document: UserDocument) -> UserDocument:
         """Create a user or return the record already stored for its ID."""
 
