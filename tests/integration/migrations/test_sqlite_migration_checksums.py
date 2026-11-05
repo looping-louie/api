@@ -71,6 +71,7 @@ EXPECTED_CHECKSUMS = {
     '0061_worker_ownership.sql': '646c63cd5119a0f07ca70c338c2eb991d7d6602ceb9f823b1134fe769205a0d5',
     '0062_local_accounts_and_sessions.sql': '8165b8accf4e5881c2100cd3f576ed11c54fa6a3ea4d7c012222513210d6b1de',
     '0063_personal_access_tokens.sql': 'c52938fc028715b43d3961aa557c31a89e3977019528cf462f64bd777e5f709e',
+    '0064_service_accounts.sql': '55969057beacef6172ce4fbc720cfc2772482bc0f2a81c6e59f8c9c6320537c8',
 }
 
 
