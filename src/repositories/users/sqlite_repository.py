@@ -28,11 +28,31 @@ class SqliteUserRepository:
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT id, created_at, updated_at, settings_json
+                SELECT id, created_at, updated_at, settings_json, username,
+                       password_hash, role, is_active
                 FROM users
                 WHERE id = ?
                 ''',
                 (user_id,),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return _to_document(row) if row is not None else None
+
+    async def get_by_username(self, *, username: str) -> UserDocument | None:
+        """Return one local account by its case-insensitive username."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, created_at, updated_at, settings_json, username,
+                       password_hash, role, is_active
+                FROM users
+                WHERE lower(username) = lower(?)
+                ''',
+                (username,),
             )
             try:
                 row = await cursor.fetchone()
@@ -48,8 +68,10 @@ class SqliteUserRepository:
                 await connection.execute('BEGIN IMMEDIATE')
                 await connection.execute(
                     '''
-                    INSERT INTO users (id, created_at, updated_at, settings_json)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO users (
+                        id, created_at, updated_at, settings_json, username,
+                        password_hash, role, is_active
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO NOTHING
                     ''',
                     (
@@ -57,11 +79,16 @@ class SqliteUserRepository:
                         document.created_at.isoformat(),
                         document.updated_at.isoformat(),
                         _settings_json(document.settings),
+                        document.username,
+                        document.password_hash,
+                        document.role,
+                        int(document.is_active),
                     ),
                 )
                 cursor = await connection.execute(
                     '''
-                    SELECT id, created_at, updated_at, settings_json
+                    SELECT id, created_at, updated_at, settings_json, username,
+                           password_hash, role, is_active
                     FROM users
                     WHERE id = ?
                     ''',
@@ -86,12 +113,18 @@ class SqliteUserRepository:
             cursor = await connection.execute(
                 '''
                 UPDATE users
-                SET settings_json = ?, updated_at = ?
+                SET settings_json = ?, username = ?, password_hash = ?,
+                    role = ?, is_active = ?, updated_at = ?
                 WHERE id = ?
-                RETURNING id, created_at, updated_at, settings_json
+                RETURNING id, created_at, updated_at, settings_json, username,
+                          password_hash, role, is_active
                 ''',
                 (
                     _settings_json(document.settings),
+                    document.username,
+                    document.password_hash,
+                    document.role,
+                    int(document.is_active),
                     document.updated_at.isoformat(),
                     document.id,
                 ),
@@ -114,6 +147,10 @@ def _to_document(row: object) -> UserDocument:
         created_at=parse_datetime(row['created_at']),
         updated_at=parse_datetime(row['updated_at']),
         settings=_settings_from_json(row['settings_json']),
+        username=row['username'],
+        password_hash=row['password_hash'],
+        role=row['role'],
+        is_active=bool(row['is_active']),
     )
 
 
