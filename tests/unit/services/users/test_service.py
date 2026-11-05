@@ -28,6 +28,12 @@ class FakeUserRepository:
 
         return self.documents.setdefault(document.id, document)
 
+    async def update(self, document: UserDocument) -> UserDocument:
+        """Replace one stored user profile."""
+
+        self.documents[document.id] = document
+        return document
+
 
 def build_service(repository: FakeUserRepository) -> UserService:
     """Build a user service with a deterministic clock."""
@@ -69,3 +75,31 @@ async def test_get_rejects_an_unregistered_identity() -> None:
 
     with pytest.raises(UserNotFoundError):
         await build_service(FakeUserRepository()).get(user_id='user-1')
+
+
+@pytest.mark.asyncio
+async def test_settings_update_preserves_local_account_credentials() -> None:
+    """Execution settings updates must not erase the login account fields."""
+
+    repository = FakeUserRepository()
+    existing = UserDocument(
+        id='user-1',
+        username='administrator',
+        password_hash='argon2id.hash',
+        role='admin',
+        created_at=datetime(2026, 8, 26, 10, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 26, 10, 0, tzinfo=UTC),
+    )
+    repository.documents[existing.id] = existing
+
+    updated = await build_service(repository).update_settings(
+        user_id='user-1',
+        default_model_id=None,
+        default_harness=None,
+        default_model_availability='enabled',
+        configured_models=(),
+    )
+
+    assert updated.username == existing.username
+    assert updated.password_hash == existing.password_hash
+    assert updated.role == existing.role

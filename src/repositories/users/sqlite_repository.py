@@ -60,6 +60,19 @@ class SqliteUserRepository:
                 await cursor.close()
         return _to_document(row) if row is not None else None
 
+    async def has_local_accounts(self) -> bool:
+        """Return whether any user has completed local-account setup."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                'SELECT EXISTS(SELECT 1 FROM users WHERE username IS NOT NULL)',
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return bool(row[0])
+
     async def create_if_absent(self, document: UserDocument) -> UserDocument:
         """Create a user or return the record already stored for its ID."""
 

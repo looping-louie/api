@@ -16,6 +16,10 @@ class UserRepository(Protocol):
         """Return one local account by its case-insensitive username."""
         raise NotImplementedError
 
+    async def has_local_accounts(self) -> bool:
+        """Return whether any user has completed local-account setup."""
+        raise NotImplementedError
+
     async def create_if_absent(self, document: UserDocument) -> UserDocument:
         """Create a user or return its existing durable record."""
         raise NotImplementedError
