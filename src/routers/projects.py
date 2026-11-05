@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from src.controllers.projects import ProjectController
 from src.controllers.worker_instances import WorkerInstanceController
@@ -18,9 +18,12 @@ from src.schemas.worker import (
 )
 
 from .dependencies import (
+    ExecutionRequestContext,
     RequestContext,
+    RuntimeRequestContext,
     get_project_controller,
     get_request_context,
+    get_runtime_or_user_request_context,
     get_worker_instance_controller,
 )
 
@@ -30,6 +33,10 @@ ContextDependency = Annotated[RequestContext, Depends(get_request_context)]
 ControllerDependency = Annotated[
     ProjectController,
     Depends(get_project_controller),
+]
+RuntimeOrUserContextDependency = Annotated[
+    ExecutionRequestContext,
+    Depends(get_runtime_or_user_request_context),
 ]
 WorkerControllerDependency = Annotated[
     WorkerInstanceController,
@@ -92,16 +99,46 @@ async def list_project_workers(
 async def enable_project_worker(
     project_id: ProjectIdPath,
     worker_id: WorkerIdPath,
-    context: ContextDependency,
+    context: RuntimeOrUserContextDependency,
     controller: WorkerControllerDependency,
 ) -> WorkerProjectEnablementResponse:
     """Authorize one Worker to claim work for one accessible Project."""
 
+    if (
+        isinstance(context, RuntimeRequestContext)
+        and context.project_id != project_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                'code': 'runtime_project_access_denied',
+                'message': (
+                    'The runtime service credential cannot access this Project.'
+                ),
+            },
+        )
     return await controller.enable_project(
-        user_id=context.user_id,
+        user_id=_context_user_id(context),
         worker_id=worker_id,
         project_id=project_id,
+        service_account_id=_context_service_account_id(context),
     )
+
+
+def _context_user_id(context: ExecutionRequestContext) -> str:
+    """Return the owner ID for human or runtime worker-management requests."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.administrator_id
+    return context.user_id
+
+
+def _context_service_account_id(context: ExecutionRequestContext) -> str | None:
+    """Return the service account when a runtime made the request."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.service_account_id
+    return None
 
 
 @router.delete(

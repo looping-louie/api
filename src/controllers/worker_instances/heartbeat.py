@@ -16,6 +16,7 @@ class WorkerInstanceHeartbeatController:
         user_id: str,
         worker_id: str,
         payload: WorkerHeartbeatRequest,
+        service_account_id: str | None = None,
     ) -> WorkerResponse:
         """Record one liveness heartbeat for a registered Worker."""
 
@@ -31,6 +32,7 @@ class WorkerInstanceHeartbeatController:
                     )
                     for harness in payload.harnesses
                 ),
+                service_account_id=service_account_id,
             ),
         )
 

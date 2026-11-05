@@ -314,6 +314,35 @@ class AccountAuthenticationService:
             revoked_at=self._clock(),
         )
 
+    async def current_service_account(
+        self,
+        *,
+        token: str,
+    ) -> ServiceAccount | None:
+        """Resolve an active runtime service account from its bearer token."""
+
+        account = await self._service_accounts.get_by_token_hash(
+            token_hash=_token_hash(token),
+        )
+        now = self._clock()
+        if (
+            account is None
+            or account.revoked_at is not None
+            or (
+                account.expires_at is not None
+                and account.expires_at <= now
+            )
+        ):
+            return None
+        administrator = await self._users.get(user_id=account.administrator_id)
+        if administrator is None or not administrator.is_active:
+            return None
+        await self._service_accounts.mark_used(
+            account_id=account.id,
+            used_at=now,
+        )
+        return account
+
     async def list_accounts(self, *, administrator_id: str) -> list[UserDocument]:
         """Return the instance local accounts to an authenticated administrator."""
 

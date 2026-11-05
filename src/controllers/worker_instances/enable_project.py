@@ -15,6 +15,7 @@ class WorkerInstanceEnableProjectController:
         user_id: str,
         worker_id: str,
         project_id: str,
+        service_account_id: str | None = None,
     ) -> WorkerProjectEnablementResponse:
         """Enable one Worker to claim work for one Project."""
 
@@ -23,6 +24,7 @@ class WorkerInstanceEnableProjectController:
                 user_id=user_id,
                 worker_instance_id=worker_id,
                 project_id=project_id,
+                service_account_id=service_account_id,
             ),
         )
 

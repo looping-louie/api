@@ -82,6 +82,7 @@ class WorkerInstanceService:
         user_id: str,
         project_id: str,
         harnesses: tuple[WorkerHarnessCapability, ...],
+        service_account_id: str | None = None,
     ) -> WorkerInstanceDocument:
         """Register one Worker with an authorized initial Project assignment."""
 
@@ -96,6 +97,7 @@ class WorkerInstanceService:
             registered_at=now,
             last_heartbeat_at=now,
             harnesses=harnesses,
+            service_account_id=service_account_id,
         ))
         await self._repository.enable_project(WorkerProjectEnablementDocument(
             worker_instance_id=worker.id,
@@ -110,14 +112,16 @@ class WorkerInstanceService:
         user_id: str,
         worker_instance_id: str,
         project_id: str,
+        service_account_id: str | None = None,
     ) -> WorkerProjectEnablementDocument:
         """Enable an existing Worker for one Project accessible to the caller."""
 
         worker_id = _require_text(worker_instance_id)
-        if await self._repository.get_for_owner(
-            worker_instance_id=worker_id,
-            owner_user_id=_require_text(user_id),
-        ) is None:
+        if not await self._can_manage_worker(
+            user_id=user_id,
+            worker_id=worker_id,
+            service_account_id=service_account_id,
+        ):
             raise WorkerInstanceNotFoundError(worker_id)
         project = await self._tenant_service.require_access(
             user_id=user_id,
@@ -161,14 +165,16 @@ class WorkerInstanceService:
         user_id: str,
         worker_instance_id: str,
         harnesses: tuple[WorkerHarnessCapability, ...],
+        service_account_id: str | None = None,
     ) -> WorkerInstanceDocument:
         """Refresh one Worker's liveness and observed Harnesses."""
 
         worker_id = _require_text(worker_instance_id)
-        if await self._repository.get_for_owner(
-            worker_instance_id=worker_id,
-            owner_user_id=_require_text(user_id),
-        ) is None:
+        if not await self._can_manage_worker(
+            user_id=user_id,
+            worker_id=worker_id,
+            service_account_id=service_account_id,
+        ):
             raise WorkerInstanceNotFoundError(worker_id)
         worker = await self._repository.heartbeat(
             worker_instance_id=worker_id,
@@ -178,6 +184,25 @@ class WorkerInstanceService:
         if worker is None:
             raise WorkerInstanceNotFoundError(worker_id)
         return worker
+
+    async def _can_manage_worker(
+        self,
+        *,
+        user_id: str,
+        worker_id: str,
+        service_account_id: str | None,
+    ) -> bool:
+        """Return whether a user or bound service account manages a worker."""
+
+        if service_account_id is not None:
+            return await self._repository.get_for_service_account(
+                worker_instance_id=worker_id,
+                service_account_id=service_account_id,
+            ) is not None
+        return await self._repository.get_for_owner(
+            worker_instance_id=worker_id,
+            owner_user_id=_require_text(user_id),
+        ) is not None
 
     async def require_capable(
         self,

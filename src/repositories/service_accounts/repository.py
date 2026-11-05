@@ -25,6 +25,18 @@ class ServiceAccountRepository(Protocol):
         """Return one service account by durable ID."""
         raise NotImplementedError
 
+    async def get_by_token_hash(
+        self,
+        *,
+        token_hash: str,
+    ) -> ServiceAccount | None:
+        """Return one service account selected by its credential digest."""
+        raise NotImplementedError
+
+    async def mark_used(self, *, account_id: str, used_at: datetime) -> None:
+        """Record one successful service-account authentication."""
+        raise NotImplementedError
+
     async def revoke(self, *, account_id: str, revoked_at: datetime) -> None:
         """Revoke one account without deleting its audit record."""
         raise NotImplementedError

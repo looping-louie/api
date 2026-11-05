@@ -270,6 +270,99 @@ def test_administrator_manages_project_scoped_service_accounts(
     assert revoked.status_code == 204
 
 
+def test_service_account_authenticates_only_runtime_worker_operations(
+    session_api_client: TestClient,
+) -> None:
+    """A service account cannot use human routes and binds its registered worker."""
+
+    setup = session_api_client.post(
+        '/api/v1/auth/setup',
+        json={'username': 'administrator', 'password': 'correct horse battery'},
+    )
+    assert setup.status_code == 200
+    service_account = session_api_client.post(
+        '/api/v1/auth/service-accounts',
+        json={'name': 'Local runtime', 'project_ids': ['local-project']},
+    ).json()
+    headers = {
+        'Authorization': f'Bearer {service_account["token"]}',
+        'X-Project-ID': 'local-project',
+    }
+    session_api_client.cookies.clear()
+
+    denied = session_api_client.get('/api/v1/projects', headers=headers)
+    worker = session_api_client.post(
+        '/api/v1/workers',
+        headers=headers,
+        json={
+            'project_id': 'local-project',
+            'harnesses': [{'kind': 'louie', 'version': 'v1', 'config': {}}],
+        },
+    )
+
+    assert denied.status_code == 401
+    assert worker.status_code == 201
+
+    heartbeat = session_api_client.post(
+        f'/api/v1/workers/{worker.json()["id"]}/heartbeat',
+        headers=headers,
+        json={'harnesses': [{'kind': 'louie', 'version': 'v1', 'config': {}}]},
+    )
+    assert heartbeat.status_code == 200
+
+    outside_scope = session_api_client.post(
+        '/api/v1/workers',
+        headers={
+            **headers,
+            'X-Project-ID': 'outside-project',
+        },
+        json={
+            'project_id': 'outside-project',
+            'harnesses': [{'kind': 'louie', 'version': 'v1', 'config': {}}],
+        },
+    )
+    assert outside_scope.status_code == 403
+
+    login = session_api_client.post(
+        '/api/v1/auth/login',
+        json={'username': 'administrator', 'password': 'correct horse battery'},
+    )
+    assert login.status_code == 200
+    other_service_account = session_api_client.post(
+        '/api/v1/auth/service-accounts',
+        json={'name': 'Other runtime', 'project_ids': ['local-project']},
+    ).json()
+    session_api_client.cookies.clear()
+
+    other_runtime_heartbeat = session_api_client.post(
+        f'/api/v1/workers/{worker.json()["id"]}/heartbeat',
+        headers={
+            'Authorization': f'Bearer {other_service_account["token"]}',
+            'X-Project-ID': 'local-project',
+        },
+        json={'harnesses': [{'kind': 'louie', 'version': 'v1', 'config': {}}]},
+    )
+    assert other_runtime_heartbeat.status_code == 404
+
+    login = session_api_client.post(
+        '/api/v1/auth/login',
+        json={'username': 'administrator', 'password': 'correct horse battery'},
+    )
+    assert login.status_code == 200
+    revoked = session_api_client.delete(
+        f'/api/v1/auth/service-accounts/{service_account["id"]}',
+    )
+    assert revoked.status_code == 204
+    session_api_client.cookies.clear()
+
+    revoked_runtime_heartbeat = session_api_client.post(
+        f'/api/v1/workers/{worker.json()["id"]}/heartbeat',
+        headers=headers,
+        json={'harnesses': [{'kind': 'louie', 'version': 'v1', 'config': {}}]},
+    )
+    assert revoked_runtime_heartbeat.status_code == 401
+
+
 def _set_session_cookie(client: TestClient, token: str) -> None:
     """Replace the test browser session cookie with one saved opaque token."""
 

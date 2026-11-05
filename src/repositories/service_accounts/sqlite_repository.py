@@ -69,6 +69,36 @@ class SqliteServiceAccountRepository:
                 await cursor.close()
             return await self._to_account(connection, row) if row else None
 
+    async def get_by_token_hash(
+        self,
+        *,
+        token_hash: str,
+    ) -> ServiceAccount | None:
+        """Return one service account selected by credential digest."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''SELECT id, administrator_id, name, token_hash, created_at,
+                          last_used_at, expires_at, revoked_at
+                   FROM service_accounts WHERE token_hash = ?''',
+                (token_hash,),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+            return await self._to_account(connection, row) if row else None
+
+    async def mark_used(self, *, account_id: str, used_at: datetime) -> None:
+        """Update the most recent successful service-account use."""
+
+        async with self._database.connect() as connection:
+            await connection.execute(
+                'UPDATE service_accounts SET last_used_at = ? WHERE id = ?',
+                (used_at.isoformat(), account_id),
+            )
+            await connection.commit()
+
     async def revoke(self, *, account_id: str, revoked_at: datetime) -> None:
         async with self._database.connect() as connection:
             await connection.execute(

@@ -43,6 +43,12 @@ class SessionAuthenticationMiddleware(BaseHTTPMiddleware):
                 )
                 if user is not None:
                     request.state.user_id = user.id
+                else:
+                    service_account = await service.current_service_account(
+                        token=bearer_token,
+                    )
+                    if service_account is not None:
+                        request.state.service_account = service_account
         return await call_next(request)
 
 

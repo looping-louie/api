@@ -250,6 +250,7 @@ def test_bootstrap_configures_application_and_runs_migrations(
                             "0062_local_accounts_and_sessions",
                             "0063_personal_access_tokens",
                             "0064_service_accounts",
+                            "0065_worker_service_account_binding",
     ]
     assert activity_rows == []
 

@@ -18,6 +18,7 @@ from src.controllers.linked_services import LinkedServiceController
 from src.controllers.projects import ProjectController
 from src.controllers.users import UserController
 from src.controllers.authentication import AuthenticationController
+from src.models.service_account import ServiceAccount
 from src.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -32,6 +33,18 @@ class RequestContext:
 
     user_id: str
     requested_project_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeRequestContext:
+    """Authenticated runtime service account and selected Project."""
+
+    administrator_id: str
+    service_account_id: str
+    project_id: str
+
+
+ExecutionRequestContext = RequestContext | RuntimeRequestContext
 
 
 async def get_request_context(
@@ -69,6 +82,69 @@ async def get_request_context(
     return RequestContext(
         user_id=user_id.strip(),
         requested_project_id=normalized_project_id,
+    )
+
+
+async def get_runtime_request_context(
+    request: Request,
+    requested_project_id_header: Annotated[
+        str | None,
+        Header(alias='X-Project-ID'),
+    ] = None,
+) -> RuntimeRequestContext:
+    """Require a service account bound to the explicitly selected Project."""
+
+    account = getattr(request.state, 'service_account', None)
+    if not isinstance(account, ServiceAccount):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                'code': 'runtime_authentication_required',
+                'message': 'A runtime service credential is required.',
+            },
+        )
+    project_id = (
+        requested_project_id_header.strip()
+        if isinstance(requested_project_id_header, str)
+        else ''
+    )
+    if not project_id or project_id not in account.project_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                'code': 'runtime_project_access_denied',
+                'message': 'The runtime service credential cannot access this Project.',
+            },
+        )
+    return RuntimeRequestContext(
+        administrator_id=account.administrator_id,
+        service_account_id=account.id,
+        project_id=project_id,
+    )
+
+
+async def get_runtime_or_user_request_context(
+    request: Request,
+    requested_project_id_header: Annotated[
+        str | None,
+        Header(alias='X-Project-ID'),
+    ] = None,
+) -> ExecutionRequestContext:
+    """Resolve human identity or a service account on runtime execution paths."""
+
+    user_id = getattr(request.state, 'user_id', None)
+    if isinstance(user_id, str) and user_id.strip():
+        return RequestContext(
+            user_id=user_id.strip(),
+            requested_project_id=(
+                requested_project_id_header.strip()
+                if requested_project_id_header is not None
+                else None
+            ),
+        )
+    return await get_runtime_request_context(
+        request=request,
+        requested_project_id_header=requested_project_id_header,
     )
 
 

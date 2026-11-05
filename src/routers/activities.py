@@ -16,13 +16,25 @@ from src.schemas.activity_run import (
 from src.schemas.activity import ActivityChangelogListResponse, ActivityCreateRequest, ActivityListResponse, ActivityPatchRequest, ActivityResponse
 from src.schemas.shared import DeleteResponse
 
-from .dependencies import RequestContext, get_activity_controller, get_activity_run_controller, get_request_context
+from .dependencies import (
+    ExecutionRequestContext,
+    RequestContext,
+    RuntimeRequestContext,
+    get_activity_controller,
+    get_activity_run_controller,
+    get_request_context,
+    get_runtime_or_user_request_context,
+)
 
 
 router = APIRouter(prefix='/activities', tags=['Activities'])
 ContextDependency = Annotated[RequestContext, Depends(get_request_context)]
 ControllerDependency = Annotated[ActivityController, Depends(get_activity_controller)]
 RunControllerDependency = Annotated[ActivityRunController, Depends(get_activity_run_controller)]
+ExecutionContextDependency = Annotated[
+    ExecutionRequestContext,
+    Depends(get_runtime_or_user_request_context),
+]
 OffsetQuery = Annotated[int, Query(ge=0, description='Number of records to skip.')]
 ActivityIdPath = Annotated[str, Path(min_length=1)]
 
@@ -49,17 +61,33 @@ async def list_activity_runs(context: ContextDependency, controller: RunControll
 
 
 @router.get('/{activity_id}/runs/{run_id}', response_model=ActivityRunResponse, summary='Get activity run')
-async def get_activity_run(context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
+async def get_activity_run(context: ExecutionContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Return one run beneath the activity that created it."""
 
-    return await controller.get(user_id=context.user_id, activity_id=activity_id, run_id=run_id, requested_project_id=context.requested_project_id)
+    return await controller.get(user_id=_execution_user_id(context), activity_id=activity_id, run_id=run_id, requested_project_id=_execution_project_id(context))
 
 
 @router.post('/{activity_id}/runs/{run_id}/continue', response_model=ActivityRunResponse, summary='Continue activity run')
-async def continue_activity_run(payload: ActivityRunContinueRequest, context: ContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
+async def continue_activity_run(payload: ActivityRunContinueRequest, context: ExecutionContextDependency, controller: RunControllerDependency, activity_id: ActivityIdPath, run_id: Annotated[str, Path(min_length=1)]) -> ActivityRunResponse:
     """Advance one activity-owned CLI checkpoint."""
 
-    return await controller.continue_run(user_id=context.user_id, activity_id=activity_id, run_id=run_id, payload=payload, requested_project_id=context.requested_project_id)
+    return await controller.continue_run(user_id=_execution_user_id(context), activity_id=activity_id, run_id=run_id, payload=payload, requested_project_id=_execution_project_id(context))
+
+
+def _execution_user_id(context: ExecutionRequestContext) -> str:
+    """Return the human owner for a runtime or browser execution request."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.administrator_id
+    return context.user_id
+
+
+def _execution_project_id(context: ExecutionRequestContext) -> str | None:
+    """Return the mandatory service scope or browser project selection."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.project_id
+    return context.requested_project_id
 
 
 @router.get('/{activity_id}', response_model=ActivityResponse, summary='Get activity')

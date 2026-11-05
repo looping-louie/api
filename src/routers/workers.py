@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from src.controllers.worker_instances import WorkerInstanceController
 from src.schemas.worker import (
@@ -12,8 +12,11 @@ from src.schemas.worker import (
 )
 
 from .dependencies import (
+    ExecutionRequestContext,
     RequestContext,
+    RuntimeRequestContext,
     get_request_context,
+    get_runtime_or_user_request_context,
     get_worker_instance_controller,
 )
 
@@ -23,6 +26,10 @@ ContextDependency = Annotated[RequestContext, Depends(get_request_context)]
 InstanceControllerDependency = Annotated[
     WorkerInstanceController,
     Depends(get_worker_instance_controller),
+]
+RuntimeOrUserContextDependency = Annotated[
+    ExecutionRequestContext,
+    Depends(get_runtime_or_user_request_context),
 ]
 WorkerIdPath = Annotated[str, Path(min_length=1, description='Runtime worker identifier.')]
 
@@ -66,13 +73,30 @@ async def get_worker_instance(
     summary='Register worker',
 )
 async def create_worker_instance(
-    context: ContextDependency,
+    context: RuntimeOrUserContextDependency,
     controller: InstanceControllerDependency,
     payload: WorkerInstanceCreateRequest,
 ) -> WorkerResponse:
     """Register one Worker and enable its initial Project."""
 
-    return await controller.create(user_id=context.user_id, payload=payload)
+    if (
+        isinstance(context, RuntimeRequestContext)
+        and payload.project_id != context.project_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                'code': 'runtime_project_access_denied',
+                'message': (
+                    'The runtime service credential cannot access this Project.'
+                ),
+            },
+        )
+    return await controller.create(
+        user_id=_context_user_id(context),
+        payload=payload,
+        service_account_id=_context_service_account_id(context),
+    )
 
 
 @router.post(
@@ -82,14 +106,31 @@ async def create_worker_instance(
 )
 async def heartbeat_worker_instance(
     worker_id: WorkerIdPath,
-    context: ContextDependency,
+    context: RuntimeOrUserContextDependency,
     controller: InstanceControllerDependency,
     payload: WorkerHeartbeatRequest,
 ) -> WorkerResponse:
     """Refresh one Worker's liveness and reported capabilities."""
 
     return await controller.heartbeat(
-        user_id=context.user_id,
+        user_id=_context_user_id(context),
         worker_id=worker_id,
         payload=payload,
+        service_account_id=_context_service_account_id(context),
     )
+
+
+def _context_user_id(context: ExecutionRequestContext) -> str:
+    """Return the owner ID for human or runtime worker requests."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.administrator_id
+    return context.user_id
+
+
+def _context_service_account_id(context: ExecutionRequestContext) -> str | None:
+    """Return the service account when a runtime made the request."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.service_account_id
+    return None
