@@ -68,12 +68,14 @@ class PipelineRunController:
 
     async def list_claimable_runs(
         self, *, user_id: str, pipeline_id: str,
+        worker_id: str,
         requested_project_id: str | None = None,
     ) -> PipelineRunClaimableListResponse:
         """Return current claimable runs beneath one active Pipeline."""
 
         documents = await self._require_service().list_claimable(
             user_id=user_id, pipeline_id=pipeline_id,
+            worker_id=worker_id,
             requested_project_id=requested_project_id,
         )
         return PipelineRunClaimableListResponse(

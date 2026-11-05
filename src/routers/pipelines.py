@@ -70,6 +70,7 @@ SearchQuery = Annotated[
     ),
 ]
 PipelineIdPath = Annotated[str, Path(min_length=1)]
+WorkerIdQuery = Annotated[str, Query(min_length=1)]
 
 
 @router.get(
@@ -164,6 +165,7 @@ async def list_claimable_pipeline_runs(
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
     claimable: Annotated[bool, Query()],
+    worker_id: WorkerIdQuery,
 ) -> PipelineRunClaimableListResponse:
     """Return candidates for the explicit runtime claimable filter."""
 
@@ -174,6 +176,7 @@ async def list_claimable_pipeline_runs(
         )
     return await controller.list_claimable_runs(
         user_id=_execution_user_id(context), pipeline_id=pipeline_id,
+        worker_id=worker_id,
         requested_project_id=_execution_project_id(context),
     )
 

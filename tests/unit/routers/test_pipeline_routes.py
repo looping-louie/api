@@ -362,7 +362,9 @@ def test_pipeline_claimable_filter_accepts_standard_boolean_query(
         pipeline_run_service=cast(PipelineRunService, service),
     )
 
-    response = client.get('/api/v1/pipelines/pipeline-1/runs?claimable=true')
+    response = client.get(
+        '/api/v1/pipelines/pipeline-1/runs?claimable=true&worker_id=worker-1',
+    )
     missing_filter = client.get('/api/v1/pipelines/pipeline-1/runs')
     false_filter = client.get('/api/v1/pipelines/pipeline-1/runs?claimable=false')
 
@@ -563,12 +565,13 @@ class _ClaimableService:
         *,
         user_id: str,
         pipeline_id: str,
+        worker_id: str,
         requested_project_id: str | None,
     ) -> list[PipelineRunDocument]:
         """Record the claimable-list request and return no candidates."""
 
-        assert (user_id, pipeline_id, requested_project_id) == (
-            'user-1', 'pipeline-1', None,
+        assert (user_id, pipeline_id, worker_id, requested_project_id) == (
+            'user-1', 'pipeline-1', 'worker-1', None,
         )
         self.was_called = True
         return []

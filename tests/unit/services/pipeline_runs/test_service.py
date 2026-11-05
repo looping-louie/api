@@ -319,7 +319,7 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert runs.children == {}
 
     candidates = await service.list_claimable(
-        user_id='user-1', pipeline_id='pipeline-1',
+        user_id='user-1', pipeline_id='pipeline-1', worker_id='worker-1',
     )
 
     assert candidates == []
@@ -331,9 +331,16 @@ async def test_prepared_run_starts_before_runtime_claim(
     assert started.status == 'queued'
     assert started_child is None
     candidates = await service.list_claimable(
-        user_id='user-1', pipeline_id='pipeline-1',
+        user_id='user-1', pipeline_id='pipeline-1', worker_id='worker-1',
     )
     assert candidates == [started]
+    assert workers.calls == [
+        (
+            'workspace-1',
+            'worker-1',
+            {'kind': 'louie', 'version': 'v1', 'config': {}},
+        ),
+    ]
 
     claim = await service.claim(
         user_id='user-1', pipeline_id='pipeline-1', run_id=started.id,
@@ -354,11 +361,18 @@ async def test_prepared_run_starts_before_runtime_claim(
         'config': {},
     }
     assert lease_token == 'token'
-    assert workers.calls == [(
-        'workspace-1',
-        'worker-1',
-        {'kind': 'louie', 'version': 'v1', 'config': {}},
-    )]
+    assert workers.calls == [
+        (
+            'workspace-1',
+            'worker-1',
+            {'kind': 'louie', 'version': 'v1', 'config': {}},
+        ),
+        (
+            'workspace-1',
+            'worker-1',
+            {'kind': 'louie', 'version': 'v1', 'config': {}},
+        ),
+    ]
 
     runs.document = replace(
         claimed,
@@ -425,6 +439,12 @@ async def test_claim_rejects_an_active_worker_without_the_pipeline_harness(
     started, _ = await service.start(
         user_id='user-1', pipeline_id='pipeline-1', run_id=created.id,
     )
+
+    assert await service.list_claimable(
+        user_id='user-1',
+        pipeline_id='pipeline-1',
+        worker_id='worker-1',
+    ) == []
 
     with pytest.raises(WorkerHarnessUnavailableError):
         await service.claim(
@@ -622,7 +642,7 @@ async def test_started_human_activity_creates_a_waiting_child_run(
     )
 
     candidates = await service.list_claimable(
-        user_id='user-1', pipeline_id='pipeline-1',
+        user_id='user-1', pipeline_id='pipeline-1', worker_id='worker-1',
     )
 
     assert created.status == 'prepared'

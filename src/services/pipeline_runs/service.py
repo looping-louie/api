@@ -46,6 +46,7 @@ from src.services.users import UserService
 from src.services.worker_instances import (
     GLOBAL_WORKER_ACTIVE_CLAIM_LIMIT,
     WorkerCapacityUnavailableError,
+    WorkerHarnessUnavailableError,
     WorkerInstanceService,
 )
 from src.services.projects.service import ProjectService
@@ -262,6 +263,7 @@ class PipelineRunService:
         *,
         user_id: str,
         pipeline_id: str,
+        worker_id: str,
         requested_project_id: str | None = None,
     ) -> list[PipelineRunDocument]:
         """List claimable runs beneath one active Pipeline."""
@@ -275,11 +277,25 @@ class PipelineRunService:
         if details.document.status != 'active':
             return []
         now = self._clock()
-        return await self._repository.list_claimable(
+        candidates = await self._repository.list_claimable(
             project_id=workspace.project_id,
             pipeline_id=details.document.id,
             claimed_before=now,
         )
+        if self._worker_instance_service is None:
+            return candidates
+        compatible: list[PipelineRunDocument] = []
+        for candidate in candidates:
+            try:
+                await self._worker_instance_service.require_capable(
+                    project_id=workspace.project_id,
+                    worker_id=self._require_text(worker_id),
+                    harness=required_harness(candidate),
+                )
+            except WorkerHarnessUnavailableError:
+                continue
+            compatible.append(candidate)
+        return compatible
 
     async def claim(
         self,
