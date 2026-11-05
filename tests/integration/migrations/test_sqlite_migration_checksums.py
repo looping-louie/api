@@ -69,6 +69,7 @@ EXPECTED_CHECKSUMS = {
     '0059_harness_activity_run_checkpoints.sql': '6bcbf7e40612e7a9cc85b8ff1aa895ef2311d02d21bd6112c91c98c2f071a2bc',
     '0060_worker_instances.sql': 'fb4d9d3519bb21e71923755f8c344984b2398bf47c0af748457ec9c2c56e5e5d',
     '0061_worker_ownership.sql': '646c63cd5119a0f07ca70c338c2eb991d7d6602ceb9f823b1134fe769205a0d5',
+    '0062_local_accounts_and_sessions.sql': '8165b8accf4e5881c2100cd3f576ed11c54fa6a3ea4d7c012222513210d6b1de',
 }
 
 
