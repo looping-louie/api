@@ -54,6 +54,7 @@ EXPECTED_TABLES = {
     "workers",
     "worker_instances",
     "worker_project_enablements",
+    "user_sessions",
     "users",
 }
 
@@ -246,6 +247,10 @@ def test_bootstrap_configures_application_and_runs_migrations(
                         "0059_harness_activity_run_checkpoints",
                         "0060_worker_instances",
                             "0061_worker_ownership",
+                            "0062_local_accounts_and_sessions",
+                            "0063_personal_access_tokens",
+                            "0064_service_accounts",
+                            "0065_worker_service_account_binding",
     ]
     assert activity_rows == []
 

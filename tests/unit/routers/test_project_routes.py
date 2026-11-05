@@ -112,6 +112,14 @@ def build_client() -> TestClient:
         updated_at=datetime(2026, 8, 26, 10, 0, tzinfo=UTC),
     )
     app = FastAPI()
+
+    @app.middleware('http')
+    async def inject_test_identity(request, call_next):  # type: ignore[no-untyped-def]
+        user_id = request.headers.get('X-User-ID')
+        if user_id:
+            request.state.user_id = user_id
+        return await call_next(request)
+
     app.state.project_controller = ProjectController(
         service=ProjectService(
             repository=InMemoryProjectRepository(),

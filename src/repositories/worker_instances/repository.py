@@ -31,6 +31,15 @@ class WorkerInstanceRepository(Protocol):
         """Return one Worker owned by the specified User."""
         raise NotImplementedError
 
+    async def get_for_service_account(
+        self,
+        *,
+        worker_instance_id: str,
+        service_account_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one Worker bound to the specified service account."""
+        raise NotImplementedError
+
     async def list_for_owner(
         self,
         *,

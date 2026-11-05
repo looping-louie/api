@@ -198,7 +198,7 @@ def test_composed_api_supports_resource_and_worker_lifecycles(
     _assert_success(readiness)
     assert readiness.json()['status'] == 'ready'
     claimable = api_client.get(
-        f'/api/v1/pipelines/{pipeline_id}/runs?claimable=true',
+        f'/api/v1/pipelines/{pipeline_id}/runs?claimable=true&worker_id={worker_id}',
         headers=project_headers,
     )
     _assert_success(claimable)

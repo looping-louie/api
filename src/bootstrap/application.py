@@ -19,6 +19,7 @@ from src.controllers.personas import PersonaController
 from src.controllers.linked_services import LinkedServiceController
 from src.controllers.projects import ProjectController
 from src.controllers.users import UserController
+from src.controllers.authentication import AuthenticationController
 from src.controllers.skills import SkillController
 from src.controllers.worker_instances import WorkerInstanceController
 from src.repositories.activities.sqlite_repository import (
@@ -51,6 +52,11 @@ from src.repositories.pipeline_runs.sqlite_repository import (
     SqlitePipelineRunRepository,
 )
 from src.repositories.users import SqliteUserRepository
+from src.repositories.user_sessions import SqliteUserSessionRepository
+from src.repositories.personal_access_tokens import (
+    SqlitePersonalAccessTokenRepository,
+)
+from src.repositories.service_accounts import SqliteServiceAccountRepository
 from src.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -97,6 +103,10 @@ from src.services.skills import SkillService
 from src.services.worker_instances import WorkerInstanceService
 from src.services.projects.service import ProjectService
 from src.services.users import UserService
+from src.services.authentication import (
+    AccountAuthenticationService,
+    PasswordHasher,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -188,8 +198,22 @@ async def configure_application(
     )
     project_repository = SqliteProjectRepository(database)
     user_repository = SqliteUserRepository(database)
+    user_session_repository = SqliteUserSessionRepository(database)
+    personal_access_token_repository = SqlitePersonalAccessTokenRepository(
+        database,
+    )
+    service_account_repository = SqliteServiceAccountRepository(database)
     user_service = UserService(
         repository=user_repository,
+        clock=utc_now,
+    )
+    account_authentication_service = AccountAuthenticationService(
+        users=user_repository,
+        sessions=user_session_repository,
+        personal_access_tokens=personal_access_token_repository,
+        service_accounts=service_account_repository,
+        password_hasher=PasswordHasher(),
+        id_factory=create_identifier,
         clock=utc_now,
     )
 
@@ -349,6 +373,10 @@ async def configure_application(
         service=user_service,
         model_catalog_service=model_catalog_service,
     )
+    app.state.account_authentication_service = account_authentication_service
+    app.state.authentication_controller = AuthenticationController(
+        service=account_authentication_service,
+    )
     app.state.worker_instance_controller = WorkerInstanceController(
         service=worker_instance_service,
         pipeline_run_repository=pipeline_run_repository,
@@ -356,6 +384,11 @@ async def configure_application(
     )
 
     app.state.database = database
+    app.state.session_cookie_secure = getattr(
+        resolved_settings,
+        'session_cookie_secure',
+        True,
+    )
     app.state.persona_skill_catalog = resolved_catalog
     app.state.catalog_synchronization = catalog_synchronization
     app.state.execution_instruction_library_service = (

@@ -34,6 +34,7 @@ unreadable.
 LOUIE_ENCRYPTION_KEY=<generated Fernet key>
 LOUIE_DB_PATH=runtime/db/looping-louie.db
 LOUIE_CATALOG_STRICT_VERSIONING=false
+LOUIE_SESSION_COOKIE_SECURE=false
 ```
 
 `LOUIE_ENCRYPTION_KEY` is the Looping Louie master encryption key. It encrypts
@@ -44,9 +45,13 @@ or regenerate it while encrypted credentials still exist.
 to `true` in production so a builtin checksum change requires an incremented
 `catalog_version`.
 
-Set `LOUIE_DEV_AUTH=true` to enable local development authentication. Requests
-without `X-User-ID` then use `LOUIE_DEV_USER_ID`, which defaults to
-`local-user`.
+`LOUIE_SESSION_COOKIE_SECURE` defaults to `true`, so authenticated browser
+sessions are sent only over HTTPS. The generated local development
+configuration sets it to `false`; set it to `true` before exposing the API
+behind HTTPS.
+
+Set `LOUIE_DEV_AUTH=true` only to bypass local-account authentication during
+development. It injects `LOUIE_DEV_USER_ID`, which defaults to `local-user`.
 
 To deliberately replace the local configuration and generate a new encryption
 key:

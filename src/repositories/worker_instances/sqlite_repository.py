@@ -34,7 +34,7 @@ class SqliteWorkerInstanceRepository:
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT id, owner_user_id, registered_at, last_heartbeat_at,
+                SELECT id, owner_user_id, service_account_id, registered_at, last_heartbeat_at,
                     harnesses_json
                 FROM worker_instances
                 WHERE id = ?
@@ -58,12 +58,36 @@ class SqliteWorkerInstanceRepository:
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT id, owner_user_id, registered_at, last_heartbeat_at,
+                SELECT id, owner_user_id, service_account_id, registered_at, last_heartbeat_at,
                     harnesses_json
                 FROM worker_instances
                 WHERE id = ? AND owner_user_id = ?
                 ''',
                 (worker_instance_id, owner_user_id),
+            )
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        return _to_worker_document(row) if row is not None else None
+
+    async def get_for_service_account(
+        self,
+        *,
+        worker_instance_id: str,
+        service_account_id: str,
+    ) -> WorkerInstanceDocument | None:
+        """Return one worker bound to the supplied service account."""
+
+        async with self._database.connect() as connection:
+            cursor = await connection.execute(
+                '''
+                SELECT id, owner_user_id, service_account_id, registered_at,
+                       last_heartbeat_at, harnesses_json
+                FROM worker_instances
+                WHERE id = ? AND service_account_id = ?
+                ''',
+                (worker_instance_id, service_account_id),
             )
             try:
                 row = await cursor.fetchone()
@@ -81,7 +105,7 @@ class SqliteWorkerInstanceRepository:
         async with self._database.connect() as connection:
             cursor = await connection.execute(
                 '''
-                SELECT id, owner_user_id, registered_at, last_heartbeat_at,
+                SELECT id, owner_user_id, service_account_id, registered_at, last_heartbeat_at,
                     harnesses_json
                 FROM worker_instances
                 WHERE owner_user_id = ?
@@ -107,13 +131,14 @@ class SqliteWorkerInstanceRepository:
                 await connection.execute(
                     '''
                     INSERT INTO worker_instances (
-                        id, owner_user_id, registered_at, last_heartbeat_at,
-                        harnesses_json
-                    ) VALUES (?, ?, ?, ?, ?)
+                        id, owner_user_id, service_account_id, registered_at,
+                        last_heartbeat_at, harnesses_json
+                    ) VALUES (?, ?, ?, ?, ?, ?)
                     ''',
                     (
                         document.id,
                         document.owner_user_id,
+                        document.service_account_id,
                         document.registered_at.isoformat(),
                         document.last_heartbeat_at.isoformat(),
                         _serialize_harnesses(document.harnesses),
@@ -142,7 +167,7 @@ class SqliteWorkerInstanceRepository:
                     UPDATE worker_instances
                     SET last_heartbeat_at = ?, harnesses_json = ?
                     WHERE id = ?
-                    RETURNING id, owner_user_id, registered_at,
+                    RETURNING id, owner_user_id, service_account_id, registered_at,
                         last_heartbeat_at, harnesses_json
                     ''',
                     (
@@ -173,7 +198,7 @@ class SqliteWorkerInstanceRepository:
             cursor = await connection.execute(
                 '''
                 SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.owner_user_id, worker.harnesses_json
+                    worker.owner_user_id, worker.service_account_id, worker.harnesses_json
                 FROM worker_instances AS worker
                 INNER JOIN worker_project_enablements AS enablement
                     ON enablement.worker_instance_id = worker.id
@@ -200,7 +225,7 @@ class SqliteWorkerInstanceRepository:
             cursor = await connection.execute(
                 '''
                 SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.owner_user_id, worker.harnesses_json
+                    worker.owner_user_id, worker.service_account_id, worker.harnesses_json
                 FROM worker_instances AS worker
                 INNER JOIN worker_project_enablements AS enablement
                     ON enablement.worker_instance_id = worker.id
@@ -327,7 +352,7 @@ class SqliteWorkerInstanceRepository:
             cursor = await connection.execute(
                 '''
                 SELECT worker.id, worker.registered_at, worker.last_heartbeat_at,
-                    worker.owner_user_id, worker.harnesses_json,
+                    worker.owner_user_id, worker.service_account_id, worker.harnesses_json,
                     enablement.worker_instance_id,
                     enablement.project_id, enablement.enabled_at
                 FROM worker_project_enablements AS enablement
@@ -382,6 +407,7 @@ def _to_worker_document(row: object) -> WorkerInstanceDocument:
     return WorkerInstanceDocument(
         id=row['id'],
         owner_user_id=row['owner_user_id'],
+        service_account_id=row['service_account_id'],
         registered_at=parse_datetime(row['registered_at']),
         last_heartbeat_at=parse_datetime(row['last_heartbeat_at']),
         harnesses=_deserialize_harnesses(row['harnesses_json']),

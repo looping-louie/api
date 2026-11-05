@@ -7,7 +7,10 @@ from fastapi import FastAPI
 
 from src.bootstrap import configure_application
 from src.routers import api_v1_router
-from src.middleware import DevelopmentAuthMiddleware
+from src.middleware import (
+    DevelopmentAuthMiddleware,
+    SessionAuthenticationMiddleware,
+)
 from src.services.shared.settings import get_app_settings
 from src.utils.http import register_exception_handlers
 
@@ -29,6 +32,7 @@ app = FastAPI(
 )
 
 register_exception_handlers(app)
+app.add_middleware(SessionAuthenticationMiddleware)
 
 settings = get_app_settings()
 

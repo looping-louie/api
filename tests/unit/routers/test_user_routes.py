@@ -42,9 +42,17 @@ class FakeUserRepository:
 
 
 def build_client() -> TestClient:
-    """Build an application that accepts an explicit request user identity."""
+    """Build an application with a test-only authenticated identity boundary."""
 
     app = FastAPI()
+
+    @app.middleware('http')
+    async def inject_test_identity(request, call_next):  # type: ignore[no-untyped-def]
+        user_id = request.headers.get('X-User-ID')
+        if user_id:
+            request.state.user_id = user_id
+        return await call_next(request)
+
     app.state.user_controller = UserController(
         service=UserService(
             repository=FakeUserRepository(),

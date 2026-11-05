@@ -21,6 +21,7 @@ class AppSettings:
     dev_auth_enabled: bool
     dev_user_id: str
     catalog_strict_versioning: bool
+    session_cookie_secure: bool = True
 
 
 @lru_cache(maxsize=1)
@@ -47,16 +48,22 @@ def get_app_settings() -> AppSettings:
         catalog_strict_versioning=_environment_flag(
             "LOUIE_CATALOG_STRICT_VERSIONING",
         ),
+        session_cookie_secure=_environment_flag(
+            "LOUIE_SESSION_COOKIE_SECURE",
+            default=True,
+        ),
     )
 
 
-def _environment_flag(name: str) -> bool:
+def _environment_flag(name: str, *, default: bool = False) -> bool:
     """Return whether an environment flag is enabled."""
 
-    return os.getenv(
-        name,
-        "",
-    ).strip().casefold() in {
+    value = os.getenv(name)
+
+    if value is None:
+        return default
+
+    return value.strip().casefold() in {
         "1",
         "true",
         "yes",

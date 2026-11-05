@@ -15,6 +15,7 @@ class WorkerInstanceCreateController:
         *,
         user_id: str,
         payload: WorkerInstanceCreateRequest,
+        service_account_id: str | None = None,
     ) -> WorkerResponse:
         """Register one Worker and enable its initial Project."""
 
@@ -29,6 +30,7 @@ class WorkerInstanceCreateController:
                 )
                 for harness in payload.harnesses
             ),
+            service_account_id=service_account_id,
         ))
 
     _worker_instance_service: WorkerInstanceService

@@ -28,9 +28,12 @@ from src.schemas.pipeline import (
 )
 
 from .dependencies import (
+    ExecutionRequestContext,
     RequestContext,
+    RuntimeRequestContext,
     get_pipeline_controller,
     get_request_context,
+    get_runtime_or_user_request_context,
 )
 
 
@@ -42,6 +45,10 @@ ContextDependency = Annotated[
 ControllerDependency = Annotated[
     PipelineController,
     Depends(get_pipeline_controller),
+]
+ExecutionContextDependency = Annotated[
+    ExecutionRequestContext,
+    Depends(get_runtime_or_user_request_context),
 ]
 OffsetQuery = Annotated[
     int,
@@ -63,6 +70,7 @@ SearchQuery = Annotated[
     ),
 ]
 PipelineIdPath = Annotated[str, Path(min_length=1)]
+WorkerIdQuery = Annotated[str, Query(min_length=1)]
 
 
 @router.get(
@@ -153,10 +161,11 @@ async def create_pipeline_run(
     summary='List claimable pipeline runs',
 )
 async def list_claimable_pipeline_runs(
-    context: ContextDependency,
+    context: ExecutionContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
     claimable: Annotated[bool, Query()],
+    worker_id: WorkerIdQuery,
 ) -> PipelineRunClaimableListResponse:
     """Return candidates for the explicit runtime claimable filter."""
 
@@ -166,8 +175,9 @@ async def list_claimable_pipeline_runs(
             detail='claimable must be true.',
         )
     return await controller.list_claimable_runs(
-        user_id=context.user_id, pipeline_id=pipeline_id,
-        requested_project_id=context.requested_project_id,
+        user_id=_execution_user_id(context), pipeline_id=pipeline_id,
+        worker_id=worker_id,
+        requested_project_id=_execution_project_id(context),
     )
 
 
@@ -199,7 +209,7 @@ async def start_pipeline_run(
 )
 async def claim_pipeline_run(
     payload: PipelineRunClaimRequest,
-    context: ContextDependency,
+    context: ExecutionContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
     run_id: Annotated[str, Path(min_length=1)],
@@ -208,9 +218,9 @@ async def claim_pipeline_run(
     """Claim one current pipeline run using the entity tag from its listing."""
 
     return await controller.claim_run(
-        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        user_id=_execution_user_id(context), pipeline_id=pipeline_id, run_id=run_id,
         payload=payload, if_match=if_match,
-        requested_project_id=context.requested_project_id,
+        requested_project_id=_execution_project_id(context),
     )
 
 
@@ -278,7 +288,7 @@ async def list_pipeline_run_events(
 )
 async def renew_pipeline_run_lease(
     payload: PipelineRunLeaseRenewRequest,
-    context: ContextDependency,
+    context: ExecutionContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
     run_id: Annotated[str, Path(min_length=1)],
@@ -286,9 +296,9 @@ async def renew_pipeline_run_lease(
     """Extend an active worker lease before continuing runtime execution."""
 
     return await controller.renew_lease(
-        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        user_id=_execution_user_id(context), pipeline_id=pipeline_id, run_id=run_id,
         lease_token=payload.lease_token,
-        requested_project_id=context.requested_project_id,
+        requested_project_id=_execution_project_id(context),
     )
 
 
@@ -299,7 +309,7 @@ async def renew_pipeline_run_lease(
 )
 async def continue_pipeline_run(
     payload: PipelineRunContinueRequest,
-    context: ContextDependency,
+    context: ExecutionContextDependency,
     controller: ControllerDependency,
     pipeline_id: PipelineIdPath,
     run_id: Annotated[str, Path(min_length=1)],
@@ -307,9 +317,9 @@ async def continue_pipeline_run(
     """Schedule after the selected child run reaches a terminal state."""
 
     return await controller.continue_run(
-        user_id=context.user_id, pipeline_id=pipeline_id, run_id=run_id,
+        user_id=_execution_user_id(context), pipeline_id=pipeline_id, run_id=run_id,
         payload=payload,
-        requested_project_id=context.requested_project_id,
+        requested_project_id=_execution_project_id(context),
     )
 
 
@@ -372,3 +382,19 @@ async def list_pipeline_changelog(
         offset=offset,
         requested_project_id=context.requested_project_id,
     )
+
+
+def _execution_user_id(context: ExecutionRequestContext) -> str:
+    """Return the human owner for a runtime or browser execution request."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.administrator_id
+    return context.user_id
+
+
+def _execution_project_id(context: ExecutionRequestContext) -> str | None:
+    """Return the mandatory service scope or browser project selection."""
+
+    if isinstance(context, RuntimeRequestContext):
+        return context.project_id
+    return context.requested_project_id

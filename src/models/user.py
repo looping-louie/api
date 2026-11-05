@@ -8,6 +8,7 @@ from src.models.pipeline import PipelineHarness
 
 
 ModelAvailabilityStatus = Literal['enabled', 'disabled']
+UserRole = Literal['admin', 'member']
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,9 +31,13 @@ class UserSettings:
 
 @dataclass(frozen=True, slots=True)
 class UserDocument:
-    """Durable profile for an identity supplied with API requests."""
+    """Durable profile and optional local-account credentials."""
 
     id: str
     created_at: datetime
     updated_at: datetime
     settings: UserSettings = UserSettings()
+    username: str | None = None
+    password_hash: str | None = None
+    role: UserRole = 'member'
+    is_active: bool = True

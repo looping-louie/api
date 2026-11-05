@@ -12,6 +12,18 @@ class UserRepository(Protocol):
         """Return one user by its external identity."""
         raise NotImplementedError
 
+    async def get_by_username(self, *, username: str) -> UserDocument | None:
+        """Return one local account by its case-insensitive username."""
+        raise NotImplementedError
+
+    async def has_local_accounts(self) -> bool:
+        """Return whether any user has completed local-account setup."""
+        raise NotImplementedError
+
+    async def list_local_accounts(self) -> list[UserDocument]:
+        """Return local accounts ordered by their usernames."""
+        raise NotImplementedError
+
     async def create_if_absent(self, document: UserDocument) -> UserDocument:
         """Create a user or return its existing durable record."""
         raise NotImplementedError

@@ -81,6 +81,10 @@ class UserService:
                 default_model_availability=default_model_availability,
                 configured_models=configured_models,
             ),
+            username=current.username,
+            password_hash=current.password_hash,
+            role=current.role,
+            is_active=current.is_active,
         ))
 
 

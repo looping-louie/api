@@ -15,6 +15,7 @@ class WorkerInstanceDocument:
     registered_at: datetime
     last_heartbeat_at: datetime
     harnesses: tuple[WorkerHarnessCapability, ...]
+    service_account_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
