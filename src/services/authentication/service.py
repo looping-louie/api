@@ -11,6 +11,8 @@ from secrets import token_urlsafe
 from src.models.user import UserDocument
 from src.models.personal_access_token import PersonalAccessToken
 from src.repositories.personal_access_tokens import PersonalAccessTokenRepository
+from src.models.service_account import ServiceAccount
+from src.repositories.service_accounts import ServiceAccountRepository
 from src.models.user_session import UserSession
 from src.repositories.user_sessions import UserSessionRepository
 from src.repositories.users import UserRepository
@@ -21,6 +23,7 @@ from .passwords import PasswordHasher
 LOCAL_USER_ID = 'local-user'
 SESSION_DURATION = timedelta(days=30)
 PERSONAL_ACCESS_TOKEN_DURATION = timedelta(days=90)
+SERVICE_ACCOUNT_DURATION = timedelta(days=90)
 
 
 class AuthenticationError(Exception):
@@ -56,6 +59,7 @@ class AccountAuthenticationService:
         users: UserRepository,
         sessions: UserSessionRepository,
         personal_access_tokens: PersonalAccessTokenRepository,
+        service_accounts: ServiceAccountRepository,
         password_hasher: PasswordHasher,
         id_factory: Callable[[], str],
         token_factory: Callable[[], str] = lambda: token_urlsafe(32),
@@ -66,6 +70,7 @@ class AccountAuthenticationService:
         self._users = users
         self._sessions = sessions
         self._personal_access_tokens = personal_access_tokens
+        self._service_accounts = service_accounts
         self._password_hasher = password_hasher
         self._id_factory = id_factory
         self._token_factory = token_factory
@@ -246,6 +251,69 @@ class AccountAuthenticationService:
         )
         return user
 
+    async def create_service_account(
+        self,
+        *,
+        administrator_id: str,
+        name: str,
+        project_ids: tuple[str, ...],
+        expires_at: datetime | None,
+        use_default_expiry: bool,
+    ) -> tuple[ServiceAccount, str]:
+        """Create a project-scoped runtime credential for an administrator."""
+
+        await self._require_administrator(user_id=administrator_id)
+        normalized_project_ids = _require_project_ids(project_ids)
+        now = self._clock()
+        token = self._token_factory()
+        account = ServiceAccount(
+            id=self._id_factory(),
+            administrator_id=administrator_id,
+            name=_require_token_name(name),
+            token_hash=_token_hash(token),
+            project_ids=normalized_project_ids,
+            created_at=now,
+            last_used_at=None,
+            expires_at=(
+                now + SERVICE_ACCOUNT_DURATION
+                if use_default_expiry
+                else expires_at
+            ),
+            revoked_at=None,
+        )
+        return await self._service_accounts.create(account), token
+
+    async def list_service_accounts(
+        self,
+        *,
+        administrator_id: str,
+    ) -> list[ServiceAccount]:
+        """List service accounts administered by an active administrator."""
+
+        await self._require_administrator(user_id=administrator_id)
+        return await self._service_accounts.list_for_administrator(
+            administrator_id=administrator_id,
+        )
+
+    async def revoke_service_account(
+        self,
+        *,
+        administrator_id: str,
+        account_id: str,
+    ) -> None:
+        """Revoke one service account owned by its administrator."""
+
+        await self._require_administrator(user_id=administrator_id)
+        account = await self._service_accounts.get(account_id=account_id)
+        if account is None:
+            raise AccountNotFoundError
+        if account.administrator_id != administrator_id:
+            raise AccountAccessDeniedError
+        await self._service_accounts.revoke(
+            account_id=account_id,
+            revoked_at=self._clock(),
+        )
+
     async def list_accounts(self, *, administrator_id: str) -> list[UserDocument]:
         """Return the instance local accounts to an authenticated administrator."""
 
@@ -403,6 +471,17 @@ def _require_token_name(value: str) -> str:
     normalized = value.strip()
     if not normalized:
         raise ValueError('name must not be empty.')
+    return normalized
+
+
+def _require_project_ids(value: tuple[str, ...]) -> tuple[str, ...]:
+    """Require one or more distinct non-empty service-account project IDs."""
+
+    normalized = tuple(project_id.strip() for project_id in value)
+    if not normalized or any(not project_id for project_id in normalized):
+        raise ValueError('project_ids must contain at least one project ID.')
+    if len(set(normalized)) != len(normalized):
+        raise ValueError('project_ids must not contain duplicates.')
     return normalized
 
 

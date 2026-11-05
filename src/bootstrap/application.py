@@ -56,6 +56,7 @@ from src.repositories.user_sessions import SqliteUserSessionRepository
 from src.repositories.personal_access_tokens import (
     SqlitePersonalAccessTokenRepository,
 )
+from src.repositories.service_accounts import SqliteServiceAccountRepository
 from src.repositories.shared.reference_repository import (
     CompositeReferenceRepository,
 )
@@ -201,6 +202,7 @@ async def configure_application(
     personal_access_token_repository = SqlitePersonalAccessTokenRepository(
         database,
     )
+    service_account_repository = SqliteServiceAccountRepository(database)
     user_service = UserService(
         repository=user_repository,
         clock=utc_now,
@@ -209,6 +211,7 @@ async def configure_application(
         users=user_repository,
         sessions=user_session_repository,
         personal_access_tokens=personal_access_token_repository,
+        service_accounts=service_account_repository,
         password_hasher=PasswordHasher(),
         id_factory=create_identifier,
         clock=utc_now,

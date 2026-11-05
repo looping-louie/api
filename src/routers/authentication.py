@@ -16,6 +16,9 @@ from src.schemas.authentication import (
     PersonalAccessTokenCreatedResponse,
     PersonalAccessTokenResponse,
     SessionStatusResponse,
+    ServiceAccountCreateRequest,
+    ServiceAccountCreatedResponse,
+    ServiceAccountResponse,
     SetupStatusResponse,
 )
 
@@ -229,6 +232,56 @@ async def revoke_personal_access_token(
     await controller.revoke_personal_access_token(
         user_id=context.user_id,
         token_id=token_id,
+    )
+
+
+@router.get(
+    '/service-accounts',
+    response_model=list[ServiceAccountResponse],
+)
+async def list_service_accounts(
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> list[ServiceAccountResponse]:
+    """List runtime service accounts for an authenticated administrator."""
+
+    return await controller.list_service_accounts(
+        administrator_id=context.user_id,
+    )
+
+
+@router.post(
+    '/service-accounts',
+    response_model=ServiceAccountCreatedResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_service_account(
+    payload: ServiceAccountCreateRequest,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> ServiceAccountCreatedResponse:
+    """Create one project-scoped runtime service-account credential."""
+
+    return await controller.create_service_account(
+        administrator_id=context.user_id,
+        payload=payload,
+    )
+
+
+@router.delete(
+    '/service-accounts/{account_id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def revoke_service_account(
+    account_id: AccountIdPath,
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    controller: ControllerDependency,
+) -> None:
+    """Revoke one runtime service-account credential."""
+
+    await controller.revoke_service_account(
+        administrator_id=context.user_id,
+        account_id=account_id,
     )
 
 

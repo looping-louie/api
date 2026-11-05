@@ -236,6 +236,40 @@ def test_user_manages_and_uses_personal_access_tokens(
     assert denied.status_code == 401
 
 
+def test_administrator_manages_project_scoped_service_accounts(
+    session_api_client: TestClient,
+) -> None:
+    """Service account secrets are shown once and revocable by administrators."""
+
+    setup = session_api_client.post(
+        '/api/v1/auth/setup',
+        json={'username': 'administrator', 'password': 'correct horse battery'},
+    )
+    assert setup.status_code == 200
+
+    created = session_api_client.post(
+        '/api/v1/auth/service-accounts',
+        json={'name': 'Production runtime', 'project_ids': ['local-project']},
+    )
+
+    assert created.status_code == 201
+    account = created.json()
+    assert account['name'] == 'Production runtime'
+    assert account['project_ids'] == ['local-project']
+    assert account['token']
+    assert account['expires_at'] is not None
+
+    listed = session_api_client.get('/api/v1/auth/service-accounts')
+    assert listed.status_code == 200
+    assert listed.json()[0]['id'] == account['id']
+    assert 'token' not in listed.json()[0]
+
+    revoked = session_api_client.delete(
+        f'/api/v1/auth/service-accounts/{account["id"]}',
+    )
+    assert revoked.status_code == 204
+
+
 def _set_session_cookie(client: TestClient, token: str) -> None:
     """Replace the test browser session cookie with one saved opaque token."""
 

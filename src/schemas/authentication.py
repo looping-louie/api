@@ -68,6 +68,32 @@ class PersonalAccessTokenCreatedResponse(PersonalAccessTokenResponse):
     token: str
 
 
+class ServiceAccountCreateRequest(RequestSchema):
+    """Administrator-provided runtime credential configuration."""
+
+    name: str = Field(min_length=1, max_length=140)
+    project_ids: list[str] = Field(min_length=1)
+    expires_at: datetime | None = None
+
+
+class ServiceAccountResponse(ResponseSchema):
+    """Credential-safe runtime service-account metadata."""
+
+    id: str
+    name: str
+    project_ids: list[str]
+    created_at: datetime
+    last_used_at: datetime | None
+    expires_at: datetime | None
+    revoked_at: datetime | None
+
+
+class ServiceAccountCreatedResponse(ServiceAccountResponse):
+    """One-time display of a newly issued runtime credential."""
+
+    token: str
+
+
 class SetupStatusResponse(ResponseSchema):
     """Whether the instance still accepts initial administrator setup."""
 

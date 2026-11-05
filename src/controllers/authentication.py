@@ -2,6 +2,7 @@
 
 from src.models.user import UserDocument
 from src.models.personal_access_token import PersonalAccessToken
+from src.models.service_account import ServiceAccount
 from src.schemas.authentication import (
     LocalAccountResponse,
     MemberAccountActivationRequest,
@@ -10,6 +11,9 @@ from src.schemas.authentication import (
     PersonalAccessTokenCreateRequest,
     PersonalAccessTokenCreatedResponse,
     PersonalAccessTokenResponse,
+    ServiceAccountCreateRequest,
+    ServiceAccountCreatedResponse,
+    ServiceAccountResponse,
     SessionStatusResponse,
     SessionUserResponse,
     SetupStatusResponse,
@@ -195,6 +199,53 @@ class AuthenticationController:
             token_id=token_id,
         )
 
+    async def list_service_accounts(
+        self,
+        *,
+        administrator_id: str,
+    ) -> list[ServiceAccountResponse]:
+        """Return runtime service accounts managed by an administrator."""
+
+        return [
+            _service_account_response(account)
+            for account in await self._service.list_service_accounts(
+                administrator_id=administrator_id,
+            )
+        ]
+
+    async def create_service_account(
+        self,
+        *,
+        administrator_id: str,
+        payload: ServiceAccountCreateRequest,
+    ) -> ServiceAccountCreatedResponse:
+        """Issue one project-scoped runtime credential."""
+
+        account, raw_token = await self._service.create_service_account(
+            administrator_id=administrator_id,
+            name=payload.name,
+            project_ids=tuple(payload.project_ids),
+            expires_at=payload.expires_at,
+            use_default_expiry='expires_at' not in payload.model_fields_set,
+        )
+        return ServiceAccountCreatedResponse(
+            **_service_account_response(account).model_dump(),
+            token=raw_token,
+        )
+
+    async def revoke_service_account(
+        self,
+        *,
+        administrator_id: str,
+        account_id: str,
+    ) -> None:
+        """Revoke one runtime credential administered by the caller."""
+
+        await self._service.revoke_service_account(
+            administrator_id=administrator_id,
+            account_id=account_id,
+        )
+
 
 def _session_user_response(document: UserDocument) -> SessionUserResponse:
     """Map one credentialed User document to browser-safe session identity."""
@@ -229,4 +280,20 @@ def _personal_access_token_response(
         last_used_at=token.last_used_at,
         expires_at=token.expires_at,
         revoked_at=token.revoked_at,
+    )
+
+
+def _service_account_response(
+    account: ServiceAccount,
+) -> ServiceAccountResponse:
+    """Map one service account to credential-safe API metadata."""
+
+    return ServiceAccountResponse(
+        id=account.id,
+        name=account.name,
+        project_ids=list(account.project_ids),
+        created_at=account.created_at,
+        last_used_at=account.last_used_at,
+        expires_at=account.expires_at,
+        revoked_at=account.revoked_at,
     )

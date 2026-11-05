@@ -10,6 +10,7 @@ import pytest
 from src.models.user import UserDocument
 from src.models.user_session import UserSession
 from src.models.personal_access_token import PersonalAccessToken
+from src.models.service_account import ServiceAccount
 from src.services.authentication import (
     AccountAuthenticationService,
     AuthenticationError,
@@ -136,10 +137,49 @@ class FakePersonalAccessTokenRepository:
         self.tokens[token_id] = replace(token, revoked_at=revoked_at)
 
 
+class FakeServiceAccountRepository:
+    """Store runtime service accounts in memory for authentication tests."""
+
+    def __init__(self) -> None:
+        """Create an empty service-account store."""
+
+        self.accounts: dict[str, ServiceAccount] = {}
+
+    async def create(self, account: ServiceAccount) -> ServiceAccount:
+        """Store one service account."""
+
+        self.accounts[account.id] = account
+        return account
+
+    async def get(self, *, account_id: str) -> ServiceAccount | None:
+        """Return one service account by durable identifier."""
+
+        return self.accounts.get(account_id)
+
+    async def list_for_administrator(
+        self,
+        *,
+        administrator_id: str,
+    ) -> list[ServiceAccount]:
+        """Return accounts administered by one user."""
+
+        return [
+            account for account in self.accounts.values()
+            if account.administrator_id == administrator_id
+        ]
+
+    async def revoke(self, *, account_id: str, revoked_at: datetime) -> None:
+        """Record one service-account revocation."""
+
+        account = self.accounts[account_id]
+        self.accounts[account_id] = replace(account, revoked_at=revoked_at)
+
+
 def build_service(
     users: FakeUserRepository,
     sessions: FakeSessionRepository,
     tokens: FakePersonalAccessTokenRepository | None = None,
+    service_accounts: FakeServiceAccountRepository | None = None,
 ) -> AccountAuthenticationService:
     """Build deterministic account authentication dependencies."""
 
@@ -148,6 +188,7 @@ def build_service(
         users=users,
         sessions=sessions,
         personal_access_tokens=tokens or FakePersonalAccessTokenRepository(),
+        service_accounts=service_accounts or FakeServiceAccountRepository(),
         password_hasher=PasswordHasher(),
         id_factory=lambda: next(identifiers),
         token_factory=lambda: 'raw-session-token',
