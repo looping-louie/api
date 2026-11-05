@@ -14,7 +14,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.bootstrap import configure_application
-from src.middleware import DevelopmentAuthMiddleware
+from src.middleware import (
+    DevelopmentAuthMiddleware,
+    SessionAuthenticationMiddleware,
+)
 from src.repositories.infrastructure.migration_runner import (
     run_sqlite_migrations,
 )
@@ -76,6 +79,51 @@ def api_client(
     app.include_router(api_v1_router)
 
     with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def session_api_client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[TestClient]:
+    """Return a production-authenticated API client backed by SQLite."""
+
+    async def skip_provider_connection_check(
+        self: HttpProviderConnectionService,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        """Avoid external provider requests while testing local API behavior."""
+
+        del self, args, kwargs
+
+    monkeypatch.setattr(
+        HttpProviderConnectionService,
+        'test_connection',
+        skip_provider_connection_check,
+    )
+    settings = AppSettings(
+        encryption_key=Fernet.generate_key().decode('utf-8'),
+        database_path=tmp_path / 'looping-louie-api.db',
+        dev_auth_enabled=False,
+        dev_user_id='local-user',
+        catalog_strict_versioning=False,
+    )
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Configure the production dependency graph for the test client."""
+
+        await configure_application(app, settings=settings)
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    register_exception_handlers(app)
+    app.add_middleware(SessionAuthenticationMiddleware)
+    app.include_router(api_v1_router)
+
+    with TestClient(app, base_url='https://testserver') as client:
         yield client
 
 

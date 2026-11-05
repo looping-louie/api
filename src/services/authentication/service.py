@@ -103,6 +103,42 @@ class AccountAuthenticationService:
             now=self._clock(),
         )
 
+    async def current_user(self, *, token: str) -> UserDocument | None:
+        """Return the active user authenticated by an unexpired session token."""
+
+        session = await self._sessions.get_by_token_hash(
+            token_hash=_token_hash(token),
+        )
+        if session is None:
+            return None
+        if session.expires_at <= self._clock():
+            await self._sessions.delete_by_token_hash(
+                token_hash=session.token_hash,
+            )
+            return None
+        user = await self._users.get(user_id=session.user_id)
+        if user is None or not user.is_active:
+            await self._sessions.delete_by_token_hash(
+                token_hash=session.token_hash,
+            )
+            return None
+        return user
+
+    async def current_user_id(self, *, user_id: str) -> UserDocument | None:
+        """Return the active local account for a middleware-authenticated ID."""
+
+        user = await self._users.get(user_id=user_id)
+        if user is None or not user.is_active or user.username is None:
+            return None
+        return user
+
+    async def logout(self, *, token: str) -> None:
+        """Revoke the session represented by one raw browser token."""
+
+        await self._sessions.delete_by_token_hash(
+            token_hash=_token_hash(token),
+        )
+
     async def _create_session(self, *, user_id: str, now: datetime) -> str:
         """Persist only a digest while returning the raw token to the caller."""
 

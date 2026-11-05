@@ -17,6 +17,7 @@ from src.controllers.worker_instances import WorkerInstanceController
 from src.controllers.linked_services import LinkedServiceController
 from src.controllers.projects import ProjectController
 from src.controllers.users import UserController
+from src.controllers.authentication import AuthenticationController
 from src.services.execution_instructions import (
     ExecutionInstructionLibraryService,
 )
@@ -35,13 +36,6 @@ class RequestContext:
 
 async def get_request_context(
     request: Request,
-    request_user_id: Annotated[
-        str | None,
-        Header(
-            alias='X-User-ID',
-            description='Identity acting on the request.',
-        ),
-    ] = None,
     requested_project_id_header: Annotated[
         str | None,
         Header(
@@ -57,8 +51,6 @@ async def get_request_context(
     """
 
     user_id = getattr(request.state, 'user_id', None)
-    if not isinstance(user_id, str) or not user_id.strip():
-        user_id = request_user_id
 
     if not isinstance(user_id, str) or not user_id.strip():
         raise HTTPException(
@@ -211,6 +203,18 @@ def get_user_controller(request: Request) -> UserController:
         request,
         attribute_name='user_controller',
         expected_type=UserController,
+    )
+
+
+def get_authentication_controller(
+    request: Request,
+) -> AuthenticationController:
+    """Return the configured controller for local account authentication."""
+
+    return _get_controller(
+        request,
+        attribute_name='authentication_controller',
+        expected_type=AuthenticationController,
     )
 
 

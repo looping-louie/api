@@ -82,6 +82,10 @@ from src.services.shared.validation import (
 )
 from src.services.skills import SkillValidationError
 from src.services.users import UserNotFoundError
+from src.services.authentication import (
+    AuthenticationError,
+    BootstrapUnavailableError,
+)
 
 from .domain_error_details import (
     _duplicate_resource_details,
@@ -109,6 +113,16 @@ from .domain_error_details import _linked_service_not_found_details
 
 
 ERROR_DEFINITIONS: dict[type[Exception], ErrorDefinition] = {
+    AuthenticationError: ErrorDefinition(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        code='invalid_credentials',
+        public_message='Invalid username or password.',
+    ),
+    BootstrapUnavailableError: ErrorDefinition(
+        status_code=status.HTTP_409_CONFLICT,
+        code='bootstrap_unavailable',
+        public_message='Initial administrator setup has already completed.',
+    ),
     UserNotFoundError: ErrorDefinition(
         status_code=status.HTTP_404_NOT_FOUND,
         code='user_not_found',
